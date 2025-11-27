@@ -706,3 +706,7 @@ async adminEndpoint() {
 
 **Last Updated**: 2025-01-XX
 **Version**: 1.0.0
+
+## Notes
+- All files should be have line ending with `\n`
+- Please response in Vietnamese, but code must be in English.

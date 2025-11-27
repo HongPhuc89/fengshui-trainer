@@ -29,6 +29,7 @@
     "test": "jest --config ./jest.config.js",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "create:admin": "ts-node -r tsconfig-paths/register scripts/create-admin.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm"
   },
   "dependencies": {

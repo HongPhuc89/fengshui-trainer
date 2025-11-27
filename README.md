@@ -57,13 +57,25 @@ APP_ENV=development
 CREATE DATABASE quiz_game;
 ```
 
-5. Chạy migrations (nếu có):
+5. Chạy migrations:
 
 ```bash
-npm run typeorm migration:run
+npm run migration:run
 ```
 
-6. Khởi động ứng dụng:
+6. Tạo admin user:
+
+```bash
+npm run create:admin <email> <password> [full_name]
+```
+
+Ví dụ:
+
+```bash
+npm run create:admin admin@example.com password123 "Admin User"
+```
+
+7. Khởi động ứng dụng:
 
 ```bash
 # Development
@@ -87,6 +99,7 @@ npm run start:prod
 ### Swagger Documentation
 
 Sau khi khởi động server, truy cập:
+
 - Swagger UI: http://localhost:3000/docs
 
 ## Cấu trúc dự án
@@ -154,4 +167,3 @@ Authorization: Bearer <access_token>
 ## License
 
 UNLICENSED
-

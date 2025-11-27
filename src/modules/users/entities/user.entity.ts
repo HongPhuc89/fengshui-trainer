@@ -1,5 +1,5 @@
 import { BaseEntity } from '../../typeorm/base.entity';
-import { Column, Entity, OneToOne, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
+import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserRole } from '../../../shares/enums/user-role.enum';
 import { UserCredential } from '../../user-credential/entities/user-credential.entity';
 
@@ -46,6 +46,5 @@ export class User extends BaseEntity {
   refresh_token: string;
 
   @OneToOne(() => UserCredential, (credential) => credential.user)
-  @JoinColumn()
   credential: UserCredential;
 }
