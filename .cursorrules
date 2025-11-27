@@ -1,0 +1,282 @@
+# Quiz Game Backend - Cursor Rules
+
+Dự án này được xây dựng dựa trên NestJS framework với TypeORM và PostgreSQL, tuân theo các coding patterns và best practices từ mrc_backend-develop.
+
+## Nguyên tắc chung
+
+1. **Luôn sử dụng TypeScript** với strict typing khi có thể
+2. **Tuân thủ NestJS conventions** và dependency injection pattern
+3. **Sử dụng decorators** cho metadata và configuration
+4. **Áp dụng Repository pattern** với TypeORM
+5. **Xử lý lỗi** với custom exceptions và proper error messages
+6. **Validation** với class-validator và class-transformer
+7. **API Documentation** với Swagger decorators
+
+## Naming Conventions
+
+### Files và Folders
+- **Entities**: `user.entity.ts`, `user-credential.entity.ts` (kebab-case, .entity.ts suffix)
+- **DTOs**: `register-request.dto.ts`, `login-response.dto.ts` (kebab-case, .dto.ts suffix)
+- **Services**: `users.service.ts`, `auth.service.ts` (kebab-case, .service.ts suffix)
+- **Controllers**: `auth.controller.ts`, `users.controller.ts` (kebab-case, .controller.ts suffix)
+- **Modules**: `auth.module.ts`, `users.module.ts` (kebab-case, .module.ts suffix)
+- **Guards**: `jwt-auth.guard.ts`, `roles.guard.ts` (kebab-case, .guard.ts suffix)
+- **Strategies**: `local.strategy.ts`, `jwt.strategy.ts` (kebab-case, .strategy.ts suffix)
+- **Constants**: `users.constants.ts`, `auth.constant.ts` (kebab-case, .constants.ts hoặc .constant.ts suffix)
+- **Enums**: `user-role.enum.ts` (kebab-case, .enum.ts suffix)
+- **Interfaces**: `config.interface.ts` (kebab-case, .interface.ts suffix)
+
+### Classes và Types
+- **Entities**: `User`, `UserCredential` (PascalCase)
+- **DTOs**: `RegisterRequestDto`, `LoginResponseDto` (PascalCase với suffix Dto)
+- **Services**: `UsersService`, `AuthService` (PascalCase với suffix Service)
+- **Controllers**: `AuthController`, `UsersController` (PascalCase với suffix Controller)
+- **Modules**: `AuthModule`, `UsersModule` (PascalCase với suffix Module)
+- **Guards**: `JwtAuthGuard`, `RolesGuard` (PascalCase với suffix Guard)
+- **Strategies**: `LocalStrategy`, `JwtStrategy` (PascalCase với suffix Strategy)
+- **Interfaces**: `IConfiguration`, `IAuthConfiguration` (PascalCase với prefix I)
+- **Enums**: `UserRole`, `UserStatus` (PascalCase)
+
+### Variables và Functions
+- **Variables**: `userRepository`, `authService` (camelCase)
+- **Functions**: `getUserById`, `validateUser` (camelCase)
+- **Constants**: `ROLES_KEY`, `USER_ID` (UPPER_SNAKE_CASE)
+- **Private properties**: `private readonly userRepository` (camelCase với readonly)
+
+### Database
+- **Table names**: `users`, `user_credentials` (snake_case, plural)
+- **Column names**: `user_id`, `created_at`, `updated_at` (snake_case)
+- **Foreign keys**: `user_id`, `quiz_id` (snake_case với _id suffix)
+
+## Code Structure
+
+### Module Organization
+Mỗi module phải có cấu trúc:
+```
+module-name/
+├── module-name.module.ts
+├── module-name.service.ts
+├── module-name.controller.ts (nếu có)
+├── entities/
+│   └── entity-name.entity.ts
+├── dtos/
+│   ├── request-name.dto.ts
+│   └── response-name.dto.ts
+└── module-name.constants.ts (nếu cần)
+```
+
+### Service Pattern
+```typescript
+@Injectable()
+export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly otherService: OtherService,
+  ) {}
+
+  async methodName(param: Type): Promise<ReturnType> {
+    // Implementation
+  }
+}
+```
+
+### Controller Pattern
+```typescript
+@Controller('resource-name')
+@ApiTags('Resource Name')
+export class ResourceController {
+  constructor(
+    private readonly resourceService: ResourceService,
+  ) {}
+
+  @Post('endpoint')
+  @ApiOperation({ summary: 'Description' })
+  @ApiResponse({ type: ResponseDto, status: HttpStatus.OK })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async methodName(@Body() dto: RequestDto): Promise<ResponseDto> {
+    const result = await this.resourceService.methodName(dto);
+    return plainToInstance(ResponseDto, result);
+  }
+}
+```
+
+### DTO Pattern
+```typescript
+export class RequestDto {
+  @ApiProperty({ description: 'Field description', example: 'example' })
+  @IsString()
+  @IsNotEmpty()
+  field: string;
+
+  @ApiPropertyOptional({ description: 'Optional field' })
+  @IsString()
+  @IsOptional()
+  optionalField?: string;
+}
+```
+
+### Entity Pattern
+```typescript
+@Entity('table_name')
+export class EntityName extends BaseEntity {
+  @PrimaryGeneratedColumn('increment')
+  id: number;
+
+  @Column({ type: 'varchar', unique: true })
+  email: string;
+
+  @Column({ type: 'enum', enum: EnumName, default: EnumName.DEFAULT })
+  status: EnumName;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at: Date;
+}
+```
+
+## Coding Standards
+
+### Imports
+- Sắp xếp imports theo thứ tự:
+  1. External libraries (@nestjs/*, typeorm, etc.)
+  2. Internal modules (src/modules/*)
+  3. Shared utilities (src/shares/*)
+  4. Relative imports (./, ../)
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './entities/user.entity';
+import { hashString } from '../../shares/helpers/cryptography';
+```
+
+### Error Handling
+- Sử dụng custom exceptions khi cần:
+```typescript
+throw new BadRequestException('Error message');
+throw new UnprocessableEntityException('Error message');
+throw new NotFoundException('Resource not found');
+```
+
+### Transactions
+- Sử dụng EntityManager cho transactions:
+```typescript
+await this.dataSource.transaction(async (manager) => {
+  const user = await manager.save(User, userData);
+  await manager.save(UserCredential, credential);
+  return user;
+});
+```
+
+### Validation
+- Luôn validate input với class-validator:
+```typescript
+@IsEmail()
+@IsNotEmpty()
+email: string;
+
+@IsString()
+@MinLength(6)
+password: string;
+```
+
+### Transform
+- Sử dụng plainToInstance cho response transformation:
+```typescript
+return plainToInstance(UserResponseDto, user);
+```
+
+### Swagger Documentation
+- Luôn thêm Swagger decorators:
+```typescript
+@ApiOperation({ summary: 'Description', operationId: 'operation-id' })
+@ApiResponse({ type: ResponseDto, status: HttpStatus.OK })
+@ApiBearerAuth() // Cho protected endpoints
+```
+
+## Best Practices
+
+### Dependency Injection
+- Luôn sử dụng constructor injection
+- Đánh dấu dependencies với `readonly`
+- Sử dụng `@InjectRepository` cho TypeORM repositories
+
+### Type Safety
+- Tránh sử dụng `any` type
+- Sử dụng proper types và interfaces
+- Sử dụng enums cho constants có giới hạn
+
+### Async/Await
+- Luôn sử dụng async/await thay vì Promises chains
+- Xử lý errors với try-catch khi cần
+
+### Database Queries
+- Sử dụng Repository pattern
+- Tránh raw SQL queries khi có thể
+- Sử dụng relations để load related data
+- Sử dụng transactions cho operations phức tạp
+
+### Security
+- Luôn hash passwords với bcrypt
+- Validate và sanitize user input
+- Sử dụng guards cho authentication/authorization
+- Không expose sensitive data trong responses
+
+### Code Formatting
+- Single quotes cho strings
+- Trailing commas
+- 2 spaces indentation
+- Print width: 120 characters
+- Semicolons: yes
+
+## Module-Specific Rules
+
+### Auth Module
+- JWT tokens với access_token và refresh_token
+- Password hashing với bcrypt
+- Token validation với guards
+- Refresh token mechanism
+
+### Users Module
+- User roles: ADMIN, NORMAL_USER, STAFF
+- User status management
+- Profile management
+
+### Database
+- Sử dụng migrations cho schema changes
+- Timestamps: created_at, updated_at, deleted_at (soft delete)
+- Foreign keys với proper constraints
+- Indexes cho performance
+
+## Testing
+- Unit tests với Jest
+- Test files: `*.spec.ts`
+- Mock dependencies trong tests
+- Test coverage cho critical paths
+
+## Git Commit Messages
+- Use conventional commits format
+- Prefix: feat, fix, docs, refactor, test, chore
+- Example: `feat(auth): add refresh token endpoint`
+
+## Code Review Checklist
+- [ ] Follows naming conventions
+- [ ] Proper error handling
+- [ ] Input validation
+- [ ] Swagger documentation
+- [ ] Type safety
+- [ ] No hardcoded values
+- [ ] Proper logging
+- [ ] Security considerations
+- [ ] Performance considerations
+
+## Notes
+- Luôn tham khảo codebase mrc_backend-develop khi có thắc mắc về patterns
+- Giữ code đơn giản và dễ đọc
+- Ưu tiên maintainability hơn cleverness
+- Document complex logic với comments
+

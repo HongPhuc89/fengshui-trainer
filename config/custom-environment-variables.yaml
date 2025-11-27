@@ -1,0 +1,20 @@
+app:
+  port: APP_PORT
+  prefix: APP_PREFIX
+  env: APP_ENV
+
+database:
+  host: DB_HOST
+  port: DB_PORT
+  username: DB_USERNAME
+  password: DB_PASSWORD
+  database: DB_DATABASE
+
+auth:
+  jwt:
+    secretKey: JWT_SECRET
+    expireTime: JWT_EXPIRES_IN
+  refreshToken:
+    secretKey: REFRESH_TOKEN_SECRET
+    expireTime: REFRESH_TOKEN_EXPIRES_IN
+

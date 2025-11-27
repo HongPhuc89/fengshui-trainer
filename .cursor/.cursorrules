@@ -1,0 +1,708 @@
+# Quiz Game Backend - Cursor AI Rules
+
+This project is built with NestJS framework using TypeORM and PostgreSQL, following coding patterns and best practices from mrc_backend-develop.
+
+## Project Overview
+
+- **Framework**: NestJS
+- **Database**: PostgreSQL with TypeORM
+- **Language**: TypeScript
+- **Architecture**: Modular, Repository Pattern, Dependency Injection
+
+## Core Principles
+
+1. Always use TypeScript with strict typing when possible
+2. Follow NestJS conventions and dependency injection pattern
+3. Use decorators for metadata and configuration
+4. Apply Repository pattern with TypeORM
+5. Handle errors with custom exceptions and proper error messages
+6. Validate inputs with class-validator and class-transformer
+7. Document APIs with Swagger decorators
+8. Maintain consistency with mrc_backend-develop patterns
+
+---
+
+## Naming Conventions
+
+### Files and Folders
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Entities | `kebab-case.entity.ts` | `user.entity.ts`, `user-credential.entity.ts` |
+| DTOs | `kebab-case.dto.ts` | `register-request.dto.ts`, `login-response.dto.ts` |
+| Services | `kebab-case.service.ts` | `users.service.ts`, `auth.service.ts` |
+| Controllers | `kebab-case.controller.ts` | `auth.controller.ts`, `users.controller.ts` |
+| Modules | `kebab-case.module.ts` | `auth.module.ts`, `users.module.ts` |
+| Guards | `kebab-case.guard.ts` | `jwt-auth.guard.ts`, `roles.guard.ts` |
+| Strategies | `kebab-case.strategy.ts` | `local.strategy.ts`, `jwt.strategy.ts` |
+| Constants | `kebab-case.constants.ts` | `users.constants.ts`, `auth.constant.ts` |
+| Enums | `kebab-case.enum.ts` | `user-role.enum.ts` |
+| Interfaces | `kebab-case.interface.ts` | `config.interface.ts` |
+
+### Classes and Types
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Entities | `PascalCase` | `User`, `UserCredential` |
+| DTOs | `PascalCase + Dto` | `RegisterRequestDto`, `LoginResponseDto` |
+| Services | `PascalCase + Service` | `UsersService`, `AuthService` |
+| Controllers | `PascalCase + Controller` | `AuthController`, `UsersController` |
+| Modules | `PascalCase + Module` | `AuthModule`, `UsersModule` |
+| Guards | `PascalCase + Guard` | `JwtAuthGuard`, `RolesGuard` |
+| Strategies | `PascalCase + Strategy` | `LocalStrategy`, `JwtStrategy` |
+| Interfaces | `I + PascalCase` | `IConfiguration`, `IAuthConfiguration` |
+| Enums | `PascalCase` | `UserRole`, `UserStatus` |
+
+### Variables and Functions
+
+- **Variables**: `camelCase` - `userRepository`, `authService`
+- **Functions**: `camelCase` - `getUserById()`, `validateUser()`
+- **Constants**: `UPPER_SNAKE_CASE` - `ROLES_KEY`, `USER_ID`
+- **Private Properties**: `private readonly camelCase` - `private readonly userRepository`
+
+### Database
+
+- **Table Names**: `snake_case`, plural - `users`, `user_credentials`
+- **Column Names**: `snake_case` - `user_id`, `created_at`, `updated_at`
+- **Foreign Keys**: `snake_case` with `_id` suffix - `user_id`, `quiz_id`
+
+---
+
+## Code Structure
+
+### Module Organization
+
+Each module must follow this structure:
+
+```
+module-name/
+├── module-name.module.ts
+├── module-name.service.ts
+├── module-name.controller.ts (if needed)
+├── entities/
+│   └── entity-name.entity.ts
+├── dtos/
+│   ├── request-name.dto.ts
+│   └── response-name.dto.ts
+├── strategies/ (for auth modules)
+│   └── strategy-name.strategy.ts
+└── module-name.constants.ts (if needed)
+```
+
+### Service Pattern
+
+```typescript
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Entity } from './entities/entity.entity';
+
+@Injectable()
+export class EntityService {
+  private readonly logger = new Logger(EntityService.name);
+
+  constructor(
+    @InjectRepository(Entity)
+    private readonly entityRepository: Repository<Entity>,
+    private readonly otherService: OtherService,
+  ) {}
+
+  async methodName(param: Type): Promise<ReturnType> {
+    this.logger.debug(`methodName called with param: ${param}`);
+    // Implementation
+    return result;
+  }
+}
+```
+
+### Controller Pattern
+
+```typescript
+import { Controller, Post, Body, HttpStatus, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { JwtAuthGuard } from '../../shares/guards/jwt-auth.guard';
+import { RequestDto } from './dtos/request.dto';
+import { ResponseDto } from './dtos/response.dto';
+import { EntityService } from './entity.service';
+
+@Controller('resource-name')
+@ApiTags('Resource Name')
+export class ResourceController {
+  constructor(
+    private readonly resourceService: EntityService,
+  ) {}
+
+  @Post('endpoint')
+  @ApiOperation({
+    summary: 'Endpoint description',
+    operationId: 'operation-id',
+  })
+  @ApiResponse({
+    type: ResponseDto,
+    status: HttpStatus.OK,
+    description: 'Success response',
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async methodName(@Body() dto: RequestDto): Promise<ResponseDto> {
+    const result = await this.resourceService.methodName(dto);
+    return plainToInstance(ResponseDto, result);
+  }
+}
+```
+
+### DTO Pattern
+
+```typescript
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
+
+export class RequestDto {
+  @ApiProperty({
+    description: 'Field description',
+    example: 'example value',
+    type: String,
+  })
+  @IsString()
+  @IsNotEmpty()
+  field: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional field description',
+    example: 'optional value',
+  })
+  @IsString()
+  @IsOptional()
+  optionalField?: string;
+}
+```
+
+### Entity Pattern
+
+```typescript
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { BaseEntity } from '../../typeorm/base.entity';
+import { EnumName } from '../../shares/enums/enum-name.enum';
+
+@Entity('table_name')
+export class EntityName extends BaseEntity {
+  @PrimaryGeneratedColumn('increment')
+  id: number;
+
+  @Column({ type: 'varchar', unique: true })
+  email: string;
+
+  @Column({
+    type: 'enum',
+    enum: EnumName,
+    default: EnumName.DEFAULT,
+  })
+  status: EnumName;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at: Date;
+}
+```
+
+---
+
+## Coding Standards
+
+### Import Organization
+
+Order imports as follows:
+1. External libraries (`@nestjs/*`, `typeorm`, etc.)
+2. Internal modules (`src/modules/*`)
+3. Shared utilities (`src/shares/*`)
+4. Relative imports (`./`, `../`)
+
+```typescript
+// External
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+// Internal modules
+import { User } from './entities/user.entity';
+import { OtherService } from '../other/other.service';
+
+// Shared utilities
+import { hashString } from '../../shares/helpers/cryptography';
+import { isNullOrUndefined } from '../../shares/helpers/utils';
+```
+
+### Error Handling
+
+Use appropriate HTTP exceptions:
+
+```typescript
+import {
+  BadRequestException,
+  UnprocessableEntityException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+
+// Bad request (400)
+throw new BadRequestException('Invalid input data');
+
+// Unprocessable entity (422)
+throw new UnprocessableEntityException('Email already exists');
+
+// Not found (404)
+throw new NotFoundException('User not found');
+
+// Unauthorized (401)
+throw new UnauthorizedException('Invalid credentials');
+```
+
+### Transactions
+
+Use EntityManager for database transactions:
+
+```typescript
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, EntityManager } from 'typeorm';
+
+@Injectable()
+export class Service {
+  constructor(
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async complexOperation() {
+    return this.dataSource.transaction(async (manager: EntityManager) => {
+      const user = await manager.save(User, userData);
+      await manager.save(UserCredential, credential);
+      return user;
+    });
+  }
+}
+```
+
+### Validation
+
+Always validate input with class-validator:
+
+```typescript
+import { IsEmail, IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
+
+export class RegisterDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  @MaxLength(50)
+  password: string;
+}
+```
+
+### Response Transformation
+
+Use `plainToInstance` for response transformation:
+
+```typescript
+import { plainToInstance } from 'class-transformer';
+import { UserResponseDto } from './dtos/user-response.dto';
+
+// In controller
+const result = await this.service.getUser();
+return plainToInstance(UserResponseDto, result);
+```
+
+### Swagger Documentation
+
+Always add Swagger decorators:
+
+```typescript
+import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
+@Controller('resource')
+@ApiTags('Resource')
+export class ResourceController {
+  @Get('endpoint')
+  @ApiOperation({
+    summary: 'Get resource',
+    operationId: 'get-resource',
+  })
+  @ApiResponse({
+    type: ResponseDto,
+    status: HttpStatus.OK,
+  })
+  @ApiBearerAuth() // For protected endpoints
+  async getResource() {
+    // Implementation
+  }
+}
+```
+
+---
+
+## Best Practices
+
+### Dependency Injection
+
+- Always use constructor injection
+- Mark dependencies as `readonly`
+- Use `@InjectRepository` for TypeORM repositories
+- Use `@InjectDataSource` for DataSource when needed
+
+```typescript
+constructor(
+  @InjectRepository(User)
+  private readonly userRepository: Repository<User>,
+  private readonly configService: ConfigService,
+) {}
+```
+
+### Type Safety
+
+- Avoid using `any` type
+- Use proper types and interfaces
+- Use enums for limited constants
+- Define return types explicitly
+
+```typescript
+// Good
+async getUserById(id: number): Promise<User> {
+  return this.userRepository.findOne({ where: { id } });
+}
+
+// Bad
+async getUserById(id: any): Promise<any> {
+  return this.userRepository.findOne({ where: { id } });
+}
+```
+
+### Async/Await
+
+- Always use async/await instead of Promise chains
+- Handle errors with try-catch when needed
+- Use Promise.all for parallel operations
+
+```typescript
+// Good
+async processData() {
+  const [user, settings] = await Promise.all([
+    this.getUser(),
+    this.getSettings(),
+  ]);
+  return { user, settings };
+}
+
+// Bad
+processData() {
+  return this.getUser().then(user => {
+    return this.getSettings().then(settings => {
+      return { user, settings };
+    });
+  });
+}
+```
+
+### Database Queries
+
+- Use Repository pattern
+- Avoid raw SQL queries when possible
+- Use relations to load related data
+- Use transactions for complex operations
+- Add indexes for performance
+
+```typescript
+// Good - Using relations
+const user = await this.userRepository.findOne({
+  where: { id },
+  relations: ['credential'],
+});
+
+// Good - Using query builder for complex queries
+const users = await this.userRepository
+  .createQueryBuilder('user')
+  .where('user.role = :role', { role: UserRole.ADMIN })
+  .getMany();
+```
+
+### Security
+
+- Always hash passwords with bcrypt
+- Validate and sanitize user input
+- Use guards for authentication/authorization
+- Don't expose sensitive data in responses
+- Use environment variables for secrets
+
+```typescript
+import { hashString } from '../../shares/helpers/cryptography';
+
+// Hash password before saving
+const hashedPassword = await hashString(password);
+```
+
+### Code Formatting
+
+- Single quotes for strings
+- Trailing commas
+- 2 spaces indentation
+- Print width: 120 characters
+- Semicolons: yes
+
+---
+
+## Module-Specific Rules
+
+### Auth Module
+
+- JWT tokens with `access_token` and `refresh_token`
+- Password hashing with bcrypt
+- Token validation with guards
+- Refresh token mechanism
+- No email verification required (as per requirements)
+
+```typescript
+// Token structure
+{
+  access_token: string;  // Short-lived (7d)
+  refresh_token: string; // Long-lived (30d)
+}
+```
+
+### Users Module
+
+- User roles: `ADMIN`, `NORMAL_USER`, `STAFF`
+- User status management with `is_active` boolean
+- Profile management
+- Soft delete with `deleted_at`
+
+### Database
+
+- Use migrations for schema changes
+- Timestamps: `created_at`, `updated_at`, `deleted_at` (soft delete)
+- Foreign keys with proper constraints
+- Indexes for performance on frequently queried columns
+- Use `timestamptz` for all timestamp columns
+
+---
+
+## Testing Guidelines
+
+- Unit tests with Jest
+- Test files: `*.spec.ts`
+- Mock dependencies in tests
+- Test coverage for critical paths
+- Use test database for integration tests
+
+```typescript
+describe('UsersService', () => {
+  let service: UsersService;
+  let repository: Repository<User>;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockRepository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<UsersService>(UsersService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});
+```
+
+---
+
+## Git Conventions
+
+### Commit Messages
+
+Use conventional commits format:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
+```
+feat(auth): add refresh token endpoint
+fix(users): resolve user creation validation issue
+docs(api): update swagger documentation
+refactor(auth): simplify token generation logic
+```
+
+---
+
+## Code Review Checklist
+
+Before submitting code for review, ensure:
+
+- [ ] Follows naming conventions
+- [ ] Proper error handling
+- [ ] Input validation with class-validator
+- [ ] Swagger documentation added
+- [ ] Type safety (no `any` types)
+- [ ] No hardcoded values (use config/env)
+- [ ] Proper logging where needed
+- [ ] Security considerations addressed
+- [ ] Performance considerations (indexes, queries)
+- [ ] Tests added/updated if applicable
+- [ ] Code formatted with Prettier
+- [ ] No linting errors
+
+---
+
+## Architecture Patterns
+
+### Repository Pattern
+
+Always use TypeORM repositories for database operations:
+
+```typescript
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
+
+  async findById(id: number): Promise<User> {
+    return this.userRepository.findOne({ where: { id } });
+  }
+}
+```
+
+### Service Layer Pattern
+
+Services contain business logic, controllers handle HTTP:
+
+```typescript
+// Service - Business logic
+@Injectable()
+export class UsersService {
+  async createUser(dto: CreateUserDto): Promise<User> {
+    // Business logic here
+    return this.userRepository.save(user);
+  }
+}
+
+// Controller - HTTP handling
+@Controller('users')
+export class UsersController {
+  @Post()
+  async create(@Body() dto: CreateUserDto) {
+    return this.usersService.createUser(dto);
+  }
+}
+```
+
+### Guard Pattern
+
+Use guards for authentication and authorization:
+
+```typescript
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@Get('admin-only')
+async adminEndpoint() {
+  // Only accessible by ADMIN
+}
+```
+
+---
+
+## Common Patterns Reference
+
+### Creating a New Module
+
+1. Create module folder structure
+2. Create entity in `entities/` folder
+3. Create DTOs in `dtos/` folder
+4. Create service with business logic
+5. Create controller with endpoints
+6. Create module file and register in `app.module.ts`
+7. Create migration if needed
+
+### Adding a New Endpoint
+
+1. Add method to service
+2. Add controller method with decorators
+3. Add DTOs for request/response
+4. Add Swagger documentation
+5. Add guards if needed
+6. Test the endpoint
+
+---
+
+## Notes
+
+- Always refer to `mrc_backend-develop` codebase when in doubt about patterns
+- Keep code simple and readable
+- Prioritize maintainability over cleverness
+- Document complex logic with comments
+- Follow the existing code style in the project
+- When generating code, ensure it follows these rules
+
+---
+
+## Quick Reference
+
+### Common Decorators
+
+```typescript
+// NestJS
+@Injectable()
+@Controller('path')
+@Get(), @Post(), @Put(), @Delete(), @Patch()
+@Body(), @Param(), @Query(), @Headers()
+@UseGuards()
+@UseInterceptors()
+
+// Swagger
+@ApiTags('Tag')
+@ApiOperation({ summary: 'Description' })
+@ApiResponse({ type: Dto, status: HttpStatus.OK })
+@ApiBearerAuth()
+@ApiProperty()
+@ApiPropertyOptional()
+
+// Validation
+@IsString(), @IsEmail(), @IsNotEmpty()
+@IsOptional(), @MinLength(), @MaxLength()
+@IsEnum(), @IsNumber(), @IsBoolean()
+
+// TypeORM
+@Entity('table_name')
+@PrimaryGeneratedColumn('increment')
+@Column({ type: 'varchar' })
+@CreateDateColumn()
+@UpdateDateColumn()
+@DeleteDateColumn()
+@OneToOne(), @OneToMany(), @ManyToOne(), @ManyToMany()
+```
+
+---
+
+**Last Updated**: 2025-01-XX
+**Version**: 1.0.0
