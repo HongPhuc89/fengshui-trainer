@@ -24,4 +24,3 @@ export class UserCredential extends BaseEntity {
   })
   password: string;
 }
-

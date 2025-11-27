@@ -28,4 +28,3 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'user_local') {
     return plainToInstance(UserResponseDto, user);
   }
 }
-

@@ -4,7 +4,6 @@ import { ConfigService } from '../core/config.service';
 import { JwtPayload } from './auth.type';
 import { hashStringSHA } from '../../shares/helpers/cryptography';
 import { UsersService } from '../users/users.service';
-import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class AuthCommonService {
@@ -36,14 +35,14 @@ export class AuthCommonService {
     });
   }
 
-  async setTokenActive(userId: number, token: string, refreshToken: string, entityManager?: EntityManager) {
+  async setTokenActive(userId: number, token: string, refreshToken: string) {
     const user = await this.usersService.getUserById(userId);
     const config = this.configService.getAuthConfiguration();
     const hashedRefreshToken = hashStringSHA(refreshToken, config.refreshToken.secretKeyActivateToken);
     user.refresh_token = hashedRefreshToken;
     await this.usersService.saveUser(user);
 
-    const hashedToken = hashStringSHA(token, config.jwt.secretKeyActivateToken);
+    // const hashedToken = hashStringSHA(token, config.jwt.secretKeyActivateToken);
     // In a real app, you would store this in Redis cache
     // For now, we'll just store the hashed refresh token in the database
   }
@@ -54,4 +53,3 @@ export class AuthCommonService {
     await this.usersService.saveUser(user);
   }
 }
-

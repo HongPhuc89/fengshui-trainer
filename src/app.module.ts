@@ -9,4 +9,3 @@ import { UserCredentialModule } from './modules/user-credential/user-credential.
   imports: [CoreModule, TypeormModule, AuthModule, UsersModule, UserCredentialModule],
 })
 export class AppModule {}
-

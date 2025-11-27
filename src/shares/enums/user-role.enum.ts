@@ -3,4 +3,3 @@ export enum UserRole {
   NORMAL_USER = 'NORMAL_USER',
   STAFF = 'STAFF',
 }
-

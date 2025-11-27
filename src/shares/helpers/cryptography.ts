@@ -13,4 +13,3 @@ export async function isHashEqual(data: string, hash: string): Promise<boolean> 
 export function hashStringSHA(data: string, secretKey: string): string {
   return crypto.createHmac('sha256', secretKey).update(data).digest('hex');
 }
-

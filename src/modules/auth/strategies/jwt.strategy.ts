@@ -23,4 +23,3 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'user_jwt') {
     return this.userService.getUserById(id);
   }
 }
-

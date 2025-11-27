@@ -20,4 +20,3 @@ export class BaseEntity {
   })
   deleted_at: Date;
 }
-

@@ -33,4 +33,3 @@ import { ConfigService } from '../core/config.service';
   exports: [AuthCommonService],
 })
 export class AuthModule {}
-

@@ -37,9 +37,7 @@ export class UsersService {
 
   async addNewUser(registerRequest: RegisterRequestDto, entityManager?: EntityManager): Promise<User> {
     const userRepo = entityManager ? entityManager.getRepository(User) : this.userRepository;
-    const credentialRepo = entityManager
-      ? entityManager.getRepository(UserCredential)
-      : this.userCredentialRepository;
+    const credentialRepo = entityManager ? entityManager.getRepository(UserCredential) : this.userCredentialRepository;
 
     const existingUser = await userRepo.findOne({
       where: { email: registerRequest.email },
@@ -86,4 +84,3 @@ export class UsersService {
     return this.getUserById(userId);
   }
 }
-

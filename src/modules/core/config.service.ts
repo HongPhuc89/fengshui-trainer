@@ -59,4 +59,3 @@ export class ConfigService {
     return this.configuration.app.env;
   }
 }
-

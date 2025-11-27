@@ -23,4 +23,3 @@ export class UserResponseDto {
   @ApiProperty()
   updated_at: Date;
 }
-

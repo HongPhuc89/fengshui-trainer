@@ -10,4 +10,3 @@ import { UserCredential } from '../user-credential/entities/user-credential.enti
   exports: [UsersService],
 })
 export class UsersModule {}
-

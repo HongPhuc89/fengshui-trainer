@@ -10,4 +10,3 @@ export class RefreshTokenRequestDto {
   @IsNotEmpty()
   refresh_token: string;
 }
-

@@ -40,4 +40,3 @@ export class RegisterRequestDto {
   @IsOptional()
   role?: UserRole;
 }
-

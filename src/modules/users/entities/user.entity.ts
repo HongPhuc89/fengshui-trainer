@@ -49,4 +49,3 @@ export class User extends BaseEntity {
   @JoinColumn()
   credential: UserCredential;
 }
-

@@ -9,4 +9,3 @@ export function isNullOrUndefined(value: any): boolean {
 export function getConfig() {
   return config;
 }
-

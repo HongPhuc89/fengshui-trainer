@@ -5,4 +5,3 @@ export enum UserProperties {
   USER_EMAIL = 'email',
   USER_ROLE = 'role',
 }
-

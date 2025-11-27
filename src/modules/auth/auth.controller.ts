@@ -53,9 +53,9 @@ export class AuthController {
     status: HttpStatus.OK,
     description: 'Successful',
   })
-  async login(@Request() request, @Body() loginRequest: LoginRequestDto): Promise<LoginResponseDto> {
+  async login(@Request() request): Promise<LoginResponseDto> {
     const { user } = request;
-    const res = await this.authService.login(user, loginRequest);
+    const res = await this.authService.login(user);
     return plainToInstance(LoginResponseDto, res);
   }
 
@@ -98,4 +98,3 @@ export class AuthController {
     return { message: 'Logout successful' };
   }
 }
-

@@ -14,4 +14,3 @@ export class LoginResponseDto {
   @ApiProperty()
   refresh_token: string;
 }
-

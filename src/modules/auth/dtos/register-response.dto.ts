@@ -14,4 +14,3 @@ export class RegisterResponseDto {
   @ApiProperty()
   refresh_token: string;
 }
-

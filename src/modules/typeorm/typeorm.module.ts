@@ -27,4 +27,3 @@ import { ConfigService } from '../core/config.service';
   exports: [TypeOrmModule],
 })
 export class TypeormModule {}
-

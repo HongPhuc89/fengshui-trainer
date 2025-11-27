@@ -5,7 +5,6 @@ import { UserCredentialService } from '../user-credential/user-credential.servic
 import { UsersService } from '../users/users.service';
 import { AuthCommonService } from './auth.common.service';
 import { RegisterRequestDto } from './dtos/register-request.dto';
-import { LoginRequestDto } from './dtos/login-request.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { User } from '../users/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
@@ -55,7 +54,7 @@ export class AuthService {
     };
   }
 
-  async login(user: UserResponseDto, loginRequest: LoginRequestDto) {
+  async login(user: UserResponseDto) {
     const { access_token, refresh_token } = await this.authCommonService.getTokens({
       id: user.id,
       email: user.email,
@@ -118,4 +117,3 @@ export class AuthService {
     await this.authCommonService.clearTokenOfUser(userId);
   }
 }
-
