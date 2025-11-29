@@ -49,9 +49,21 @@ REFRESH_TOKEN_EXPIRES_IN=30d
 APP_PORT=3000
 APP_PREFIX=api
 APP_ENV=development
+
+# Supabase Configuration
+SUPABASE_URL=your-supabase-url
+SUPABASE_KEY=your-supabase-anon-key
+SUPABASE_BUCKET=books
 ```
 
-4. Tạo database:
+**Lấy thông tin Supabase:**
+
+1. Tạo project mới tại [Supabase](https://supabase.com/).
+2. Vào **Project Settings** -> **API** để lấy `SUPABASE_URL` và `SUPABASE_KEY` (`anon` public key).
+3. Vào **Storage** -> Tạo bucket mới tên là `books` (hoặc tên khác tùy chọn và cập nhật vào `.env`).
+4. Cấu hình Policy cho bucket để cho phép upload/read (hoặc để public cho đơn giản trong môi trường dev).
+
+5. Tạo database:
 
 ```sql
 CREATE DATABASE quiz_game;

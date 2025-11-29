@@ -8,6 +8,7 @@
 ## ✏️ Business Requirements
 
 - **Access Control**: Only users with **Admin** or **Staff** roles can upload and manage books.
+- **Admin Interface**: Use **AdminJS** for internal management of Books, Users, and Uploaded Files.
 - **File Management**: Dedicated management for uploading book files (PDF/Text) and cover images.
 - **File Parsing**: The system must parse uploaded files and extract text content.
 - **Structure**: Content should be organized into chapters or sections.
@@ -18,13 +19,15 @@
 - 🔄 Task 1: Create `Book`, `Chapter`, and `UploadedFile` entities.
 - 🔄 Task 2: Create `UploadModule` with `UploadController` for handling file/cover uploads.
 - 🔄 Task 3: Implement file upload logic (Supabase Storage) and save to `UploadedFile` table.
-- ❌ Task 4: Implement PDF parsing service (e.g., using `pdf-parse`).
-- ❌ Task 5: Implement text content extraction and chapter segmentation logic.
-- ❌ Task 6: Create CRUD endpoints for Books using uploaded file IDs.
+- 🔄 Task 4: Integrate **AdminJS** for managing `Book`, `User`, and `UploadedFile` resources.
+- ❌ Task 5: Implement PDF parsing service (e.g., using `pdf-parse`).
+- ❌ Task 6: Implement text content extraction and chapter segmentation logic.
+- ❌ Task 7: Create public API endpoints for fetching Books (User side).
 
 ## 📝 Active Decisions
 
 - **File Storage**: Files will be stored in **Supabase Storage**.
+- **Admin Interface**: **AdminJS** will be used for back-office operations (CRUD) to save development time on custom admin UIs.
 - **Upload Strategy**: Decoupled upload. First upload file/cover to get an ID, then submit Book creation with IDs.
 - **Parsing Strategy**: We will assume simple PDF structures for now. Complex layouts (multi-column) might need OCR or advanced libraries later.
 
@@ -75,35 +78,41 @@ Inherits from `BaseEntity`.
 
 #### 2. BookModule
 
-- **Controller**: `BooksController`
-  - `POST /admin/books`: Creates book metadata (accepts `file_id`, `cover_file_id`). Restricted to Admin/Staff.
-  - `PUT /admin/books/:id`: Updates book metadata. Restricted to Admin/Staff.
+- **Controller**: `BooksController` (Public API)
   - `GET /books`: Lists books (joins with UploadedFile to get URLs). Public/User.
   - `GET /books/:id`: Gets book detail. Public/User.
 - **Service**: `BooksService` manages database interactions.
 - **Service**: `FileParsingService` handles the extraction of text from `file_id` (resolves path from DB/Supabase).
 
+#### 3. AdminJS Integration (New)
+
+- **Setup**: Configure `AdminModule` with `@adminjs/nestjs`, `@adminjs/typeorm`, and `@adminjs/express`.
+- **Resources**: Register `Book`, `User`, `UploadedFile`, `Chapter` entities.
+- **Customization**:
+  - **Book Resource**: Add custom actions or hooks to trigger `FileParsingService` after a book is created/updated with a new file.
+  - **Dashboard**: Simple stats (Total Books, Total Users).
+
 ### ⇅ Data Flow
 
 1. **Upload Phase**:
-   - Admin/Staff uploads File (type='cover') -> `UploadController` -> Supabase -> DB -> Returns `UploadedFile` (ID).
-   - Admin/Staff uploads File (type='book') -> `UploadController` -> Supabase -> DB -> Returns `UploadedFile` (ID).
+   - Admin/Staff uploads File -> `UploadController` -> Supabase -> DB -> Returns `UploadedFile` (ID).
 
-2. **Creation Phase**:
-   - Admin/Staff submits Book Metadata + `cover_file_id` + `file_id` -> `BooksController` (`/admin/books`).
-   - `BooksService` validates IDs exist.
-   - `BooksService` saves Book entity.
-   - `BooksService` triggers `FileParsingService`.
+2. **Creation Phase (via AdminJS)**:
+   - Admin accesses AdminJS UI.
+   - Creates a new Book, selects `cover_file_id` and `file_id` (from dropdown/relation).
+   - AdminJS saves Book entity.
+   - **Hook/Subscriber**: Triggers `FileParsingService`.
    - `FileParsingService` fetches path from `UploadedFile`, downloads from Supabase, extracts chapters, saves to DB.
 
 ### 🔏 Security Patterns
 
 - **Role-Based Access**:
   - `UploadController`: **Admin** or **Staff** only.
-  - `BooksController` Write Operations (`/admin/*`): **Admin** or **Staff** only.
+  - `AdminJS`: Protected by cookie-based auth (session) or integrated with existing JWT guard (requires custom auth provider). Access restricted to **Admin** and **Staff**.
   - `BooksController` Read Operations (`/books/*`): Authenticated Users.
 - **Route Prefixing**:
-  - All administrative/write endpoints should be prefixed with `/admin` to easily apply global guards or middleware.
+  - AdminJS mounted at `/admin`.
+  - API endpoints at `/api`.
 - **File Validation**:
   - Book File: `application/pdf`, `text/plain`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/epub+zip`, `text/markdown`.
   - Cover Image: `image/jpeg`, `image/png`.
@@ -116,10 +125,9 @@ Inherits from `BaseEntity`.
 - **Upload**:
   - Upload valid cover (type='cover') -> Returns JSON with ID.
   - Upload valid PDF (type='book') -> Returns JSON with ID.
-  - Upload without type -> 400 Bad Request.
-  - Upload as User -> 403 Forbidden.
-- **Book Operations**:
-  - `POST /admin/books` as Admin -> Success.
-  - `POST /admin/books` as User -> 403 Forbidden.
-  - `PUT /admin/books/:id` as Staff -> Success.
+- **AdminJS**:
+  - Access `/admin` without login -> Redirect to login.
+  - Access `/admin` as User -> 403 Forbidden.
+  - Create Book in AdminJS -> Success, triggers parsing.
+- **Public API**:
   - `GET /books/:id` as User -> Success.
