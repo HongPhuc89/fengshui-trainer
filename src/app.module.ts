@@ -5,8 +5,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { UserCredentialModule } from './modules/user-credential/user-credential.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
-  imports: [CoreModule, TypeormModule, AuthModule, UsersModule, UserCredentialModule, UploadModule],
+  imports: [CoreModule, TypeormModule, AuthModule, UsersModule, UserCredentialModule, UploadModule, AdminModule],
 })
 export class AppModule {}
