@@ -41,6 +41,7 @@
     "@nestjs/platform-express": "^10.4.20",
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/typeorm": "^10.0.2",
+    "@supabase/supabase-js": "^2.86.0",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/passport-jwt": "^4.0.1",

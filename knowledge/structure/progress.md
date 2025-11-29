@@ -2,9 +2,12 @@
 
 ## 🗓️ Completed Features (Phase 1)
 
-- [ ] Project Setup (NestJS, TypeORM, Postgres)
-- [ ] User Authentication (Register/Login)
-- [ ] Basic Book Management (Admin Upload)
+- [x] Project Setup (NestJS, TypeORM, Postgres)
+- [x] User Authentication (Register/Login)
+- [x] Basic Book Management (Upload Module)
+  - [x] Entity Design (Book, Chapter, UploadedFile)
+  - [x] Supabase Storage Integration
+  - [x] File Upload API (Admin/Staff)
 - [ ] Simple Exam Generation (Manual)
 
 ## 🧩 In Progress Features (Phase 2)
@@ -24,9 +27,10 @@
 ## 🎯 Current Sprint Focus
 
 1.  **Book Upload & Processing**
-    - Implement file upload controller.
-    - Create service to parse PDF/Text files.
-    - Store book content in database (Chapters/Sections).
+    - [x] Implement file upload controller.
+    - [x] Create UploadModule and Service.
+    - [ ] Create service to parse PDF/Text files.
+    - [ ] Store book content in database (Chapters/Sections).
 
 2.  **AI Question Generation**
     - Integrate with LLM API.
@@ -39,15 +43,16 @@
 
 ## 📊 System Health
 
-- **API Status**: Initial Development
-- **Database**: Schema Design Phase
+- **API Status**: Active Development
+- **Database**: Schema Defined (Users, Books, UploadedFiles)
 - **Test Coverage**: 0%
 
 ## 🚀 Recent Deployments
 
-- Initial project structure creation.
+- Implemented UploadModule with Supabase support.
+- Defined Book and Chapter entities.
 
 ## 📝 Notes
 
-- Need to decide on a specific library for PDF parsing (e.g., `pdf-parse`).
-- Need to obtain API keys for AI service (OpenAI/Gemini).
+- Need to configure Supabase credentials in `.env`.
+- Need to implement PDF parsing logic next.
