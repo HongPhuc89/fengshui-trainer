@@ -3,12 +3,11 @@
 ## ✔️ Status
 
 - **Current Status**: In Progress
-- **Last Updated**: 2025-11-29
+- **Last Updated**: 2025-11-30
 
 ## ✏️ Business Requirements
 
 - **Access Control**: Only users with **Admin** or **Staff** roles can upload and manage books.
-- **Admin Interface**: Use **AdminJS** for internal management of Books, Users, and Uploaded Files.
 - **File Management**: Dedicated management for uploading book files (PDF/Text) and cover images.
 - **File Parsing**: The system must parse uploaded files and extract text content.
 - **Structure**: Content should be organized into chapters or sections.
@@ -19,7 +18,7 @@
 - 🔄 Task 1: Create `Book`, `Chapter`, and `UploadedFile` entities.
 - 🔄 Task 2: Create `UploadModule` with `UploadController` for handling file/cover uploads.
 - 🔄 Task 3: Implement file upload logic (Supabase Storage) and save to `UploadedFile` table.
-- 🔄 Task 4: Integrate **AdminJS** for managing `Book`, `User`, and `UploadedFile` resources.
+- ❌ Task 4: Integrate **AdminJS** for managing `Book`, `User`, and `UploadedFile` resources. (REMOVED)
 - ❌ Task 5: Implement PDF parsing service (e.g., using `pdf-parse`).
 - ❌ Task 6: Implement text content extraction and chapter segmentation logic.
 - ❌ Task 7: Create public API endpoints for fetching Books (User side).
@@ -27,7 +26,6 @@
 ## 📝 Active Decisions
 
 - **File Storage**: Files will be stored in **Supabase Storage**.
-- **Admin Interface**: **AdminJS** will be used for back-office operations (CRUD) to save development time on custom admin UIs.
 - **Upload Strategy**: Decoupled upload. First upload file/cover to get an ID, then submit Book creation with IDs.
 - **Parsing Strategy**: We will assume simple PDF structures for now. Complex layouts (multi-column) might need OCR or advanced libraries later.
 
@@ -84,34 +82,20 @@ Inherits from `BaseEntity`.
 - **Service**: `BooksService` manages database interactions.
 - **Service**: `FileParsingService` handles the extraction of text from `file_id` (resolves path from DB/Supabase).
 
-#### 3. AdminJS Integration (New)
-
-- **Setup**: Configure `AdminModule` with `@adminjs/nestjs`, `@adminjs/typeorm`, and `@adminjs/express`.
-- **Resources**: Register `Book`, `User`, `UploadedFile`, `Chapter` entities.
-- **Customization**:
-  - **Book Resource**: Add custom actions or hooks to trigger `FileParsingService` after a book is created/updated with a new file.
-  - **Dashboard**: Simple stats (Total Books, Total Users).
-
 ### ⇅ Data Flow
 
 1. **Upload Phase**:
    - Admin/Staff uploads File -> `UploadController` -> Supabase -> DB -> Returns `UploadedFile` (ID).
 
-2. **Creation Phase (via AdminJS)**:
-   - Admin accesses AdminJS UI.
-   - Creates a new Book, selects `cover_file_id` and `file_id` (from dropdown/relation).
-   - AdminJS saves Book entity.
-   - **Hook/Subscriber**: Triggers `FileParsingService`.
-   - `FileParsingService` fetches path from `UploadedFile`, downloads from Supabase, extracts chapters, saves to DB.
+2. **Creation Phase**:
+   - (Pending new admin UI implementation)
 
 ### 🔏 Security Patterns
 
 - **Role-Based Access**:
   - `UploadController`: **Admin** or **Staff** only.
-  - `AdminJS`: Protected by cookie-based auth (session) or integrated with existing JWT guard (requires custom auth provider). Access restricted to **Admin** and **Staff**.
   - `BooksController` Read Operations (`/books/*`): Authenticated Users.
 - **Route Prefixing**:
-  - AdminJS mounted at `/admin`.
   - API endpoints at `/api`.
 - **File Validation**:
   - Book File: `application/pdf`, `text/plain`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/epub+zip`, `text/markdown`.
@@ -125,9 +109,5 @@ Inherits from `BaseEntity`.
 - **Upload**:
   - Upload valid cover (type='cover') -> Returns JSON with ID.
   - Upload valid PDF (type='book') -> Returns JSON with ID.
-- **AdminJS**:
-  - Access `/admin` without login -> Redirect to login.
-  - Access `/admin` as User -> 403 Forbidden.
-  - Create Book in AdminJS -> Success, triggers parsing.
 - **Public API**:
   - `GET /books/:id` as User -> Success.
