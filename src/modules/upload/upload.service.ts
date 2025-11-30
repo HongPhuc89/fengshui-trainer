@@ -51,7 +51,7 @@ export class UploadService {
         throw new BadRequestException('Book file size exceeds 20MB');
       }
     } else if (type === FileType.COVER) {
-      const allowedMimes = ['image/jpeg', 'image/png'];
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
       if (!allowedMimes.includes(file.mimetype)) {
         throw new BadRequestException('Invalid cover image format');
       }
