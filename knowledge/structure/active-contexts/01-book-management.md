@@ -76,9 +76,11 @@ Inherits from `BaseEntity`.
 
 #### 2. BookModule
 
-- **Controller**: `BooksController` (Public API)
+- **Controller**: `BooksController`
   - `GET /books`: Lists books (joins with UploadedFile to get URLs). Public/User.
   - `GET /books/:id`: Gets book detail. Public/User.
+  - `POST /admin/books`: Create a new book. Requires `title`, `cover_file_id`, `file_id`. Restricted to **Admin** and **Staff**.
+  - `PUT /admin/books/:id`: Update a book. Restricted to **Admin** and **Staff**.
 - **Service**: `BooksService` manages database interactions.
 - **Service**: `FileParsingService` handles the extraction of text from `file_id` (resolves path from DB/Supabase).
 
@@ -88,18 +90,22 @@ Inherits from `BaseEntity`.
    - Admin/Staff uploads File -> `UploadController` -> Supabase -> DB -> Returns `UploadedFile` (ID).
 
 2. **Creation Phase**:
-   - (Pending new admin UI implementation)
+   - Admin/Staff calls `POST /admin/books` with `title`, `cover_file_id`, `file_id`.
+   - `BooksService` creates Book entity.
+   - **Hook/Subscriber**: Triggers `FileParsingService`.
+   - `FileParsingService` fetches path from `UploadedFile`, downloads from Supabase, extracts chapters, saves to DB.
 
 ### 🔏 Security Patterns
 
 - **Role-Based Access**:
   - `UploadController`: **Admin** or **Staff** only.
+  - `BooksController` Write Operations (`/admin/books/*`): **Admin** or **Staff** only.
   - `BooksController` Read Operations (`/books/*`): Authenticated Users.
 - **Route Prefixing**:
   - API endpoints at `/api`.
 - **File Validation**:
   - Book File: `application/pdf`, `text/plain`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/epub+zip`, `text/markdown`.
-  - Cover Image: `image/jpeg`, `image/png`.
+  - Cover Image: `image/jpeg`, `image/png`, `image/jpg`, `image/webp`.
 - **Size Limit**:
   - Book File: Max 20MB.
   - Cover Image: Max 5MB.
