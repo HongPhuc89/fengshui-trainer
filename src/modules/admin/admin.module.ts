@@ -13,6 +13,8 @@ import { UserRole } from '../../shares/enums/user-role.enum';
 import { UploadModule } from '../upload/upload.module';
 import { UploadService } from '../upload/upload.service';
 import { FileType } from '../../shares/enums/file-type.enum';
+import { BooksModule } from '../books/books.module';
+import { BookProcessingService } from '../books/book-processing.service';
 
 AdminJS.registerAdapter({ Database, Resource });
 
@@ -20,10 +22,15 @@ AdminJS.registerAdapter({ Database, Resource });
   imports: [
     UsersModule,
     UploadModule,
+    BooksModule,
     AdminJSModule.createAdminAsync({
-      imports: [UsersModule, UploadModule],
-      inject: [UsersService, UploadService],
-      useFactory: async (usersService: UsersService, uploadService: UploadService) => ({
+      imports: [UsersModule, UploadModule, BooksModule],
+      inject: [UsersService, UploadService, BookProcessingService],
+      useFactory: async (
+        usersService: UsersService,
+        uploadService: UploadService,
+        bookProcessingService: BookProcessingService,
+      ) => ({
         adminJsOptions: {
           rootPath: '/admin',
           resources: [
@@ -36,14 +43,19 @@ AdminJS.registerAdapter({ Database, Resource });
                   file_id: { isVisible: false },
                   user_id: { isVisible: false },
                   chapter_count: { isVisible: false },
-                  status: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                  deleted_at: { isVisible: false },
+                  created_at: { isVisible: { list: true, show: true, edit: false, filter: true } },
+                  updated_at: { isVisible: { list: true, show: true, edit: false, filter: true } },
+                  status: {
+                    isVisible: { list: true, show: true, edit: true, filter: true, new: false },
+                  },
                   cover_image: {
                     type: 'file',
-                    isVisible: { list: false, show: true, edit: true, filter: false },
+                    isVisible: { list: false, show: false, edit: true, filter: false },
                   },
                   book_file: {
                     type: 'file',
-                    isVisible: { list: false, show: true, edit: true, filter: false },
+                    isVisible: { list: false, show: false, edit: true, filter: false },
                   },
                 },
                 actions: {
@@ -78,6 +90,13 @@ AdminJS.registerAdapter({ Database, Resource });
                             file_id: bookFileId,
                             user_id: user.id,
                           });
+
+                          // Trigger book processing asynchronously
+                          if (bookFileId) {
+                            bookProcessingService.processBook(book.params.id).catch((error) => {
+                              console.error('Book processing failed:', error);
+                            });
+                          }
 
                           return {
                             record: book.toJSON(currentAdmin),
