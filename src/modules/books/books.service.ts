@@ -93,4 +93,12 @@ export class BooksService {
 
     return savedBook;
   }
+
+  async incrementChapterCount(bookId: number): Promise<void> {
+    await this.bookRepository.increment({ id: bookId }, 'chapter_count', 1);
+  }
+
+  async decrementChapterCount(bookId: number): Promise<void> {
+    await this.bookRepository.decrement({ id: bookId }, 'chapter_count', 1);
+  }
 }

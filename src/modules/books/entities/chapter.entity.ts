@@ -22,4 +22,7 @@ export class Chapter extends BaseEntity {
 
   @Column({ type: 'int' })
   order: number;
+
+  @Column({ type: 'int', default: 0 })
+  points: number;
 }
