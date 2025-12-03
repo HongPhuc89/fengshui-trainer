@@ -6,6 +6,7 @@ import { CreateBookDto } from './dtos/create-book.dto';
 import { UpdateBookDto } from './dtos/update-book.dto';
 import { User } from '../users/entities/user.entity';
 import { BookProcessingService } from './book-processing.service';
+import { BookStatus } from '../../shares/enums/book-status.enum';
 
 @Injectable()
 export class BooksService {
@@ -33,13 +34,35 @@ export class BooksService {
     return savedBook;
   }
 
+  // User-facing methods (published books only)
   async findAll(): Promise<Book[]> {
     return this.bookRepository.find({
+      where: { status: BookStatus.PUBLISHED },
       relations: ['cover_file', 'file'],
     });
   }
 
   async findOne(id: number): Promise<Book> {
+    const book = await this.bookRepository.findOne({
+      where: { id, status: BookStatus.PUBLISHED },
+      relations: ['cover_file', 'file', 'chapters'],
+    });
+
+    if (!book) {
+      throw new NotFoundException(`Book with ID ${id} not found`);
+    }
+
+    return book;
+  }
+
+  // Admin methods (all statuses)
+  async findAllAdmin(): Promise<Book[]> {
+    return this.bookRepository.find({
+      relations: ['cover_file', 'file'],
+    });
+  }
+
+  async findOneAdmin(id: number): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { id },
       relations: ['cover_file', 'file', 'chapters'],

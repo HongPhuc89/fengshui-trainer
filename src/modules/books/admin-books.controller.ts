@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dtos/create-book.dto';
@@ -17,6 +17,22 @@ import { User } from '../users/entities/user.entity';
 @Controller('admin/books')
 export class AdminBooksController {
   constructor(private readonly booksService: BooksService) {}
+
+  @Get()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get all books (all statuses)' })
+  @ApiResponse({ status: 200, description: 'Return all books with any status.' })
+  findAll(): Promise<Book[]> {
+    return this.booksService.findAllAdmin();
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get a book by id (any status)' })
+  @ApiResponse({ status: 200, description: 'Return a book with any status.' })
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Book> {
+    return this.booksService.findOneAdmin(id);
+  }
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
