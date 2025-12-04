@@ -1,6 +1,14 @@
 # compiled output
 /dist
 /node_modules
+**/dist
+**/node_modules
+**/.next
+**/build
+**/.turbo
+
+# Turborepo
+.turbo
 
 # Logs
 logs
@@ -17,6 +25,7 @@ lerna-debug.log*
 # Tests
 /coverage
 /.nyc_output
+**/coverage
 
 # IDEs and editors
 /.idea
@@ -38,7 +47,12 @@ lerna-debug.log*
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.local
 
 # Build
 *.tsbuildinfo
+
+# Admin specific
+.adminjs
 

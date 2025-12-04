@@ -1,0 +1,11 @@
+{
+  "name": "@quiz-game/admin",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Quiz Game Admin Dashboard - React",
+  "scripts": {
+    "dev": "echo 'Admin app not implemented yet'",
+    "build": "echo 'Admin app not implemented yet'",
+    "lint": "echo 'Admin app not implemented yet'"
+  }
+}

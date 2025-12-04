@@ -1,0 +1,11 @@
+{
+  "name": "@quiz-game/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Quiz Game Mobile App - React Native",
+  "scripts": {
+    "dev": "echo 'Mobile app not implemented yet'",
+    "build": "echo 'Mobile app not implemented yet'",
+    "lint": "echo 'Mobile app not implemented yet'"
+  }
+}
