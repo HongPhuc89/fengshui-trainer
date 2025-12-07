@@ -187,6 +187,14 @@ export const QuizQuestionsTab = ({ chapterId }: { chapterId: number }) => {
           options: formData.options.filter((opt) => opt.text.trim()),
           correct_answers: formData.correctAnswers,
         };
+      case 'MATCHING':
+        return {
+          pairs: formData.matchingPairs.filter((pair) => pair.left.trim() && pair.right.trim()),
+        };
+      case 'ORDERING':
+        return {
+          items: formData.orderingItems.filter((item) => item.text.trim()),
+        };
       default:
         return {};
     }
