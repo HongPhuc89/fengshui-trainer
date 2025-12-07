@@ -2,7 +2,7 @@
 
 ## ✔️ Status
 
-- **Current Status**: Not Started
+- **Current Status**: In Progress
 - **Last Updated**: 2025-12-07
 
 ## ✏️ Business Requirements
@@ -20,19 +20,19 @@
 
 ### Phase 1: Setup & Infrastructure
 
-- ❌ Task 1: Initialize React Admin project in `apps/admin/`
-- ❌ Task 2: Install dependencies (react-admin, react, react-router-dom, etc.)
-- ❌ Task 3: Configure TypeScript for React Admin
-- ❌ Task 4: Set up data provider to connect to NestJS backend API
-- ❌ Task 5: Set up authentication provider (JWT)
-- ❌ Task 6: Configure routing and basic layout
+- ✅ Task 1: Initialize React Admin project in `apps/admin/`
+- ✅ Task 2: Install dependencies (react-admin, react, react-router-dom, etc.)
+- ✅ Task 3: Configure TypeScript for React Admin
+- ✅ Task 4: Set up data provider to connect to NestJS backend API
+- ✅ Task 5: Set up authentication provider (JWT)
+- ✅ Task 6: Configure routing and basic layout
 
 ### Phase 2: Resource Management
 
-- ❌ Task 7: Implement User resource (List, Show, Edit, Create)
-- ❌ Task 8: Implement Book resource (List, Show, Edit, Create)
-- ❌ Task 9: Implement Chapter resource (List, Show, Edit, Create)
-- ❌ Task 10: Implement Flashcard resource (List, Show, Edit, Create)
+- ✅ Task 7: Implement User resource (List, Show, Edit, Create)
+- ✅ Task 8: Implement Book resource (List, Show, Edit, Create)
+- ⏸ Task 9: Implement Chapter resource (List, Show, Edit, Create)
+- ⏸ Task 10: Implement Flashcard resource (List, Show, Edit, Create)
 
 ### Phase 3: Advanced Features
 
