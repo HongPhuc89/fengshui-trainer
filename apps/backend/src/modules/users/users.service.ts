@@ -7,6 +7,7 @@ import { hashString } from '../../shares/helpers/cryptography';
 import { isNullOrUndefined } from '../../shares/helpers/utils';
 import { UserRole } from '../../shares/enums/user-role.enum';
 import { RegisterRequestDto } from '../auth/dtos/register-request.dto';
+import { CreateUserDto } from './dtos/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -15,7 +16,7 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserCredential)
     private readonly userCredentialRepository: Repository<UserCredential>,
-  ) { }
+  ) {}
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
@@ -128,5 +129,17 @@ export class UsersService {
     }
 
     return this.userRepository.save(user);
+  }
+
+  async createUser(createUserDto: CreateUserDto): Promise<User> {
+    // Convert CreateUserDto to RegisterRequestDto format
+    const registerDto: RegisterRequestDto = {
+      email: createUserDto.email,
+      password: createUserDto.password,
+      full_name: createUserDto.full_name,
+      role: createUserDto.role || UserRole.NORMAL_USER,
+    };
+
+    return this.addNewUser(registerDto);
   }
 }
