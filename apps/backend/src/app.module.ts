@@ -8,6 +8,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { BooksModule } from './modules/books/books.module';
 import { QuizModule } from './modules/quiz/quiz.module';
+import { MindMapModule } from './modules/mindmap/mindmap.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { QuizModule } from './modules/quiz/quiz.module';
     UploadModule,
     BooksModule,
     QuizModule,
+    MindMapModule,
     AdminModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
