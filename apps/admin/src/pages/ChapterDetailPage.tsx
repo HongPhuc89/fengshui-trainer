@@ -20,6 +20,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { QuizQuestionsTab } from '../components/QuizQuestionsTab';
+import { MindMapTab } from '../components/MindMapTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -152,6 +153,7 @@ export const ChapterDetailPage = () => {
           <Tab label="Chapter Details" />
           <Tab label="Flashcards" />
           <Tab label="Quiz Questions" />
+          <Tab label="Mind Map" />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -236,6 +238,10 @@ export const ChapterDetailPage = () => {
 
         <TabPanel value={tabValue} index={2}>
           <QuizQuestionsTab chapterId={Number(chapterId)} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <MindMapTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>
     </Card>

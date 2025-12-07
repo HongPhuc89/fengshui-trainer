@@ -5,10 +5,11 @@ import { JwtAuthGuard } from '../../../shares/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../shares/guards/roles.guard';
 import { Roles } from '../../../shares/decorators/roles.decorator';
 import { MindMapStructure } from '../entities/mindmap.entity';
+import { UserRole } from '../../../shares/enums/user-role.enum';
 
 @Controller('admin/chapters/:chapterId/mindmap')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'STAFF')
+@Roles(UserRole.ADMIN, UserRole.STAFF)
 export class AdminMindMapController {
   constructor(private readonly mindMapService: MindMapService) {}
 
