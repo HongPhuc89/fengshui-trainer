@@ -2,43 +2,99 @@
 
 ## What Is This Feature?
 
-The AI Book Trainer is an educational platform that enables users to learn from books in an interactive way. Admins upload books, and the system uses AI to generate exams and track learning progress. It transforms passive reading into active learning.
+The AI Book Trainer (Quiz Game) is an educational platform built on Turborepo monorepo architecture that enables users to learn from books in an interactive way. Admins upload books, and the system processes them to create structured learning content including chapters, flashcards, mind maps, and quizzes. It transforms passive reading into active learning through AI-powered tools.
 
 ## How To Use This Feature?
 
-- **Admin**:
-  - Log in to the admin dashboard.
-  - Upload books (PDF, Text).
-  - Manage book metadata (Title, Author, Description).
-  - View user statistics.
-- **User**:
-  - Register/Log in.
-  - Browse available books.
-  - Start reading a book (chapter by chapter).
-  - Take AI-generated exams to test knowledge.
-  - View learning progress and exam results.
+### **Admin** (via API):
+
+- Register and log in to the system
+- Upload books (PDF, DOCX, TXT) via API
+- Trigger book content processing
+- Manage book metadata (Title, Author, Description, Language)
+- Create and manage chapters manually or automatically
+- Generate flashcards from chapter content using AI
+- View and edit generated flashcards
+
+### **User** (Future):
+
+- Register/Log in via mobile/web app
+- Browse available books
+- Read books chapter by chapter
+- Study using flashcards
+- Take quizzes and exams
+- Track learning progress
 
 ## Solution / Architecture Design
 
-- **Backend**: NestJS API for managing books, users, and exams.
-- **Key Features**:
-  - **Book Management**: File upload, content extraction, chapter organization.
-  - **Learning System**: Progress tracking, bookmarking.
-  - **Exam Engine**: Question generation (AI), grading, result storage.
-  - **User System**: Authentication, role management, profile.
+### Backend Architecture
+
+- **Turborepo Monorepo**: Organized structure with apps/ and packages/
+- **NestJS Backend** (`apps/backend/`):
+  - **Book Management**: File upload to Supabase, content extraction, chapter organization
+  - **Chapter Management**: Create, update, delete chapters with content
+  - **Flashcard System**: AI-powered flashcard generation from chapter content
+  - **User System**: Authentication (JWT), role management (Admin, User), profile
+  - **Upload Service**: Integration with Supabase storage for file management
+  - **Content Processing**: PDF/DOCX parsing and text chunking using LangChain
+
+### Frontend (Planned)
+
+- **Admin Dashboard** (`apps/admin/`): React-based management interface
+- **Mobile App** (`apps/mobile/`): React Native learning application
+
+### Shared Packages
+
+- `@quiz-game/ui`: Shared UI components
+- `@quiz-game/shared`: Common types, interfaces, DTOs
+- `@quiz-game/utils`: Utility functions
+- `@quiz-game/config`: Shared configurations
 
 ## Completed Features
 
-- [ ] User Authentication (Register/Login)
-- [ ] Book Upload & Management
-- [ ] Basic Content Extraction
-- [ ] Manual Exam Creation
-- [ ] Learning Progress Tracking
+- ✅ User Authentication (Register/Login with JWT)
+- ✅ Book Upload & Management (CRUD operations)
+- ✅ File Upload to Supabase Storage
+- ✅ Content Extraction (PDF, DOCX, TXT parsing)
+- ✅ Chapter Management (CRUD operations)
+- ✅ Book Content Processing and Chunking
+- ✅ Flashcard Management (CRUD operations)
+- ✅ AI-Powered Flashcard Generation (using LangChain)
+- ✅ Turborepo Monorepo Setup
+- ✅ API Documentation (Swagger)
+
+## In Progress / Planned Features
+
+- 🔄 Mind Map Generation System
+- 🔄 Quiz/Exam Question Bank System
+- ⏸ User Learning Progress Tracking
+- ⏸ Study Session Management
+- ⏸ Exam Taking and Grading
+- ⏸ Admin Dashboard UI
+- ⏸ Mobile Application
 
 ## Future Improvements
 
-- **AI Integration**: Connect with OpenAI/Gemini API for automatic question generation.
-- **Advanced Analytics**: Detailed insights into user learning patterns.
-- **Gamification**: Badges, leaderboards, and streaks.
-- **Mobile App**: Native mobile experience for learning on the go.
-- **Social Learning**: Study groups and discussion forums.
+- **Advanced AI Integration**:
+  - Connect with OpenAI/Gemini API for improved question generation
+  - Contextual answer explanations
+  - Adaptive learning paths based on user performance
+- **Advanced Analytics**:
+  - Detailed insights into user learning patterns
+  - Performance metrics and recommendations
+  - Learning time optimization
+- **Gamification**:
+  - Achievement badges and rewards
+  - Leaderboards and competitive learning
+  - Study streaks and milestones
+- **Social Learning**:
+  - Study groups and collaborative features
+  - Discussion forums per book/chapter
+  - Peer review and sharing
+- **Enhanced Content**:
+  - Support for audiobooks and podcasts
+  - Video content integration
+  - Interactive diagrams and visualizations
+- **Offline Mode**:
+  - Download books for offline study
+  - Sync progress when back online

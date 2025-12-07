@@ -36,22 +36,28 @@
 
 ## 🗂 Dependencies & Tools
 
-| Tool/Lib            | Purpose                              |
-| ------------------- | ------------------------------------ |
-| `@nestjs/common`    | Core NestJS decorators and utilities |
-| `@nestjs/typeorm`   | TypeORM integration for NestJS       |
-| `pg`                | PostgreSQL driver                    |
-| `passport`          | Authentication middleware            |
-| `@nestjs/jwt`       | JWT utilities                        |
-| `bcrypt`            | Password hashing                     |
-| `class-validator`   | Decorator-based validation           |
-| `class-transformer` | Object transformation                |
-| `@nestjs/swagger`   | API documentation generator          |
+| Tool/Lib                   | Purpose                              |
+| -------------------------- | ------------------------------------ |
+| `@nestjs/common`           | Core NestJS decorators and utilities |
+| `@nestjs/typeorm`          | TypeORM integration for NestJS       |
+| `pg`                       | PostgreSQL driver                    |
+| `passport`                 | Authentication middleware            |
+| `@nestjs/jwt`              | JWT utilities                        |
+| `bcrypt`                   | Password hashing                     |
+| `class-validator`          | Decorator-based validation           |
+| `class-transformer`        | Object transformation                |
+| `@nestjs/swagger`          | API documentation generator          |
+| `@supabase/supabase-js`    | Supabase client for file storage     |
+| `@langchain/core`          | LangChain core for AI processing     |
+| `@langchain/textsplitters` | Text splitting and chunking          |
+| `mammoth`                  | DOCX file parsing                    |
+| `pdf-parse`                | PDF file parsing                     |
 
 ## 🧩 Integrations
 
-- **AI Service**: (Planned) Integration with LLMs for content generation.
-- **File Storage**: Local or Cloud (S3) for book files.
+- **Supabase Storage**: Cloud storage for book files and uploaded content.
+- **LangChain**: Text processing, chunking, and AI integration for flashcard generation.
+- **AI Service**: (Planned) Integration with LLMs for advanced content generation.
 
 ## 📌 Configuration Notes
 
@@ -69,20 +75,37 @@
 4. **Entities**: Database models.
 5. **DTOs**: Data Transfer Objects for request/response validation.
 
-### Directory Structure
+### Directory Structure (Turborepo Monorepo)
 
 ```
-src/
-├── common/                 # Shared decorators, guards, filters
-├── config/                 # Configuration files
-├── modules/                # Feature modules
-│   ├── auth/
-│   ├── users/
-│   ├── books/
-│   ├── learning/
-│   └── exams/
-├── main.ts                 # Entry point
-└── app.module.ts           # Root module
+quiz-game/
+├── apps/
+│   ├── backend/            # NestJS Backend
+│   │   ├── src/
+│   │   │   ├── modules/   # Feature modules
+│   │   │   │   ├── auth/
+│   │   │   │   ├── users/
+│   │   │   │   ├── user-credential/
+│   │   │   │   ├── books/
+│   │   │   │   ├── upload/
+│   │   │   │   ├── admin/
+│   │   │   │   ├── core/
+│   │   │   │   └── typeorm/
+│   │   │   ├── shares/    # Shared decorators, guards, filters, dtos
+│   │   │   ├── migrations/ # Database migrations
+│   │   │   ├── main.ts    # Entry point
+│   │   │   └── app.module.ts # Root module
+│   │   ├── config/         # Configuration files
+│   │   ├── scripts/        # Utility scripts
+│   │   └── package.json
+│   ├── admin/              # Admin Dashboard (Placeholder)
+│   └── mobile/             # Mobile App (Placeholder)
+├── packages/
+│   ├── ui/                 # Shared UI Components
+│   ├── shared/             # Shared DTOs, Types, Interfaces
+│   ├── utils/              # Shared Utility Functions
+│   └── config/             # Shared Configuration
+└── knowledge/              # Project Documentation
 ```
 
 ### Testing Practices
