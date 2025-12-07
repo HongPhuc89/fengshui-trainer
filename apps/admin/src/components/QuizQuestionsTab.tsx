@@ -31,6 +31,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import AddIcon from '@mui/icons-material/Add';
+import { MatchingForm } from './quiz-forms/MatchingForm';
+import { OrderingForm } from './quiz-forms/OrderingForm';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -267,6 +269,69 @@ export const QuizQuestionsTab = ({ chapterId }: { chapterId: number }) => {
     setFormData({ ...formData, correctAnswers: newCorrectAnswers });
   };
 
+  // Matching helpers
+  const updateMatchingPair = (index: number, field: 'left' | 'right', value: string) => {
+    const newPairs = [...formData.matchingPairs];
+    newPairs[index][field] = value;
+    setFormData({ ...formData, matchingPairs: newPairs });
+  };
+
+  const addMatchingPair = () => {
+    const newId = Math.max(...formData.matchingPairs.map((p) => p.id), 0) + 1;
+    setFormData({
+      ...formData,
+      matchingPairs: [...formData.matchingPairs, { id: newId, left: '', right: '' }],
+    });
+  };
+
+  const removeMatchingPair = (index: number) => {
+    setFormData({
+      ...formData,
+      matchingPairs: formData.matchingPairs.filter((_, i) => i !== index),
+    });
+  };
+
+  // Ordering helpers
+  const updateOrderingItem = (index: number, text: string) => {
+    const newItems = [...formData.orderingItems];
+    newItems[index].text = text;
+    setFormData({ ...formData, orderingItems: newItems });
+  };
+
+  const addOrderingItem = () => {
+    const newId = String.fromCharCode(97 + formData.orderingItems.length); // a, b, c...
+    setFormData({
+      ...formData,
+      orderingItems: [
+        ...formData.orderingItems,
+        { id: newId, text: '', correct_order: formData.orderingItems.length + 1 },
+      ],
+    });
+  };
+
+  const removeOrderingItem = (index: number) => {
+    const filtered = formData.orderingItems.filter((_, i) => i !== index);
+    // Reorder
+    const reordered = filtered.map((item, idx) => ({ ...item, correct_order: idx + 1 }));
+    setFormData({ ...formData, orderingItems: reordered });
+  };
+
+  const moveOrderingItemUp = (index: number) => {
+    if (index === 0) return;
+    const newItems = [...formData.orderingItems];
+    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+    const reordered = newItems.map((item, idx) => ({ ...item, correct_order: idx + 1 }));
+    setFormData({ ...formData, orderingItems: reordered });
+  };
+
+  const moveOrderingItemDown = (index: number) => {
+    if (index === formData.orderingItems.length - 1) return;
+    const newItems = [...formData.orderingItems];
+    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+    const reordered = newItems.map((item, idx) => ({ ...item, correct_order: idx + 1 }));
+    setFormData({ ...formData, orderingItems: reordered });
+  };
+
   if (loading) return <Typography>Loading questions...</Typography>;
 
   return (
@@ -472,6 +537,28 @@ export const QuizQuestionsTab = ({ chapterId }: { chapterId: number }) => {
                   ))}
                 </FormGroup>
               </Box>
+            )}
+
+            {/* MATCHING Options */}
+            {formData.question_type === 'MATCHING' && (
+              <MatchingForm
+                pairs={formData.matchingPairs}
+                onUpdatePair={updateMatchingPair}
+                onAddPair={addMatchingPair}
+                onRemovePair={removeMatchingPair}
+              />
+            )}
+
+            {/* ORDERING Options */}
+            {formData.question_type === 'ORDERING' && (
+              <OrderingForm
+                items={formData.orderingItems}
+                onUpdateItem={updateOrderingItem}
+                onAddItem={addOrderingItem}
+                onRemoveItem={removeOrderingItem}
+                onMoveUp={moveOrderingItemUp}
+                onMoveDown={moveOrderingItemDown}
+              />
             )}
 
             <TextField
