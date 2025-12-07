@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { QuizQuestionsTab } from '../components/QuizQuestionsTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -150,6 +151,7 @@ export const ChapterDetailPage = () => {
         <Tabs value={tabValue} onChange={(_e, v) => setTabValue(v)}>
           <Tab label="Chapter Details" />
           <Tab label="Flashcards" />
+          <Tab label="Quiz Questions" />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -230,6 +232,10 @@ export const ChapterDetailPage = () => {
               </TableBody>
             </Table>
           )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <QuizQuestionsTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>
     </Card>
