@@ -7,6 +7,7 @@ import { UserCredentialModule } from './modules/user-credential/user-credential.
 import { UploadModule } from './modules/upload/upload.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { BooksModule } from './modules/books/books.module';
+import { QuizModule } from './modules/quiz/quiz.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { BooksModule } from './modules/books/books.module';
     UserCredentialModule,
     UploadModule,
     BooksModule,
+    QuizModule,
     AdminModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
