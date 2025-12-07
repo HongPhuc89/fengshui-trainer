@@ -4,13 +4,14 @@ export const UserEdit = () => (
   <Edit>
     <SimpleForm>
       <TextInput source="id" disabled />
-      <TextInput source="name" validate={[required()]} />
+      <TextInput source="full_name" label="Name" validate={[required()]} />
       <TextInput source="email" validate={[required(), email()]} />
       <SelectInput
         source="role"
         choices={[
-          { id: 'Admin', name: 'Admin' },
-          { id: 'User', name: 'User' },
+          { id: 'ADMIN', name: 'Admin' },
+          { id: 'NORMAL_USER', name: 'User' },
+          { id: 'STAFF', name: 'Staff' },
         ]}
         validate={[required()]}
       />

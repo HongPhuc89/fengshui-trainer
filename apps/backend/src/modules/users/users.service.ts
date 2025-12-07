@@ -15,7 +15,7 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserCredential)
     private readonly userCredentialRepository: Repository<UserCredential>,
-  ) {}
+  ) { }
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
@@ -82,5 +82,51 @@ export class UsersService {
 
   async aboutMe(userId: number): Promise<User> {
     return this.getUserById(userId);
+  }
+
+  async findAll(options: {
+    page: number;
+    limit: number;
+    sort: string;
+    order: 'ASC' | 'DESC';
+  }): Promise<{ data: User[]; total: number }> {
+    const { page, limit, sort, order } = options;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.userRepository.findAndCount({
+      skip,
+      take: limit,
+      order: { [sort]: order },
+      select: ['id', 'email', 'full_name', 'role', 'is_active', 'created_at', 'updated_at', 'last_login_at'],
+    });
+
+    return { data, total };
+  }
+
+  async updateUser(id: number, updateData: Partial<User>): Promise<User> {
+    const user = await this.getUserById(id);
+
+    // Update fields
+    if (updateData.full_name !== undefined) {
+      user.full_name = updateData.full_name;
+    }
+    if (updateData.email !== undefined) {
+      // Check if email already exists
+      const existingUser = await this.userRepository.findOne({
+        where: { email: updateData.email },
+      });
+      if (existingUser && existingUser.id !== id) {
+        throw new UnprocessableEntityException('Email already exists');
+      }
+      user.email = updateData.email;
+    }
+    if (updateData.role !== undefined) {
+      user.role = updateData.role;
+    }
+    if (updateData.is_active !== undefined) {
+      user.is_active = updateData.is_active;
+    }
+
+    return this.userRepository.save(user);
   }
 }
