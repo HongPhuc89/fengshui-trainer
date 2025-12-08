@@ -1,6 +1,6 @@
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GradientBackground, Button, Input, Card } from '@/components/ui';
 import { colors, fontSizes, spacing } from '@/constants';

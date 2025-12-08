@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewProps } from 'react-native';
+import { View, ViewProps, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants';
 
@@ -33,9 +33,31 @@ export const GradientBackground: React.FC<GradientBackgroundProps> = ({
     }
   };
 
+  const gradientColors = getGradientColors();
+
+  // For web, use CSS gradient as fallback
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          {
+            flex: 1,
+            // @ts-ignore - CSS gradient for web
+            backgroundImage: `linear-gradient(135deg, ${gradientColors[0]} 0%, ${gradientColors[1]} 100%)`,
+          },
+          style,
+        ]}
+        {...props}
+      >
+        {children}
+      </View>
+    );
+  }
+
+  // For native, use LinearGradient
   return (
     <LinearGradient
-      colors={getGradientColors()}
+      colors={gradientColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[{ flex: 1 }, style]}
