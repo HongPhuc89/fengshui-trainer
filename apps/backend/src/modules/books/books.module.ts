@@ -16,9 +16,14 @@ import { AdminFlashcardsController } from './admin-flashcards.controller';
 import { BooksService } from './books.service';
 import { ChaptersService } from './chapters.service';
 import { FlashcardsService } from './flashcards.service';
+import { QuizModule } from '../quiz/quiz.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Book, Chapter, BookChunk, UploadedFile, Flashcard]), UploadModule],
+  imports: [
+    TypeOrmModule.forFeature([Book, Chapter, BookChunk, UploadedFile, Flashcard]),
+    UploadModule,
+    QuizModule,
+  ],
   controllers: [
     BooksController,
     AdminBooksController,
@@ -30,4 +35,5 @@ import { FlashcardsService } from './flashcards.service';
   providers: [BookProcessingService, BooksService, ChaptersService, FlashcardsService],
   exports: [BookProcessingService, BooksService, ChaptersService, FlashcardsService],
 })
-export class BooksModule {}
+export class BooksModule { }
+

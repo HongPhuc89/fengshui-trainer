@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Chapter } from './entities/chapter.entity';
 import { CreateChapterDto } from './dtos/create-chapter.dto';
 import { UpdateChapterDto } from './dtos/update-chapter.dto';
 import { BooksService } from './books.service';
+import { QuizConfigService } from '../quiz/services/quiz-config.service';
 
 @Injectable()
 export class ChaptersService {
@@ -12,7 +13,9 @@ export class ChaptersService {
     @InjectRepository(Chapter)
     private readonly chapterRepository: Repository<Chapter>,
     private readonly booksService: BooksService,
-  ) {}
+    @Inject(forwardRef(() => QuizConfigService))
+    private readonly quizConfigService: QuizConfigService,
+  ) { }
 
   async create(bookId: number, createChapterDto: CreateChapterDto): Promise<Chapter> {
     // Verify that the book exists (use admin method to allow any status)
@@ -38,6 +41,14 @@ export class ChaptersService {
 
     // Update book chapter_count
     await this.booksService.incrementChapterCount(bookId);
+
+    // Create default quiz configuration for this chapter
+    try {
+      await this.quizConfigService.createDefaultConfig(savedChapter.id);
+    } catch (error) {
+      // Log error but don't fail chapter creation
+      console.error(`Failed to create default quiz config for chapter ${savedChapter.id}:`, error);
+    }
 
     return savedChapter;
   }

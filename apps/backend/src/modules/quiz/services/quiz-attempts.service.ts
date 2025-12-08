@@ -19,7 +19,7 @@ export class QuizAttemptsService {
 
     async startQuiz(userId: number, chapterId: number): Promise<any> {
         // Get quiz config
-        const config = await this.configService.findByChapterId(chapterId);
+        const config = await this.configService.getOrCreateDefault(chapterId);
         if (!config.is_active) {
             throw new BadRequestException('Quiz is not active');
         }
@@ -31,8 +31,15 @@ export class QuizAttemptsService {
             throw new BadRequestException('No questions available for this quiz');
         }
 
-        // Select random questions
-        const selectedQuestions = this.selectRandomQuestions(allQuestions, config.questions_per_quiz);
+        // Select random questions based on config
+        const selectedQuestions = this.selectRandomQuestions(
+            allQuestions,
+            config.questions_per_quiz,
+            config.easy_percentage,
+            config.medium_percentage,
+            config.hard_percentage,
+            config.shuffle_questions,
+        );
         const questionIds = selectedQuestions.map((q) => q.id);
         const maxScore = selectedQuestions.reduce((sum, q) => sum + q.points, 0);
 
@@ -55,6 +62,9 @@ export class QuizAttemptsService {
                 description: config.description,
                 time_limit_minutes: config.time_limit_minutes,
                 questions_count: selectedQuestions.length,
+                passing_score_percentage: config.passing_score_percentage,
+                shuffle_options: config.shuffle_options,
+                show_results_immediately: config.show_results_immediately,
             },
             questions: selectedQuestions.map((q) => this.sanitizeQuestion(q)),
             started_at: attempt.started_at,
@@ -105,7 +115,7 @@ export class QuizAttemptsService {
 
         // Calculate percentage and pass status
         const percentage = (totalScore / attempt.max_score) * 100;
-        const config = await this.configService.findByChapterId(attempt.chapter_id);
+        const config = await this.configService.getOrCreateDefault(attempt.chapter_id);
         const passed = percentage >= config.passing_score_percentage;
 
         // Update attempt
@@ -146,14 +156,21 @@ export class QuizAttemptsService {
     }
 
     // Private helper methods
-    private selectRandomQuestions(questions: Question[], count: number): Question[] {
-        // Weighted random selection by difficulty (40% EASY, 40% MEDIUM, 20% HARD)
+    private selectRandomQuestions(
+        questions: Question[],
+        count: number,
+        easyPercentage: number,
+        mediumPercentage: number,
+        hardPercentage: number,
+        shuffle: boolean = true,
+    ): Question[] {
+        // Weighted random selection by difficulty based on config
         const easy = questions.filter((q) => q.difficulty === DifficultyLevel.EASY);
         const medium = questions.filter((q) => q.difficulty === DifficultyLevel.MEDIUM);
         const hard = questions.filter((q) => q.difficulty === DifficultyLevel.HARD);
 
-        const targetEasy = Math.floor(count * 0.4);
-        const targetMedium = Math.floor(count * 0.4);
+        const targetEasy = Math.floor((count * easyPercentage) / 100);
+        const targetMedium = Math.floor((count * mediumPercentage) / 100);
         const targetHard = count - targetEasy - targetMedium;
 
         const selected: Question[] = [];
@@ -170,8 +187,8 @@ export class QuizAttemptsService {
             selected.push(...this.randomSelect(unselected, Math.min(remaining, unselected.length)));
         }
 
-        // Shuffle final selection
-        return this.shuffle(selected);
+        // Shuffle final selection if configured
+        return shuffle ? this.shuffle(selected) : selected;
     }
 
     private randomSelect<T>(array: T[], count: number): T[] {

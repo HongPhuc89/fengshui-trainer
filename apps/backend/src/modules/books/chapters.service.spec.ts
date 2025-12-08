@@ -7,25 +7,25 @@ import { Chapter } from './entities/chapter.entity';
 import { BooksService } from './books.service';
 import { CreateChapterDto } from './dtos/create-chapter.dto';
 import { UpdateChapterDto } from './dtos/update-chapter.dto';
+import { QuizConfigService } from '../quiz/services/quiz-config.service';
 
 describe('ChaptersService', () => {
   let service: ChaptersService;
   let repository: jest.Mocked<Repository<Chapter>>;
   let booksService: jest.Mocked<BooksService>;
+  let quizConfigService: jest.Mocked<QuizConfigService>;
 
   const mockChapter: Chapter = {
     id: 1,
     title: 'Test Chapter',
     content: 'Test Content',
     order: 1,
+    points: 100,
     book_id: 1,
     created_at: new Date(),
     updated_at: new Date(),
     book: null,
-    flashcards: [],
-    questions: [],
-    mindMap: null,
-  };
+  } as Chapter;
 
   beforeEach(async () => {
     const mockQueryBuilder = {
@@ -57,12 +57,20 @@ describe('ChaptersService', () => {
             decrementChapterCount: jest.fn(),
           },
         },
+        {
+          provide: QuizConfigService,
+          useValue: {
+            createDefaultConfig: jest.fn(),
+            getOrCreateDefault: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<ChaptersService>(ChaptersService);
     repository = module.get(getRepositoryToken(Chapter));
     booksService = module.get(BooksService);
+    quizConfigService = module.get(QuizConfigService);
   });
 
   it('should be defined', () => {
@@ -74,6 +82,7 @@ describe('ChaptersService', () => {
       title: 'New Chapter',
       content: 'New Content',
       order: 1,
+      points: 100,
     };
 
     it('should create a chapter successfully', async () => {
@@ -81,6 +90,7 @@ describe('ChaptersService', () => {
       repository.create.mockReturnValue(mockChapter as any);
       repository.save.mockResolvedValue(mockChapter);
       booksService.incrementChapterCount.mockResolvedValue(undefined);
+      quizConfigService.createDefaultConfig.mockResolvedValue({} as any);
 
       const result = await service.create(1, createChapterDto);
 
@@ -94,11 +104,12 @@ describe('ChaptersService', () => {
     });
 
     it('should auto-assign order when not provided', async () => {
-      const dtoWithoutOrder = { title: 'New Chapter', content: 'New Content' };
+      const dtoWithoutOrder = { title: 'New Chapter', content: 'New Content', points: 100 };
       booksService.findOneAdmin.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockChapter as any);
       repository.save.mockResolvedValue(mockChapter);
       booksService.incrementChapterCount.mockResolvedValue(undefined);
+      quizConfigService.createDefaultConfig.mockResolvedValue({} as any);
 
       await service.create(1, dtoWithoutOrder);
 
