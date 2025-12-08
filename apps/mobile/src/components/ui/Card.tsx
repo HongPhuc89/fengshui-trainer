@@ -8,7 +8,7 @@ export interface CardProps extends ViewProps {
   variant?: 'default' | 'elevated' | 'outlined' | 'gradient';
   padding?: 'none' | 'sm' | 'md' | 'lg';
   shadow?: 'none' | 'sm' | 'md' | 'lg';
-  gradientColors?: string[];
+  gradientColors?: readonly [string, string, ...string[]];
 }
 
 export const Card: React.FC<CardProps> = ({

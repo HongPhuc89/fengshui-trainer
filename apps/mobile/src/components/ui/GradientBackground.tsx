@@ -6,7 +6,7 @@ import { colors } from '@/constants';
 export interface GradientBackgroundProps extends ViewProps {
   children: React.ReactNode;
   variant?: 'lucky' | 'gold' | 'redGold' | 'jade';
-  colors?: string[];
+  colors?: readonly [string, string, ...string[]];
 }
 
 export const GradientBackground: React.FC<GradientBackgroundProps> = ({
