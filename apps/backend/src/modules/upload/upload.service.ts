@@ -86,4 +86,40 @@ export class UploadService {
 
     return this.uploadedFileRepository.save(uploadedFile);
   }
+
+  /**
+   * Generate a signed URL for private file access
+   * @param filePath - The storage path of the file (e.g., 'covers/uuid.webp')
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Signed URL with expiration
+   */
+  async getSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
+    if (!this.supabase) {
+      throw new InternalServerErrorException('Storage service not configured');
+    }
+
+    const { data, error } = await this.supabase.storage.from(this.bucketName).createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+      throw new InternalServerErrorException(`Failed to generate signed URL: ${error.message}`);
+    }
+
+    return data.signedUrl;
+  }
+
+  /**
+   * Extract the storage path from a full Supabase URL
+   * @param fullUrl - Full Supabase storage URL
+   * @returns Storage path (e.g., 'covers/uuid.webp')
+   */
+  extractPathFromUrl(fullUrl: string): string {
+    // URL format: https://ppjcqetlikzvvoblnybe.supabase.co/storage/v1/object/public/books/covers/uuid.webp
+    const match = fullUrl.match(/\/object\/public\/[^/]+\/(.+)$/);
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    // If URL doesn't match expected format, throw error
+    throw new BadRequestException('Invalid Supabase storage URL format');
+  }
 }

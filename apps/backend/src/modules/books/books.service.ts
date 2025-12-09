@@ -7,6 +7,7 @@ import { UpdateBookDto } from './dtos/update-book.dto';
 import { User } from '../users/entities/user.entity';
 import { BookProcessingService } from './book-processing.service';
 import { BookStatus } from '../../shares/enums/book-status.enum';
+import { UploadService } from '../upload/upload.service';
 
 @Injectable()
 export class BooksService {
@@ -14,6 +15,7 @@ export class BooksService {
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
     private readonly bookProcessingService: BookProcessingService,
+    private readonly uploadService: UploadService,
   ) {}
 
   async create(createBookDto: CreateBookDto, user: User): Promise<Book> {
@@ -36,10 +38,13 @@ export class BooksService {
 
   // User-facing methods (published books only)
   async findAll(): Promise<Book[]> {
-    return this.bookRepository.find({
+    const books = await this.bookRepository.find({
       where: { status: BookStatus.PUBLISHED },
       relations: ['cover_file', 'file'],
     });
+
+    // Attach signed URLs to all books
+    return Promise.all(books.map((book) => this.attachSignedUrls(book)));
   }
 
   async findOne(id: number): Promise<Book> {
@@ -52,14 +57,17 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    return book;
+    return this.attachSignedUrls(book);
   }
 
   // Admin methods (all statuses)
   async findAllAdmin(): Promise<Book[]> {
-    return this.bookRepository.find({
+    const books = await this.bookRepository.find({
       relations: ['cover_file', 'file'],
     });
+
+    // Attach signed URLs to all books
+    return Promise.all(books.map((book) => this.attachSignedUrls(book)));
   }
 
   async findOneAdmin(id: number): Promise<Book> {
@@ -72,7 +80,7 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    return book;
+    return this.attachSignedUrls(book);
   }
 
   async update(id: number, updateBookDto: UpdateBookDto): Promise<Book> {
@@ -100,5 +108,35 @@ export class BooksService {
 
   async decrementChapterCount(bookId: number): Promise<void> {
     await this.bookRepository.decrement({ id: bookId }, 'chapter_count', 1);
+  }
+
+  /**
+   * Generate signed URLs for book cover and file
+   * This replaces the static storage URLs with temporary signed URLs (valid for 1 hour)
+   */
+  private async attachSignedUrls(book: Book): Promise<Book> {
+    if (book.cover_file?.path) {
+      try {
+        const coverPath = this.uploadService.extractPathFromUrl(book.cover_file.path);
+        const signedUrl = await this.uploadService.getSignedUrl(coverPath);
+        book.cover_file.path = signedUrl;
+      } catch (error) {
+        console.error('Failed to generate signed URL for cover:', error);
+        // Keep original URL if signed URL generation fails
+      }
+    }
+
+    if (book.file?.path) {
+      try {
+        const filePath = this.uploadService.extractPathFromUrl(book.file.path);
+        const signedUrl = await this.uploadService.getSignedUrl(filePath);
+        book.file.path = signedUrl;
+      } catch (error) {
+        console.error('Failed to generate signed URL for file:', error);
+        // Keep original URL if signed URL generation fails
+      }
+    }
+
+    return book;
   }
 }
