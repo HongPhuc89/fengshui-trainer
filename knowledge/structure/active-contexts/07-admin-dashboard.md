@@ -295,6 +295,80 @@ function getEndpoint(resource: string): string {
 }
 ```
 
+### Backend API Endpoints
+
+#### Books API
+
+All book endpoints require authentication with JWT token and admin/staff role.
+
+**Base URL**: `/api/admin/books`
+
+| Method | Endpoint | Description                 | Request Body    | Response |
+| ------ | -------- | --------------------------- | --------------- | -------- |
+| GET    | `/`      | List all books (any status) | -               | `Book[]` |
+| GET    | `/:id`   | Get single book by ID       | -               | `Book`   |
+| POST   | `/`      | Create new book             | `CreateBookDto` | `Book`   |
+| PUT    | `/:id`   | Full update of book         | `UpdateBookDto` | `Book`   |
+| PATCH  | `/:id`   | Partial update of book      | `UpdateBookDto` | `Book`   |
+
+**Note**: Both PUT and PATCH use the same service method and accept partial updates. Use PATCH for partial updates (recommended by REST conventions).
+
+#### CreateBookDto
+
+```typescript
+{
+  title: string;           // Required
+  author?: string;         // Optional
+  cover_file_id?: number;  // Optional - ID of uploaded cover image
+  file_id?: number;        // Optional - ID of uploaded book file
+  status?: BookStatus;     // Optional - 'draft' | 'published'
+}
+```
+
+#### UpdateBookDto
+
+```typescript
+{
+  title?: string;
+  author?: string;
+  cover_file_id?: number;
+  file_id?: number;
+  status?: BookStatus;
+  // All fields are optional for partial updates
+}
+```
+
+#### Book Response (with Signed URLs)
+
+```typescript
+{
+  id: number;
+  user_id: number;
+  title: string;
+  author: string | null;
+  cover_file_id: number | null;
+  file_id: number | null;
+  chapter_count: number;
+  status: 'draft' | 'published';
+  created_at: string;
+  updated_at: string;
+  cover_file?: {
+    id: number;
+    path: string;  // Signed URL (expires in 1 hour)
+    original_name: string;
+    mimetype: string;
+    size: number;
+  };
+  file?: {
+    id: number;
+    path: string;  // Signed URL (expires in 1 hour)
+    original_name: string;
+    mimetype: string;
+    size: number;
+  };
+}
+```
+
 ### Resource Components
 
 #### User Resource (users/UserList.tsx)

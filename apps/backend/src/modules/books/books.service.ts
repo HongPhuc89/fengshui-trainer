@@ -84,7 +84,7 @@ export class BooksService {
   }
 
   async update(id: number, updateBookDto: UpdateBookDto): Promise<Book> {
-    const book = await this.findOne(id);
+    const book = await this.findOneAdmin(id); // Use findOneAdmin to allow updating any status
 
     const oldFileId = book.file_id;
 

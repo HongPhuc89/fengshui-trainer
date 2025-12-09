@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dtos/create-book.dto';
@@ -44,9 +44,17 @@ export class AdminBooksController {
 
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Update a book' })
+  @ApiOperation({ summary: 'Update a book (full update)' })
   @ApiResponse({ status: 200, description: 'The book has been successfully updated.' })
   update(@Param('id', ParseIntPipe) id: number, @Body() updateBookDto: UpdateBookDto): Promise<Book> {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Update a book (partial update)' })
+  @ApiResponse({ status: 200, description: 'The book has been successfully updated.' })
+  patch(@Param('id', ParseIntPipe) id: number, @Body() updateBookDto: UpdateBookDto): Promise<Book> {
     return this.booksService.update(id, updateBookDto);
   }
 }
