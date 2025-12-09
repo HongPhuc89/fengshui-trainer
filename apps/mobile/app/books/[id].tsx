@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSizes, spacing } from '@/constants';
 import { booksService } from '@/modules/shared/services/api';
 import { Book, Chapter } from '@/modules/shared/services/api/types';
@@ -50,206 +51,162 @@ export default function BookDetailScreen() {
     }
   };
 
-  const handleActionPress = (action: string) => {
-    console.log(`Action pressed: ${action} for book ${id}`);
-    // TODO: Navigate to respective screens
+  const handleChapterPress = (chapterId: number) => {
+    console.log('Chapter pressed:', chapterId);
+    // TODO: Navigate to chapter detail
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.red} />
-          <Text style={styles.loadingText}>Đang tải...</Text>
-        </View>
-      </SafeAreaView>
+      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Đang tải...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   if (error || !book) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={colors.primary.red} />
-          <Text style={styles.errorText}>{error || 'Không tìm thấy sách'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadBookData}>
-            <Text style={styles.retryButtonText}>Thử lại</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color="#F59E0B" />
+            <Text style={styles.errorText}>{error || 'Không tìm thấy sách'}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadBookData}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
-  // Calculate estimated study time (assuming 5 minutes per chapter)
-  const estimatedHours = Math.floor((chapters.length * 5) / 60);
-  const estimatedMinutes = (chapters.length * 5) % 60;
-  const estimatedTime =
-    estimatedHours > 0 ? `${estimatedHours} giờ ${estimatedMinutes} phút` : `${estimatedMinutes} phút`;
+  // Mock completed chapters (first 2 chapters)
+  const completedChapters = [1, 2];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.neutral.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {book.title}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Book Info Section */}
-        <View style={styles.bookInfoSection}>
-          {/* Book Cover */}
-          <View style={styles.coverContainer}>
-            {book.coverImage ? (
-              <Image source={{ uri: book.coverImage }} style={styles.cover} resizeMode="cover" />
-            ) : (
-              <View style={styles.placeholderCover}>
-                <Text style={styles.placeholderIcon}>📚</Text>
-                <Text style={styles.placeholderTitle} numberOfLines={3}>
-                  {book.title}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Book Details */}
-          <View style={styles.detailsContainer}>
-            <Text style={styles.bookTitle}>{book.title}</Text>
-            {book.author && <Text style={styles.bookAuthor}>{book.author}</Text>}
-
-            {/* Study Info */}
-            <View style={styles.studyInfoContainer}>
-              <View style={styles.studyInfoItem}>
-                <Ionicons name="book-outline" size={20} color={colors.secondary.gold} />
-                <Text style={styles.studyInfoText}>{chapters.length} chương</Text>
-              </View>
-              <View style={styles.studyInfoItem}>
-                <Ionicons name="time-outline" size={20} color={colors.secondary.gold} />
-                <Text style={styles.studyInfoText}>{estimatedTime} học</Text>
-              </View>
-            </View>
-
-            {/* Progress Bar */}
-            <View style={styles.progressSection}>
-              <Text style={styles.progressLabel}>Tiến độ học tập</Text>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: '0%' }]} />
-              </View>
-              <Text style={styles.progressText}>0% hoàn thành</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Description */}
-        {book.description && (
-          <View style={styles.descriptionSection}>
-            <Text style={styles.sectionTitle}>Mô tả</Text>
-            <Text style={styles.descriptionText}>{book.description}</Text>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Công cụ học tập</Text>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleActionPress('summary')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#4A9B8E' }]}>
-              <Ionicons name="document-text" size={24} color={colors.neutral.white} />
-            </View>
-            <Text style={styles.actionText}>Tóm tắt</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleActionPress('quiz')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: '#4A9B8E' }]}>
-              <Ionicons name="help-circle" size={24} color={colors.neutral.white} />
-            </View>
-            <Text style={styles.actionText}>Quiz</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleActionPress('flashcards')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#4A9B8E' }]}>
-              <Ionicons name="layers" size={24} color={colors.neutral.white} />
-            </View>
-            <Text style={styles.actionText}>Flashcards</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleActionPress('chat')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: '#4A9B8E' }]}>
-              <Ionicons name="chatbubbles" size={24} color={colors.neutral.white} />
-            </View>
-            <Text style={styles.actionText}>Hỏi đáp với sách</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleActionPress('mindmap')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#E8F5F3' }]}>
-              <Ionicons name="git-network" size={24} color="#4A9B8E" />
-            </View>
-            <Text style={styles.actionText}>Mindmap</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
+    <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Chapters List */}
-        {chapters.length > 0 && (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Book Header Card */}
+          <View style={styles.bookHeaderCard}>
+            {/* Book Cover */}
+            <View style={styles.coverContainer}>
+              {book.cover_file?.path ? (
+                <Image source={{ uri: book.cover_file.path }} style={styles.cover} resizeMode="cover" />
+              ) : (
+                <View style={styles.placeholderCover}>
+                  <Ionicons name="book" size={40} color="#6B7280" />
+                </View>
+              )}
+            </View>
+
+            {/* Book Info */}
+            <View style={styles.bookInfo}>
+              <Text style={styles.bookTitle}>{book.title}</Text>
+              {book.author && <Text style={styles.bookAuthor}>{book.author}</Text>}
+
+              {/* Tags */}
+              <View style={styles.tagsContainer}>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>Tự Tiến</Text>
+                </View>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>Phong Thủy</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Chapters List */}
           <View style={styles.chaptersSection}>
-            <Text style={styles.sectionTitle}>Danh sách chương</Text>
-            {chapters.map((chapter, index) => (
-              <TouchableOpacity
-                key={chapter.id}
-                style={styles.chapterItem}
-                onPress={() => console.log('Chapter pressed:', chapter.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.chapterNumber}>
-                  <Text style={styles.chapterNumberText}>{index + 1}</Text>
-                </View>
-                <View style={styles.chapterInfo}>
-                  <Text style={styles.chapterTitle} numberOfLines={2}>
-                    {chapter.title}
-                  </Text>
-                  {chapter.description && (
-                    <Text style={styles.chapterDescription} numberOfLines={1}>
-                      {chapter.description}
-                    </Text>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.neutral.gray[400]} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+            {chapters.map((chapter, index) => {
+              const chapterNumber = index + 1;
+              const isCompleted = completedChapters.includes(chapterNumber);
+              const isLocked = chapterNumber > 2; // Lock chapters after 2
 
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
-    </SafeAreaView>
+              // Get first 50 characters of chapter content as preview
+              const contentPreview = chapter.content
+                ? chapter.content.substring(0, 50).trim() + (chapter.content.length > 50 ? '...' : '')
+                : chapter.description?.substring(0, 50).trim() +
+                    (chapter.description && chapter.description.length > 50 ? '...' : '') || 'Nội dung chương...';
+
+              return (
+                <TouchableOpacity
+                  key={chapter.id}
+                  style={[styles.chapterCard, isLocked && styles.chapterCardLocked]}
+                  onPress={() => !isLocked && handleChapterPress(chapter.id)}
+                  activeOpacity={isLocked ? 1 : 0.7}
+                  disabled={isLocked}
+                >
+                  {/* Chapter Number Badge */}
+                  <View
+                    style={[
+                      styles.chapterBadge,
+                      isCompleted && styles.chapterBadgeCompleted,
+                      isLocked && styles.chapterBadgeLocked,
+                    ]}
+                  >
+                    {isLocked ? (
+                      <Ionicons name="lock-closed" size={18} color="#6B7280" />
+                    ) : (
+                      <Text style={styles.chapterBadgeText}>{chapterNumber}</Text>
+                    )}
+                  </View>
+
+                  {/* Chapter Info */}
+                  <View style={styles.chapterInfo}>
+                    <Text style={[styles.chapterTitle, isLocked && styles.chapterTitleLocked]} numberOfLines={1}>
+                      {chapter.title}
+                    </Text>
+                    <Text
+                      style={[styles.chapterDescription, isLocked && styles.chapterDescriptionLocked]}
+                      numberOfLines={1}
+                    >
+                      {contentPreview}
+                    </Text>
+                    {isLocked && (
+                      <View style={styles.lockTextContainer}>
+                        <Text style={styles.lockText}>Khóa - 50 lượng</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Status Icon */}
+                  {isCompleted ? (
+                    <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+                  ) : isLocked ? (
+                    <TouchableOpacity style={styles.unlockButton}>
+                      <Text style={styles.unlockButtonText}>Mở khóa</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Bottom Spacing for tab bar */}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.neutral.gray[50],
   },
 
   // Header
@@ -258,22 +215,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray[200],
   },
   backButton: {
     padding: spacing.xs,
-    marginRight: spacing.sm,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: fontSizes.lg,
-    fontWeight: '600',
-    color: colors.neutral.gray[900],
-  },
-  headerSpacer: {
-    width: 40,
   },
 
   // Loading & Error
@@ -285,7 +229,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: fontSizes.base,
-    color: colors.neutral.gray[600],
+    color: '#fff',
   },
   errorContainer: {
     flex: 1,
@@ -296,18 +240,18 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: spacing.md,
     fontSize: fontSizes.base,
-    color: colors.neutral.gray[700],
+    color: '#fff',
     textAlign: 'center',
   },
   retryButton: {
     marginTop: spacing.lg,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
-    backgroundColor: colors.primary.red,
+    backgroundColor: '#F59E0B',
     borderRadius: 8,
   },
   retryButtonText: {
-    color: colors.neutral.white,
+    color: '#fff',
     fontSize: fontSizes.base,
     fontWeight: '600',
   },
@@ -317,25 +261,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Book Info Section
-  bookInfoSection: {
+  // Book Header Card
+  bookHeaderCard: {
     flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
     padding: spacing.lg,
-    backgroundColor: colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray[200],
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   coverContainer: {
-    width: 120,
-    height: 160,
+    width: 100,
+    height: 140,
     borderRadius: 12,
     overflow: 'hidden',
     marginRight: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   cover: {
     width: '100%',
@@ -344,178 +287,123 @@ const styles = StyleSheet.create({
   placeholderCover: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#FFD93D',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
-  placeholderIcon: {
-    fontSize: 32,
-    marginBottom: spacing.xs,
-  },
-  placeholderTitle: {
-    fontSize: fontSizes.sm,
-    fontWeight: 'bold',
-    color: colors.neutral.gray[900],
-    textAlign: 'center',
-  },
-  detailsContainer: {
+  bookInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   bookTitle: {
-    fontSize: fontSizes.xl,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: colors.neutral.gray[900],
+    color: '#fff',
     marginBottom: spacing.xs,
   },
   bookAuthor: {
     fontSize: fontSizes.sm,
-    color: colors.neutral.gray[600],
-    marginBottom: spacing.md,
-    fontStyle: 'italic',
-  },
-
-  // Study Info
-  studyInfoContainer: {
-    flexDirection: 'row',
+    color: '#F59E0B',
     marginBottom: spacing.md,
   },
-  studyInfoItem: {
+  tagsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.lg,
+    flexWrap: 'wrap',
+    gap: spacing.xs,
   },
-  studyInfoText: {
-    marginLeft: spacing.xs,
-    fontSize: fontSizes.sm,
-    color: colors.neutral.gray[700],
-    fontWeight: '500',
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(107, 114, 128, 0.3)',
+    borderRadius: 6,
   },
-
-  // Progress
-  progressSection: {
-    marginTop: spacing.sm,
-  },
-  progressLabel: {
-    fontSize: fontSizes.sm,
-    color: colors.neutral.gray[700],
-    marginBottom: spacing.xs,
-    fontWeight: '500',
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: colors.neutral.gray[200],
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#4A9B8E',
-    borderRadius: 4,
-  },
-  progressText: {
-    marginTop: spacing.xs,
+  tagText: {
     fontSize: fontSizes.xs,
-    color: colors.neutral.gray[600],
-  },
-
-  // Description Section
-  descriptionSection: {
-    padding: spacing.lg,
-    backgroundColor: colors.neutral.white,
-    marginTop: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray[200],
-  },
-  sectionTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: '600',
-    color: colors.neutral.gray[900],
-    marginBottom: spacing.md,
-  },
-  descriptionText: {
-    fontSize: fontSizes.base,
-    color: colors.neutral.gray[700],
-    lineHeight: 24,
-  },
-
-  // Actions Section
-  actionsSection: {
-    padding: spacing.lg,
-    backgroundColor: colors.neutral.white,
-    marginTop: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray[200],
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.neutral.white,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray[200],
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  actionText: {
-    flex: 1,
-    fontSize: fontSizes.base,
+    color: '#D1D5DB',
     fontWeight: '500',
-    color: colors.neutral.gray[900],
   },
 
   // Chapters Section
   chaptersSection: {
-    padding: spacing.lg,
-    backgroundColor: colors.neutral.white,
-    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
-  chapterItem: {
+  chapterCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray[100],
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  chapterNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E8F5F3',
+  chapterCardLocked: {
+    opacity: 0.7,
+  },
+  chapterBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  chapterNumberText: {
-    fontSize: fontSizes.sm,
-    fontWeight: '600',
-    color: '#4A9B8E',
+  chapterBadgeCompleted: {
+    backgroundColor: '#10B981',
+  },
+  chapterBadgeLocked: {
+    backgroundColor: 'rgba(107, 114, 128, 0.3)',
+  },
+  chapterBadgeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   chapterInfo: {
     flex: 1,
   },
   chapterTitle: {
-    fontSize: fontSizes.base,
-    fontWeight: '500',
-    color: colors.neutral.gray[900],
-    marginBottom: spacing.xs / 2,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  chapterTitleLocked: {
+    color: '#9CA3AF',
   },
   chapterDescription: {
-    fontSize: fontSizes.sm,
-    color: colors.neutral.gray[600],
+    fontSize: 13,
+    color: '#D1D5DB',
+    marginBottom: 4,
+  },
+  chapterDescriptionLocked: {
+    color: '#6B7280',
+  },
+  lockTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  lockText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  unlockButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#D97706',
+    borderRadius: 8,
+  },
+  unlockButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 
   // Bottom Spacing
   bottomSpacer: {
-    height: spacing.xl,
+    height: 100, // Space for floating tab bar
   },
 });
