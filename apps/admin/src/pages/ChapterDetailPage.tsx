@@ -2,29 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loading, useNotify } from 'react-admin';
 import axios from 'axios';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Tabs,
-  Tab,
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Button as MuiButton,
-  IconButton,
-} from '@mui/material';
+import { Card, CardContent, Typography, Tabs, Tab, Box, IconButton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DeleteIcon from '@mui/icons-material/Delete';
-import UploadIcon from '@mui/icons-material/Upload';
-import DownloadIcon from '@mui/icons-material/Download';
-import DescriptionIcon from '@mui/icons-material/Description';
 import { QuizQuestionsTab } from '../components/QuizQuestionsTab';
 import { MindMapTab } from '../components/MindMapTab';
-import { ImportFlashcardsDialog } from '../components/ImportFlashcardsDialog';
+import { FlashcardsTab } from '../components/FlashcardsTab';
+import { ChapterInfoTab } from '../components/ChapterInfoTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -42,8 +25,8 @@ interface Chapter {
 interface Flashcard {
   id: number;
   chapter_id: number;
-  front: string;
-  back: string;
+  question: string;
+  answer: string;
   created_at: string;
 }
 
@@ -71,7 +54,6 @@ export const ChapterDetailPage = () => {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [tabValue, setTabValue] = useState(0);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchChapter();
@@ -105,86 +87,6 @@ export const ChapterDetailPage = () => {
     }
   };
 
-  const handleGenerateFlashcards = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_URL}/admin/flashcards/generate`,
-        { chapterId: Number(chapterId) },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      notify('Flashcards generation started', { type: 'success' });
-      // Refresh after a delay
-      setTimeout(() => fetchFlashcards(), 3000);
-    } catch (error) {
-      notify('Error generating flashcards', { type: 'error' });
-      console.error('Error:', error);
-    }
-  };
-
-  const handleDeleteFlashcard = async (id: number) => {
-    if (!window.confirm('Delete this flashcard?')) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/admin/flashcards/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      notify('Flashcard deleted', { type: 'success' });
-      fetchFlashcards();
-    } catch (error) {
-      notify('Error deleting flashcard', { type: 'error' });
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards/export`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `chapter-${chapterId}-flashcards.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      notify('Flashcards exported successfully', { type: 'success' });
-    } catch (error) {
-      notify('Error exporting flashcards', { type: 'error' });
-      console.error(error);
-    }
-  };
-
-  const handleDownloadTemplate = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards/template`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'flashcard-template.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      notify('Template downloaded', { type: 'success' });
-    } catch (error) {
-      notify('Error downloading template', { type: 'error' });
-      console.error(error);
-    }
-  };
-
   if (loading) return <Loading />;
   if (!chapter) return <div>Chapter not found</div>;
 
@@ -208,92 +110,16 @@ export const ChapterDetailPage = () => {
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                ID
-              </Typography>
-              <Typography>{chapter.id}</Typography>
-            </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Title
-              </Typography>
-              <Typography>{chapter.title}</Typography>
-            </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Order
-              </Typography>
-              <Typography>{chapter.order}</Typography>
-            </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Points
-              </Typography>
-              <Typography>{chapter.points}</Typography>
-            </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Content
-              </Typography>
-              <Typography sx={{ whiteSpace: 'pre-wrap' }}>{chapter.content}</Typography>
-            </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Created
-              </Typography>
-              <Typography>{new Date(chapter.created_at).toLocaleString()}</Typography>
-            </div>
-          </Box>
+          <ChapterInfoTab chapter={chapter} />
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <MuiButton variant="contained" onClick={handleGenerateFlashcards}>
-              Generate Flashcards with AI
-            </MuiButton>
-            <MuiButton variant="outlined" startIcon={<UploadIcon />} onClick={() => setImportDialogOpen(true)}>
-              Import CSV
-            </MuiButton>
-            <MuiButton variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>
-              Export CSV
-            </MuiButton>
-            <MuiButton variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadTemplate}>
-              Download Template
-            </MuiButton>
-          </Box>
-
-          {flashcards.length === 0 ? (
-            <Typography color="textSecondary">No flashcards yet. Generate them using AI or import from CSV.</Typography>
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Front (Question)</TableCell>
-                  <TableCell>Back (Answer)</TableCell>
-                  <TableCell>Created</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {flashcards.map((card) => (
-                  <TableRow key={card.id}>
-                    <TableCell>{card.id}</TableCell>
-                    <TableCell>{card.front}</TableCell>
-                    <TableCell>{card.back}</TableCell>
-                    <TableCell>{new Date(card.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <IconButton size="small" onClick={() => handleDeleteFlashcard(card.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <FlashcardsTab
+            bookId={Number(bookId)}
+            chapterId={Number(chapterId)}
+            flashcards={flashcards}
+            onRefresh={fetchFlashcards}
+          />
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
@@ -304,14 +130,6 @@ export const ChapterDetailPage = () => {
           <MindMapTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>
-
-      <ImportFlashcardsDialog
-        open={importDialogOpen}
-        onClose={() => setImportDialogOpen(false)}
-        bookId={Number(bookId)}
-        chapterId={Number(chapterId)}
-        onSuccess={fetchFlashcards}
-      />
     </Card>
   );
 };
