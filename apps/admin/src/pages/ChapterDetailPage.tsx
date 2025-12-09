@@ -19,8 +19,12 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { QuizQuestionsTab } from '../components/QuizQuestionsTab';
 import { MindMapTab } from '../components/MindMapTab';
+import { ImportFlashcardsDialog } from '../components/ImportFlashcardsDialog';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -67,6 +71,7 @@ export const ChapterDetailPage = () => {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [tabValue, setTabValue] = useState(0);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchChapter();
@@ -134,6 +139,52 @@ export const ChapterDetailPage = () => {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `chapter-${chapterId}-flashcards.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      notify('Flashcards exported successfully', { type: 'success' });
+    } catch (error) {
+      notify('Error exporting flashcards', { type: 'error' });
+      console.error(error);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards/template`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'flashcard-template.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      notify('Template downloaded', { type: 'success' });
+    } catch (error) {
+      notify('Error downloading template', { type: 'error' });
+      console.error(error);
+    }
+  };
+
   if (loading) return <Loading />;
   if (!chapter) return <div>Chapter not found</div>;
 
@@ -198,14 +249,23 @@ export const ChapterDetailPage = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <MuiButton variant="contained" onClick={handleGenerateFlashcards}>
               Generate Flashcards with AI
+            </MuiButton>
+            <MuiButton variant="outlined" startIcon={<UploadIcon />} onClick={() => setImportDialogOpen(true)}>
+              Import CSV
+            </MuiButton>
+            <MuiButton variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>
+              Export CSV
+            </MuiButton>
+            <MuiButton variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadTemplate}>
+              Download Template
             </MuiButton>
           </Box>
 
           {flashcards.length === 0 ? (
-            <Typography color="textSecondary">No flashcards yet. Generate them using AI.</Typography>
+            <Typography color="textSecondary">No flashcards yet. Generate them using AI or import from CSV.</Typography>
           ) : (
             <Table>
               <TableHead>
@@ -244,6 +304,14 @@ export const ChapterDetailPage = () => {
           <MindMapTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>
+
+      <ImportFlashcardsDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        bookId={Number(bookId)}
+        chapterId={Number(chapterId)}
+        onSuccess={fetchFlashcards}
+      />
     </Card>
   );
 };

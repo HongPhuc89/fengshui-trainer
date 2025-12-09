@@ -5,12 +5,19 @@ import { Flashcard } from './entities/flashcard.entity';
 import { CreateFlashcardDto } from './dtos/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dtos/update-flashcard.dto';
 import { ChaptersService } from './chapters.service';
+import * as Papa from 'papaparse';
+import { ImportFlashcardsOptionsDto } from './dtos/import-flashcards-options.dto';
 
 export interface ImportResult {
   total: number;
   imported: number;
   duplicates: number;
   errors: string[];
+}
+
+interface CSVRow {
+  question: string;
+  answer: string;
 }
 
 @Injectable()
@@ -42,101 +49,213 @@ export class FlashcardsService {
     }
   }
 
-  async importFromCSV(bookId: number, chapterId: number, csvContent: string): Promise<ImportResult> {
+  /**
+   * Export flashcards to CSV
+   */
+  async exportToCSV(bookId: number, chapterId: number): Promise<string> {
     // Verify chapter exists
     await this.chaptersService.findOne(bookId, chapterId);
 
-    const result: ImportResult = {
-      total: 0,
-      imported: 0,
-      duplicates: 0,
-      errors: [],
-    };
+    const flashcards = await this.flashcardRepository.find({
+      where: { chapter_id: chapterId },
+      order: { created_at: 'ASC' },
+    });
 
-    // Parse CSV
-    const lines = csvContent
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line);
+    const csvData = flashcards.map((fc) => ({
+      question: fc.question,
+      answer: fc.answer,
+    }));
 
-    if (lines.length === 0) {
-      throw new BadRequestException('CSV file is empty');
-    }
-
-    // Parse header
-    const header = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-    const questionIndex = header.indexOf('question');
-    const answerIndex = header.indexOf('answer');
-
-    if (questionIndex === -1 || answerIndex === -1) {
-      throw new BadRequestException('CSV must contain "question" and "answer" columns');
-    }
-
-    // Process each row (skip header)
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line) continue;
-
-      result.total++;
-
-      try {
-        // Parse CSV line (simple parser, handles quoted fields)
-        const values = this.parseCSVLine(line);
-
-        if (values.length <= Math.max(questionIndex, answerIndex)) {
-          result.errors.push(`Line ${i + 1}: Not enough columns`);
-          continue;
-        }
-
-        const question = values[questionIndex]?.trim();
-        const answer = values[answerIndex]?.trim();
-
-        if (!question || !answer) {
-          result.errors.push(`Line ${i + 1}: Question or answer is empty`);
-          continue;
-        }
-
-        const flashcard = this.flashcardRepository.create({
-          question,
-          answer,
-          chapter_id: chapterId,
-        });
-
-        await this.flashcardRepository.save(flashcard);
-        result.imported++;
-      } catch (error) {
-        if (error.code === '23505') {
-          // Duplicate - skip silently
-          result.duplicates++;
-        } else {
-          result.errors.push(`Line ${i + 1}: ${error.message}`);
-        }
-      }
-    }
-
-    return result;
+    return Papa.unparse(csvData, {
+      quotes: true,
+      header: true,
+    });
   }
 
-  private parseCSVLine(line: string): string[] {
-    const values: string[] = [];
-    let current = '';
-    let inQuotes = false;
+  /**
+   * Preview CSV import
+   */
+  async previewImport(bookId: number, chapterId: number, csvContent: string) {
+    // Verify chapter exists
+    await this.chaptersService.findOne(bookId, chapterId);
 
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
+    const parseResult = Papa.parse(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
 
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim().replace(/^"|"$/g, ''));
-        current = '';
-      } else {
-        current += char;
+    const validRows = [];
+    const warnings = [];
+    const errors = [];
+
+    // Get existing questions for duplicate check
+    const existingFlashcards = await this.flashcardRepository.find({
+      where: { chapter_id: chapterId },
+      select: ['question'],
+    });
+    const existingQuestions = new Set(existingFlashcards.map((fc) => fc.question.toLowerCase().trim()));
+
+    parseResult.data.forEach((row: any, index: number) => {
+      const rowNumber = index + 2; // +2 because index starts at 0 and row 1 is header
+
+      // Validation
+      if (!row.question || !row.answer) {
+        errors.push({
+          row: rowNumber,
+          type: 'missing_field',
+          field: !row.question ? 'question' : 'answer',
+          message: `${!row.question ? 'Question' : 'Answer'} is required`,
+        });
+        return;
       }
+
+      if (row.question.length > 500) {
+        errors.push({
+          row: rowNumber,
+          type: 'length_exceeded',
+          field: 'question',
+          message: 'Question exceeds 500 characters',
+        });
+        return;
+      }
+
+      if (row.answer.length > 1000) {
+        errors.push({
+          row: rowNumber,
+          type: 'length_exceeded',
+          field: 'answer',
+          message: 'Answer exceeds 1000 characters',
+        });
+        return;
+      }
+
+      // Check for duplicates
+      if (existingQuestions.has(row.question.toLowerCase().trim())) {
+        warnings.push({
+          row: rowNumber,
+          type: 'duplicate',
+          question: row.question,
+          message: 'Question already exists in this chapter',
+        });
+      }
+
+      validRows.push({
+        row: rowNumber,
+        question: row.question.trim(),
+        answer: row.answer.trim(),
+        status: 'valid',
+      });
+    });
+
+    return {
+      totalRows: parseResult.data.length,
+      validRows: validRows.length,
+      warnings,
+      errors,
+      preview: validRows.slice(0, 10), // Show first 10 for preview
+    };
+  }
+
+  /**
+   * Import flashcards from CSV
+   */
+  async importFromCSV(
+    bookId: number,
+    chapterId: number,
+    csvContent: string,
+    options: ImportFlashcardsOptionsDto = {},
+  ): Promise<ImportResult> {
+    // Verify chapter exists
+    await this.chaptersService.findOne(bookId, chapterId);
+
+    const parseResult = Papa.parse(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    const flashcardsToCreate = [];
+    const skipped = [];
+    let imported = 0;
+    let duplicates = 0;
+    const errors = [];
+
+    // Get existing questions
+    const existingFlashcards = await this.flashcardRepository.find({
+      where: { chapter_id: chapterId },
+    });
+    const existingQuestionsMap = new Map(existingFlashcards.map((fc) => [fc.question.toLowerCase().trim(), fc]));
+
+    for (const row of parseResult.data as CSVRow[]) {
+      // Skip invalid rows
+      if (!row.question || !row.answer) {
+        if (options.skipErrors) {
+          skipped.push({ reason: 'missing_field', row });
+          continue;
+        } else {
+          errors.push('Missing question or answer');
+          continue;
+        }
+      }
+
+      const questionKey = row.question.toLowerCase().trim();
+
+      // Handle duplicates
+      if (existingQuestionsMap.has(questionKey)) {
+        if (options.skipDuplicates) {
+          duplicates++;
+          skipped.push({ reason: 'duplicate', row });
+          continue;
+        } else if (options.replaceDuplicates) {
+          // Update existing flashcard
+          const existing = existingQuestionsMap.get(questionKey);
+          existing.answer = row.answer.trim();
+          await this.flashcardRepository.save(existing);
+          imported++;
+          continue;
+        }
+      }
+
+      flashcardsToCreate.push({
+        chapter_id: chapterId,
+        question: row.question.trim(),
+        answer: row.answer.trim(),
+      });
     }
 
-    values.push(current.trim().replace(/^"|"$/g, ''));
-    return values;
+    const createdFlashcards = await this.flashcardRepository.save(flashcardsToCreate);
+    imported += createdFlashcards.length;
+
+    return {
+      total: parseResult.data.length,
+      imported,
+      duplicates,
+      errors,
+    };
+  }
+
+  /**
+   * Generate CSV template
+   */
+  generateTemplate(): string {
+    const template = [
+      {
+        question: 'What is the capital of France?',
+        answer: 'Paris',
+      },
+      {
+        question: 'What is 2 + 2?',
+        answer: '4',
+      },
+      {
+        question: 'Who wrote Romeo and Juliet?',
+        answer: 'William Shakespeare',
+      },
+    ];
+
+    return Papa.unparse(template, {
+      quotes: true,
+      header: true,
+    });
   }
 
   async findAllByChapter(bookId: number, chapterId: number): Promise<Flashcard[]> {

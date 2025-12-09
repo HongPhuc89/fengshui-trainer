@@ -11,12 +11,15 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { FlashcardsService, ImportResult } from './flashcards.service';
 import { CreateFlashcardDto } from './dtos/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dtos/update-flashcard.dto';
+import { ImportFlashcardsOptionsDto } from './dtos/import-flashcards-options.dto';
 import { Flashcard } from './entities/flashcard.entity';
 import { JwtAuthGuard } from '../../shares/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shares/guards/roles.guard';
@@ -42,6 +45,62 @@ export class AdminFlashcardsController {
     return this.flashcardsService.create(bookId, chapterId, createFlashcardDto);
   }
 
+  @Get('export')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Export flashcards to CSV' })
+  @ApiResponse({ status: 200, description: 'CSV file content' })
+  async exportFlashcards(
+    @Param('bookId', ParseIntPipe) bookId: number,
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @Res() res: Response,
+  ) {
+    const csvContent = await this.flashcardsService.exportToCSV(bookId, chapterId);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="chapter-${chapterId}-flashcards.csv"`);
+    res.send(csvContent);
+  }
+
+  @Get('template')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Download CSV template' })
+  @ApiResponse({ status: 200, description: 'CSV template file' })
+  async downloadTemplate(@Res() res: Response) {
+    const csvContent = this.flashcardsService.generateTemplate();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="flashcard-template.csv"');
+    res.send(csvContent);
+  }
+
+  @Post('import/preview')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Preview CSV import' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Preview of flashcards to be imported' })
+  async previewImport(
+    @Param('bookId', ParseIntPipe) bookId: number,
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const csvContent = file.buffer.toString('utf-8');
+    return this.flashcardsService.previewImport(bookId, chapterId, csvContent);
+  }
+
   @Post('import')
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @UseInterceptors(FileInterceptor('file'))
@@ -63,6 +122,7 @@ export class AdminFlashcardsController {
     @Param('bookId', ParseIntPipe) bookId: number,
     @Param('chapterId', ParseIntPipe) chapterId: number,
     @UploadedFile() file: any,
+    @Body() options?: ImportFlashcardsOptionsDto,
   ): Promise<ImportResult> {
     if (!file) {
       throw new BadRequestException('CSV file is required');
@@ -78,7 +138,7 @@ export class AdminFlashcardsController {
     }
 
     const csvContent = file.buffer.toString('utf-8');
-    return this.flashcardsService.importFromCSV(bookId, chapterId, csvContent);
+    return this.flashcardsService.importFromCSV(bookId, chapterId, csvContent, options);
   }
 
   @Get()
