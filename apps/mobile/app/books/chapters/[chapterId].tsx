@@ -73,13 +73,13 @@ export default function ChapterDetailScreen() {
     // TODO: Navigate to respective screens
     switch (actionId) {
       case 'flashcard':
-        // Navigate to flashcard screen
+        router.push(`/flashcards/${chapterId}?bookId=${bookId}`);
         break;
       case 'mindmap':
-        // Navigate to mindmap screen
+        router.push(`/mindmap/${chapterId}?bookId=${bookId}`);
         break;
       case 'quiz':
-        // Navigate to quiz screen
+        router.push(`/quiz/${chapterId}?bookId=${bookId}`);
         break;
     }
   };
