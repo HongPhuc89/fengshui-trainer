@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotify } from 'react-admin';
 import axios from 'axios';
 import {
@@ -12,8 +12,15 @@ import {
   Typography,
   Pagination,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
 import { QuestionTableRow } from './quiz-question-forms/QuestionTableRow';
 import { QuestionDialog } from './quiz-question-forms/QuestionDialog';
 import { useQuestionForm } from './quiz-question-forms/useQuestionForm';
@@ -45,7 +52,10 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [csvContent, setCsvContent] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { formData, setFormData, resetForm, loadQuestion, buildOptionsJson } = useQuestionForm();
   const notify = useNotify();
 
@@ -162,6 +172,61 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/admin/chapters/${chapterId}/questions/export/csv`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const blob = new Blob([response.data.content], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = response.data.filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      notify('Questions exported successfully', { type: 'success' });
+    } catch (error) {
+      notify('Error exporting questions', { type: 'error' });
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCsvContent(e.target?.result as string);
+        setImportDialogOpen(true);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleImportCSV = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/admin/chapters/${chapterId}/questions/import/csv`,
+        { csv_content: csvContent },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      notify(`Import completed: ${response.data.success} questions added`, { type: 'success' });
+      if (response.data.errors.length > 0) {
+        console.warn('Import errors:', response.data.errors);
+      }
+
+      setImportDialogOpen(false);
+      setCsvContent('');
+      fetchQuestions(1);
+    } catch (error) {
+      notify('Error importing questions', { type: 'error' });
+    }
+  };
+
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
@@ -189,10 +254,19 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     <Box>
       <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">Quiz Questions ({total} total)</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-          Add Question
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV}>
+            Export CSV
+          </Button>
+          <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => fileInputRef.current?.click()}>
+            Import CSV
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+            Add Question
+          </Button>
+        </Box>
       </Box>
+      <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileSelect} />
 
       {questions.length === 0 ? (
         <Typography color="textSecondary">No questions yet. Click "Add Question" to create one.</Typography>
@@ -246,6 +320,28 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
         onSubmit={handleUpdate}
         submitLabel="Update"
       />
+
+      {/* Import CSV Dialog */}
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Import Questions from CSV</DialogTitle>
+        <DialogContent>
+          <TextField
+            multiline
+            rows={10}
+            fullWidth
+            value={csvContent}
+            onChange={(e) => setCsvContent(e.target.value)}
+            sx={{ mt: 2 }}
+            placeholder="Paste CSV content here or select a file..."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleImportCSV} variant="contained">
+            Import
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
