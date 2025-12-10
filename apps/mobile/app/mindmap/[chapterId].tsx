@@ -1,335 +1,287 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fontSizes, spacing } from '@/constants';
-import { mindMapService } from '@/modules/shared/services/api';
-import { MindMap, MindMapNode } from '@/modules/shared/services/api/types';
+import { mindmapService } from '../../services/api/mindmap.service';
+import { MindMapNode, MindMapStructure } from '../../types/mindmap';
 
-const { width } = Dimensions.get('window');
-
-interface NodeProps {
+interface TreeNodeProps {
   node: MindMapNode;
-  level: number;
-  isExpanded: boolean;
-  onToggle: () => void;
+  depth: number;
+  allNodes: MindMapNode[];
 }
 
-const MindMapNodeComponent: React.FC<NodeProps> = ({ node, level, isExpanded, onToggle }) => {
-  const hasChildren = node.children && node.children.length > 0;
-  const colors = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
-  const nodeColor = colors[level % colors.length];
+const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, allNodes }) => {
+  const [collapsed, setCollapsed] = useState(node.collapsed || false);
+  const children = allNodes.filter((n) => n.parentId === node.id);
+  const hasChildren = children.length > 0;
+
+  const indent = depth * 20;
+  const backgroundColor = node.color || getColorByDepth(depth);
 
   return (
-    <View style={styles.nodeContainer}>
+    <View style={[styles.nodeContainer, { marginLeft: indent }]}>
       <TouchableOpacity
-        style={[styles.node, { borderLeftColor: nodeColor, marginLeft: level * 20 }]}
-        onPress={hasChildren ? onToggle : undefined}
-        activeOpacity={hasChildren ? 0.7 : 1}
+        style={[styles.node, { backgroundColor }]}
+        onPress={() => hasChildren && setCollapsed(!collapsed)}
+        activeOpacity={0.8}
       >
         <View style={styles.nodeContent}>
-          <View style={[styles.nodeDot, { backgroundColor: nodeColor }]} />
-          <Text style={styles.nodeLabel}>{node.label}</Text>
-          {hasChildren && <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={20} color="#9CA3AF" />}
+          {node.icon && <Text style={styles.icon}>{node.icon}</Text>}
+          <Text style={styles.nodeText}>{node.text}</Text>
         </View>
-        {node.metadata?.description && <Text style={styles.nodeDescription}>{node.metadata.description}</Text>}
+        {hasChildren && <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={20} color="#fff" />}
       </TouchableOpacity>
 
-      {hasChildren && isExpanded && (
-        <View style={styles.childrenContainer}>
-          {node.children!.map((child, index) => (
-            <MindMapNodeWrapper key={child.id || index} node={child} level={level + 1} />
-          ))}
-        </View>
-      )}
+      {!collapsed &&
+        children.map((child) => <TreeNode key={child.id} node={child} depth={depth + 1} allNodes={allNodes} />)}
     </View>
   );
 };
 
-const MindMapNodeWrapper: React.FC<{ node: MindMapNode; level: number }> = ({ node, level }) => {
-  const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
-
-  return (
-    <MindMapNodeComponent
-      node={node}
-      level={level}
-      isExpanded={isExpanded}
-      onToggle={() => setIsExpanded(!isExpanded)}
-    />
-  );
-};
-
-export default function MindMapScreen() {
-  const { chapterId, bookId } = useLocalSearchParams<{ chapterId: string; bookId: string }>();
-  const router = useRouter();
-  const [mindMap, setMindMap] = useState<MindMap | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default function MindmapScreen() {
+  const { chapterId, bookId } = useLocalSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [structure, setStructure] = useState<MindMapStructure | null>(null);
+  const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [expandAll, setExpandAll] = useState(false);
 
   useEffect(() => {
-    loadMindMap();
-  }, [chapterId]);
+    if (chapterId && bookId) {
+      fetchMindmap();
+    }
+  }, [chapterId, bookId]);
 
-  const loadMindMap = async () => {
+  const fetchMindmap = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
-      const chapterIdNum = parseInt(chapterId as string);
-      const bookIdNum = parseInt(bookId as string);
-      const data = await mindMapService.getMindMapByChapter(bookIdNum, chapterIdNum);
-      setMindMap(data);
+      const data = await mindmapService.getMindmapByChapter(Number(bookId), Number(chapterId));
+      setStructure(data.structure);
+      setTitle(data.title);
     } catch (err: any) {
-      setError(err.message || 'Không thể tải sơ đồ tư duy');
+      console.error('Error fetching mindmap:', err);
+
+      if (err.response?.status === 404) {
+        setError('Chưa có mindmap cho chương này.\nVui lòng tạo mindmap trong trang Admin.');
+      } else if (err.response?.status === 403) {
+        setError('Mindmap chưa được kích hoạt hoặc sách chưa được xuất bản.');
+      } else {
+        setError(err.response?.data?.message || 'Không thể tải mindmap. Vui lòng thử lại sau.');
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
-            <Text style={styles.loadingText}>Đang tải sơ đồ...</Text>
-          </View>
-        </SafeAreaView>
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Đang tải mindmap...</Text>
+        </View>
       </LinearGradient>
     );
   }
 
-  if (error || !mindMap) {
+  if (error || !structure) {
     return (
-      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Sơ Đồ Tư Duy</Text>
-          </View>
-          <View style={styles.errorContainer}>
-            <Ionicons name="git-network-outline" size={64} color="#F59E0B" />
-            <Text style={styles.errorText}>{error || 'Chưa có sơ đồ cho chương này'}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadMindMap}>
-              <Text style={styles.retryButtonText}>Thử lại</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
-
-  return (
-    <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sơ Đồ Tư Duy</Text>
+          <Text style={styles.headerTitle}>Mindmap</Text>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* Mind Map Info */}
-        <View style={styles.infoCard}>
-          <LinearGradient
-            colors={['rgba(16, 185, 129, 0.1)', 'rgba(16, 185, 129, 0.05)'] as [string, string, ...string[]]}
-            style={styles.infoCardGradient}
-          >
-            <View style={styles.infoHeader}>
-              <Ionicons name="git-network" size={24} color="#10B981" />
-              <Text style={styles.infoTitle}>{mindMap.title}</Text>
-            </View>
-            {mindMap.description && <Text style={styles.infoDescription}>{mindMap.description}</Text>}
-          </LinearGradient>
-        </View>
-
-        {/* Controls */}
-        <View style={styles.controls}>
-          <TouchableOpacity style={styles.controlButton} onPress={() => setExpandAll(!expandAll)}>
-            <Ionicons name={expandAll ? 'contract-outline' : 'expand-outline'} size={20} color="#F59E0B" />
-            <Text style={styles.controlButtonText}>{expandAll ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}</Text>
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle" size={64} color="#fff" />
+          <Text style={styles.errorText}>{error || 'Chưa có mindmap cho chương này'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchMindmap}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
+      </LinearGradient>
+    );
+  }
 
-        {/* Mind Map Tree */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  return (
+    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title || 'Mindmap'}
+        </Text>
+        <TouchableOpacity style={styles.iconButton}>
+          <Ionicons name="expand" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Content */}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <Text style={styles.centerNodeTitle}>{structure.centerNode.text}</Text>
+
           <View style={styles.treeContainer}>
-            <MindMapNodeWrapper node={mindMap.structure} level={0} />
+            <TreeNode node={structure.centerNode} depth={0} allNodes={structure.nodes} />
           </View>
+        </View>
 
-          {/* Bottom Spacing */}
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-      </SafeAreaView>
+        {/* Info */}
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle" size={20} color="#6366f1" />
+          <Text style={styles.infoText}>Nhấn vào node để mở rộng/thu gọn các nhánh</Text>
+        </View>
+      </ScrollView>
     </LinearGradient>
   );
+}
+
+function getColorByDepth(depth: number): string {
+  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+  return colors[depth % colors.length];
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: spacing.xs,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    flex: 1,
-    fontSize: fontSizes.xl,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    marginLeft: spacing.sm,
-  },
-
-  // Loading & Error
-  loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.base,
-    color: '#fff',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  errorText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.base,
-    color: '#fff',
     textAlign: 'center',
   },
-  retryButton: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: '#F59E0B',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: fontSizes.base,
-    fontWeight: '600',
-  },
-
-  // Info Card
-  infoCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  infoCardGradient: {
-    padding: spacing.lg,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  infoTitle: {
+  scrollView: {
     flex: 1,
-    fontSize: fontSizes.lg,
-    fontWeight: '700',
-    color: '#fff',
-    marginLeft: spacing.sm,
   },
-  infoDescription: {
-    fontSize: fontSizes.sm,
-    color: '#D1D5DB',
-    lineHeight: 20,
-  },
-
-  // Controls
-  controls: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  controlButtonText: {
-    fontSize: fontSizes.sm,
-    fontWeight: '600',
-    color: '#F59E0B',
-    marginLeft: spacing.xs,
-  },
-
-  // Content
   content: {
-    flex: 1,
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  centerNodeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 24,
+    textAlign: 'center',
   },
   treeContainer: {
-    paddingHorizontal: spacing.lg,
+    marginTop: 8,
   },
-
-  // Node
   nodeContainer: {
-    marginBottom: spacing.xs,
+    marginVertical: 4,
   },
   node: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
     borderRadius: 12,
-    padding: spacing.md,
-    borderLeftWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
   },
   nodeContent: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  nodeDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: spacing.sm,
-  },
-  nodeLabel: {
     flex: 1,
-    fontSize: fontSizes.base,
-    fontWeight: '600',
+  },
+  icon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  nodeText: {
+    fontSize: 16,
     color: '#fff',
+    fontWeight: '600',
+    flex: 1,
   },
-  nodeDescription: {
-    fontSize: fontSizes.sm,
-    color: '#9CA3AF',
-    marginTop: spacing.xs,
-    marginLeft: 20,
-    lineHeight: 18,
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    gap: 12,
   },
-  childrenContainer: {
-    marginTop: spacing.xs,
+  infoText: {
+    fontSize: 14,
+    color: '#6b7280',
+    flex: 1,
   },
-
-  // Bottom Spacing
-  bottomSpacer: {
-    height: 40,
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#fff',
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#fff',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#667eea',
   },
 });

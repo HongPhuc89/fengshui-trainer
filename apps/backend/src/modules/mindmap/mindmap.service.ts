@@ -194,7 +194,7 @@ export class MindMapService {
       .innerJoin('chapter.book', 'book')
       .where('mindmap.chapter_id = :chapterId', { chapterId })
       .andWhere('book.id = :bookId', { bookId })
-      .andWhere('book.status = :status', { status: 'PUBLISHED' })
+      .andWhere('book.status = :status', { status: 'published' })
       .andWhere('mindmap.is_active = :isActive', { isActive: true })
       .select([
         'mindmap.id',
