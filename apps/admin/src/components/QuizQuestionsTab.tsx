@@ -17,11 +17,19 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TableSortLabel,
+  InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { QuestionTableRow } from './quiz-question-forms/QuestionTableRow';
 import { QuestionDialog } from './quiz-question-forms/QuestionDialog';
 import { useQuestionForm } from './quiz-question-forms/useQuestionForm';
@@ -44,6 +52,9 @@ interface QuizQuestionsTabProps {
   chapterId: number;
 }
 
+type SortField = 'id' | 'question_type' | 'difficulty' | 'points' | 'created_at';
+type SortOrder = 'asc' | 'desc';
+
 export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +66,13 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [csvContent, setCsvContent] = useState('');
+
+  // Search, filter, and sort states
+  const [searchInput, setSearchInput] = useState(''); // Input value
+  const [searchQuery, setSearchQuery] = useState(''); // Actual search query for API
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Loading states for different operations
   const [creating, setCreating] = useState(false);
@@ -71,7 +89,14 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
 
   useEffect(() => {
     fetchQuestions(page);
-  }, [chapterId, page]);
+  }, [chapterId, page, searchQuery, typeFilter, sortField, sortOrder]);
+
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      setSearchQuery(searchInput);
+      setPage(1); // Reset to first page on new search
+    }
+  };
 
   const fetchQuestions = async (pageNum: number = page) => {
     try {
@@ -82,6 +107,10 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
         params: {
           page: pageNum,
           limit: 20,
+          search: searchQuery || undefined,
+          type: typeFilter || undefined,
+          sortBy: sortField,
+          sortOrder: sortOrder,
         },
       });
 
@@ -92,9 +121,31 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
         setTotalPages(response.data.totalPages || 0);
         setPage(pageNum);
       } else {
-        // Fallback for non-paginated response
-        setQuestions(response.data);
-        setTotal(response.data.length);
+        // Fallback for non-paginated response - apply client-side filtering and sorting
+        let filtered = response.data;
+
+        // Apply search
+        if (searchQuery) {
+          filtered = filtered.filter((q: Question) =>
+            q.question_text.toLowerCase().includes(searchQuery.toLowerCase()),
+          );
+        }
+
+        // Apply type filter
+        if (typeFilter) {
+          filtered = filtered.filter((q: Question) => q.question_type === typeFilter);
+        }
+
+        // Apply sorting
+        filtered.sort((a: Question, b: Question) => {
+          const aVal = a[sortField];
+          const bVal = b[sortField];
+          const modifier = sortOrder === 'asc' ? 1 : -1;
+          return aVal > bVal ? modifier : aVal < bVal ? -modifier : 0;
+        });
+
+        setQuestions(filtered);
+        setTotal(filtered.length);
         setTotalPages(1);
       }
     } catch (error) {
@@ -308,6 +359,15 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     setPage(value);
   };
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
   const handleCloseCreate = () => {
     setCreateDialogOpen(false);
     resetForm();
@@ -378,6 +438,45 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       </Box>
       <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileSelect} />
 
+      {/* Search and Filter Bar */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+        <TextField
+          placeholder="Search questions... (Press Enter to search)"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyPress={handleSearchKeyPress}
+          size="small"
+          sx={{ flexGrow: 1, maxWidth: 400 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Filter by Type</InputLabel>
+          <Select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            label="Filter by Type"
+            startAdornment={
+              <InputAdornment position="start">
+                <FilterListIcon fontSize="small" />
+              </InputAdornment>
+            }
+          >
+            <MenuItem value="">All Types</MenuItem>
+            <MenuItem value="TRUE_FALSE">True/False</MenuItem>
+            <MenuItem value="MULTIPLE_CHOICE">Multiple Choice</MenuItem>
+            <MenuItem value="MULTIPLE_ANSWER">Multiple Answer</MenuItem>
+            <MenuItem value="MATCHING">Matching</MenuItem>
+            <MenuItem value="ORDERING">Ordering</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       {questions.length === 0 ? (
         <Typography color="textSecondary">No questions yet. Click "Add Question" to create one.</Typography>
       ) : (
@@ -385,12 +484,52 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'id'}
+                    direction={sortField === 'id' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('id')}
+                  >
+                    ID
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Question</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Difficulty</TableCell>
-                <TableCell>Points</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'question_type'}
+                    direction={sortField === 'question_type' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('question_type')}
+                  >
+                    Type
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'difficulty'}
+                    direction={sortField === 'difficulty' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('difficulty')}
+                  >
+                    Difficulty
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'points'}
+                    direction={sortField === 'points' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('points')}
+                  >
+                    Points
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'created_at'}
+                    direction={sortField === 'created_at' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('created_at')}
+                  >
+                    Created
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>

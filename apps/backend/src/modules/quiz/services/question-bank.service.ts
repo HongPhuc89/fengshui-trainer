@@ -27,15 +27,42 @@ export class QuestionBankService {
     });
   }
 
-  async findAllByChapterPaginated(chapterId: number, page: number = 1, limit: number = 20) {
+  async findAllByChapterPaginated(
+    chapterId: number,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+    type?: string,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ) {
     const skip = (page - 1) * limit;
 
-    const [questions, total] = await this.questionRepository.findAndCount({
-      where: { chapter_id: chapterId },
-      order: { difficulty: 'ASC', created_at: 'DESC' },
-      skip,
-      take: limit,
-    });
+    // Build query
+    const queryBuilder = this.questionRepository
+      .createQueryBuilder('question')
+      .where('question.chapter_id = :chapterId', { chapterId });
+
+    // Apply search filter
+    if (search) {
+      queryBuilder.andWhere('LOWER(question.question_text) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+    }
+
+    // Apply type filter
+    if (type) {
+      queryBuilder.andWhere('question.question_type = :type', { type });
+    }
+
+    // Apply sorting
+    const validSortFields = ['id', 'question_type', 'difficulty', 'points', 'created_at'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const order = sortOrder === 'asc' ? 'ASC' : 'DESC';
+    queryBuilder.orderBy(`question.${sortField}`, order);
+
+    // Execute query with pagination
+    const [questions, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
     return {
       data: questions,

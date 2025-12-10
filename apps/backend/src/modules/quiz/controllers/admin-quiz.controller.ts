@@ -51,14 +51,26 @@ export class AdminQuizController {
 
   // Question Bank Endpoints
   @Get('questions')
-  @ApiOperation({ summary: 'Get all questions in chapter (with pagination)' })
+  @ApiOperation({ summary: 'Get all questions in chapter (with pagination, search, filter, sort)' })
   async getQuestions(
     @Param('chapterId', ParseIntPipe) chapterId: number,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('type') type?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
     if (page && limit) {
-      return this.questionBankService.findAllByChapterPaginated(chapterId, Number(page), Number(limit));
+      return this.questionBankService.findAllByChapterPaginated(
+        chapterId,
+        Number(page),
+        Number(limit),
+        search,
+        type,
+        sortBy,
+        sortOrder,
+      );
     }
     return this.questionBankService.findAllByChapter(chapterId);
   }
