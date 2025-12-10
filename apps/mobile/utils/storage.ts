@@ -9,16 +9,25 @@ import { Platform } from 'react-native';
 class UniversalStorage {
   private isWeb = Platform.OS === 'web';
 
+  constructor() {
+    console.log('🔧 UniversalStorage initialized');
+    console.log('📱 Platform:', Platform.OS);
+    console.log('🌐 Using:', this.isWeb ? 'localStorage' : 'AsyncStorage');
+  }
+
   /**
    * Get item from storage
    */
   async getItem(key: string): Promise<string | null> {
+    console.log('📖 getItem:', key, '| isWeb:', this.isWeb);
     if (this.isWeb) {
       // Web: use localStorage
       try {
-        return localStorage.getItem(key);
+        const value = localStorage.getItem(key);
+        console.log('✅ localStorage.getItem result:', value ? 'FOUND' : 'NOT FOUND');
+        return value;
       } catch (error) {
-        console.error('localStorage.getItem error:', error);
+        console.error('❌ localStorage.getItem error:', error);
         return null;
       }
     } else {
@@ -31,12 +40,17 @@ class UniversalStorage {
    * Set item in storage
    */
   async setItem(key: string, value: string): Promise<void> {
+    console.log('💾 setItem:', key, '| isWeb:', this.isWeb);
     if (this.isWeb) {
       // Web: use localStorage
       try {
         localStorage.setItem(key, value);
+        console.log('✅ localStorage.setItem SUCCESS');
+        // Verify
+        const saved = localStorage.getItem(key);
+        console.log('🔍 Verification:', saved ? 'SAVED' : 'FAILED');
       } catch (error) {
-        console.error('localStorage.setItem error:', error);
+        console.error('❌ localStorage.setItem error:', error);
       }
     } else {
       // Native: use AsyncStorage
