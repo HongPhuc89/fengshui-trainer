@@ -1,802 +1,489 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fontSizes, spacing } from '@/constants';
-import { quizService } from '@/modules/shared/services/api';
-import { QuizAttempt, QuizQuestion, SubmitQuizResponse } from '@/modules/shared/services/api/types';
-
-const { width } = Dimensions.get('window');
-
-type QuestionType = 'multiple_choice' | 'multiple_answer' | 'true_false';
+import { quizService, QuizSession, Question } from '../../services/api';
 
 export default function QuizScreen() {
-  const { chapterId, bookId } = useLocalSearchParams<{ chapterId: string; bookId: string }>();
-  const router = useRouter();
-  const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
+  const { chapterId } = useLocalSearchParams();
+  const [session, setSession] = useState<QuizSession | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<SubmitQuizResponse | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     startQuiz();
-  }, [chapterId]);
+  }, []);
+
+  useEffect(() => {
+    if (!session || timeRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          handleSubmitQuiz();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [session, timeRemaining]);
 
   const startQuiz = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      const chapterIdNum = parseInt(chapterId as string);
-      const bookIdNum = parseInt(bookId as string);
-      const attemptData = await quizService.startQuiz(bookIdNum, chapterIdNum);
-      setAttempt(attemptData);
-    } catch (err: any) {
-      setError(err.message || 'Không thể bắt đầu quiz');
+      const response = await quizService.startQuiz(Number(chapterId));
+      setSession(response);
+
+      // Calculate time remaining
+      if (response.time_limit_minutes) {
+        setTimeRemaining(response.time_limit_minutes * 60);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to start quiz');
+      router.back();
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleAnswer = (questionId: number, answer: any) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: answer,
-    }));
-  };
+  const handleAnswer = async (answer: any) => {
+    if (!session) return;
 
-  const handleSubmit = async () => {
-    if (!attempt) return;
+    const currentQuestion = session.questions[currentQuestionIndex];
+    const newAnswers = { ...answers, [currentQuestion.id]: answer };
+    setAnswers(newAnswers);
 
-    // Check if all questions are answered
-    const unansweredCount = attempt.questions.filter((q) => !answers[q.id]).length;
-    if (unansweredCount > 0) {
-      Alert.alert('Chưa hoàn thành', `Bạn còn ${unansweredCount} câu chưa trả lời. Bạn có muốn nộp bài không?`, [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Nộp bài', onPress: submitQuiz },
-      ]);
-      return;
-    }
-
-    submitQuiz();
-  };
-
-  const submitQuiz = async () => {
-    if (!attempt) return;
-
+    // Submit answer to backend
     try {
-      setIsSubmitting(true);
-      const chapterIdNum = parseInt(chapterId as string);
-      const bookIdNum = parseInt(bookId as string);
-      const resultData = await quizService.submitQuiz(bookIdNum, chapterIdNum, {
-        attempt_id: attempt.id,
-        answers,
-      });
-      setResult(resultData);
-    } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể nộp bài');
-    } finally {
-      setIsSubmitting(false);
+      await quizService.submitAnswer(session.id, currentQuestion.id, answer);
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+    }
+
+    // Auto move to next question
+    if (currentQuestionIndex < session.questions.length - 1) {
+      setTimeout(() => {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }, 300);
     }
   };
 
-  const nextQuestion = () => {
-    if (attempt && currentQuestionIndex < attempt.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
+  const handleSubmitQuiz = async () => {
+    if (!session) return;
+
+    Alert.alert('Submit Quiz', 'Are you sure you want to submit? You cannot change your answers after submission.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Submit',
+        onPress: async () => {
+          try {
+            setSubmitting(true);
+            await quizService.completeQuiz(session.id);
+
+            // Navigate to result screen
+            router.replace({
+              pathname: '/quiz-result/[sessionId]',
+              params: { sessionId: session.id },
+            });
+          } catch (error: any) {
+            Alert.alert('Error', error.response?.data?.message || 'Failed to submit quiz');
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      },
+    ]);
   };
 
-  const previousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
-            <Text style={styles.loadingText}>Đang chuẩn bị quiz...</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Starting quiz...</Text>
+      </View>
     );
   }
 
-  if (error || !attempt) {
-    return (
-      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Thử Thách</Text>
-          </View>
-          <View style={styles.errorContainer}>
-            <Ionicons name="flash-outline" size={64} color="#F59E0B" />
-            <Text style={styles.errorText}>{error || 'Không thể tải quiz'}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={startQuiz}>
-              <Text style={styles.retryButtonText}>Thử lại</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
+  if (!session) return null;
 
-  // Show result screen
-  if (result) {
-    return (
-      <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Kết Quả</Text>
-          </View>
-
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Result Card */}
-            <View style={styles.resultCard}>
-              <LinearGradient
-                colors={
-                  result.passed
-                    ? (['#10B981', '#059669'] as [string, string, ...string[]])
-                    : (['#EF4444', '#DC2626'] as [string, string, ...string[]])
-                }
-                style={styles.resultCardGradient}
-              >
-                <Ionicons name={result.passed ? 'checkmark-circle' : 'close-circle'} size={80} color="#fff" />
-                <Text style={styles.resultTitle}>{result.passed ? 'Chúc mừng! 🎉' : 'Cố gắng lần sau! 💪'}</Text>
-                <Text style={styles.resultScore}>{result.score}%</Text>
-                <Text style={styles.resultSubtitle}>
-                  {result.correctAnswers}/{result.totalQuestions} câu đúng
-                </Text>
-                <View style={styles.resultStats}>
-                  <View style={styles.resultStat}>
-                    <Text style={styles.resultStatLabel}>Điểm đạt được</Text>
-                    <Text style={styles.resultStatValue}>
-                      {result.earnedPoints}/{result.totalPoints}
-                    </Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            {/* Detailed Results */}
-            <View style={styles.detailsSection}>
-              <Text style={styles.detailsTitle}>Chi tiết kết quả</Text>
-              {result.results.map((questionResult, index) => {
-                const question = attempt.questions.find((q) => q.id === questionResult.questionId);
-                if (!question) return null;
-
-                return (
-                  <View key={questionResult.questionId} style={styles.questionResultCard}>
-                    <View style={styles.questionResultHeader}>
-                      <View style={styles.questionResultNumber}>
-                        <Text style={styles.questionResultNumberText}>{index + 1}</Text>
-                      </View>
-                      <Ionicons
-                        name={questionResult.isCorrect ? 'checkmark-circle' : 'close-circle'}
-                        size={24}
-                        color={questionResult.isCorrect ? '#10B981' : '#EF4444'}
-                      />
-                    </View>
-                    <Text style={styles.questionResultText}>{question.question}</Text>
-                    <View style={styles.questionResultFooter}>
-                      <Text
-                        style={[
-                          styles.questionResultStatus,
-                          questionResult.isCorrect
-                            ? styles.questionResultStatusCorrect
-                            : styles.questionResultStatusWrong,
-                        ]}
-                      >
-                        {questionResult.isCorrect ? '✓ Đúng' : '✗ Sai'}
-                      </Text>
-                      <Text style={styles.questionResultPoints}>+{questionResult.pointsEarned} điểm</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Actions */}
-            <View style={styles.resultActions}>
-              <TouchableOpacity style={styles.resultActionButton} onPress={startQuiz}>
-                <LinearGradient
-                  colors={['#F59E0B', '#D97706'] as [string, string, ...string[]]}
-                  style={styles.resultActionButtonGradient}
-                >
-                  <Ionicons name="refresh" size={24} color="#fff" />
-                  <Text style={styles.resultActionButtonText}>Làm lại</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.resultActionButton} onPress={() => router.back()}>
-                <View style={styles.resultActionButtonOutline}>
-                  <Ionicons name="home" size={24} color="#F59E0B" />
-                  <Text style={styles.resultActionButtonOutlineText}>Về trang chủ</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.bottomSpacer} />
-          </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
-
-  const currentQuestion = attempt.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / attempt.questions.length) * 100;
-  const currentAnswer = answers[currentQuestion.id];
+  const currentQuestion = session.questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / session.questions.length) * 100;
 
   return (
-    <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#1f2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thử Thách</Text>
-          <View style={styles.headerRight}>
-            <Text style={styles.progressText}>
-              {currentQuestionIndex + 1}/{attempt.questions.length}
+          <View style={styles.timerContainer}>
+            <Ionicons name="time-outline" size={20} color={timeRemaining < 60 ? '#ef4444' : '#6366f1'} />
+            <Text style={[styles.timerText, timeRemaining < 60 && styles.timerWarning]}>
+              {formatTime(timeRemaining)}
             </Text>
           </View>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
+          <Text style={styles.progressText}>
+            {currentQuestionIndex + 1} / {session.questions.length}
+          </Text>
+        </View>
+      </View>
+
+      {/* Question */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.questionCard}>
+          <View style={styles.questionHeader}>
+            <View style={[styles.difficultyBadge, styles[`difficulty${currentQuestion.difficulty}`]]}>
+              <Text style={styles.difficultyText}>{currentQuestion.difficulty}</Text>
+            </View>
+            <Text style={styles.pointsText}>{currentQuestion.points} points</Text>
+          </View>
+
+          <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
+
+          {/* Render options based on question type */}
+          <View style={styles.optionsContainer}>
+            {renderOptions(currentQuestion, answers[currentQuestion.id], handleAnswer)}
           </View>
         </View>
-
-        {/* Question */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.questionCard}>
-            <View style={styles.questionHeader}>
-              <View style={styles.difficultyBadge}>
-                <Text style={styles.difficultyText}>
-                  {currentQuestion.difficulty === 'easy'
-                    ? '🟢 Dễ'
-                    : currentQuestion.difficulty === 'medium'
-                      ? '🟡 Trung bình'
-                      : '🔴 Khó'}
-                </Text>
-              </View>
-              <Text style={styles.pointsText}>{currentQuestion.points} điểm</Text>
-            </View>
-            <Text style={styles.questionText}>{currentQuestion.question}</Text>
-          </View>
-
-          {/* Options */}
-          <View style={styles.optionsContainer}>{renderOptions(currentQuestion, currentAnswer, handleAnswer)}</View>
-
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
 
         {/* Navigation */}
-        <View style={styles.navigationContainer}>
+        <View style={styles.navigation}>
           <TouchableOpacity
             style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
-            onPress={previousQuestion}
+            onPress={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
             disabled={currentQuestionIndex === 0}
           >
-            <Ionicons name="chevron-back" size={24} color={currentQuestionIndex === 0 ? '#6B7280' : '#fff'} />
+            <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? '#9ca3af' : '#6366f1'} />
             <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.navButtonTextDisabled]}>
-              Trước
+              Previous
             </Text>
           </TouchableOpacity>
 
-          {currentQuestionIndex === attempt.questions.length - 1 ? (
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
-              <LinearGradient
-                colors={['#10B981', '#059669'] as [string, string, ...string[]]}
-                style={styles.submitButtonGradient}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-done" size={24} color="#fff" />
-                    <Text style={styles.submitButtonText}>Nộp bài</Text>
-                  </>
-                )}
-              </LinearGradient>
+          {currentQuestionIndex === session.questions.length - 1 ? (
+            <TouchableOpacity
+              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+              onPress={handleSubmitQuiz}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>Submit Quiz</Text>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                </>
+              )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.navButton} onPress={nextQuestion}>
-              <Text style={styles.navButtonText}>Tiếp</Text>
-              <Ionicons name="chevron-forward" size={24} color="#fff" />
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+            >
+              <Text style={styles.navButtonText}>Next</Text>
+              <Ionicons name="chevron-forward" size={20} color="#6366f1" />
             </TouchableOpacity>
           )}
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+      </ScrollView>
+    </View>
   );
 }
 
-function renderOptions(
-  question: QuizQuestion,
-  currentAnswer: any,
-  handleAnswer: (questionId: number, answer: any) => void,
-) {
-  const options = question.options;
-
-  if (question.type === 'true_false') {
-    return (
-      <>
-        <TouchableOpacity
-          style={[styles.option, currentAnswer === true && styles.optionSelected]}
-          onPress={() => handleAnswer(question.id, true)}
-        >
-          <View style={styles.optionRadio}>
-            {currentAnswer === true && <View style={styles.optionRadioSelected} />}
-          </View>
-          <Text style={styles.optionText}>Đúng</Text>
-          {currentAnswer === true && <Ionicons name="checkmark" size={20} color="#10B981" />}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.option, currentAnswer === false && styles.optionSelected]}
-          onPress={() => handleAnswer(question.id, false)}
-        >
-          <View style={styles.optionRadio}>
-            {currentAnswer === false && <View style={styles.optionRadioSelected} />}
-          </View>
-          <Text style={styles.optionText}>Sai</Text>
-          {currentAnswer === false && <Ionicons name="checkmark" size={20} color="#10B981" />}
-        </TouchableOpacity>
-      </>
-    );
-  }
-
-  if (question.type === 'multiple_choice') {
-    return options.map((option: any, index: number) => {
-      const isSelected = currentAnswer === option.value || currentAnswer === index;
+function renderOptions(question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) {
+  switch (question.question_type) {
+    case 'TRUE_FALSE':
       return (
-        <TouchableOpacity
-          key={index}
-          style={[styles.option, isSelected && styles.optionSelected]}
-          onPress={() => handleAnswer(question.id, option.value || index)}
-        >
-          <View style={styles.optionRadio}>{isSelected && <View style={styles.optionRadioSelected} />}</View>
-          <Text style={styles.optionText}>{option.text || option}</Text>
-          {isSelected && <Ionicons name="checkmark" size={20} color="#10B981" />}
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={[styles.optionButton, selectedAnswer === true && styles.optionButtonSelected]}
+            onPress={() => onAnswer(true)}
+          >
+            <Text style={[styles.optionText, selectedAnswer === true && styles.optionTextSelected]}>True</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.optionButton, selectedAnswer === false && styles.optionButtonSelected]}
+            onPress={() => onAnswer(false)}
+          >
+            <Text style={[styles.optionText, selectedAnswer === false && styles.optionTextSelected]}>False</Text>
+          </TouchableOpacity>
+        </>
       );
-    });
-  }
 
-  if (question.type === 'multiple_answer') {
-    const selectedAnswers = currentAnswer || [];
-    return options.map((option: any, index: number) => {
-      const value = option.value || index;
-      const isSelected = selectedAnswers.includes(value);
-      return (
+    case 'MULTIPLE_CHOICE':
+      return question.options.options.map((opt: any) => (
         <TouchableOpacity
-          key={index}
-          style={[styles.option, isSelected && styles.optionSelected]}
-          onPress={() => {
-            const newAnswers = isSelected
-              ? selectedAnswers.filter((a: any) => a !== value)
-              : [...selectedAnswers, value];
-            handleAnswer(question.id, newAnswers);
-          }}
+          key={opt.id}
+          style={[styles.optionButton, selectedAnswer === opt.id && styles.optionButtonSelected]}
+          onPress={() => onAnswer(opt.id)}
         >
-          <View style={styles.optionCheckbox}>
-            {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
-          </View>
-          <Text style={styles.optionText}>{option.text || option}</Text>
+          <Text style={[styles.optionText, selectedAnswer === opt.id && styles.optionTextSelected]}>
+            {opt.id.toUpperCase()}. {opt.text}
+          </Text>
         </TouchableOpacity>
-      );
-    });
-  }
+      ));
 
-  return null;
+    case 'MULTIPLE_ANSWER':
+      const selectedAnswers = selectedAnswer || [];
+      return question.options.options.map((opt: any) => {
+        const isSelected = selectedAnswers.includes(opt.id);
+        return (
+          <TouchableOpacity
+            key={opt.id}
+            style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+            onPress={() => {
+              const newAnswers = isSelected
+                ? selectedAnswers.filter((a: string) => a !== opt.id)
+                : [...selectedAnswers, opt.id];
+              onAnswer(newAnswers);
+            }}
+          >
+            <View style={styles.checkboxContainer}>
+              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+              <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                {opt.id.toUpperCase()}. {opt.text}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      });
+
+    default:
+      return <Text style={styles.unsupportedText}>Question type not supported in mobile yet</Text>;
+  }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f9fafb',
   },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: fontSizes.xl,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginLeft: spacing.sm,
-  },
-  headerRight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
-  },
-  progressText: {
-    fontSize: fontSizes.sm,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-
-  // Progress Bar
-  progressBarContainer: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  progressBarBackground: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#F59E0B',
-    borderRadius: 3,
-  },
-
-  // Loading & Error
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f9fafb',
   },
   loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.base,
-    color: '#fff',
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
+    backgroundColor: '#fff',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.xl,
+    marginBottom: 16,
   },
-  errorText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.base,
-    color: '#fff',
-    textAlign: 'center',
+  backButton: {
+    padding: 8,
   },
-  retryButton: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: '#F59E0B',
-    borderRadius: 8,
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: fontSizes.base,
+  timerText: {
+    marginLeft: 6,
+    fontSize: 16,
     fontWeight: '600',
+    color: '#6366f1',
   },
-
-  // Content
+  timerWarning: {
+    color: '#ef4444',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  progressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
   content: {
     flex: 1,
+    padding: 20,
   },
-
-  // Question Card
   questionCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#fff',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   questionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   difficultyBadge: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
+  },
+  difficultyEASY: {
+    backgroundColor: '#d1fae5',
+  },
+  difficultyMEDIUM: {
+    backgroundColor: '#fed7aa',
+  },
+  difficultyHARD: {
+    backgroundColor: '#fecaca',
   },
   difficultyText: {
-    fontSize: fontSizes.xs,
-    color: '#fff',
+    fontSize: 12,
     fontWeight: '600',
+    color: '#1f2937',
   },
   pointsText: {
-    fontSize: fontSizes.sm,
-    fontWeight: '700',
-    color: '#F59E0B',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
   },
   questionText: {
-    fontSize: fontSizes.lg,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
-    lineHeight: 28,
+    color: '#1f2937',
+    lineHeight: 26,
+    marginBottom: 20,
   },
-
-  // Options
   optionsContainer: {
-    paddingHorizontal: spacing.lg,
+    gap: 12,
   },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  optionButton: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
   },
-  optionSelected: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: '#10B981',
-  },
-  optionRadio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#6B7280',
-    marginRight: spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optionRadioSelected: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#10B981',
-  },
-  optionCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#6B7280',
-    marginRight: spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+  optionButtonSelected: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#6366f1',
   },
   optionText: {
-    flex: 1,
-    fontSize: fontSizes.base,
-    color: '#fff',
-    lineHeight: 22,
+    fontSize: 16,
+    color: '#4b5563',
   },
-
-  // Navigation
-  navigationContainer: {
+  optionTextSelected: {
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  unsupportedText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    padding: 20,
+  },
+  navigation: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 12,
+    marginBottom: 40,
   },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#6366f1',
   },
   navButtonDisabled: {
-    opacity: 0.3,
+    borderColor: '#e5e7eb',
   },
   navButtonText: {
-    fontSize: fontSizes.base,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
-    marginHorizontal: spacing.xs,
+    color: '#6366f1',
   },
   navButtonTextDisabled: {
-    color: '#6B7280',
+    color: '#9ca3af',
   },
   submitButton: {
     flex: 1,
-    marginLeft: spacing.md,
-  },
-  submitButtonGradient: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#6366f1',
+    paddingVertical: 16,
     borderRadius: 12,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
-    fontSize: fontSizes.base,
-    fontWeight: '700',
-    color: '#fff',
-    marginLeft: spacing.sm,
-  },
-
-  // Result
-  resultCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  resultCardGradient: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  resultTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: spacing.md,
-  },
-  resultScore: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: spacing.sm,
-  },
-  resultSubtitle: {
-    fontSize: fontSizes.lg,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: spacing.xs,
-  },
-  resultStats: {
-    marginTop: spacing.lg,
-    width: '100%',
-  },
-  resultStat: {
-    alignItems: 'center',
-  },
-  resultStatLabel: {
-    fontSize: fontSizes.sm,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  resultStatValue: {
-    fontSize: fontSizes.xl,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: spacing.xs,
-  },
-
-  // Details
-  detailsSection: {
-    paddingHorizontal: spacing.lg,
-  },
-  detailsTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: spacing.md,
-  },
-  questionResultCard: {
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  questionResultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  questionResultNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  questionResultNumberText: {
-    fontSize: fontSizes.sm,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  questionResultText: {
-    fontSize: fontSizes.base,
-    color: '#D1D5DB',
-    marginBottom: spacing.sm,
-  },
-  questionResultFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  questionResultStatus: {
-    fontSize: fontSizes.sm,
+    fontSize: 16,
     fontWeight: '600',
-  },
-  questionResultStatusCorrect: {
-    color: '#10B981',
-  },
-  questionResultStatusWrong: {
-    color: '#EF4444',
-  },
-  questionResultPoints: {
-    fontSize: fontSizes.sm,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-
-  // Result Actions
-  resultActions: {
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  resultActionButton: {
-    marginBottom: spacing.md,
-  },
-  resultActionButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-  },
-  resultActionButtonText: {
-    fontSize: fontSizes.base,
-    fontWeight: '700',
     color: '#fff',
-    marginLeft: spacing.sm,
-  },
-  resultActionButtonOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#F59E0B',
-  },
-  resultActionButtonOutlineText: {
-    fontSize: fontSizes.base,
-    fontWeight: '700',
-    color: '#F59E0B',
-    marginLeft: spacing.sm,
-  },
-
-  // Bottom Spacing
-  bottomSpacer: {
-    height: 40,
   },
 });

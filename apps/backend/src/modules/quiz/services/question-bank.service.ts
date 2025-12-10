@@ -46,6 +46,13 @@ export class QuestionBankService {
     };
   }
 
+  async findActiveByChapter(chapterId: number): Promise<Question[]> {
+    return this.questionRepository.find({
+      where: { chapter_id: chapterId, is_active: true },
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async findById(questionId: number): Promise<Question> {
     const question = await this.questionRepository.findOne({ where: { id: questionId } });
     if (!question) {
@@ -63,12 +70,6 @@ export class QuestionBankService {
   async delete(questionId: number): Promise<void> {
     const question = await this.findById(questionId);
     await this.questionRepository.remove(question);
-  }
-
-  async findActiveByChapter(chapterId: number): Promise<Question[]> {
-    return this.questionRepository.find({
-      where: { chapter_id: chapterId, is_active: true },
-    });
   }
 
   async exportToCSV(chapterId: number): Promise<string> {
