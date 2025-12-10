@@ -12,6 +12,8 @@ import {
   Checkbox,
   FormGroup,
 } from '@mui/material';
+import { MatchingForm } from '../quiz-forms/MatchingForm';
+import { OrderingForm } from '../quiz-forms/OrderingForm';
 
 interface QuestionFormFieldsProps {
   formData: any;
@@ -44,6 +46,8 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
           <MenuItem value="TRUE_FALSE">True/False</MenuItem>
           <MenuItem value="MULTIPLE_CHOICE">Multiple Choice</MenuItem>
           <MenuItem value="MULTIPLE_ANSWER">Multiple Answer</MenuItem>
+          <MenuItem value="MATCHING">Matching</MenuItem>
+          <MenuItem value="ORDERING">Ordering</MenuItem>
         </Select>
       </FormControl>
 
@@ -151,6 +155,72 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
             ))}
           </FormGroup>
         </Box>
+      )}
+
+      {/* MATCHING Options */}
+      {formData.question_type === 'MATCHING' && (
+        <MatchingForm
+          pairs={formData.matchingPairs}
+          onUpdatePair={(index: number, field: 'left' | 'right', value: string) => {
+            const newPairs = [...formData.matchingPairs];
+            newPairs[index][field] = value;
+            setFormData({ ...formData, matchingPairs: newPairs });
+          }}
+          onAddPair={() => {
+            const newId = Math.max(...formData.matchingPairs.map((p: any) => p.id), 0) + 1;
+            setFormData({
+              ...formData,
+              matchingPairs: [...formData.matchingPairs, { id: newId, left: '', right: '' }],
+            });
+          }}
+          onRemovePair={(index: number) => {
+            setFormData({
+              ...formData,
+              matchingPairs: formData.matchingPairs.filter((_: any, i: number) => i !== index),
+            });
+          }}
+        />
+      )}
+
+      {/* ORDERING Options */}
+      {formData.question_type === 'ORDERING' && (
+        <OrderingForm
+          items={formData.orderingItems}
+          onUpdateItem={(index: number, text: string) => {
+            const newItems = [...formData.orderingItems];
+            newItems[index].text = text;
+            setFormData({ ...formData, orderingItems: newItems });
+          }}
+          onAddItem={() => {
+            const newId = String.fromCharCode(97 + formData.orderingItems.length);
+            setFormData({
+              ...formData,
+              orderingItems: [
+                ...formData.orderingItems,
+                { id: newId, text: '', correct_order: formData.orderingItems.length + 1 },
+              ],
+            });
+          }}
+          onRemoveItem={(index: number) => {
+            const filtered = formData.orderingItems.filter((_: any, i: number) => i !== index);
+            const reordered = filtered.map((item: any, idx: number) => ({ ...item, correct_order: idx + 1 }));
+            setFormData({ ...formData, orderingItems: reordered });
+          }}
+          onMoveUp={(index: number) => {
+            if (index === 0) return;
+            const newItems = [...formData.orderingItems];
+            [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+            const reordered = newItems.map((item: any, idx: number) => ({ ...item, correct_order: idx + 1 }));
+            setFormData({ ...formData, orderingItems: reordered });
+          }}
+          onMoveDown={(index: number) => {
+            if (index === formData.orderingItems.length - 1) return;
+            const newItems = [...formData.orderingItems];
+            [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+            const reordered = newItems.map((item: any, idx: number) => ({ ...item, correct_order: idx + 1 }));
+            setFormData({ ...formData, orderingItems: reordered });
+          }}
+        />
       )}
 
       <TextField

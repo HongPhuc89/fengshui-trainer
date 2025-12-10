@@ -15,6 +15,14 @@ export const initialFormData = {
   correctAnswer: 'a',
   correctAnswers: [] as string[],
   trueFalseAnswer: true,
+  matchingPairs: [
+    { id: 1, left: '', right: '' },
+    { id: 2, left: '', right: '' },
+  ],
+  orderingItems: [
+    { id: 'a', text: '', correct_order: 1 },
+    { id: 'b', text: '', correct_order: 2 },
+  ],
 };
 
 export const useQuestionForm = () => {
@@ -37,6 +45,8 @@ export const useQuestionForm = () => {
       correctAnswer: options.correct_answer || 'a',
       correctAnswers: options.correct_answers || [],
       trueFalseAnswer: options.correct_answer ?? true,
+      matchingPairs: options.pairs || initialFormData.matchingPairs,
+      orderingItems: options.items || initialFormData.orderingItems,
     });
   };
 
@@ -57,6 +67,14 @@ export const useQuestionForm = () => {
         return {
           options: formData.options.filter((opt) => opt.text.trim()),
           correct_answers: formData.correctAnswers,
+        };
+      case 'MATCHING':
+        return {
+          pairs: formData.matchingPairs.filter((pair) => pair.left.trim() && pair.right.trim()),
+        };
+      case 'ORDERING':
+        return {
+          items: formData.orderingItems.filter((item) => item.text.trim()),
         };
       default:
         return {};
