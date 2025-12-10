@@ -62,6 +62,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
   const [deleting, setDeleting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [clearingDuplicates, setClearingDuplicates] = useState(false);
+  const [cleaningQuestions, setCleaningQuestions] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,6 +257,68 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     }
   };
 
+  const handleCleanQuestions = async () => {
+    if (!confirm('Clean all question texts? This will remove prefixes before ":" and trim whitespace.')) {
+      return;
+    }
+
+    try {
+      setCleaningQuestions(true);
+      const token = localStorage.getItem('token');
+
+      let cleanedCount = 0;
+      const errors: string[] = [];
+
+      for (const question of questions) {
+        // Clean question_text: remove prefix before ":" and trim
+        const originalText = question.question_text;
+        let cleanedText = originalText;
+
+        // Check if there's a colon
+        const colonIndex = originalText.indexOf(':');
+        if (colonIndex !== -1) {
+          // Remove everything before and including the colon, then trim
+          cleanedText = originalText.substring(colonIndex + 1).trim();
+        } else {
+          // Just trim if no colon
+          cleanedText = originalText.trim();
+        }
+
+        // Only update if text changed
+        if (cleanedText !== originalText) {
+          try {
+            await axios.put(
+              `${API_URL}/admin/questions/${question.id}`,
+              {
+                ...question,
+                question_text: cleanedText,
+              },
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            cleanedCount++;
+          } catch (error) {
+            errors.push(`Failed to clean question ${question.id}`);
+          }
+        }
+      }
+
+      if (cleanedCount > 0) {
+        notify(`Successfully cleaned ${cleanedCount} questions`, { type: 'success' });
+        fetchQuestions();
+      } else {
+        notify('No questions needed cleaning', { type: 'info' });
+      }
+
+      if (errors.length > 0) {
+        console.error('Clean errors:', errors);
+      }
+    } catch (error) {
+      notify('Error cleaning questions', { type: 'error' });
+    } finally {
+      setCleaningQuestions(false);
+    }
+  };
+
   const handleClearDuplicates = async () => {
     if (!window.confirm('Are you sure you want to remove all duplicate questions? This action cannot be undone.')) {
       return;
@@ -329,6 +392,15 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
             disabled={clearingDuplicates}
           >
             {clearingDuplicates ? 'Clearing...' : 'Clear Duplicates'}
+          </Button>
+          <Button
+            variant="outlined"
+            color="info"
+            startIcon={cleaningQuestions ? <CircularProgress size={16} /> : <DeleteSweepIcon />}
+            onClick={handleCleanQuestions}
+            disabled={cleaningQuestions}
+          >
+            {cleaningQuestions ? 'Cleaning...' : 'Clean Questions'}
           </Button>
           <Button
             variant="contained"
