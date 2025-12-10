@@ -192,7 +192,7 @@ export class QuestionBankService {
       where: { chapter_id: chapterId },
     });
 
-    let cleanedCount = 0;
+    const questionsToUpdate: Question[] = [];
 
     for (const question of questions) {
       const originalText = question.question_text;
@@ -208,15 +208,19 @@ export class QuestionBankService {
         cleanedText = originalText.trim();
       }
 
-      // Only update if text changed
+      // Only add to update list if text changed
       if (cleanedText !== originalText) {
         question.question_text = cleanedText;
-        await this.questionRepository.save(question);
-        cleanedCount++;
+        questionsToUpdate.push(question);
       }
     }
 
-    return { cleaned: cleanedCount };
+    // Bulk save all modified questions in one operation
+    if (questionsToUpdate.length > 0) {
+      await this.questionRepository.save(questionsToUpdate);
+    }
+
+    return { cleaned: questionsToUpdate.length };
   }
 
   private parseCSVLine(line: string): string[] {
