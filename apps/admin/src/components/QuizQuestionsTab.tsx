@@ -56,6 +56,14 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [csvContent, setCsvContent] = useState('');
 
+  // Loading states for different operations
+  const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [clearingDuplicates, setClearingDuplicates] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { formData, setFormData, resetForm, loadQuestion, buildOptionsJson } = useQuestionForm();
   const notify = useNotify();
@@ -97,6 +105,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
 
   const handleCreate = async () => {
     try {
+      setCreating(true);
       const token = localStorage.getItem('token');
       const options = buildOptionsJson();
 
@@ -119,6 +128,8 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(1);
     } catch (error) {
       notify('Error creating question', { type: 'error' });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -132,6 +143,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     if (!editingQuestion) return;
 
     try {
+      setUpdating(true);
       const token = localStorage.getItem('token');
       const options = buildOptionsJson();
 
@@ -155,6 +167,8 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(page);
     } catch (error) {
       notify('Error updating question', { type: 'error' });
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -162,6 +176,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     if (!window.confirm('Delete this question?')) return;
 
     try {
+      setDeleting(true);
       const token = localStorage.getItem('token');
       await axios.delete(`${API_URL}/admin/chapters/${chapterId}/questions/${questionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -170,11 +185,14 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(page);
     } catch (error) {
       notify('Error deleting question', { type: 'error' });
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleExportCSV = async () => {
     try {
+      setExporting(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/admin/chapters/${chapterId}/questions/export/csv`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -191,6 +209,8 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       notify('Questions exported successfully', { type: 'success' });
     } catch (error) {
       notify('Error exporting questions', { type: 'error' });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -208,6 +228,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
 
   const handleImportCSV = async () => {
     try {
+      setImporting(true);
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/admin/chapters/${chapterId}/questions/import/csv`,
@@ -230,6 +251,8 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(1);
     } catch (error) {
       notify('Error importing questions', { type: 'error' });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -239,6 +262,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     }
 
     try {
+      setClearingDuplicates(true);
       const token = localStorage.getItem('token');
       const response = await axios.delete(`${API_URL}/admin/chapters/${chapterId}/questions/duplicates`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -248,6 +272,8 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(page);
     } catch (error) {
       notify('Error clearing duplicates', { type: 'error' });
+    } finally {
+      setClearingDuplicates(false);
     }
   };
 
@@ -279,16 +305,37 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">Quiz Questions ({total} total)</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV}>
-            Export CSV
+          <Button
+            variant="outlined"
+            startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+            onClick={handleExportCSV}
+            disabled={exporting}
+          >
+            {exporting ? 'Exporting...' : 'Export CSV'}
           </Button>
-          <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => fileInputRef.current?.click()}>
+          <Button
+            variant="outlined"
+            startIcon={<UploadIcon />}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
             Import CSV
           </Button>
-          <Button variant="outlined" color="warning" startIcon={<DeleteSweepIcon />} onClick={handleClearDuplicates}>
-            Clear Duplicates
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={clearingDuplicates ? <CircularProgress size={16} /> : <DeleteSweepIcon />}
+            onClick={handleClearDuplicates}
+            disabled={clearingDuplicates}
+          >
+            {clearingDuplicates ? 'Clearing...' : 'Clear Duplicates'}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+            disabled={creating}
+          >
             Add Question
           </Button>
         </Box>
@@ -349,7 +396,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       />
 
       {/* Import CSV Dialog */}
-      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={importDialogOpen} onClose={() => !importing && setImportDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Import Questions from CSV</DialogTitle>
         <DialogContent>
           <TextField
@@ -360,12 +407,20 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
             onChange={(e) => setCsvContent(e.target.value)}
             sx={{ mt: 2 }}
             placeholder="Paste CSV content here or select a file..."
+            disabled={importing}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleImportCSV} variant="contained">
-            Import
+          <Button onClick={() => setImportDialogOpen(false)} disabled={importing}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleImportCSV}
+            variant="contained"
+            disabled={importing}
+            startIcon={importing ? <CircularProgress size={16} /> : null}
+          >
+            {importing ? 'Importing...' : 'Import'}
           </Button>
         </DialogActions>
       </Dialog>

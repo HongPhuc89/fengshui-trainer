@@ -177,9 +177,9 @@ export class QuestionBankService {
       }
     }
 
-    // Delete duplicates
-    for (const id of duplicateIds) {
-      await this.delete(id);
+    // Delete duplicates in bulk (more efficient than loop)
+    if (duplicateIds.length > 0) {
+      await this.questionRepository.delete(duplicateIds);
     }
 
     return { removed: duplicateIds.length };
