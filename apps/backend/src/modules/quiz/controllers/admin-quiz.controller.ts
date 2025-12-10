@@ -79,6 +79,16 @@ export class AdminQuizController {
     };
   }
 
+  @Post('questions/clean')
+  @ApiOperation({ summary: 'Clean question texts (remove prefixes before colon)' })
+  async cleanQuestions(@Param('chapterId', ParseIntPipe) chapterId: number) {
+    const result = await this.questionBankService.cleanQuestions(chapterId);
+    return {
+      message: `Cleaned ${result.cleaned} questions`,
+      cleaned: result.cleaned,
+    };
+  }
+
   @Put('questions/:questionId')
   @ApiOperation({ summary: 'Update question (full update)' })
   async updateQuestion(

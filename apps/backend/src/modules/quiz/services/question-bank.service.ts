@@ -186,6 +186,39 @@ export class QuestionBankService {
     return { removed: duplicateIds.length };
   }
 
+  async cleanQuestions(chapterId: number): Promise<{ cleaned: number }> {
+    // Get all questions for this chapter
+    const questions = await this.questionRepository.find({
+      where: { chapter_id: chapterId },
+    });
+
+    let cleanedCount = 0;
+
+    for (const question of questions) {
+      const originalText = question.question_text;
+      let cleanedText = originalText;
+
+      // Check if there's a colon
+      const colonIndex = originalText.indexOf(':');
+      if (colonIndex !== -1) {
+        // Remove everything before and including the colon, then trim
+        cleanedText = originalText.substring(colonIndex + 1).trim();
+      } else {
+        // Just trim if no colon
+        cleanedText = originalText.trim();
+      }
+
+      // Only update if text changed
+      if (cleanedText !== originalText) {
+        question.question_text = cleanedText;
+        await this.questionRepository.save(question);
+        cleanedCount++;
+      }
+    }
+
+    return { cleaned: cleanedCount };
+  }
+
   private parseCSVLine(line: string): string[] {
     const result: string[] = [];
     let current = '';
