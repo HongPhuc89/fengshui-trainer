@@ -21,6 +21,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { QuestionTableRow } from './quiz-question-forms/QuestionTableRow';
 import { QuestionDialog } from './quiz-question-forms/QuestionDialog';
 import { useQuestionForm } from './quiz-question-forms/useQuestionForm';
@@ -214,7 +215,12 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      notify(`Import completed: ${response.data.success} questions added`, { type: 'success' });
+      let message = `Import completed: ${response.data.success} questions added`;
+      if (response.data.skipped > 0) {
+        message += `, ${response.data.skipped} duplicates skipped`;
+      }
+      notify(message, { type: 'success' });
+
       if (response.data.errors.length > 0) {
         console.warn('Import errors:', response.data.errors);
       }
@@ -224,6 +230,24 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(1);
     } catch (error) {
       notify('Error importing questions', { type: 'error' });
+    }
+  };
+
+  const handleClearDuplicates = async () => {
+    if (!window.confirm('Are you sure you want to remove all duplicate questions? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(`${API_URL}/admin/chapters/${chapterId}/questions/duplicates`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      notify(response.data.message, { type: 'success' });
+      fetchQuestions(page);
+    } catch (error) {
+      notify('Error clearing duplicates', { type: 'error' });
     }
   };
 
@@ -260,6 +284,9 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
           </Button>
           <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => fileInputRef.current?.click()}>
             Import CSV
+          </Button>
+          <Button variant="outlined" color="warning" startIcon={<DeleteSweepIcon />} onClick={handleClearDuplicates}>
+            Clear Duplicates
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
             Add Question

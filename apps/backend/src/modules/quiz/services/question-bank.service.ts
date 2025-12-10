@@ -94,14 +94,22 @@ export class QuestionBankService {
     return rows.join('\n');
   }
 
-  async importFromCSV(chapterId: number, csvContent: string): Promise<{ success: number; errors: string[] }> {
+  async importFromCSV(
+    chapterId: number,
+    csvContent: string,
+  ): Promise<{ success: number; errors: string[]; skipped: number }> {
     const lines = csvContent.split('\n').filter((line) => line.trim());
     if (lines.length < 2) {
-      return { success: 0, errors: ['CSV file is empty or invalid'] };
+      return { success: 0, errors: ['CSV file is empty or invalid'], skipped: 0 };
     }
 
     const errors: string[] = [];
     let successCount = 0;
+    let skippedCount = 0;
+
+    // Get existing questions to check for duplicates
+    const existingQuestions = await this.findAllByChapter(chapterId);
+    const existingTexts = new Set(existingQuestions.map((q) => q.question_text.trim().toLowerCase()));
 
     // Skip header
     for (let i = 1; i < lines.length; i++) {
@@ -113,6 +121,12 @@ export class QuestionBankService {
         }
 
         const [questionType, difficulty, questionText, pointsStr, optionsStr, explanation] = row;
+
+        // Check for duplicate
+        if (existingTexts.has(questionText.trim().toLowerCase())) {
+          skippedCount++;
+          continue;
+        }
 
         const points = parseInt(pointsStr, 10);
         if (isNaN(points)) {
@@ -143,7 +157,32 @@ export class QuestionBankService {
       }
     }
 
-    return { success: successCount, errors };
+    return { success: successCount, errors, skipped: skippedCount };
+  }
+
+  async clearDuplicates(chapterId: number): Promise<{ removed: number }> {
+    const questions = await this.findAllByChapter(chapterId);
+
+    const seen = new Map<string, number>();
+    const duplicateIds: number[] = [];
+
+    // Find duplicates based on question_text (case-insensitive)
+    for (const question of questions) {
+      const key = question.question_text.trim().toLowerCase();
+      if (seen.has(key)) {
+        // Keep the first one, mark this as duplicate
+        duplicateIds.push(question.id);
+      } else {
+        seen.set(key, question.id);
+      }
+    }
+
+    // Delete duplicates
+    for (const id of duplicateIds) {
+      await this.delete(id);
+    }
+
+    return { removed: duplicateIds.length };
   }
 
   private parseCSVLine(line: string): string[] {
