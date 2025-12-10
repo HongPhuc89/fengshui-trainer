@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../../../utils/storage';
 import { authService } from '../api';
 import type { UserResponse } from '../api';
 
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
 
       // Check if token exists
-      const token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
 
       if (token) {
         // Try to get user profile
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Auth check failed:', error);
       setUser(null);
       // Clear invalid token
-      await AsyncStorage.removeItem(STORAGE_KEY_TOKEN);
+      await storage.removeItem(STORAGE_KEY_TOKEN);
     } finally {
       setIsLoading(false);
     }

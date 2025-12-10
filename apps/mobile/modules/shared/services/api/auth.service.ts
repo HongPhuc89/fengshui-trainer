@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../../../utils/storage';
 import { apiClient } from './client';
 import {
   LoginRequest,
@@ -30,10 +30,10 @@ class AuthService {
 
     // Store tokens
     if (response.accessToken) {
-      await AsyncStorage.setItem(STORAGE_KEY_TOKEN, response.accessToken);
+      await storage.setItem(STORAGE_KEY_TOKEN, response.accessToken);
     }
     if (response.refreshToken) {
-      await AsyncStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, response.refreshToken);
+      await storage.setItem(STORAGE_KEY_REFRESH_TOKEN, response.refreshToken);
     }
 
     return response;
@@ -54,10 +54,10 @@ class AuthService {
 
     // Update stored tokens
     if (response.accessToken) {
-      await AsyncStorage.setItem(STORAGE_KEY_TOKEN, response.accessToken);
+      await storage.setItem(STORAGE_KEY_TOKEN, response.accessToken);
     }
     if (response.refreshToken) {
-      await AsyncStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, response.refreshToken);
+      await storage.setItem(STORAGE_KEY_REFRESH_TOKEN, response.refreshToken);
     }
 
     return response;
@@ -70,14 +70,14 @@ class AuthService {
     await apiClient.post('/auth/logout');
 
     // Clear stored tokens
-    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_REFRESH_TOKEN]);
+    await storage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_REFRESH_TOKEN]);
   }
 
   /**
    * Check if user is authenticated
    */
   async isAuthenticated(): Promise<boolean> {
-    const token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+    const token = await storage.getItem(STORAGE_KEY_TOKEN);
     return !!token;
   }
 
@@ -85,14 +85,14 @@ class AuthService {
    * Get stored access token
    */
   async getAccessToken(): Promise<string | null> {
-    return AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+    return storage.getItem(STORAGE_KEY_TOKEN);
   }
 
   /**
    * Get stored refresh token
    */
   async getRefreshToken(): Promise<string | null> {
-    return AsyncStorage.getItem(STORAGE_KEY_REFRESH_TOKEN);
+    return storage.getItem(STORAGE_KEY_REFRESH_TOKEN);
   }
 }
 
