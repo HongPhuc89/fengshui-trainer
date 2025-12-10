@@ -27,6 +27,25 @@ export class QuestionBankService {
     });
   }
 
+  async findAllByChapterPaginated(chapterId: number, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+
+    const [questions, total] = await this.questionRepository.findAndCount({
+      where: { chapter_id: chapterId },
+      order: { difficulty: 'ASC', created_at: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: questions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async findById(questionId: number): Promise<Question> {
     const question = await this.questionRepository.findOne({ where: { id: questionId } });
     if (!question) {

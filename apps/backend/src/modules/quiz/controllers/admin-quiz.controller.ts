@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseIntPipe, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { QuizConfigService } from '../services/quiz-config.service';
 import { QuestionBankService } from '../services/question-bank.service';
@@ -51,8 +51,15 @@ export class AdminQuizController {
 
   // Question Bank Endpoints
   @Get('questions')
-  @ApiOperation({ summary: 'Get all questions in chapter' })
-  async getQuestions(@Param('chapterId', ParseIntPipe) chapterId: number) {
+  @ApiOperation({ summary: 'Get all questions in chapter (with pagination)' })
+  async getQuestions(
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    if (page && limit) {
+      return this.questionBankService.findAllByChapterPaginated(chapterId, Number(page), Number(limit));
+    }
     return this.questionBankService.findAllByChapter(chapterId);
   }
 
@@ -63,8 +70,17 @@ export class AdminQuizController {
   }
 
   @Put('questions/:questionId')
-  @ApiOperation({ summary: 'Update question' })
+  @ApiOperation({ summary: 'Update question (full update)' })
   async updateQuestion(
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body() updateDto: Partial<CreateQuestionDto>,
+  ) {
+    return this.questionBankService.update(questionId, updateDto);
+  }
+
+  @Patch('questions/:questionId')
+  @ApiOperation({ summary: 'Update question (partial update)' })
+  async patchQuestion(
     @Param('questionId', ParseIntPipe) questionId: number,
     @Body() updateDto: Partial<CreateQuestionDto>,
   ) {
