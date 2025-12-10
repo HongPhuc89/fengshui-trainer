@@ -23,12 +23,12 @@ describe('AuthService', () => {
   const mockUser: User = {
     id: 1,
     email: 'test@example.com',
-    role: UserRole.USER,
+    role: UserRole.NORMAL_USER,
     refresh_token: 'hashed_refresh_token',
     last_login_at: new Date(),
     created_at: new Date(),
     updated_at: new Date(),
-  };
+  } as any;
 
   const mockTokens = {
     access_token: 'mock_access_token',
@@ -118,7 +118,7 @@ describe('AuthService', () => {
     const registerDto: RegisterRequestDto = {
       email: 'newuser@example.com',
       password: 'password123',
-      name: 'New User',
+      full_name: 'New User',
     };
 
     it('should register a new user successfully', async () => {
@@ -159,6 +159,10 @@ describe('AuthService', () => {
       id: mockUser.id,
       email: mockUser.email,
       role: mockUser.role,
+      full_name: 'Test User',
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
     it('should login user successfully', async () => {
