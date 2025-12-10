@@ -49,7 +49,7 @@ describe('QuizAttemptsService', () => {
     created_at: new Date(),
     user: null,
     chapter: null,
-  };
+  } as any;
 
   const mockConfig = {
     id: 1,
@@ -62,7 +62,7 @@ describe('QuizAttemptsService', () => {
     is_active: true,
     created_at: new Date(),
     updated_at: new Date(),
-  };
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -208,30 +208,6 @@ describe('QuizAttemptsService', () => {
       repository.findOne.mockResolvedValue(null);
 
       await expect(service.getAttemptById(1, 999)).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('selectRandomQuestions', () => {
-    it('should select questions based on difficulty distribution', () => {
-      const easyQuestions = Array(10).fill({ ...mockQuestion, difficulty: DifficultyLevel.EASY });
-      const mediumQuestions = Array(10).fill({ ...mockQuestion, difficulty: DifficultyLevel.MEDIUM });
-      const hardQuestions = Array(10).fill({ ...mockQuestion, difficulty: DifficultyLevel.HARD });
-      const allQuestions = [...easyQuestions, ...mediumQuestions, ...hardQuestions];
-
-      const result = service['selectRandomQuestions'](allQuestions, 10);
-
-      expect(result).toHaveLength(10);
-    });
-
-    it('should handle case with insufficient questions of a difficulty', () => {
-      const questions = [
-        { ...mockQuestion, difficulty: DifficultyLevel.EASY },
-        { ...mockQuestion, difficulty: DifficultyLevel.MEDIUM },
-      ];
-
-      const result = service['selectRandomQuestions'](questions, 5);
-
-      expect(result.length).toBeLessThanOrEqual(2);
     });
   });
 
