@@ -53,7 +53,7 @@ export default function BookDetailScreen() {
 
   const handleChapterPress = (chapterId: number) => {
     console.log('Chapter pressed:', chapterId);
-    // TODO: Navigate to chapter detail
+    router.push(`/books/chapters/${chapterId}?bookId=${id}`);
   };
 
   if (isLoading) {
@@ -103,8 +103,8 @@ export default function BookDetailScreen() {
           <View style={styles.bookHeaderCard}>
             {/* Book Cover */}
             <View style={styles.coverContainer}>
-              {book.cover_file?.path ? (
-                <Image source={{ uri: book.cover_file.path }} style={styles.cover} resizeMode="cover" />
+              {book.coverImage ? (
+                <Image source={{ uri: book.coverImage }} style={styles.cover} resizeMode="cover" />
               ) : (
                 <View style={styles.placeholderCover}>
                   <Ionicons name="book" size={40} color="#6B7280" />
