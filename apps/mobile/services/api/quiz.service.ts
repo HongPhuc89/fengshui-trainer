@@ -29,6 +29,17 @@ export interface QuizResult extends QuizSession {
   score: number;
   percentage: number;
   passed: boolean;
+  passing_score_percentage?: number;
+  correct_count?: number;
+  incorrect_count?: number;
+  total_questions?: number;
+  results?: Array<{
+    question_id: number;
+    question_text: string;
+    is_correct: boolean;
+    points: number;
+    user_answer: any;
+  }>;
 }
 
 class QuizService {

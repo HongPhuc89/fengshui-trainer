@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { quizService, QuizSession, Question } from '../../services/api';
+import { quizService, QuizSession, Question, QuizResult } from '../../services/api';
 import {
   MultipleChoiceQuestion,
   MultipleAnswerQuestion,
@@ -11,6 +11,7 @@ import {
   MatchingQuestion,
   OrderingQuestion,
 } from '../../components/quiz';
+import { QuizResultModal } from '../../components/quiz/QuizResultModal';
 
 export default function ModernQuizScreen() {
   const { chapterId } = useLocalSearchParams();
@@ -21,6 +22,8 @@ export default function ModernQuizScreen() {
   const [submittedAnswers, setSubmittedAnswers] = useState<Set<number>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
 
   useEffect(() => {
     startQuiz();
@@ -108,25 +111,46 @@ export default function ModernQuizScreen() {
     console.log('📊 Session ID:', session.id);
     console.log('📝 Submitted answers:', submittedAnswers.size, '/', session.questions.length);
 
+    console.log('⚠️ Showing confirmation alert...');
     Alert.alert('Nộp bài', 'Bạn có chắc muốn nộp bài? Bạn không thể thay đổi câu trả lời sau khi nộp.', [
-      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Hủy',
+        style: 'cancel',
+        onPress: () => console.log('❌ User cancelled submit'),
+      },
       {
         text: 'Nộp bài',
         onPress: async () => {
+          console.log('🚀 Submit button pressed in alert');
           try {
             console.log('✅ User confirmed submit');
+            console.log('📝 Setting submitting state to true...');
             setSubmitting(true);
 
             console.log('📤 Calling completeQuiz...');
             const result = await quizService.completeQuiz(session.id);
-            console.log('✅ Quiz completed:', result);
+            console.log('✅ Quiz completed successfully!');
+            console.log('📊 Result:', {
+              score: result.score,
+              total_points: result.total_points,
+              percentage: result.percentage,
+              passed: result.passed,
+              passing_score: result.passing_score_percentage,
+            });
 
-            router.replace({
-              pathname: '/quiz-result/[sessionId]',
-              params: { sessionId: session.id.toString() },
+            // Show result modal instead of navigating immediately
+            console.log('🎭 Setting quiz result and showing modal...');
+            console.log('🎭 Result object:', result);
+            console.log('🎭 Calling setQuizResult...');
+            setQuizResult(result);
+            setShowResultModal(true);
+            console.log('🎭 Modal state updated:', {
+              hasResult: !!result,
+              showModal: true,
             });
           } catch (error: any) {
             console.error('❌ Submit error:', error);
+            console.error('❌ Error details:', error.response?.data);
             Alert.alert('Error', error.response?.data?.message || 'Failed to submit quiz');
           } finally {
             setSubmitting(false);
@@ -295,6 +319,36 @@ export default function ModernQuizScreen() {
           <Text style={[styles.timerText, timeRemaining < 60 && styles.timerWarning]}>{formatTime(timeRemaining)}</Text>
         </View>
       </ScrollView>
+
+      {/* Quiz Result Modal */}
+      {quizResult && (
+        <QuizResultModal
+          visible={showResultModal}
+          passed={quizResult.passed || false}
+          score={quizResult.score || 0}
+          totalPoints={quizResult.total_points}
+          percentage={quizResult.percentage || 0}
+          passingScore={quizResult.passing_score_percentage || 70}
+          correctCount={quizResult.correct_count || 0}
+          incorrectCount={quizResult.incorrect_count || 0}
+          totalQuestions={quizResult.total_questions || session?.questions.length || 0}
+          onViewDetails={() => {
+            setShowResultModal(false);
+            router.replace({
+              pathname: '/quiz-result/[sessionId]',
+              params: { sessionId: session?.id.toString() || '' },
+            });
+          }}
+          onRetry={() => {
+            setShowResultModal(false);
+            router.replace(`/quiz/${chapterId}`);
+          }}
+          onClose={() => {
+            setShowResultModal(false);
+            router.back();
+          }}
+        />
+      )}
     </LinearGradient>
   );
 }

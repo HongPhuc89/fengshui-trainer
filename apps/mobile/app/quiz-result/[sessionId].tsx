@@ -17,6 +17,12 @@ export default function QuizResultScreen() {
   const fetchResult = async () => {
     try {
       const response = await quizService.getSession(Number(sessionId));
+      console.log('📊 Quiz Result:', {
+        score: response.score,
+        total_points: response.total_points,
+        percentage: response.percentage,
+        passed: response.passed,
+      });
       setResult(response as QuizResult);
     } catch (error) {
       console.error('Error fetching result:', error);
@@ -58,7 +64,24 @@ export default function QuizResultScreen() {
           <Text style={styles.scoreValue}>
             {result.score} / {result.total_points}
           </Text>
-          <Text style={styles.percentageValue}>{result.percentage.toFixed(1)}%</Text>
+          <Text style={styles.percentageValue}>{result.percentage?.toFixed(1) || 0}%</Text>
+        </View>
+
+        {/* Pass/Fail Status Banner */}
+        <View style={[styles.statusBanner, result.passed ? styles.statusBannerPass : styles.statusBannerFail]}>
+          <Ionicons
+            name={result.passed ? 'trophy' : 'alert-circle'}
+            size={20}
+            color={result.passed ? '#10b981' : '#ef4444'}
+          />
+          <View>
+            <Text style={[styles.statusText, result.passed ? styles.statusTextPass : styles.statusTextFail]}>
+              {result.passed ? `Đạt yêu cầu` : `Chưa đạt yêu cầu`}
+            </Text>
+            {result.passing_score_percentage && (
+              <Text style={styles.passingScoreText}>Điểm chuẩn: {result.passing_score_percentage}%</Text>
+            )}
+          </View>
         </View>
 
         <View style={styles.statsContainer}>
@@ -173,6 +196,40 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#6366f1',
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 2,
+  },
+  statusBannerPass: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10b981',
+  },
+  statusBannerFail: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: '#ef4444',
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statusTextPass: {
+    color: '#10b981',
+  },
+  statusTextFail: {
+    color: '#ef4444',
+  },
+  passingScoreText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
   },
   statsContainer: {
     flexDirection: 'row',

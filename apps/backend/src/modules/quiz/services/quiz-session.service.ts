@@ -121,7 +121,7 @@ export class QuizSessionService {
     return this.sessionRepository.save(session);
   }
 
-  async completeQuiz(sessionId: number, userId: number): Promise<QuizSession> {
+  async completeQuiz(sessionId: number, userId: number): Promise<any> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, user_id: userId },
     });
@@ -137,15 +137,23 @@ export class QuizSessionService {
     // Calculate score
     let score = 0;
     const answers = session.answers || {};
+    const results = [];
 
     for (const question of session.questions) {
       const userAnswer = answers[question.id];
-      if (!userAnswer) continue;
+      const isCorrect = userAnswer ? this.checkAnswer(question, userAnswer) : false;
 
-      const isCorrect = this.checkAnswer(question, userAnswer);
       if (isCorrect) {
         score += question.points;
       }
+
+      results.push({
+        question_id: question.id,
+        question_text: question.question_text,
+        is_correct: isCorrect,
+        points: question.points,
+        user_answer: userAnswer,
+      });
     }
 
     const percentage = (score / session.total_points) * 100;
@@ -161,7 +169,19 @@ export class QuizSessionService {
     session.status = QuizSessionStatus.COMPLETED;
     session.completed_at = new Date();
 
-    return this.sessionRepository.save(session);
+    const savedSession = await this.sessionRepository.save(session);
+
+    // Return detailed results
+    const correctCount = results.filter((r) => r.is_correct).length;
+
+    return {
+      ...savedSession,
+      passing_score_percentage: config.passing_score_percentage,
+      correct_count: correctCount,
+      incorrect_count: session.questions.length - correctCount,
+      total_questions: session.questions.length,
+      results,
+    };
   }
 
   async getSession(sessionId: number, userId: number): Promise<QuizSession> {
