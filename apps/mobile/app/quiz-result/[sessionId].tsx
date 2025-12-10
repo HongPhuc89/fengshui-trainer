@@ -46,15 +46,15 @@ export default function QuizResultScreen() {
         <View style={styles.iconContainer}>
           <Ionicons name={result.passed ? 'checkmark-circle' : 'close-circle'} size={80} color="#fff" />
         </View>
-        <Text style={styles.resultTitle}>{result.passed ? 'Passed!' : 'Failed'}</Text>
+        <Text style={styles.resultTitle}>{result.passed ? 'ĐẠT!' : 'CHƯA ĐẠT'}</Text>
         <Text style={styles.resultSubtitle}>
-          {result.passed ? 'Congratulations! You passed the quiz.' : 'Keep practicing and try again!'}
+          {result.passed ? 'Chúc mừng! Bạn đã vượt qua bài kiểm tra.' : 'Hãy luyện tập thêm và thử lại nhé!'}
         </Text>
       </LinearGradient>
 
       <View style={styles.content}>
         <View style={styles.scoreCard}>
-          <Text style={styles.scoreLabel}>Your Score</Text>
+          <Text style={styles.scoreLabel}>Điểm số của bạn</Text>
           <Text style={styles.scoreValue}>
             {result.score} / {result.total_points}
           </Text>
@@ -65,27 +65,27 @@ export default function QuizResultScreen() {
           <View style={styles.statItem}>
             <Ionicons name="checkmark-circle" size={24} color="#10b981" />
             <Text style={styles.statValue}>{correctCount}</Text>
-            <Text style={styles.statLabel}>Correct</Text>
+            <Text style={styles.statLabel}>Đúng</Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="close-circle" size={24} color="#ef4444" />
             <Text style={styles.statValue}>{result.questions.length - correctCount}</Text>
-            <Text style={styles.statLabel}>Wrong</Text>
+            <Text style={styles.statLabel}>Sai</Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="help-circle" size={24} color="#6b7280" />
             <Text style={styles.statValue}>{result.questions.length}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+            <Text style={styles.statLabel}>Tổng</Text>
           </View>
         </View>
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.primaryButton} onPress={() => router.back()}>
-            <Text style={styles.primaryButtonText}>Back to Chapter</Text>
+            <Text style={styles.primaryButtonText}>Quay lại</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace(`/quiz/${result.id}`)}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace(`/quiz/${result.chapter_id}`)}>
             <Ionicons name="refresh" size={20} color="#6366f1" />
-            <Text style={styles.secondaryButtonText}>Try Again</Text>
+            <Text style={styles.secondaryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       </View>

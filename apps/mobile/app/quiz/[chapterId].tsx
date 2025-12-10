@@ -196,12 +196,31 @@ export default function ModernQuizScreen() {
         {/* Render Question Type */}
         {renderQuestion(currentQuestion, answers[currentQuestion.id], handleSelectAnswer)}
 
-        {/* Confirm Answer Button */}
-        {answers[currentQuestion.id] !== undefined && (
-          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmAnswer} activeOpacity={0.8}>
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.confirmButtonText}>Xác nhận đáp án</Text>
+        {/* Confirm Answer Button or Submit Quiz */}
+        {currentQuestionIndex === session.questions.length - 1 ? (
+          // Last question - only show submit button
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            onPress={handleSubmitQuiz}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-done" size={24} color="#fff" />
+                <Text style={styles.submitButtonText}>NỘP BÀI</Text>
+              </>
+            )}
           </TouchableOpacity>
+        ) : (
+          // Other questions - show confirm button
+          answers[currentQuestion.id] !== undefined && (
+            <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmAnswer} activeOpacity={0.8}>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.confirmButtonText}>Xác nhận đáp án</Text>
+            </TouchableOpacity>
+          )
         )}
 
         {/* Explanation */}
@@ -214,46 +233,6 @@ export default function ModernQuizScreen() {
             <Text style={styles.explanationText}>{(currentQuestion as any).explanation}</Text>
           </View>
         )}
-
-        {/* Navigation */}
-        <View style={styles.navigation}>
-          <TouchableOpacity
-            style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
-            onPress={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
-            disabled={currentQuestionIndex === 0}
-          >
-            <Ionicons name="chevron-back" size={24} color={currentQuestionIndex === 0 ? '#64748b' : '#fff'} />
-          </TouchableOpacity>
-
-          {currentQuestionIndex === session.questions.length - 1 ? (
-            <TouchableOpacity
-              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-              onPress={handleSubmitQuiz}
-              disabled={submitting}
-            >
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>NỘP BÀI</Text>}
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.nextButtonPlaceholder}>
-              <Text style={styles.nextButtonHint}>Xác nhận để chuyển câu tiếp theo</Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              currentQuestionIndex === session.questions.length - 1 && styles.navButtonDisabled,
-            ]}
-            onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-            disabled={currentQuestionIndex === session.questions.length - 1}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={24}
-              color={currentQuestionIndex === session.questions.length - 1 ? '#64748b' : '#fff'}
-            />
-          </TouchableOpacity>
-        </View>
 
         {/* Timer */}
         <View style={styles.timerContainer}>
@@ -422,11 +401,14 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   submitButton: {
-    flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#10b981',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 8,
   },
   submitButtonDisabled: {
     opacity: 0.5,
