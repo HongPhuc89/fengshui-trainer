@@ -41,10 +41,9 @@ export default function QuizResultScreen() {
 
   if (!result) return null;
 
-  const correctCount = result.questions.filter((q) => {
-    const userAnswer = result.answers[q.id];
-    return checkAnswer(q, userAnswer);
-  }).length;
+  // Use correct_count from backend instead of recalculating
+  const correctCount = result.correct_count || 0;
+  const incorrectCount = result.incorrect_count || 0;
 
   return (
     <View style={styles.container}>
@@ -92,7 +91,7 @@ export default function QuizResultScreen() {
           </View>
           <View style={styles.statItem}>
             <Ionicons name="close-circle" size={24} color="#ef4444" />
-            <Text style={styles.statValue}>{result.questions.length - correctCount}</Text>
+            <Text style={styles.statValue}>{incorrectCount}</Text>
             <Text style={styles.statLabel}>Sai</Text>
           </View>
           <View style={styles.statItem}>
@@ -114,23 +113,6 @@ export default function QuizResultScreen() {
       </View>
     </View>
   );
-}
-
-function checkAnswer(question: any, userAnswer: any): boolean {
-  switch (question.question_type) {
-    case 'TRUE_FALSE':
-      return userAnswer === question.options.correct_answer;
-    case 'MULTIPLE_CHOICE':
-      return userAnswer === question.options.correct_answer;
-    case 'MULTIPLE_ANSWER':
-      const correctAnswers = question.options.correct_answers || [];
-      const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
-      return (
-        correctAnswers.length === userAnswers.length && correctAnswers.every((a: string) => userAnswers.includes(a))
-      );
-    default:
-      return false;
-  }
 }
 
 const styles = StyleSheet.create({

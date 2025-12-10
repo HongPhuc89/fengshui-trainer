@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { QuizSession, QuizSessionStatus } from '../entities/quiz-session.entity';
+import { QuizAttempt } from '../entities/quiz-attempt.entity';
 import { QuizConfigService } from './quiz-config.service';
 import { QuestionBankService } from './question-bank.service';
 
@@ -10,6 +11,8 @@ export class QuizSessionService {
   constructor(
     @InjectRepository(QuizSession)
     private readonly sessionRepository: Repository<QuizSession>,
+    @InjectRepository(QuizAttempt)
+    private readonly attemptRepository: Repository<QuizAttempt>,
     private readonly configService: QuizConfigService,
     private readonly questionBankService: QuestionBankService,
   ) {}
@@ -82,8 +85,18 @@ export class QuizSessionService {
       return question;
     });
 
-    // Calculate total points
-    const totalPoints = selectedQuestions.reduce((sum, q) => sum + q.points, 0);
+    // Calculate total points - ensure each question has at least 1 point
+    const totalPoints = selectedQuestions.reduce((sum, q) => sum + (q.points || 1), 0);
+
+    console.log('💯 Total points for quiz:', totalPoints);
+    console.log(
+      '📝 Questions breakdown:',
+      selectedQuestions.map((q) => ({
+        id: q.id,
+        points: q.points || 1,
+        difficulty: q.difficulty,
+      })),
+    );
 
     // Create session
     const session = this.sessionRepository.create({
@@ -134,42 +147,78 @@ export class QuizSessionService {
       throw new BadRequestException('Quiz session is already completed');
     }
 
-    // Calculate score
+    // Calculate score and recalculate total points from actual questions
     let score = 0;
+    let totalPoints = 0;
     const answers = session.answers || {};
     const results = [];
+
+    console.log('🎯 Calculating quiz score...');
+    console.log('📊 Total questions:', session.questions.length);
+    console.log('📝 Answers submitted:', Object.keys(answers).length);
 
     for (const question of session.questions) {
       const userAnswer = answers[question.id];
       const isCorrect = userAnswer ? this.checkAnswer(question, userAnswer) : false;
 
+      // Ensure points has a value (default to 1 if missing)
+      const questionPoints = question.points || 1;
+      totalPoints += questionPoints;
+
+      console.log(`Question ${question.id}:`, {
+        points: questionPoints,
+        isCorrect,
+        userAnswer,
+      });
+
       if (isCorrect) {
-        score += question.points;
+        score += questionPoints;
       }
 
       results.push({
         question_id: question.id,
         question_text: question.question_text,
         is_correct: isCorrect,
-        points: question.points,
+        points: questionPoints,
         user_answer: userAnswer,
       });
     }
 
-    const percentage = (score / session.total_points) * 100;
+    console.log('✅ Final score:', score, '/', totalPoints);
+
+    const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
 
     // Get quiz config to check passing score
     const config = await this.configService.findByChapterId(session.chapter_id);
     const passed = percentage >= config.passing_score_percentage;
 
-    // Update session
+    // Update session with recalculated total_points
     session.score = score;
+    session.total_points = totalPoints;
     session.percentage = percentage;
     session.passed = passed;
     session.status = QuizSessionStatus.COMPLETED;
     session.completed_at = new Date();
 
     const savedSession = await this.sessionRepository.save(session);
+
+    // Create quiz attempt record
+    const questionIds = session.questions.map((q) => q.id);
+    const attempt = this.attemptRepository.create({
+      chapter_id: session.chapter_id,
+      user_id: userId,
+      selected_questions: questionIds,
+      score: score,
+      max_score: totalPoints,
+      percentage: percentage,
+      passed: passed,
+      answers: session.answers,
+      started_at: session.started_at,
+      completed_at: session.completed_at,
+    });
+
+    await this.attemptRepository.save(attempt);
+    console.log('✅ Quiz attempt saved:', attempt.id);
 
     // Return detailed results
     const correctCount = results.filter((r) => r.is_correct).length;
@@ -184,13 +233,37 @@ export class QuizSessionService {
     };
   }
 
-  async getSession(sessionId: number, userId: number): Promise<QuizSession> {
+  async getSession(sessionId: number, userId: number): Promise<any> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, user_id: userId },
     });
 
     if (!session) {
       throw new NotFoundException('Quiz session not found');
+    }
+
+    // If quiz is completed, calculate correct/incorrect counts
+    if (session.status === QuizSessionStatus.COMPLETED) {
+      const answers = session.answers || {};
+      let correctCount = 0;
+
+      for (const question of session.questions) {
+        const userAnswer = answers[question.id];
+        const isCorrect = userAnswer ? this.checkAnswer(question, userAnswer) : false;
+        if (isCorrect) {
+          correctCount++;
+        }
+      }
+
+      const config = await this.configService.findByChapterId(session.chapter_id);
+
+      return {
+        ...session,
+        correct_count: correctCount,
+        incorrect_count: session.questions.length - correctCount,
+        total_questions: session.questions.length,
+        passing_score_percentage: config.passing_score_percentage,
+      };
     }
 
     return session;

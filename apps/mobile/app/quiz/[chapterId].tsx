@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { quizService, QuizSession, Question, QuizResult } from '../../services/api';
+import { quizService, QuizSession, Question } from '../../services/api';
 import {
   MultipleChoiceQuestion,
   MultipleAnswerQuestion,
@@ -11,7 +11,6 @@ import {
   MatchingQuestion,
   OrderingQuestion,
 } from '../../components/quiz';
-import { QuizResultModal } from '../../components/quiz/QuizResultModal';
 
 export default function ModernQuizScreen() {
   const { chapterId } = useLocalSearchParams();
@@ -20,14 +19,18 @@ export default function ModernQuizScreen() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [submittedAnswers, setSubmittedAnswers] = useState<Set<number>>(new Set());
+  const [answerFeedback, setAnswerFeedback] = useState<{ questionId: number; isCorrect: boolean } | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
 
   useEffect(() => {
     startQuiz();
   }, []);
+
+  useEffect(() => {
+    // Clear feedback when changing questions
+    setAnswerFeedback(null);
+  }, [currentQuestionIndex]);
 
   useEffect(() => {
     if (!session || timeRemaining <= 0) return;
@@ -88,16 +91,51 @@ export default function ModernQuizScreen() {
     try {
       await quizService.submitAnswer(session.id, currentQuestion.id, answer);
 
+      // Check if answer is correct
+      const isCorrect = checkAnswer(currentQuestion, answer);
+
+      // Show feedback
+      setAnswerFeedback({ questionId: currentQuestion.id, isCorrect });
+
       // Mark as submitted (lock this question)
       setSubmittedAnswers((prev) => new Set(prev).add(currentQuestion.id));
 
-      // Auto move to next question after confirm
-      if (currentQuestionIndex < session.questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      }
+      // Auto move to next question after showing feedback
+      setTimeout(() => {
+        setAnswerFeedback(null);
+        if (currentQuestionIndex < session.questions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+        }
+      }, 1500); // Show feedback for 1.5 seconds
     } catch (error) {
       console.error('Error submitting answer:', error);
       Alert.alert('Lỗi', 'Không thể lưu câu trả lời. Vui lòng thử lại.');
+    }
+  };
+
+  // Helper function to check if answer is correct
+  const checkAnswer = (question: any, userAnswer: any): boolean => {
+    switch (question.question_type) {
+      case 'TRUE_FALSE':
+        return userAnswer === question.options.correct_answer;
+      case 'MULTIPLE_CHOICE':
+        return userAnswer === question.options.correct_answer;
+      case 'MULTIPLE_ANSWER':
+        const correctAnswers = question.options.correct_answers || [];
+        const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
+        return (
+          correctAnswers.length === userAnswers.length && correctAnswers.every((a: string) => userAnswers.includes(a))
+        );
+      case 'MATCHING':
+        const correctPairs = question.options.pairs || [];
+        const userPairs = userAnswer || {};
+        return correctPairs.every((pair: any) => userPairs[pair.left] === pair.right);
+      case 'ORDERING':
+        const correctOrder = (question.options.items || []).map((item: any) => item.id);
+        const userOrder = Array.isArray(userAnswer) ? userAnswer : [];
+        return JSON.stringify(correctOrder) === JSON.stringify(userOrder);
+      default:
+        return false;
     }
   };
 
@@ -107,57 +145,25 @@ export default function ModernQuizScreen() {
       return;
     }
 
-    console.log('🎯 handleSubmitQuiz called');
-    console.log('📊 Session ID:', session.id);
-    console.log('📝 Submitted answers:', submittedAnswers.size, '/', session.questions.length);
+    console.log('🎯 Submitting quiz...');
 
-    console.log('⚠️ Showing confirmation alert...');
-    Alert.alert('Nộp bài', 'Bạn có chắc muốn nộp bài? Bạn không thể thay đổi câu trả lời sau khi nộp.', [
-      {
-        text: 'Hủy',
-        style: 'cancel',
-        onPress: () => console.log('❌ User cancelled submit'),
-      },
-      {
-        text: 'Nộp bài',
-        onPress: async () => {
-          console.log('🚀 Submit button pressed in alert');
-          try {
-            console.log('✅ User confirmed submit');
-            console.log('📝 Setting submitting state to true...');
-            setSubmitting(true);
+    try {
+      setSubmitting(true);
 
-            console.log('📤 Calling completeQuiz...');
-            const result = await quizService.completeQuiz(session.id);
-            console.log('✅ Quiz completed successfully!');
-            console.log('📊 Result:', {
-              score: result.score,
-              total_points: result.total_points,
-              percentage: result.percentage,
-              passed: result.passed,
-              passing_score: result.passing_score_percentage,
-            });
+      const result = await quizService.completeQuiz(session.id);
+      console.log('✅ Quiz completed:', result);
 
-            // Show result modal instead of navigating immediately
-            console.log('🎭 Setting quiz result and showing modal...');
-            console.log('🎭 Result object:', result);
-            console.log('🎭 Calling setQuizResult...');
-            setQuizResult(result);
-            setShowResultModal(true);
-            console.log('🎭 Modal state updated:', {
-              hasResult: !!result,
-              showModal: true,
-            });
-          } catch (error: any) {
-            console.error('❌ Submit error:', error);
-            console.error('❌ Error details:', error.response?.data);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to submit quiz');
-          } finally {
-            setSubmitting(false);
-          }
-        },
-      },
-    ]);
+      // Navigate to result page
+      router.replace({
+        pathname: '/quiz-result/[sessionId]',
+        params: { sessionId: session.id.toString() },
+      });
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      Alert.alert('Lỗi', error.response?.data?.message || 'Không thể nộp bài');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -302,14 +308,16 @@ export default function ModernQuizScreen() {
           )
         )}
 
-        {/* Explanation */}
-        {answers[currentQuestion.id] && (currentQuestion as any).explanation && (
-          <View style={styles.explanationBox}>
-            <View style={styles.explanationHeader}>
-              <Ionicons name="bulb" size={20} color="#fbbf24" />
-              <Text style={styles.explanationTitle}>GIẢI THÍCH CHI TIẾT</Text>
-            </View>
-            <Text style={styles.explanationText}>{(currentQuestion as any).explanation}</Text>
+        {/* Answer Feedback */}
+        {answerFeedback && answerFeedback.questionId === currentQuestion.id && (
+          <View
+            style={[
+              styles.feedbackBanner,
+              answerFeedback.isCorrect ? styles.feedbackCorrect : styles.feedbackIncorrect,
+            ]}
+          >
+            <Ionicons name={answerFeedback.isCorrect ? 'checkmark-circle' : 'close-circle'} size={32} color="#fff" />
+            <Text style={styles.feedbackText}>{answerFeedback.isCorrect ? 'Chính xác!' : 'Chưa đúng!'}</Text>
           </View>
         )}
 
@@ -319,36 +327,6 @@ export default function ModernQuizScreen() {
           <Text style={[styles.timerText, timeRemaining < 60 && styles.timerWarning]}>{formatTime(timeRemaining)}</Text>
         </View>
       </ScrollView>
-
-      {/* Quiz Result Modal */}
-      {quizResult && (
-        <QuizResultModal
-          visible={showResultModal}
-          passed={quizResult.passed || false}
-          score={quizResult.score || 0}
-          totalPoints={quizResult.total_points}
-          percentage={quizResult.percentage || 0}
-          passingScore={quizResult.passing_score_percentage || 70}
-          correctCount={quizResult.correct_count || 0}
-          incorrectCount={quizResult.incorrect_count || 0}
-          totalQuestions={quizResult.total_questions || session?.questions.length || 0}
-          onViewDetails={() => {
-            setShowResultModal(false);
-            router.replace({
-              pathname: '/quiz-result/[sessionId]',
-              params: { sessionId: session?.id.toString() || '' },
-            });
-          }}
-          onRetry={() => {
-            setShowResultModal(false);
-            router.replace(`/quiz/${chapterId}`);
-          }}
-          onClose={() => {
-            setShowResultModal(false);
-            router.back();
-          }}
-        />
-      )}
     </LinearGradient>
   );
 }
@@ -428,31 +406,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
-  explanationBox: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-  },
-  explanationHeader: {
+  feedbackBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    marginTop: 24,
   },
-  explanationTitle: {
-    fontSize: 12,
+  feedbackCorrect: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+  },
+  feedbackIncorrect: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+  },
+  feedbackText: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#fbbf24',
-    letterSpacing: 1,
-  },
-  explanationText: {
-    fontSize: 14,
-    color: '#e2e8f0',
-    lineHeight: 20,
-    fontStyle: 'italic',
+    color: '#fff',
   },
   navigation: {
     flexDirection: 'row',
