@@ -8,6 +8,7 @@ import { QuizQuestionsTab } from '../components/QuizQuestionsTab';
 import { MindMapTab } from '../components/MindMapTab';
 import { FlashcardsTab } from '../components/FlashcardsTab';
 import { ChapterInfoTab } from '../components/ChapterInfoTab';
+import { QuizConfigTab } from '../components/QuizConfigTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -121,6 +122,7 @@ export const ChapterDetailPage = () => {
           <Tab label="Chapter Details" />
           <Tab label="Flashcards" />
           <Tab label="Quiz Questions" />
+          <Tab label="Quiz Config" />
           <Tab label="Mind Map" />
         </Tabs>
 
@@ -146,6 +148,10 @@ export const ChapterDetailPage = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
+          <QuizConfigTab chapterId={Number(chapterId)} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={4}>
           <MindMapTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>
