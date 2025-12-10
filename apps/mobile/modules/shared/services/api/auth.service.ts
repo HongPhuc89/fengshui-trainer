@@ -26,14 +26,28 @@ class AuthService {
    * Login with email and password
    */
   async login(data: LoginRequest): Promise<LoginResponse> {
+    console.log('🔐 authService.login called');
     const response = await apiClient.post<LoginResponse>('/auth/login', data);
+    console.log('📦 Login response:', response);
+
+    // Handle both camelCase and snake_case
+    const accessToken = (response as any).accessToken || (response as any).access_token;
+    const refreshToken = (response as any).refreshToken || (response as any).refresh_token;
+
+    console.log('🔑 Access token:', accessToken ? 'EXISTS' : 'MISSING');
+    console.log('🔄 Refresh token:', refreshToken ? 'EXISTS' : 'MISSING');
 
     // Store tokens
-    if (response.accessToken) {
-      await storage.setItem(STORAGE_KEY_TOKEN, response.accessToken);
+    if (accessToken) {
+      console.log('💾 Saving access token...');
+      await storage.setItem(STORAGE_KEY_TOKEN, accessToken);
+      console.log('✅ Access token saved');
+    } else {
+      console.error('❌ No access token in response!');
     }
-    if (response.refreshToken) {
-      await storage.setItem(STORAGE_KEY_REFRESH_TOKEN, response.refreshToken);
+
+    if (refreshToken) {
+      await storage.setItem(STORAGE_KEY_REFRESH_TOKEN, refreshToken);
     }
 
     return response;
