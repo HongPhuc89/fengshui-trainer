@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface OrderingItem {
   id: string;
@@ -13,66 +15,86 @@ interface OrderingProps {
   onAnswer: (order: string[]) => void;
 }
 
+interface DraggableItem {
+  id: string;
+  text: string;
+  position: number;
+}
+
 export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingProps) {
-  const moveUp = (index: number) => {
-    if (index === 0) return;
-    const newOrder = [...selectedOrder];
-    [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-    onAnswer(newOrder);
-  };
+  const [data, setData] = useState<DraggableItem[]>([]);
 
-  const moveDown = (index: number) => {
-    if (index === selectedOrder.length - 1) return;
-    const newOrder = [...selectedOrder];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    onAnswer(newOrder);
-  };
-
-  const getItemText = (id: string) => {
-    return items.find((item) => item.id === id)?.text || id;
-  };
-
-  // Initialize order if empty
-  React.useEffect(() => {
+  // Initialize data
+  useEffect(() => {
     if (selectedOrder.length === 0) {
+      // First time - use original order
+      const initialData = items.map((item, index) => ({
+        ...item,
+        position: index + 1,
+      }));
+      setData(initialData);
       onAnswer(items.map((item) => item.id));
+    } else {
+      // Use selected order
+      const orderedData = selectedOrder.map((id, index) => {
+        const item = items.find((i) => i.id === id);
+        return {
+          id,
+          text: item?.text || id,
+          position: index + 1,
+        };
+      });
+      setData(orderedData);
     }
-  }, []);
+  }, [items]);
+
+  const handleDragEnd = ({ data: newData }: { data: DraggableItem[] }) => {
+    // Update positions
+    const updatedData = newData.map((item, index) => ({
+      ...item,
+      position: index + 1,
+    }));
+    setData(updatedData);
+
+    // Update answer
+    const newOrder = updatedData.map((item) => item.id);
+    onAnswer(newOrder);
+  };
+
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<DraggableItem>) => {
+    return (
+      <ScaleDecorator>
+        <View style={[styles.orderItem, isActive && styles.orderItemActive]}>
+          <View style={styles.orderNumber}>
+            <Text style={styles.orderNumberText}>{item.position}</Text>
+          </View>
+
+          <Text style={[styles.itemText, isActive && styles.itemTextActive]}>{item.text}</Text>
+
+          <View style={styles.dragHandle} onTouchStart={drag}>
+            <Ionicons name="menu" size={24} color="#94a3b8" />
+          </View>
+        </View>
+      </ScaleDecorator>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.hint}>
-        <Ionicons name="swap-vertical" size={16} color="#3b82f6" />
-        <Text style={styles.hintText}>Sắp xếp các mục theo thứ tự đúng</Text>
+        <Ionicons name="move" size={16} color="#3b82f6" />
+        <Text style={styles.hintText}>Kéo và thả để sắp xếp theo thứ tự đúng</Text>
       </View>
 
-      {selectedOrder.map((itemId, index) => (
-        <View key={itemId} style={styles.orderItem}>
-          <View style={styles.orderNumber}>
-            <Text style={styles.orderNumberText}>{index + 1}</Text>
-          </View>
-
-          <Text style={styles.itemText}>{getItemText(itemId)}</Text>
-
-          <View style={styles.controls}>
-            <TouchableOpacity
-              style={[styles.controlButton, index === 0 && styles.controlButtonDisabled]}
-              onPress={() => moveUp(index)}
-              disabled={index === 0}
-            >
-              <Ionicons name="chevron-up" size={20} color={index === 0 ? '#64748b' : '#fff'} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.controlButton, index === selectedOrder.length - 1 && styles.controlButtonDisabled]}
-              onPress={() => moveDown(index)}
-              disabled={index === selectedOrder.length - 1}
-            >
-              <Ionicons name="chevron-down" size={20} color={index === selectedOrder.length - 1 ? '#64748b' : '#fff'} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
+      <GestureHandlerRootView style={styles.listContainer}>
+        <DraggableFlatList
+          data={data}
+          onDragEnd={handleDragEnd}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          containerStyle={styles.flatList}
+        />
+      </GestureHandlerRootView>
     </View>
   );
 }
@@ -94,6 +116,12 @@ const styles = StyleSheet.create({
     color: '#93c5fd',
     fontWeight: '500',
   },
+  listContainer: {
+    minHeight: 200,
+  },
+  flatList: {
+    gap: 12,
+  },
   orderItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -103,6 +131,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     gap: 12,
+    marginBottom: 12,
+  },
+  orderItemActive: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   orderNumber: {
     width: 32,
@@ -122,19 +160,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#e2e8f0',
   },
-  controls: {
-    flexDirection: 'row',
-    gap: 4,
+  itemTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
-  controlButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  controlButtonDisabled: {
-    opacity: 0.3,
+  dragHandle: {
+    padding: 8,
+    marginRight: -8,
   },
 });
