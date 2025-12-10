@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../utils/storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
@@ -19,9 +19,9 @@ class ApiClient {
     // Request interceptor to add token
     this.client.interceptors.request.use(
       async (config) => {
-        const token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+        const token = await storage.getItem(STORAGE_KEY_TOKEN);
         console.log('🔑 API Request:', config.url);
-        console.log('🔑 Token from AsyncStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+        console.log('🔑 Token from storage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           console.log('✅ Authorization header added');
@@ -41,7 +41,7 @@ class ApiClient {
       async (error) => {
         if (error.response?.status === 401) {
           // Token expired or invalid
-          await AsyncStorage.removeItem('token');
+          await storage.removeItem(STORAGE_KEY_TOKEN);
           // You can add navigation to login screen here
         }
         return Promise.reject(error);
