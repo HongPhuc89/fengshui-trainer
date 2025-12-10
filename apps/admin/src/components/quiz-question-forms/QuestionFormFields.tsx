@@ -66,7 +66,7 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
             } else if (difficulty === 'MEDIUM') {
               points = 3;
             } else if (difficulty === 'HARD') {
-              points = 4.5;
+              points = 5;
             }
 
             setFormData({ ...formData, difficulty, points });
@@ -74,7 +74,7 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         >
           <MenuItem value="EASY">Easy (2 points)</MenuItem>
           <MenuItem value="MEDIUM">Medium (3 points)</MenuItem>
-          <MenuItem value="HARD">Hard (4.5 points)</MenuItem>
+          <MenuItem value="HARD">Hard (5 points)</MenuItem>
         </Select>
       </FormControl>
 
@@ -96,9 +96,9 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         inputProps={{
           min: 1,
           max: 5,
-          step: 0.5,
+          step: 1,
         }}
-        helperText="Choose from 1 to 5 points (0.5 increments)"
+        helperText="Choose from 1 to 5 points"
       />
 
       {/* TRUE_FALSE Options */}
