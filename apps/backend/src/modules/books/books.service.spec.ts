@@ -87,7 +87,7 @@ describe('BooksService', () => {
     it('should create a book successfully', async () => {
       const createdBook = { ...mockBook, ...createBookDto };
       repository.create.mockReturnValue(createdBook as any);
-      repository.save.mockResolvedValue(createdBook);
+      repository.save.mockResolvedValue(createdBook as any);
       bookProcessingService.processBook.mockResolvedValue(undefined);
 
       const result = await service.create(createBookDto, mockUser);
@@ -103,7 +103,7 @@ describe('BooksService', () => {
     it('should trigger book processing when file_id is provided', async () => {
       const createdBook = { ...mockBook, ...createBookDto, file_id: 1 };
       repository.create.mockReturnValue(createdBook as any);
-      repository.save.mockResolvedValue(createdBook);
+      repository.save.mockResolvedValue(createdBook as any);
       bookProcessingService.processBook.mockResolvedValue(undefined);
 
       await service.create(createBookDto, mockUser);
@@ -118,7 +118,7 @@ describe('BooksService', () => {
       const createDtoWithoutFile = { ...createBookDto, file_id: null };
       const createdBook = { ...mockBook, ...createDtoWithoutFile };
       repository.create.mockReturnValue(createdBook as any);
-      repository.save.mockResolvedValue(createdBook);
+      repository.save.mockResolvedValue(createdBook as any);
 
       await service.create(createDtoWithoutFile, mockUser);
 
@@ -205,7 +205,7 @@ describe('BooksService', () => {
     it('should update a book successfully', async () => {
       const updatedBook = { ...mockBook, ...updateBookDto };
       repository.findOne.mockResolvedValue(mockBook);
-      repository.save.mockResolvedValue(updatedBook);
+      repository.save.mockResolvedValue(updatedBook as any);
 
       const result = await service.update(1, updateBookDto);
 
@@ -220,7 +220,7 @@ describe('BooksService', () => {
       };
       const updatedBook = { ...mockBook, ...updateDtoWithFile, file_id: 2 };
       repository.findOne.mockResolvedValue({ ...mockBook, file_id: 1 });
-      repository.save.mockResolvedValue(updatedBook);
+      repository.save.mockResolvedValue(updatedBook as any);
       bookProcessingService.processBook.mockResolvedValue(undefined);
 
       await service.update(1, updateDtoWithFile);
@@ -233,7 +233,7 @@ describe('BooksService', () => {
 
     it('should not trigger re-processing when file_id unchanged', async () => {
       repository.findOne.mockResolvedValue(mockBook);
-      repository.save.mockResolvedValue({ ...mockBook, ...updateBookDto });
+      repository.save.mockResolvedValue({ ...mockBook, ...updateBookDto } as any);
 
       await service.update(1, updateBookDto);
 

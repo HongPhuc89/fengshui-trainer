@@ -88,7 +88,7 @@ describe('ChaptersService', () => {
     it('should create a chapter successfully', async () => {
       booksService.findOneAdmin.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockChapter as any);
-      repository.save.mockResolvedValue(mockChapter);
+      repository.save.mockResolvedValue(mockChapter as any);
       booksService.incrementChapterCount.mockResolvedValue(undefined);
       quizConfigService.createDefaultConfig.mockResolvedValue({} as any);
 
@@ -107,7 +107,7 @@ describe('ChaptersService', () => {
       const dtoWithoutOrder = { title: 'New Chapter', content: 'New Content', points: 100 };
       booksService.findOneAdmin.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockChapter as any);
-      repository.save.mockResolvedValue(mockChapter);
+      repository.save.mockResolvedValue(mockChapter as any);
       booksService.incrementChapterCount.mockResolvedValue(undefined);
       quizConfigService.createDefaultConfig.mockResolvedValue({} as any);
 
@@ -185,7 +185,7 @@ describe('ChaptersService', () => {
     it('should update a chapter successfully', async () => {
       const updatedChapter = { ...mockChapter, ...updateChapterDto };
       repository.findOne.mockResolvedValue(mockChapter);
-      repository.save.mockResolvedValue(updatedChapter);
+      repository.save.mockResolvedValue(updatedChapter as any);
 
       const result = await service.update(1, 1, updateChapterDto);
 
