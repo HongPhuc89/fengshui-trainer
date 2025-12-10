@@ -32,7 +32,7 @@ describe('QuizAttemptsService', () => {
     updated_at: new Date(),
     chapter: null,
     attempts: [],
-  };
+  } as Question;
 
   const mockAttempt: QuizAttempt = {
     id: 1,
@@ -247,7 +247,7 @@ describe('QuizAttemptsService', () => {
         ...mockQuestion,
         question_type: QuestionType.TRUE_FALSE,
         options: { correct_answer: true },
-      };
+      } as Question;
 
       const result = service['sanitizeQuestion'](tfQuestion);
 
@@ -261,7 +261,7 @@ describe('QuizAttemptsService', () => {
         options: {
           correct_answers: ['a', 'b'],
         },
-      };
+      } as Question;
 
       const result = service['sanitizeQuestion'](maQuestion);
 
@@ -281,7 +281,7 @@ describe('QuizAttemptsService', () => {
         ...mockQuestion,
         question_type: QuestionType.TRUE_FALSE,
         options: { correct_answer: true },
-      };
+      } as Question;
 
       const result = service['extractCorrectAnswer'](tfQuestion);
 
@@ -295,7 +295,7 @@ describe('QuizAttemptsService', () => {
         options: {
           correct_answers: ['a', 'b'],
         },
-      };
+      } as Question;
 
       const result = service['extractCorrectAnswer'](maQuestion);
 
@@ -323,7 +323,7 @@ describe('QuizAttemptsService', () => {
         ...mockQuestion,
         question_type: QuestionType.TRUE_FALSE,
         options: { correct_answer: true },
-      };
+      } as Question;
 
       const correctResult = service['gradeAnswer'](tfQuestion, true);
       expect(correctResult.isCorrect).toBe(true);
@@ -339,7 +339,7 @@ describe('QuizAttemptsService', () => {
         options: {
           correct_answers: ['a', 'b'],
         },
-      };
+      } as Question;
 
       const result = service['gradeAnswer'](maQuestion, ['a', 'b']);
 
@@ -354,7 +354,7 @@ describe('QuizAttemptsService', () => {
         options: {
           correct_answers: ['a', 'b'],
         },
-      };
+      } as Question;
 
       const result = service['gradeAnswer'](maQuestion, ['a']);
 
