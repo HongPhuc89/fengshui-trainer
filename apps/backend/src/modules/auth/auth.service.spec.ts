@@ -28,7 +28,6 @@ describe('AuthService', () => {
     last_login_at: new Date(),
     created_at: new Date(),
     updated_at: new Date(),
-    books: [],
   };
 
   const mockTokens = {
@@ -217,7 +216,7 @@ describe('AuthService', () => {
 
     it('should refresh token successfully', async () => {
       authCommonService.decodeRefreshToken.mockResolvedValue(decodedToken);
-      usersService.getUserById.mockResolvedValue(mockUser);
+      usersService.getUserById.mockResolvedValue(mockUser as any);
       configService.getAuthConfiguration.mockReturnValue({
         refreshToken: {
           secretKeyActivateToken: 'secret',
@@ -248,14 +247,14 @@ describe('AuthService', () => {
 
     it('should throw error when refresh token not found in user', async () => {
       authCommonService.decodeRefreshToken.mockResolvedValue(decodedToken);
-      usersService.getUserById.mockResolvedValue({ ...mockUser, refresh_token: null });
+      usersService.getUserById.mockResolvedValue({ ...mockUser, refresh_token: null } as any);
 
       await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw error for mismatched refresh token', async () => {
       authCommonService.decodeRefreshToken.mockResolvedValue(decodedToken);
-      usersService.getUserById.mockResolvedValue({ ...mockUser, refresh_token: 'different_hash' });
+      usersService.getUserById.mockResolvedValue({ ...mockUser, refresh_token: 'different_hash' } as any);
       configService.getAuthConfiguration.mockReturnValue({
         refreshToken: {
           secretKeyActivateToken: 'secret',
