@@ -4,16 +4,13 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { quizService, QuizSession, Question } from '../../services/api';
-
-const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
-const OPTION_COLORS = {
-  A: '#ef4444', // red
-  B: '#3b82f6', // blue
-  C: '#10b981', // green
-  D: '#f59e0b', // amber
-  E: '#8b5cf6', // purple
-  F: '#ec4899', // pink
-};
+import {
+  MultipleChoiceQuestion,
+  MultipleAnswerQuestion,
+  TrueFalseQuestion,
+  MatchingQuestion,
+  OrderingQuestion,
+} from '../../components/quiz';
 
 export default function ModernQuizScreen() {
   const { chapterId } = useLocalSearchParams();
@@ -106,68 +103,32 @@ export default function ModernQuizScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderOption = (option: any, index: number, isSelected: boolean, onSelect: () => void) => {
-    const label = OPTION_LABELS[index];
-    const color = OPTION_COLORS[label as keyof typeof OPTION_COLORS];
-
-    return (
-      <TouchableOpacity
-        key={index}
-        style={[styles.optionButton, isSelected && styles.optionButtonSelected, isSelected && { borderColor: color }]}
-        onPress={onSelect}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.optionBadge, { backgroundColor: color }]}>
-          <Text style={styles.optionBadgeText}>{label}</Text>
-        </View>
-        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option.text || option}</Text>
-        {isSelected && <Ionicons name="checkmark-circle" size={24} color={color} style={styles.checkIcon} />}
-      </TouchableOpacity>
-    );
-  };
-
-  const renderOptions = (question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) => {
+  const renderQuestion = (question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) => {
     const options = question.options?.options || [];
 
     switch (question.question_type) {
       case 'TRUE_FALSE':
-        return (
-          <View style={styles.optionsWrapper}>
-            {renderOption('Đúng', 0, selectedAnswer === true, () => onAnswer(true))}
-            {renderOption('Sai', 1, selectedAnswer === false, () => onAnswer(false))}
-          </View>
-        );
+        return <TrueFalseQuestion selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
 
       case 'MULTIPLE_CHOICE':
-        return (
-          <View style={styles.optionsWrapper}>
-            {options.map((option: any, index: number) => {
-              const optionId = option.id || String.fromCharCode(97 + index); // a, b, c, d
-              const isSelected = selectedAnswer === optionId;
-              return renderOption(option, index, isSelected, () => onAnswer(optionId));
-            })}
-          </View>
-        );
+        return <MultipleChoiceQuestion options={options} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
 
       case 'MULTIPLE_ANSWER':
         const selectedAnswers = Array.isArray(selectedAnswer) ? selectedAnswer : [];
-        return (
-          <View style={styles.optionsWrapper}>
-            {options.map((option: any, index: number) => {
-              const optionId = option.id || String.fromCharCode(97 + index);
-              const isSelected = selectedAnswers.includes(optionId);
-              return renderOption(option, index, isSelected, () => {
-                const newAnswers = isSelected
-                  ? selectedAnswers.filter((id: string) => id !== optionId)
-                  : [...selectedAnswers, optionId];
-                onAnswer(newAnswers);
-              });
-            })}
-          </View>
-        );
+        return <MultipleAnswerQuestion options={options} selectedAnswers={selectedAnswers} onAnswer={onAnswer} />;
+
+      case 'MATCHING':
+        const pairs = question.options?.pairs || [];
+        const selectedMatches = selectedAnswer || {};
+        return <MatchingQuestion pairs={pairs} selectedMatches={selectedMatches} onAnswer={onAnswer} />;
+
+      case 'ORDERING':
+        const items = question.options?.items || [];
+        const selectedOrder = Array.isArray(selectedAnswer) ? selectedAnswer : [];
+        return <OrderingQuestion items={items} selectedOrder={selectedOrder} onAnswer={onAnswer} />;
 
       default:
-        return <Text style={styles.unsupportedText}>Unsupported question type</Text>;
+        return <Text style={styles.unsupportedText}>Unsupported question type: {question.question_type}</Text>;
     }
   };
 
@@ -216,10 +177,10 @@ export default function ModernQuizScreen() {
         {/* Question */}
         <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
 
-        {/* Options */}
-        {renderOptions(currentQuestion, answers[currentQuestion.id], handleAnswer)}
+        {/* Render Question Type */}
+        {renderQuestion(currentQuestion, answers[currentQuestion.id], handleAnswer)}
 
-        {/* Explanation (if answered) */}
+        {/* Explanation */}
         {answers[currentQuestion.id] && currentQuestion.explanation && (
           <View style={styles.explanationBox}>
             <View style={styles.explanationHeader}>
@@ -351,47 +312,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 24,
     lineHeight: 28,
-  },
-  optionsWrapper: {
-    gap: 12,
-  },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionButtonSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 2,
-  },
-  optionBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  optionBadgeText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#e2e8f0',
-  },
-  optionTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  checkIcon: {
-    marginLeft: 8,
   },
   unsupportedText: {
     color: '#94a3b8',
