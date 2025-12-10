@@ -99,7 +99,14 @@ export default function ModernQuizScreen() {
   };
 
   const handleSubmitQuiz = async () => {
-    if (!session) return;
+    if (!session) {
+      console.log('❌ No session');
+      return;
+    }
+
+    console.log('🎯 handleSubmitQuiz called');
+    console.log('📊 Session ID:', session.id);
+    console.log('📝 Submitted answers:', submittedAnswers.size, '/', session.questions.length);
 
     Alert.alert('Nộp bài', 'Bạn có chắc muốn nộp bài? Bạn không thể thay đổi câu trả lời sau khi nộp.', [
       { text: 'Hủy', style: 'cancel' },
@@ -107,14 +114,19 @@ export default function ModernQuizScreen() {
         text: 'Nộp bài',
         onPress: async () => {
           try {
+            console.log('✅ User confirmed submit');
             setSubmitting(true);
-            await quizService.completeQuiz(session.id);
+
+            console.log('📤 Calling completeQuiz...');
+            const result = await quizService.completeQuiz(session.id);
+            console.log('✅ Quiz completed:', result);
 
             router.replace({
               pathname: '/quiz-result/[sessionId]',
-              params: { sessionId: session.id },
+              params: { sessionId: session.id.toString() },
             });
           } catch (error: any) {
+            console.error('❌ Submit error:', error);
             Alert.alert('Error', error.response?.data?.message || 'Failed to submit quiz');
           } finally {
             setSubmitting(false);
