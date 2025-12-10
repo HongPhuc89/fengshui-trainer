@@ -21,7 +21,7 @@ describe('FlashcardsService', () => {
     created_at: new Date(),
     updated_at: new Date(),
     chapter: null,
-  };
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -65,7 +65,7 @@ describe('FlashcardsService', () => {
     it('should create a flashcard successfully', async () => {
       chaptersService.findOne.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockFlashcard as any);
-      repository.save.mockResolvedValue(mockFlashcard);
+      repository.save.mockResolvedValue(mockFlashcard as any);
 
       const result = await service.create(1, 1, createFlashcardDto);
 
@@ -94,7 +94,7 @@ describe('FlashcardsService', () => {
     it('should import flashcards from CSV successfully', async () => {
       chaptersService.findOne.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockFlashcard as any);
-      repository.save.mockResolvedValue(mockFlashcard);
+      repository.save.mockResolvedValue(mockFlashcard as any);
 
       const result = await service.importFromCSV(1, 1, validCSV);
 
@@ -107,7 +107,7 @@ describe('FlashcardsService', () => {
     it('should handle duplicates during import', async () => {
       chaptersService.findOne.mockResolvedValue({} as any);
       repository.create.mockReturnValue(mockFlashcard as any);
-      repository.save.mockResolvedValueOnce(mockFlashcard).mockRejectedValueOnce({ code: '23505' });
+      repository.save.mockResolvedValueOnce(mockFlashcard as any).mockRejectedValueOnce({ code: '23505' });
 
       const result = await service.importFromCSV(1, 1, validCSV);
 
@@ -136,7 +136,7 @@ describe('FlashcardsService', () => {
 "Question Only"`;
 
       repository.create.mockReturnValue(mockFlashcard as any);
-      repository.save.mockResolvedValue(mockFlashcard);
+      repository.save.mockResolvedValue(mockFlashcard as any);
 
       const result = await service.importFromCSV(1, 1, csvWithErrors);
 
@@ -147,7 +147,7 @@ describe('FlashcardsService', () => {
   describe('findAllByChapter', () => {
     it('should return all flashcards for a chapter', async () => {
       const flashcards = [mockFlashcard];
-      repository.find.mockResolvedValue(flashcards);
+      repository.find.mockResolvedValue(flashcards as any);
 
       const result = await service.findAllByChapter(1, 1);
 
@@ -163,7 +163,7 @@ describe('FlashcardsService', () => {
     it('should return flashcards for a published chapter', async () => {
       const flashcards = [mockFlashcard];
       chaptersService.findOneInPublishedBook.mockResolvedValue({} as any);
-      repository.find.mockResolvedValue(flashcards);
+      repository.find.mockResolvedValue(flashcards as any);
 
       const result = await service.findAllByPublishedChapter(1, 1);
 
@@ -182,7 +182,7 @@ describe('FlashcardsService', () => {
         { ...mockFlashcard, id: 5 },
       ];
       chaptersService.findOneInPublishedBook.mockResolvedValue({} as any);
-      repository.find.mockResolvedValue(flashcards);
+      repository.find.mockResolvedValue(flashcards as any);
 
       const result = await service.getRandomFlashcards(1, 1, 3);
 
@@ -193,7 +193,7 @@ describe('FlashcardsService', () => {
     it('should return all flashcards if count exceeds available', async () => {
       const flashcards = [mockFlashcard, { ...mockFlashcard, id: 2 }];
       chaptersService.findOneInPublishedBook.mockResolvedValue({} as any);
-      repository.find.mockResolvedValue(flashcards);
+      repository.find.mockResolvedValue(flashcards as any);
 
       const result = await service.getRandomFlashcards(1, 1, 10);
 
@@ -203,7 +203,7 @@ describe('FlashcardsService', () => {
 
   describe('findOne', () => {
     it('should return a flashcard by id', async () => {
-      repository.findOne.mockResolvedValue(mockFlashcard);
+      repository.findOne.mockResolvedValue(mockFlashcard as any);
 
       const result = await service.findOne(1, 1, 1);
 
@@ -223,7 +223,7 @@ describe('FlashcardsService', () => {
   describe('findOneInPublishedChapter', () => {
     it('should return a flashcard from a published chapter', async () => {
       chaptersService.findOneInPublishedBook.mockResolvedValue({} as any);
-      repository.findOne.mockResolvedValue(mockFlashcard);
+      repository.findOne.mockResolvedValue(mockFlashcard as any);
 
       const result = await service.findOneInPublishedChapter(1, 1, 1);
 
@@ -240,8 +240,8 @@ describe('FlashcardsService', () => {
 
     it('should update a flashcard successfully', async () => {
       const updatedFlashcard = { ...mockFlashcard, ...updateFlashcardDto };
-      repository.findOne.mockResolvedValue(mockFlashcard);
-      repository.save.mockResolvedValue(updatedFlashcard);
+      repository.findOne.mockResolvedValue(mockFlashcard as any);
+      repository.save.mockResolvedValue(updatedFlashcard as any);
 
       const result = await service.update(1, 1, 1, updateFlashcardDto);
 
@@ -250,7 +250,7 @@ describe('FlashcardsService', () => {
     });
 
     it('should throw BadRequestException for duplicate after update', async () => {
-      repository.findOne.mockResolvedValue(mockFlashcard);
+      repository.findOne.mockResolvedValue(mockFlashcard as any);
       repository.save.mockRejectedValue({ code: '23505' });
 
       await expect(service.update(1, 1, 1, updateFlashcardDto)).rejects.toThrow(BadRequestException);
@@ -259,8 +259,8 @@ describe('FlashcardsService', () => {
 
   describe('delete', () => {
     it('should delete a flashcard successfully', async () => {
-      repository.findOne.mockResolvedValue(mockFlashcard);
-      repository.remove.mockResolvedValue(mockFlashcard);
+      repository.findOne.mockResolvedValue(mockFlashcard as any);
+      repository.remove.mockResolvedValue(mockFlashcard as any);
 
       await service.delete(1, 1, 1);
 
