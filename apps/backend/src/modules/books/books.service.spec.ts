@@ -129,7 +129,7 @@ describe('BooksService', () => {
   describe('findAll', () => {
     it('should return only published books', async () => {
       const publishedBooks = [mockBook];
-      repository.find.mockResolvedValue(publishedBooks);
+      repository.find.mockResolvedValue(publishedBooks as any);
 
       const result = await service.findAll();
 
@@ -143,7 +143,7 @@ describe('BooksService', () => {
 
   describe('findOne', () => {
     it('should return a published book by id', async () => {
-      repository.findOne.mockResolvedValue(mockBook);
+      repository.findOne.mockResolvedValue(mockBook as any);
 
       const result = await service.findOne(1);
 
@@ -155,7 +155,7 @@ describe('BooksService', () => {
     });
 
     it('should throw NotFoundException when book not found', async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findOne.mockResolvedValue(null as any);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
@@ -164,7 +164,7 @@ describe('BooksService', () => {
   describe('findAllAdmin', () => {
     it('should return all books regardless of status', async () => {
       const allBooks = [mockBook, { ...mockBook, id: 2, status: BookStatus.DRAFT }];
-      repository.find.mockResolvedValue(allBooks);
+      repository.find.mockResolvedValue(allBooks as any);
 
       const result = await service.findAllAdmin();
 
@@ -178,7 +178,7 @@ describe('BooksService', () => {
   describe('findOneAdmin', () => {
     it('should return a book by id regardless of status', async () => {
       const draftBook = { ...mockBook, status: BookStatus.DRAFT };
-      repository.findOne.mockResolvedValue(draftBook);
+      repository.findOne.mockResolvedValue(draftBook as any);
 
       const result = await service.findOneAdmin(1);
 
@@ -190,7 +190,7 @@ describe('BooksService', () => {
     });
 
     it('should throw NotFoundException when book not found', async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findOne.mockResolvedValue(null as any);
 
       await expect(service.findOneAdmin(999)).rejects.toThrow(NotFoundException);
     });
@@ -204,7 +204,7 @@ describe('BooksService', () => {
 
     it('should update a book successfully', async () => {
       const updatedBook = { ...mockBook, ...updateBookDto };
-      repository.findOne.mockResolvedValue(mockBook);
+      repository.findOne.mockResolvedValue(mockBook as any);
       repository.save.mockResolvedValue(updatedBook as any);
 
       const result = await service.update(1, updateBookDto);
@@ -219,7 +219,7 @@ describe('BooksService', () => {
         file_id: 2,
       };
       const updatedBook = { ...mockBook, ...updateDtoWithFile, file_id: 2 };
-      repository.findOne.mockResolvedValue({ ...mockBook, file_id: 1 });
+      repository.findOne.mockResolvedValue({ ...mockBook, file_id: 1 } as any);
       repository.save.mockResolvedValue(updatedBook as any);
       bookProcessingService.processBook.mockResolvedValue(undefined);
 
@@ -232,7 +232,7 @@ describe('BooksService', () => {
     });
 
     it('should not trigger re-processing when file_id unchanged', async () => {
-      repository.findOne.mockResolvedValue(mockBook);
+      repository.findOne.mockResolvedValue(mockBook as any);
       repository.save.mockResolvedValue({ ...mockBook, ...updateBookDto } as any);
 
       await service.update(1, updateBookDto);
