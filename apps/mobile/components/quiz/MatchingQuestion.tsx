@@ -11,19 +11,22 @@ interface MatchingProps {
   pairs: MatchingPair[];
   selectedMatches: Record<string, string>;
   onAnswer: (matches: Record<string, string>) => void;
+  disabled?: boolean;
 }
 
-export function MatchingQuestion({ pairs, selectedMatches, onAnswer }: MatchingProps) {
+export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = false }: MatchingProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
 
   const leftItems = pairs.map((p) => p.left);
   const rightItems = [...pairs.map((p) => p.right)].sort(() => Math.random() - 0.5);
 
   const handleLeftClick = (item: string) => {
+    if (disabled) return;
     setSelectedLeft(item);
   };
 
   const handleRightClick = (item: string) => {
+    if (disabled) return;
     if (selectedLeft) {
       const newMatches = { ...selectedMatches, [selectedLeft]: item };
       onAnswer(newMatches);
@@ -37,8 +40,10 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer }: MatchingP
   return (
     <View style={styles.container}>
       <View style={styles.hint}>
-        <Ionicons name="link" size={16} color="#3b82f6" />
-        <Text style={styles.hintText}>Chọn cặp từ bên trái, sau đó chọn cặp từ bên phải</Text>
+        <Ionicons name={disabled ? 'lock-closed' : 'link'} size={16} color={disabled ? '#10b981' : '#3b82f6'} />
+        <Text style={styles.hintText}>
+          {disabled ? 'Đã xác nhận các cặp' : 'Chọn cặp từ bên trái, sau đó chọn cặp từ bên phải'}
+        </Text>
       </View>
 
       <View style={styles.matchingGrid}>
@@ -56,8 +61,10 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer }: MatchingP
                   styles.leftItem,
                   isSelected && styles.selectedItem,
                   matchedRight && styles.matchedItem,
+                  disabled && styles.disabledItem,
                 ]}
                 onPress={() => handleLeftClick(item)}
+                disabled={disabled}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.matchText, (isSelected || matchedRight) && styles.matchTextActive]}>{item}</Text>
@@ -81,10 +88,10 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer }: MatchingP
                   styles.matchItem,
                   styles.rightItem,
                   isMatched && styles.matchedItem,
-                  !selectedLeft && styles.disabledItem,
+                  (!selectedLeft || disabled) && styles.disabledItem,
                 ]}
                 onPress={() => handleRightClick(item)}
-                disabled={!selectedLeft || isMatched}
+                disabled={!selectedLeft || isMatched || disabled}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.matchText, isMatched && styles.matchTextActive]}>{item}</Text>

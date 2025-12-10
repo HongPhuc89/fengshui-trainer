@@ -13,6 +13,7 @@ interface OrderingProps {
   items: OrderingItem[];
   selectedOrder: string[];
   onAnswer: (order: string[]) => void;
+  disabled?: boolean;
 }
 
 interface DraggableItem {
@@ -21,11 +22,14 @@ interface DraggableItem {
   position: number;
 }
 
-export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingProps) {
+export function OrderingQuestion({ items, selectedOrder, onAnswer, disabled = false }: OrderingProps) {
   const [data, setData] = useState<DraggableItem[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
   // Initialize data
   useEffect(() => {
+    if (initialized) return;
+
     if (selectedOrder.length === 0) {
       // First time - use original order
       const initialData = items.map((item, index) => ({
@@ -46,9 +50,12 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingPro
       });
       setData(orderedData);
     }
-  }, [items]);
+    setInitialized(true);
+  }, [items, selectedOrder, initialized]);
 
   const handleDragEnd = ({ data: newData }: { data: DraggableItem[] }) => {
+    if (disabled) return;
+
     // Update positions
     const updatedData = newData.map((item, index) => ({
       ...item,
@@ -64,16 +71,18 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingPro
   const renderItem = ({ item, drag, isActive }: RenderItemParams<DraggableItem>) => {
     return (
       <ScaleDecorator>
-        <View style={[styles.orderItem, isActive && styles.orderItemActive]}>
+        <View style={[styles.orderItem, isActive && styles.orderItemActive, disabled && styles.orderItemDisabled]}>
           <View style={styles.orderNumber}>
             <Text style={styles.orderNumberText}>{item.position}</Text>
           </View>
 
           <Text style={[styles.itemText, isActive && styles.itemTextActive]}>{item.text}</Text>
 
-          <View style={styles.dragHandle} onTouchStart={drag}>
-            <Ionicons name="menu" size={24} color="#94a3b8" />
-          </View>
+          {!disabled && (
+            <View style={styles.dragHandle} onTouchStart={drag}>
+              <Ionicons name="menu" size={24} color="#94a3b8" />
+            </View>
+          )}
         </View>
       </ScaleDecorator>
     );
@@ -82,8 +91,10 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingPro
   return (
     <View style={styles.container}>
       <View style={styles.hint}>
-        <Ionicons name="move" size={16} color="#3b82f6" />
-        <Text style={styles.hintText}>Kéo và thả để sắp xếp theo thứ tự đúng</Text>
+        <Ionicons name={disabled ? 'lock-closed' : 'move'} size={16} color={disabled ? '#10b981' : '#3b82f6'} />
+        <Text style={styles.hintText}>
+          {disabled ? 'Đã xác nhận thứ tự' : 'Kéo và thả để sắp xếp theo thứ tự đúng'}
+        </Text>
       </View>
 
       <GestureHandlerRootView style={styles.listContainer}>
@@ -93,6 +104,7 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer }: OrderingPro
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           containerStyle={styles.flatList}
+          activationDistance={disabled ? 999999 : 0}
         />
       </GestureHandlerRootView>
     </View>
@@ -141,6 +153,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  orderItemDisabled: {
+    opacity: 0.7,
   },
   orderNumber: {
     width: 32,

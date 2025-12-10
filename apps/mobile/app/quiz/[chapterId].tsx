@@ -130,7 +130,12 @@ export default function ModernQuizScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderQuestion = (question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) => {
+  const renderQuestion = (
+    question: Question,
+    selectedAnswer: any,
+    onAnswer: (answer: any) => void,
+    isLocked: boolean = false,
+  ) => {
     const options = question.options?.options || [];
 
     switch (question.question_type) {
@@ -147,12 +152,14 @@ export default function ModernQuizScreen() {
       case 'MATCHING':
         const pairs = question.options?.pairs || [];
         const selectedMatches = selectedAnswer || {};
-        return <MatchingQuestion pairs={pairs} selectedMatches={selectedMatches} onAnswer={onAnswer} />;
+        return (
+          <MatchingQuestion pairs={pairs} selectedMatches={selectedMatches} onAnswer={onAnswer} disabled={isLocked} />
+        );
 
       case 'ORDERING':
         const items = question.options?.items || [];
         const selectedOrder = Array.isArray(selectedAnswer) ? selectedAnswer : [];
-        return <OrderingQuestion items={items} selectedOrder={selectedOrder} onAnswer={onAnswer} />;
+        return <OrderingQuestion items={items} selectedOrder={selectedOrder} onAnswer={onAnswer} disabled={isLocked} />;
 
       default:
         return <Text style={styles.unsupportedText}>Unsupported question type: {question.question_type}</Text>;
@@ -205,7 +212,12 @@ export default function ModernQuizScreen() {
         <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
 
         {/* Render Question Type */}
-        {renderQuestion(currentQuestion, answers[currentQuestion.id], handleSelectAnswer)}
+        {renderQuestion(
+          currentQuestion,
+          answers[currentQuestion.id],
+          handleSelectAnswer,
+          submittedAnswers.has(currentQuestion.id),
+        )}
 
         {/* Locked indicator */}
         {submittedAnswers.has(currentQuestion.id) && (
