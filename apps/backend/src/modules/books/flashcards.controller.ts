@@ -21,7 +21,7 @@ export class FlashcardsController {
 
   @Get('random')
   @ApiOperation({ summary: 'Get random flashcards from a published chapter' })
-  @ApiQuery({ name: 'count', required: false, type: Number, description: 'Number of random cards (1-50, default: 5)' })
+  @ApiQuery({ name: 'count', required: false, type: Number, description: 'Number of random cards (1-50, default: 20)' })
   @ApiResponse({ status: 200, description: 'Return random flashcards.' })
   getRandom(
     @Param('bookId', ParseIntPipe) bookId: number,

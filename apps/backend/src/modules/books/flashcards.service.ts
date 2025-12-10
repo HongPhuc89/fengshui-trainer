@@ -294,7 +294,7 @@ export class FlashcardsService {
     return this.findAllByChapter(bookId, chapterId);
   }
 
-  async getRandomFlashcards(bookId: number, chapterId: number, count: number = 5): Promise<Flashcard[]> {
+  async getRandomFlashcards(bookId: number, chapterId: number, count: number = 20): Promise<Flashcard[]> {
     // Verify the chapter belongs to a published book
     await this.chaptersService.findOneInPublishedBook(bookId, chapterId);
 

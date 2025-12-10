@@ -5,16 +5,16 @@ import { ApiProperty } from '@nestjs/swagger';
 export class GetRandomFlashcardsDto {
   @ApiProperty({
     description: 'Number of random flashcards to return',
-    example: 5,
+    example: 20,
     minimum: 1,
     maximum: 50,
     required: false,
-    default: 5,
+    default: 20,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(50)
-  count?: number = 5;
+  count?: number = 20;
 }
