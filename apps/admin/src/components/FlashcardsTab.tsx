@@ -10,6 +10,7 @@ import {
   IconButton,
   TextField,
   Typography,
+  Pagination,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -17,7 +18,6 @@ import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
-import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
 import { useNotify } from 'react-admin';
 import axios from 'axios';
@@ -36,32 +36,27 @@ interface FlashcardsTabProps {
   bookId: number;
   chapterId: number;
   flashcards: Flashcard[];
+  total: number;
+  page: number;
+  totalPages: number;
   onRefresh: () => void;
+  onPageChange: (page: number) => void;
 }
 
-export const FlashcardsTab: React.FC<FlashcardsTabProps> = ({ bookId, chapterId, flashcards, onRefresh }) => {
+export const FlashcardsTab: React.FC<FlashcardsTabProps> = ({
+  bookId,
+  chapterId,
+  flashcards,
+  total,
+  page,
+  totalPages,
+  onRefresh,
+  onPageChange,
+}) => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editQuestion, setEditQuestion] = useState('');
   const [editAnswer, setEditAnswer] = useState('');
   const notify = useNotify();
-
-  const handleGenerateFlashcards = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_URL}/admin/flashcards/generate`,
-        { chapterId: Number(chapterId) },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      notify('Flashcards generation started', { type: 'success' });
-      setTimeout(() => onRefresh(), 3000);
-    } catch (error) {
-      notify('Error generating flashcards', { type: 'error' });
-      console.error('Error:', error);
-    }
-  };
 
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -189,37 +184,11 @@ export const FlashcardsTab: React.FC<FlashcardsTabProps> = ({ bookId, chapterId,
     }
   };
 
-  const handleDownloadTemplate = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards/template`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'flashcard-template.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      notify('Template downloaded', { type: 'success' });
-    } catch (error) {
-      notify('Error downloading template', { type: 'error' });
-      console.error(error);
-    }
-  };
-
   return (
     <>
       <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
         <MuiButton variant="contained" startIcon={<AddIcon />} onClick={handleCreateFlashcard}>
           Add New Flashcard
-        </MuiButton>
-        <MuiButton variant="outlined" onClick={handleGenerateFlashcards}>
-          Generate with AI
         </MuiButton>
         <MuiButton variant="outlined" component="label" startIcon={<UploadIcon />}>
           Import CSV
@@ -228,83 +197,91 @@ export const FlashcardsTab: React.FC<FlashcardsTabProps> = ({ bookId, chapterId,
         <MuiButton variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>
           Export CSV
         </MuiButton>
-        <MuiButton variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadTemplate}>
-          Download Template
-        </MuiButton>
       </Box>
 
       {flashcards.length === 0 ? (
         <Typography color="textSecondary">No flashcards yet. Generate them using AI or import from CSV.</Typography>
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Question</TableCell>
-              <TableCell>Answer</TableCell>
-              <TableCell>Created</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {flashcards.map((card) => {
-              const isEditing = editingId === card.id;
-              return (
-                <TableRow key={card.id}>
-                  <TableCell>{card.id}</TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <TextField
-                        fullWidth
-                        multiline
-                        value={editQuestion}
-                        onChange={(e) => setEditQuestion(e.target.value)}
-                        size="small"
-                      />
-                    ) : (
-                      card.question
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <TextField
-                        fullWidth
-                        multiline
-                        value={editAnswer}
-                        onChange={(e) => setEditAnswer(e.target.value)}
-                        size="small"
-                      />
-                    ) : (
-                      card.answer
-                    )}
-                  </TableCell>
-                  <TableCell>{new Date(card.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <>
-                        <IconButton size="small" onClick={() => handleSaveFlashcard(card.id)} color="primary">
-                          <SaveIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleCancelEdit}>
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <>
-                        <IconButton size="small" onClick={() => handleEditFlashcard(card)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleDeleteFlashcard(card.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Question</TableCell>
+                <TableCell>Answer</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {flashcards.map((card) => {
+                const isEditing = editingId === card.id;
+                return (
+                  <TableRow key={card.id}>
+                    <TableCell>{card.id}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <TextField
+                          fullWidth
+                          multiline
+                          value={editQuestion}
+                          onChange={(e) => setEditQuestion(e.target.value)}
+                          size="small"
+                        />
+                      ) : (
+                        card.question
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <TextField
+                          fullWidth
+                          multiline
+                          value={editAnswer}
+                          onChange={(e) => setEditAnswer(e.target.value)}
+                          size="small"
+                        />
+                      ) : (
+                        card.answer
+                      )}
+                    </TableCell>
+                    <TableCell>{new Date(card.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <>
+                          <IconButton size="small" onClick={() => handleSaveFlashcard(card.id)} color="primary">
+                            <SaveIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={handleCancelEdit}>
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <>
+                          <IconButton size="small" onClick={() => handleEditFlashcard(card)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleDeleteFlashcard(card.id)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(_, newPage) => onPageChange(newPage)}
+              color="primary"
+            />
+          </Box>
+        </>
       )}
     </>
   );

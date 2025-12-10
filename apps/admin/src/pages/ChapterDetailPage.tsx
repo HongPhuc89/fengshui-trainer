@@ -54,6 +54,9 @@ export const ChapterDetailPage = () => {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [tabValue, setTabValue] = useState(0);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchChapter();
@@ -75,16 +78,28 @@ export const ChapterDetailPage = () => {
     }
   };
 
-  const fetchFlashcards = async () => {
+  const fetchFlashcards = async (pageNum: number = page) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/admin/flashcards/chapter/${chapterId}`, {
+      const response = await axios.get(`${API_URL}/admin/books/${bookId}/chapters/${chapterId}/flashcards`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: {
+          page: pageNum,
+          limit: 20,
+        },
       });
-      setFlashcards(response.data);
+      setFlashcards(response.data.data || []);
+      setTotal(response.data.total || 0);
+      setTotalPages(response.data.totalPages || 0);
+      setPage(pageNum);
     } catch (error) {
-      console.error('Error fetching flashcards:', error);
+      notify('Error fetching flashcards', { type: 'error' });
+      console.error(error);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    fetchFlashcards(newPage);
   };
 
   if (loading) return <Loading />;
@@ -118,7 +133,11 @@ export const ChapterDetailPage = () => {
             bookId={Number(bookId)}
             chapterId={Number(chapterId)}
             flashcards={flashcards}
+            total={total}
+            page={page}
+            totalPages={totalPages}
             onRefresh={fetchFlashcards}
+            onPageChange={handlePageChange}
           />
         </TabPanel>
 

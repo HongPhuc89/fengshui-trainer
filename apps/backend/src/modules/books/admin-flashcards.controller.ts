@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   ParseIntPipe,
   UseGuards,
   UseInterceptors,
@@ -143,13 +144,18 @@ export class AdminFlashcardsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get all flashcards for a chapter (all book statuses)' })
-  @ApiResponse({ status: 200, description: 'Return all flashcards for the chapter.' })
-  findAll(
+  @ApiOperation({ summary: 'Get all flashcards for a chapter with pagination' })
+  @ApiResponse({ status: 200, description: 'Return flashcards for the chapter with pagination info.' })
+  async findAll(
     @Param('bookId', ParseIntPipe) bookId: number,
     @Param('chapterId', ParseIntPipe) chapterId: number,
-  ): Promise<Flashcard[]> {
-    return this.flashcardsService.findAllByChapter(bookId, chapterId);
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const pageNum = page ? Number(page) : 1;
+    const limitNum = limit ? Number(limit) : 50;
+
+    return this.flashcardsService.findAllByChapterPaginated(bookId, chapterId, pageNum, limitNum);
   }
 
   @Get(':id')

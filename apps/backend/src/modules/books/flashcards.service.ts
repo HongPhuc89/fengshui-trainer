@@ -49,6 +49,28 @@ export class FlashcardsService {
     }
   }
 
+  async findAllByChapterPaginated(bookId: number, chapterId: number, page: number = 1, limit: number = 50) {
+    // Verify chapter exists
+    await this.chaptersService.findOne(bookId, chapterId);
+
+    const skip = (page - 1) * limit;
+
+    const [flashcards, total] = await this.flashcardRepository.findAndCount({
+      where: { chapter_id: chapterId },
+      order: { created_at: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: flashcards,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   /**
    * Export flashcards to CSV
    */
