@@ -69,6 +69,16 @@ export class AdminQuizController {
     return this.questionBankService.create(chapterId, createDto);
   }
 
+  @Delete('questions/duplicates')
+  @ApiOperation({ summary: 'Clear duplicate questions' })
+  async clearDuplicates(@Param('chapterId', ParseIntPipe) chapterId: number) {
+    const result = await this.questionBankService.clearDuplicates(chapterId);
+    return {
+      message: `Removed ${result.removed} duplicate questions`,
+      removed: result.removed,
+    };
+  }
+
   @Put('questions/:questionId')
   @ApiOperation({ summary: 'Update question (full update)' })
   async updateQuestion(
@@ -111,15 +121,5 @@ export class AdminQuizController {
     @Body('csv_content') csvContent: string,
   ) {
     return this.questionBankService.importFromCSV(chapterId, csvContent);
-  }
-
-  @Delete('questions/duplicates')
-  @ApiOperation({ summary: 'Clear duplicate questions' })
-  async clearDuplicates(@Param('chapterId', ParseIntPipe) chapterId: number) {
-    const result = await this.questionBankService.clearDuplicates(chapterId);
-    return {
-      message: `Removed ${result.removed} duplicate questions`,
-      removed: result.removed,
-    };
   }
 }
