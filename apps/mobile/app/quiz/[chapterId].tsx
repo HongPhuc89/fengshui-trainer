@@ -18,6 +18,7 @@ export default function ModernQuizScreen() {
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [submittedAnswers, setSubmittedAnswers] = useState<Set<number>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,6 +61,13 @@ export default function ModernQuizScreen() {
   const handleSelectAnswer = (answer: any) => {
     if (!session) return;
     const currentQuestion = session.questions[currentQuestionIndex];
+
+    // Don't allow editing if already submitted
+    if (submittedAnswers.has(currentQuestion.id)) {
+      Alert.alert('Đã xác nhận', 'Bạn đã xác nhận câu trả lời này rồi');
+      return;
+    }
+
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
     setAnswers(newAnswers);
   };
@@ -76,6 +84,9 @@ export default function ModernQuizScreen() {
 
     try {
       await quizService.submitAnswer(session.id, currentQuestion.id, answer);
+
+      // Mark as submitted (lock this question)
+      setSubmittedAnswers((prev) => new Set(prev).add(currentQuestion.id));
 
       // Auto move to next question after confirm
       if (currentQuestionIndex < session.questions.length - 1) {
@@ -196,6 +207,14 @@ export default function ModernQuizScreen() {
         {/* Render Question Type */}
         {renderQuestion(currentQuestion, answers[currentQuestion.id], handleSelectAnswer)}
 
+        {/* Locked indicator */}
+        {submittedAnswers.has(currentQuestion.id) && (
+          <View style={styles.lockedBanner}>
+            <Ionicons name="lock-closed" size={16} color="#10b981" />
+            <Text style={styles.lockedText}>Đã xác nhận câu trả lời</Text>
+          </View>
+        )}
+
         {/* Confirm Answer Button or Submit Quiz */}
         {currentQuestionIndex === session.questions.length - 1 ? (
           // Last question - only show submit button
@@ -214,7 +233,8 @@ export default function ModernQuizScreen() {
             )}
           </TouchableOpacity>
         ) : (
-          // Other questions - show confirm button
+          // Other questions - show confirm button (only if not submitted)
+          !submittedAnswers.has(currentQuestion.id) &&
           answers[currentQuestion.id] !== undefined && (
             <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmAnswer} activeOpacity={0.8}>
               <Ionicons name="checkmark-circle" size={20} color="#fff" />
@@ -377,6 +397,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  lockedText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
   },
   nextButton: {
     flex: 1,
