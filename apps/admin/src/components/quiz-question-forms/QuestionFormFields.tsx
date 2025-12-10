@@ -56,11 +56,25 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         <Select
           value={formData.difficulty}
           label="Difficulty"
-          onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+          onChange={(e) => {
+            const difficulty = e.target.value;
+            let points = formData.points;
+
+            // Auto-set points based on difficulty
+            if (difficulty === 'EASY') {
+              points = 2;
+            } else if (difficulty === 'MEDIUM') {
+              points = 3;
+            } else if (difficulty === 'HARD') {
+              points = 4.5;
+            }
+
+            setFormData({ ...formData, difficulty, points });
+          }}
         >
-          <MenuItem value="EASY">Easy</MenuItem>
-          <MenuItem value="MEDIUM">Medium</MenuItem>
-          <MenuItem value="HARD">Hard</MenuItem>
+          <MenuItem value="EASY">Easy (2 points)</MenuItem>
+          <MenuItem value="MEDIUM">Medium (3 points)</MenuItem>
+          <MenuItem value="HARD">Hard (4.5 points)</MenuItem>
         </Select>
       </FormControl>
 
@@ -79,6 +93,12 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         fullWidth
         value={formData.points}
         onChange={(e) => setFormData({ ...formData, points: Number(e.target.value) })}
+        inputProps={{
+          min: 1,
+          max: 5,
+          step: 0.5,
+        }}
+        helperText="Choose from 1 to 5 points (0.5 increments)"
       />
 
       {/* TRUE_FALSE Options */}
