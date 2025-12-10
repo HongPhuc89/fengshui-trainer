@@ -229,21 +229,32 @@ export default function ModernQuizScreen() {
 
         {/* Confirm Answer Button or Submit Quiz */}
         {currentQuestionIndex === session.questions.length - 1 ? (
-          // Last question - only show submit button
-          <TouchableOpacity
-            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-            onPress={handleSubmitQuiz}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="checkmark-done" size={24} color="#fff" />
-                <Text style={styles.submitButtonText}>NỘP BÀI</Text>
-              </>
+          // Last question - show confirm first, then submit
+          <>
+            {!submittedAnswers.has(currentQuestion.id) && answers[currentQuestion.id] !== undefined && (
+              <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmAnswer} activeOpacity={0.8}>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.confirmButtonText}>Xác nhận đáp án</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+
+            {submittedAnswers.has(currentQuestion.id) && (
+              <TouchableOpacity
+                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                onPress={handleSubmitQuiz}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-done" size={24} color="#fff" />
+                    <Text style={styles.submitButtonText}>NỘP BÀI</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         ) : (
           // Other questions - show confirm button (only if not submitted)
           !submittedAnswers.has(currentQuestion.id) &&

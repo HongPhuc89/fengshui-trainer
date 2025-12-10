@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface OrderingItem {
   id: string;
@@ -79,7 +78,7 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer, disabled = fa
           <Text style={[styles.itemText, isActive && styles.itemTextActive]}>{item.text}</Text>
 
           {!disabled && (
-            <View style={styles.dragHandle} onTouchStart={drag}>
+            <View style={styles.dragHandle} onStartShouldSetResponder={() => true} onTouchStart={drag}>
               <Ionicons name="menu" size={24} color="#94a3b8" />
             </View>
           )}
@@ -97,16 +96,15 @@ export function OrderingQuestion({ items, selectedOrder, onAnswer, disabled = fa
         </Text>
       </View>
 
-      <GestureHandlerRootView style={styles.listContainer}>
+      <View style={styles.listContainer}>
         <DraggableFlatList
           data={data}
           onDragEnd={handleDragEnd}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          containerStyle={styles.flatList}
-          activationDistance={disabled ? 999999 : 0}
+          activationDistance={disabled ? 999999 : 10}
         />
-      </GestureHandlerRootView>
+      </View>
     </View>
   );
 }
@@ -130,9 +128,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     minHeight: 200,
-  },
-  flatList: {
-    gap: 12,
   },
   orderItem: {
     flexDirection: 'row',
