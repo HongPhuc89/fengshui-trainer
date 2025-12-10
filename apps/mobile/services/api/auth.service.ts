@@ -1,6 +1,10 @@
 import { apiClient } from './client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Use same storage keys as AuthContext
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
+const STORAGE_KEY_USER = '@quiz_game:user';
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -40,8 +44,9 @@ class AuthService {
 
     // Save token to AsyncStorage
     if (response.access_token) {
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      await AsyncStorage.setItem(STORAGE_KEY_TOKEN, response.access_token);
+      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(response.user));
+      console.log('✅ Token saved to:', STORAGE_KEY_TOKEN);
     }
 
     return response;
@@ -55,8 +60,8 @@ class AuthService {
 
     // Save token to AsyncStorage
     if (response.access_token) {
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      await AsyncStorage.setItem(STORAGE_KEY_TOKEN, response.access_token);
+      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(response.user));
     }
 
     return response;
@@ -66,15 +71,15 @@ class AuthService {
    * Logout user
    */
   async logout(): Promise<void> {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem(STORAGE_KEY_TOKEN);
+    await AsyncStorage.removeItem(STORAGE_KEY_USER);
   }
 
   /**
    * Get current user from storage
    */
   async getCurrentUser(): Promise<User | null> {
-    const userStr = await AsyncStorage.getItem('user');
+    const userStr = await AsyncStorage.getItem(STORAGE_KEY_USER);
     return userStr ? JSON.parse(userStr) : null;
   }
 
@@ -82,7 +87,7 @@ class AuthService {
    * Check if user is logged in
    */
   async isAuthenticated(): Promise<boolean> {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
     return !!token;
   }
 
@@ -98,7 +103,7 @@ class AuthService {
    */
   async updateProfile(data: Partial<User>): Promise<User> {
     const response = await apiClient.patch<User>('/auth/profile', data);
-    await AsyncStorage.setItem('user', JSON.stringify(response));
+    await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(response));
     return response;
   }
 

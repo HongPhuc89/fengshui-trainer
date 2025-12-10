@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -18,9 +19,14 @@ class ApiClient {
     // Request interceptor to add token
     this.client.interceptors.request.use(
       async (config) => {
-        const token = await AsyncStorage.getItem('token');
+        const token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+        console.log('🔑 API Request:', config.url);
+        console.log('🔑 Token from AsyncStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          console.log('✅ Authorization header added');
+        } else {
+          console.log('❌ No token found - request will be unauthorized');
         }
         return config;
       },
