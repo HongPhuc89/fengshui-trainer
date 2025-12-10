@@ -57,17 +57,33 @@ export default function ModernQuizScreen() {
     }
   };
 
-  const handleAnswer = async (answer: any) => {
+  const handleSelectAnswer = (answer: any) => {
     if (!session) return;
-
     const currentQuestion = session.questions[currentQuestionIndex];
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
     setAnswers(newAnswers);
+  };
+
+  const handleConfirmAnswer = async () => {
+    if (!session) return;
+    const currentQuestion = session.questions[currentQuestionIndex];
+    const answer = answers[currentQuestion.id];
+
+    if (answer === undefined || answer === null) {
+      Alert.alert('Chưa chọn đáp án', 'Vui lòng chọn đáp án trước khi xác nhận');
+      return;
+    }
 
     try {
       await quizService.submitAnswer(session.id, currentQuestion.id, answer);
+
+      // Auto move to next question after confirm
+      if (currentQuestionIndex < session.questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
     } catch (error) {
       console.error('Error submitting answer:', error);
+      Alert.alert('Lỗi', 'Không thể lưu câu trả lời. Vui lòng thử lại.');
     }
   };
 
@@ -178,16 +194,24 @@ export default function ModernQuizScreen() {
         <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
 
         {/* Render Question Type */}
-        {renderQuestion(currentQuestion, answers[currentQuestion.id], handleAnswer)}
+        {renderQuestion(currentQuestion, answers[currentQuestion.id], handleSelectAnswer)}
+
+        {/* Confirm Answer Button */}
+        {answers[currentQuestion.id] !== undefined && (
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmAnswer} activeOpacity={0.8}>
+            <Ionicons name="checkmark-circle" size={20} color="#fff" />
+            <Text style={styles.confirmButtonText}>Xác nhận đáp án</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Explanation */}
-        {answers[currentQuestion.id] && currentQuestion.explanation && (
+        {answers[currentQuestion.id] && (currentQuestion as any).explanation && (
           <View style={styles.explanationBox}>
             <View style={styles.explanationHeader}>
               <Ionicons name="bulb" size={20} color="#fbbf24" />
               <Text style={styles.explanationTitle}>GIẢI THÍCH CHI TIẾT</Text>
             </View>
-            <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+            <Text style={styles.explanationText}>{(currentQuestion as any).explanation}</Text>
           </View>
         )}
 
@@ -210,12 +234,9 @@ export default function ModernQuizScreen() {
               {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>NỘP BÀI</Text>}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-            >
-              <Text style={styles.nextButtonText}>Câu tiếp theo</Text>
-            </TouchableOpacity>
+            <View style={styles.nextButtonPlaceholder}>
+              <Text style={styles.nextButtonHint}>Xác nhận để chuyển câu tiếp theo</Text>
+            </View>
           )}
 
           <TouchableOpacity
@@ -363,6 +384,21 @@ const styles = StyleSheet.create({
   navButtonDisabled: {
     opacity: 0.3,
   },
+  confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginTop: 16,
+    gap: 8,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   nextButton: {
     flex: 1,
     backgroundColor: '#3b82f6',
@@ -374,6 +410,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  nextButtonPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextButtonHint: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontStyle: 'italic',
   },
   submitButton: {
     flex: 1,
