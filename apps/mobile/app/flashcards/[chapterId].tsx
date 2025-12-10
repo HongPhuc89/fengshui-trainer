@@ -349,11 +349,12 @@ const styles = StyleSheet.create({
   cardBack: {},
   cardGradient: {
     flex: 1,
-    padding: spacing.xl,
+    padding: spacing.xl * 1.5,
   },
   cardContent: {
     flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: spacing.md,
   },
   cardLabel: {
     flexDirection: 'row',
@@ -369,11 +370,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cardText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
     color: '#fff',
-    lineHeight: 36,
+    lineHeight: 32,
     textAlign: 'center',
+    flexWrap: 'wrap',
   },
   hintContainer: {
     flexDirection: 'row',
