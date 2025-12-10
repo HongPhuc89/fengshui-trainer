@@ -160,10 +160,12 @@ export default function FlashcardsScreen() {
                       <Text style={styles.hintText}>{currentCard.hint}</Text>
                     </View>
                   )}
-                  <View style={styles.tapHint}>
-                    <Ionicons name="hand-left-outline" size={20} color="rgba(255,255,255,0.6)" />
-                    <Text style={styles.tapHintText}>Chạm để lật thẻ</Text>
-                  </View>
+                  {currentIndex === 0 && (
+                    <View style={styles.tapHint}>
+                      <Ionicons name="hand-left-outline" size={20} color="rgba(255,255,255,0.6)" />
+                      <Text style={styles.tapHintText}>Chạm để lật thẻ</Text>
+                    </View>
+                  )}
                 </View>
               </LinearGradient>
             </Animated.View>
