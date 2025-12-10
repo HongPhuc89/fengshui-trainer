@@ -27,6 +27,16 @@ export class QuizSessionService {
       throw new BadRequestException('No questions available for this chapter');
     }
 
+    // Log question types available
+    const questionTypes = allQuestions.reduce(
+      (acc, q) => {
+        acc[q.question_type] = (acc[q.question_type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    console.log('📊 Available question types:', questionTypes);
+
     // Calculate how many questions to select from each difficulty
     const questionsPerQuiz = config.questions_per_quiz;
     const easyCount = Math.round((questionsPerQuiz * config.easy_percentage) / 100);
@@ -44,6 +54,16 @@ export class QuizSessionService {
       ...this.randomSelect(mediumQuestions, mediumCount),
       ...this.randomSelect(hardQuestions, hardCount),
     ];
+
+    // Log selected question types
+    const selectedTypes = selectedQuestions.reduce(
+      (acc, q) => {
+        acc[q.question_type] = (acc[q.question_type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    console.log('✅ Selected question types:', selectedTypes);
 
     // Shuffle the selected questions
     this.shuffleArray(selectedQuestions);
