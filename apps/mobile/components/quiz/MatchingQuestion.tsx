@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,11 +14,42 @@ interface MatchingProps {
   disabled?: boolean;
 }
 
+const PAIR_COLORS = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#14b8a6', // teal
+  '#f97316', // orange
+];
+
 export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = false }: MatchingProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
 
+  // Memoize shuffled right items to prevent re-shuffle on every render
+  const rightItems = useMemo(() => {
+    return [...pairs.map((p) => p.right)].sort(() => Math.random() - 0.5);
+  }, [pairs]);
+
   const leftItems = pairs.map((p) => p.left);
-  const rightItems = [...pairs.map((p) => p.right)].sort(() => Math.random() - 0.5);
+
+  // Get color for a left item based on its index
+  const getLeftColor = (leftItem: string) => {
+    const index = leftItems.indexOf(leftItem);
+    return PAIR_COLORS[index % PAIR_COLORS.length];
+  };
+
+  // Get color for a right item if it's matched
+  const getRightColor = (rightItem: string) => {
+    // Find which left item matched this right item
+    const leftItem = Object.keys(selectedMatches).find((left) => selectedMatches[left] === rightItem);
+    if (leftItem) {
+      return getLeftColor(leftItem);
+    }
+    return null;
+  };
 
   const handleLeftClick = (item: string) => {
     if (disabled) return;
@@ -52,6 +83,7 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
           {leftItems.map((item, index) => {
             const isSelected = selectedLeft === item;
             const matchedRight = getMatchedRight(item);
+            const color = getLeftColor(item);
 
             return (
               <TouchableOpacity
@@ -59,8 +91,9 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
                 style={[
                   styles.matchItem,
                   styles.leftItem,
-                  isSelected && styles.selectedItem,
-                  matchedRight && styles.matchedItem,
+                  { borderColor: color, borderWidth: 2 },
+                  isSelected && { backgroundColor: `${color}20` },
+                  matchedRight && { backgroundColor: `${color}30` },
                   disabled && styles.disabledItem,
                 ]}
                 onPress={() => handleLeftClick(item)}
@@ -68,7 +101,7 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
                 activeOpacity={0.7}
               >
                 <Text style={[styles.matchText, (isSelected || matchedRight) && styles.matchTextActive]}>{item}</Text>
-                {matchedRight && <Ionicons name="link" size={16} color="#10b981" style={styles.linkIcon} />}
+                {matchedRight && <Ionicons name="link" size={16} color={color} style={styles.linkIcon} />}
               </TouchableOpacity>
             );
           })}
@@ -80,6 +113,7 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
           <Text style={styles.columnTitle}>Cột B</Text>
           {rightItems.map((item, index) => {
             const isMatched = isRightMatched(item);
+            const color = getRightColor(item);
 
             return (
               <TouchableOpacity
@@ -87,7 +121,8 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
                 style={[
                   styles.matchItem,
                   styles.rightItem,
-                  isMatched && styles.matchedItem,
+                  color && { borderColor: color, borderWidth: 2, backgroundColor: `${color}30` },
+                  !color && { borderColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 2 },
                   (!selectedLeft || disabled) && styles.disabledItem,
                 ]}
                 onPress={() => handleRightClick(item)}
@@ -95,7 +130,7 @@ export function MatchingQuestion({ pairs, selectedMatches, onAnswer, disabled = 
                 activeOpacity={0.7}
               >
                 <Text style={[styles.matchText, isMatched && styles.matchTextActive]}>{item}</Text>
-                {isMatched && <Ionicons name="checkmark-circle" size={16} color="#10b981" />}
+                {isMatched && <Ionicons name="checkmark-circle" size={16} color={color || '#10b981'} />}
               </TouchableOpacity>
             );
           })}
@@ -142,22 +177,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   leftItem: {},
   rightItem: {},
-  selectedItem: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: '#3b82f6',
-  },
-  matchedItem: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: '#10b981',
-  },
   disabledItem: {
     opacity: 0.5,
   },
