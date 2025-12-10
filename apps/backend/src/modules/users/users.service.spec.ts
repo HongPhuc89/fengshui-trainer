@@ -22,9 +22,8 @@ describe('UsersService', () => {
     last_login_at: new Date(),
     created_at: new Date(),
     updated_at: new Date(),
-    books: [],
     credential: null,
-  };
+  } as User;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

@@ -24,13 +24,12 @@ describe('BooksService', () => {
     last_login_at: new Date(),
     created_at: new Date(),
     updated_at: new Date(),
-    books: [],
-  };
+  } as User;
 
   const mockBook: Book = {
     id: 1,
     title: 'Test Book',
-    description: 'Test Description',
+    author: 'Test Author',
     cover_file_id: null,
     file_id: null,
     user_id: 1,
@@ -42,7 +41,7 @@ describe('BooksService', () => {
     cover_file: null,
     file: null,
     chapters: [],
-  };
+  } as Book;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -80,7 +79,7 @@ describe('BooksService', () => {
   describe('create', () => {
     const createBookDto: CreateBookDto = {
       title: 'New Book',
-      description: 'New Description',
+      author: 'New Author',
       cover_file_id: null,
       file_id: 1,
     };
@@ -200,7 +199,7 @@ describe('BooksService', () => {
   describe('update', () => {
     const updateBookDto: UpdateBookDto = {
       title: 'Updated Title',
-      description: 'Updated Description',
+      author: 'Updated Author',
     };
 
     it('should update a book successfully', async () => {
