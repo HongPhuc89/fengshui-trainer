@@ -2,9 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { quizService, QuizSession, Question } from '../../services/api';
 
-export default function QuizScreen() {
+const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const OPTION_COLORS = {
+  A: '#ef4444', // red
+  B: '#3b82f6', // blue
+  C: '#10b981', // green
+  D: '#f59e0b', // amber
+  E: '#8b5cf6', // purple
+  F: '#ec4899', // pink
+};
+
+export default function ModernQuizScreen() {
   const { chapterId } = useLocalSearchParams();
   const [session, setSession] = useState<QuizSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +49,6 @@ export default function QuizScreen() {
       const response = await quizService.startQuiz(Number(chapterId));
       setSession(response);
 
-      // Calculate time remaining
       if (response.time_limit_minutes) {
         setTimeRemaining(response.time_limit_minutes * 60);
       }
@@ -57,34 +67,25 @@ export default function QuizScreen() {
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
     setAnswers(newAnswers);
 
-    // Submit answer to backend
     try {
       await quizService.submitAnswer(session.id, currentQuestion.id, answer);
     } catch (error) {
       console.error('Error submitting answer:', error);
-    }
-
-    // Auto move to next question
-    if (currentQuestionIndex < session.questions.length - 1) {
-      setTimeout(() => {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      }, 300);
     }
   };
 
   const handleSubmitQuiz = async () => {
     if (!session) return;
 
-    Alert.alert('Submit Quiz', 'Are you sure you want to submit? You cannot change your answers after submission.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('Nộp bài', 'Bạn có chắc muốn nộp bài? Bạn không thể thay đổi câu trả lời sau khi nộp.', [
+      { text: 'Hủy', style: 'cancel' },
       {
-        text: 'Submit',
+        text: 'Nộp bài',
         onPress: async () => {
           try {
             setSubmitting(true);
             await quizService.completeQuiz(session.id);
 
-            // Navigate to result screen
             router.replace({
               pathname: '/quiz-result/[sessionId]',
               params: { sessionId: session.id },
@@ -105,63 +106,129 @@ export default function QuizScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const renderOption = (option: any, index: number, isSelected: boolean, onSelect: () => void) => {
+    const label = OPTION_LABELS[index];
+    const color = OPTION_COLORS[label as keyof typeof OPTION_COLORS];
+
+    return (
+      <TouchableOpacity
+        key={index}
+        style={[styles.optionButton, isSelected && styles.optionButtonSelected, isSelected && { borderColor: color }]}
+        onPress={onSelect}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.optionBadge, { backgroundColor: color }]}>
+          <Text style={styles.optionBadgeText}>{label}</Text>
+        </View>
+        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option.text || option}</Text>
+        {isSelected && <Ionicons name="checkmark-circle" size={24} color={color} style={styles.checkIcon} />}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderOptions = (question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) => {
+    const options = question.options?.options || [];
+
+    switch (question.question_type) {
+      case 'TRUE_FALSE':
+        return (
+          <View style={styles.optionsWrapper}>
+            {renderOption('Đúng', 0, selectedAnswer === true, () => onAnswer(true))}
+            {renderOption('Sai', 1, selectedAnswer === false, () => onAnswer(false))}
+          </View>
+        );
+
+      case 'MULTIPLE_CHOICE':
+        return (
+          <View style={styles.optionsWrapper}>
+            {options.map((option: any, index: number) => {
+              const optionId = option.id || String.fromCharCode(97 + index); // a, b, c, d
+              const isSelected = selectedAnswer === optionId;
+              return renderOption(option, index, isSelected, () => onAnswer(optionId));
+            })}
+          </View>
+        );
+
+      case 'MULTIPLE_ANSWER':
+        const selectedAnswers = Array.isArray(selectedAnswer) ? selectedAnswer : [];
+        return (
+          <View style={styles.optionsWrapper}>
+            {options.map((option: any, index: number) => {
+              const optionId = option.id || String.fromCharCode(97 + index);
+              const isSelected = selectedAnswers.includes(optionId);
+              return renderOption(option, index, isSelected, () => {
+                const newAnswers = isSelected
+                  ? selectedAnswers.filter((id: string) => id !== optionId)
+                  : [...selectedAnswers, optionId];
+                onAnswer(newAnswers);
+              });
+            })}
+          </View>
+        );
+
+      default:
+        return <Text style={styles.unsupportedText}>Unsupported question type</Text>;
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Starting quiz...</Text>
-      </View>
+      <LinearGradient colors={['#1e1b4b', '#312e81', '#4c1d95']} style={styles.container}>
+        <ActivityIndicator size="large" color="#fff" />
+      </LinearGradient>
     );
   }
 
-  if (!session) return null;
+  if (!session) {
+    return (
+      <LinearGradient colors={['#1e1b4b', '#312e81', '#4c1d95']} style={styles.container}>
+        <Text style={styles.errorText}>Failed to load quiz</Text>
+      </LinearGradient>
+    );
+  }
 
   const currentQuestion = session.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / session.questions.length) * 100;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1f2937" />
-          </TouchableOpacity>
-          <View style={styles.timerContainer}>
-            <Ionicons name="time-outline" size={20} color={timeRemaining < 60 ? '#ef4444' : '#6366f1'} />
-            <Text style={[styles.timerText, timeRemaining < 60 && styles.timerWarning]}>
-              {formatTime(timeRemaining)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
-          </View>
-          <Text style={styles.progressText}>
-            {currentQuestionIndex + 1} / {session.questions.length}
-          </Text>
-        </View>
-      </View>
-
-      {/* Question */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.questionCard}>
-          <View style={styles.questionHeader}>
-            <View style={[styles.difficultyBadge, styles[`difficulty${currentQuestion.difficulty}`]]}>
-              <Text style={styles.difficultyText}>{currentQuestion.difficulty}</Text>
+    <LinearGradient colors={['#1e1b4b', '#312e81', '#4c1d95']} style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerLabel}>CÂU HỎI</Text>
+            <View style={styles.questionCounter}>
+              <Text style={styles.currentQuestion}>{currentQuestionIndex + 1}</Text>
+              <Text style={styles.totalQuestions}> / {session.questions.length}</Text>
             </View>
-            <Text style={styles.pointsText}>{currentQuestion.points} points</Text>
           </View>
-
-          <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
-
-          {/* Render options based on question type */}
-          <View style={styles.optionsContainer}>
-            {renderOptions(currentQuestion, answers[currentQuestion.id], handleAnswer)}
+          <View style={styles.headerRight}>
+            <Text style={styles.headerLabel}>ĐIỂM SỐ</Text>
+            <Text style={styles.scoreText}>{currentQuestion.points}</Text>
           </View>
         </View>
+
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { width: `${progress}%` }]} />
+        </View>
+
+        {/* Question */}
+        <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
+
+        {/* Options */}
+        {renderOptions(currentQuestion, answers[currentQuestion.id], handleAnswer)}
+
+        {/* Explanation (if answered) */}
+        {answers[currentQuestion.id] && currentQuestion.explanation && (
+          <View style={styles.explanationBox}>
+            <View style={styles.explanationHeader}>
+              <Ionicons name="bulb" size={20} color="#fbbf24" />
+              <Text style={styles.explanationTitle}>GIẢI THÍCH CHI TIẾT</Text>
+            </View>
+            <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+          </View>
+        )}
 
         {/* Navigation */}
         <View style={styles.navigation}>
@@ -170,10 +237,7 @@ export default function QuizScreen() {
             onPress={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
             disabled={currentQuestionIndex === 0}
           >
-            <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? '#9ca3af' : '#6366f1'} />
-            <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.navButtonTextDisabled]}>
-              Previous
-            </Text>
+            <Ionicons name="chevron-back" size={24} color={currentQuestionIndex === 0 ? '#64748b' : '#fff'} />
           </TouchableOpacity>
 
           {currentQuestionIndex === session.questions.length - 1 ? (
@@ -182,308 +246,249 @@ export default function QuizScreen() {
               onPress={handleSubmitQuiz}
               disabled={submitting}
             >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.submitButtonText}>Submit Quiz</Text>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                </>
-              )}
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>NỘP BÀI</Text>}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.navButton}
+              style={styles.nextButton}
               onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
             >
-              <Text style={styles.navButtonText}>Next</Text>
-              <Ionicons name="chevron-forward" size={20} color="#6366f1" />
+              <Text style={styles.nextButtonText}>Câu tiếp theo</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={[
+              styles.navButton,
+              currentQuestionIndex === session.questions.length - 1 && styles.navButtonDisabled,
+            ]}
+            onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+            disabled={currentQuestionIndex === session.questions.length - 1}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={currentQuestionIndex === session.questions.length - 1 ? '#64748b' : '#fff'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Timer */}
+        <View style={styles.timerContainer}>
+          <Ionicons name="time-outline" size={20} color={timeRemaining < 60 ? '#ef4444' : '#fff'} />
+          <Text style={[styles.timerText, timeRemaining < 60 && styles.timerWarning]}>{formatTime(timeRemaining)}</Text>
         </View>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
-}
-
-function renderOptions(question: Question, selectedAnswer: any, onAnswer: (answer: any) => void) {
-  switch (question.question_type) {
-    case 'TRUE_FALSE':
-      return (
-        <>
-          <TouchableOpacity
-            style={[styles.optionButton, selectedAnswer === true && styles.optionButtonSelected]}
-            onPress={() => onAnswer(true)}
-          >
-            <Text style={[styles.optionText, selectedAnswer === true && styles.optionTextSelected]}>True</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.optionButton, selectedAnswer === false && styles.optionButtonSelected]}
-            onPress={() => onAnswer(false)}
-          >
-            <Text style={[styles.optionText, selectedAnswer === false && styles.optionTextSelected]}>False</Text>
-          </TouchableOpacity>
-        </>
-      );
-
-    case 'MULTIPLE_CHOICE':
-      return question.options.options.map((opt: any) => (
-        <TouchableOpacity
-          key={opt.id}
-          style={[styles.optionButton, selectedAnswer === opt.id && styles.optionButtonSelected]}
-          onPress={() => onAnswer(opt.id)}
-        >
-          <Text style={[styles.optionText, selectedAnswer === opt.id && styles.optionTextSelected]}>
-            {opt.id.toUpperCase()}. {opt.text}
-          </Text>
-        </TouchableOpacity>
-      ));
-
-    case 'MULTIPLE_ANSWER':
-      const selectedAnswers = selectedAnswer || [];
-      return question.options.options.map((opt: any) => {
-        const isSelected = selectedAnswers.includes(opt.id);
-        return (
-          <TouchableOpacity
-            key={opt.id}
-            style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-            onPress={() => {
-              const newAnswers = isSelected
-                ? selectedAnswers.filter((a: string) => a !== opt.id)
-                : [...selectedAnswers, opt.id];
-              onAnswer(newAnswers);
-            }}
-          >
-            <View style={styles.checkboxContainer}>
-              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
-              </View>
-              <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                {opt.id.toUpperCase()}. {opt.text}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      });
-
-    default:
-      return <Text style={styles.unsupportedText}>Question type not supported in mobile yet</Text>;
-  }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6b7280',
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#fff',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
   },
-  backButton: {
-    padding: 8,
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  timerText: {
-    marginLeft: 6,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366f1',
-  },
-  timerWarning: {
-    color: '#ef4444',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  progressBar: {
+  headerLeft: {
     flex: 1,
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
+  headerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94a3b8',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  questionCounter: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  currentQuestion: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fbbf24',
+  },
+  totalQuestions: {
+    fontSize: 18,
+    color: '#94a3b8',
+  },
+  scoreText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fbbf24',
+  },
+  progressBarContainer: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
+    marginBottom: 24,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressBar: {
     height: '100%',
-    backgroundColor: '#6366f1',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  questionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  questionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  difficultyEASY: {
-    backgroundColor: '#d1fae5',
-  },
-  difficultyMEDIUM: {
-    backgroundColor: '#fed7aa',
-  },
-  difficultyHARD: {
-    backgroundColor: '#fecaca',
-  },
-  difficultyText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  pointsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
+    backgroundColor: '#10b981',
+    borderRadius: 2,
   },
   questionText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1f2937',
-    lineHeight: 26,
-    marginBottom: 20,
+    color: '#fff',
+    marginBottom: 24,
+    lineHeight: 28,
   },
-  optionsContainer: {
+  optionsWrapper: {
     gap: 12,
   },
   optionButton: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 16,
-  },
-  optionButtonSelected: {
-    backgroundColor: '#eef2ff',
-    borderColor: '#6366f1',
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#4b5563',
-  },
-  optionTextSelected: {
-    color: '#6366f1',
-    fontWeight: '600',
-  },
-  checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 2,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
+    borderColor: 'transparent',
+  },
+  optionButtonSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 2,
+  },
+  optionBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  checkboxSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
+  optionBadgeText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#e2e8f0',
+  },
+  optionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  checkIcon: {
+    marginLeft: 8,
   },
   unsupportedText: {
+    color: '#94a3b8',
     fontSize: 14,
-    color: '#9ca3af',
     textAlign: 'center',
-    padding: 20,
+    marginTop: 20,
+  },
+  explanationBox: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  explanationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  explanationTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fbbf24',
+    letterSpacing: 1,
+  },
+  explanationText: {
+    fontSize: 14,
+    color: '#e2e8f0',
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
   navigation: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 32,
     gap: 12,
-    marginBottom: 40,
   },
   navButton: {
-    flexDirection: 'row',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#6366f1',
   },
   navButtonDisabled: {
-    borderColor: '#e5e7eb',
+    opacity: 0.3,
   },
-  navButtonText: {
+  nextButton: {
+    flex: 1,
+    backgroundColor: '#3b82f6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  nextButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    color: '#6366f1',
-  },
-  navButtonTextDisabled: {
-    color: '#9ca3af',
   },
   submitButton: {
     flex: 1,
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  timerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 24,
     gap: 8,
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    fontSize: 16,
+  timerText: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+  },
+  timerWarning: {
+    color: '#ef4444',
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
