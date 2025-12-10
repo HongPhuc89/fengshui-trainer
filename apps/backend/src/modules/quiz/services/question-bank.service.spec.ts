@@ -32,7 +32,7 @@ describe('QuestionBankService', () => {
     updated_at: new Date(),
     chapter: null,
     attempts: [],
-  };
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -77,7 +77,7 @@ describe('QuestionBankService', () => {
 
     it('should create a question successfully', async () => {
       repository.create.mockReturnValue(mockQuestion as any);
-      repository.save.mockResolvedValue(mockQuestion);
+      repository.save.mockResolvedValue(mockQuestion as any);
 
       const result = await service.create(1, createQuestionDto);
 
@@ -92,7 +92,7 @@ describe('QuestionBankService', () => {
   describe('findAllByChapter', () => {
     it('should return all questions for a chapter', async () => {
       const questions = [mockQuestion];
-      repository.find.mockResolvedValue(questions);
+      repository.find.mockResolvedValue(questions as any);
 
       const result = await service.findAllByChapter(1);
 
@@ -106,7 +106,7 @@ describe('QuestionBankService', () => {
 
   describe('findById', () => {
     it('should return a question by id', async () => {
-      repository.findOne.mockResolvedValue(mockQuestion);
+      repository.findOne.mockResolvedValue(mockQuestion as any);
 
       const result = await service.findById(1);
 
@@ -128,8 +128,8 @@ describe('QuestionBankService', () => {
 
     it('should update a question successfully', async () => {
       const updatedQuestion = { ...mockQuestion, ...updateDto };
-      repository.findOne.mockResolvedValue(mockQuestion);
-      repository.save.mockResolvedValue(updatedQuestion);
+      repository.findOne.mockResolvedValue(mockQuestion as any);
+      repository.save.mockResolvedValue(updatedQuestion as any);
 
       const result = await service.update(1, updateDto);
 
@@ -140,8 +140,8 @@ describe('QuestionBankService', () => {
 
   describe('delete', () => {
     it('should delete a question successfully', async () => {
-      repository.findOne.mockResolvedValue(mockQuestion);
-      repository.remove.mockResolvedValue(mockQuestion);
+      repository.findOne.mockResolvedValue(mockQuestion as any);
+      repository.remove.mockResolvedValue(mockQuestion as any);
 
       await service.delete(1);
 
@@ -152,7 +152,7 @@ describe('QuestionBankService', () => {
   describe('findActiveByChapter', () => {
     it('should return only active questions', async () => {
       const activeQuestions = [mockQuestion];
-      repository.find.mockResolvedValue(activeQuestions);
+      repository.find.mockResolvedValue(activeQuestions as any);
 
       const result = await service.findActiveByChapter(1);
 
@@ -165,7 +165,7 @@ describe('QuestionBankService', () => {
 
   describe('exportToCSV', () => {
     it('should export questions to CSV format', async () => {
-      repository.find.mockResolvedValue([mockQuestion]);
+      repository.find.mockResolvedValue([mockQuestion] as any);
 
       const result = await service.exportToCSV(1);
 
@@ -176,7 +176,7 @@ describe('QuestionBankService', () => {
 
     it('should handle questions without explanation', async () => {
       const questionWithoutExplanation = { ...mockQuestion, explanation: null };
-      repository.find.mockResolvedValue([questionWithoutExplanation]);
+      repository.find.mockResolvedValue([questionWithoutExplanation] as any);
 
       const result = await service.exportToCSV(1);
 
@@ -190,7 +190,7 @@ multiple_choice,medium,"What is 2+2?",10,"{""choices"":[{""id"":""a"",""text"":"
 
     it('should import questions from CSV successfully', async () => {
       repository.create.mockReturnValue(mockQuestion as any);
-      repository.save.mockResolvedValue(mockQuestion);
+      repository.save.mockResolvedValue(mockQuestion as any);
 
       const result = await service.importFromCSV(1, validCSV);
 
@@ -241,7 +241,7 @@ multiple_choice,medium,"Valid Question",10,"{""choices"":[]}","Explanation"
 multiple_choice,medium,"Invalid",invalid_points,"{}",""`;
 
       repository.create.mockReturnValue(mockQuestion as any);
-      repository.save.mockResolvedValue(mockQuestion);
+      repository.save.mockResolvedValue(mockQuestion as any);
 
       const result = await service.importFromCSV(1, mixedCSV);
 

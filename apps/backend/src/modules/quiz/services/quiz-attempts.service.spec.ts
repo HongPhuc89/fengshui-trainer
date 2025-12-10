@@ -32,7 +32,7 @@ describe('QuizAttemptsService', () => {
     updated_at: new Date(),
     chapter: null,
     attempts: [],
-  } as Question;
+  } as any;
 
   const mockAttempt: QuizAttempt = {
     id: 1,
@@ -107,7 +107,7 @@ describe('QuizAttemptsService', () => {
       const questions = Array(15)
         .fill(mockQuestion)
         .map((q, i) => ({ ...q, id: i + 1 }));
-      questionBankService.findActiveByChapter.mockResolvedValue(questions);
+      questionBankService.findActiveByChapter.mockResolvedValue(questions as any);
       configService.findByChapterId.mockResolvedValue(mockConfig);
       repository.create.mockReturnValue(mockAttempt as any);
       repository.save.mockResolvedValue(mockAttempt);
@@ -135,7 +135,7 @@ describe('QuizAttemptsService', () => {
 
     it('should adjust question count if not enough questions available', async () => {
       const questions = [mockQuestion, { ...mockQuestion, id: 2 }];
-      questionBankService.findActiveByChapter.mockResolvedValue(questions);
+      questionBankService.findActiveByChapter.mockResolvedValue(questions as any);
       configService.findByChapterId.mockResolvedValue(mockConfig);
       repository.create.mockReturnValue(mockAttempt as any);
       repository.save.mockResolvedValue(mockAttempt);
@@ -154,9 +154,9 @@ describe('QuizAttemptsService', () => {
     it('should submit quiz successfully', async () => {
       const completedAttempt = { ...mockAttempt, completed_at: new Date(), score: 10 };
       repository.findOne.mockResolvedValue(mockAttempt);
-      questionBankService.findActiveByChapter.mockResolvedValue([mockQuestion]);
+      questionBankService.findActiveByChapter.mockResolvedValue([mockQuestion] as any);
       configService.findByChapterId.mockResolvedValue(mockConfig);
-      repository.save.mockResolvedValue(completedAttempt);
+      repository.save.mockResolvedValue(completedAttempt as any);
 
       const result = await service.submitQuiz(1, 1, answers);
 
@@ -174,7 +174,7 @@ describe('QuizAttemptsService', () => {
 
     it('should throw error when quiz already completed', async () => {
       const completedAttempt = { ...mockAttempt, completed_at: new Date() };
-      repository.findOne.mockResolvedValue(completedAttempt);
+      repository.findOne.mockResolvedValue(completedAttempt as any);
 
       await expect(service.submitQuiz(1, 1, answers)).rejects.toThrow(BadRequestException);
     });
