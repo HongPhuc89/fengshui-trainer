@@ -228,4 +228,31 @@ export class UserExperienceService {
     const xpNeeded = nextLevelXP - currentLevelXP;
     return Math.round((xpInLevel / xpNeeded) * 1000) / 10;
   }
+
+  /**
+   * Get level by ID
+   */
+  async getLevelById(id: number): Promise<Level> {
+    const level = await this.levelRepository.findOne({ where: { id } });
+    if (!level) {
+      throw new Error(`Level with ID ${id} not found`);
+    }
+    return level;
+  }
+
+  /**
+   * Update level
+   */
+  async updateLevel(id: number, updateData: Partial<Level>): Promise<Level> {
+    const level = await this.getLevelById(id);
+
+    // Update fields
+    if (updateData.title !== undefined) level.title = updateData.title;
+    if (updateData.xp_required !== undefined) level.xp_required = updateData.xp_required;
+    if (updateData.color !== undefined) level.color = updateData.color;
+    if (updateData.icon !== undefined) level.icon = updateData.icon;
+    if (updateData.rewards !== undefined) level.rewards = updateData.rewards;
+
+    return this.levelRepository.save(level);
+  }
 }

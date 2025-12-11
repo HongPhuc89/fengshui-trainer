@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, Patch, Body } from '@nestjs/common';
 import { UserExperienceService } from './services/user-experience.service';
 import { ExperienceSourceType } from '../../shares/enums/experience-source-type.enum';
 
@@ -43,6 +43,24 @@ export class ExperienceController {
   async getAllLevels() {
     const levels = await this.userExperienceService.getAllLevels();
     return { data: levels };
+  }
+
+  /**
+   * Get single level by ID
+   * GET /api/experience/levels/:id
+   */
+  @Get('levels/:id')
+  async getLevel(@Param('id', ParseIntPipe) id: number) {
+    return this.userExperienceService.getLevelById(id);
+  }
+
+  /**
+   * Update level
+   * PATCH /api/experience/levels/:id
+   */
+  @Patch('levels/:id')
+  async updateLevel(@Param('id', ParseIntPipe) id: number, @Body() updateData: any) {
+    return this.userExperienceService.updateLevel(id, updateData);
   }
 
   /**
