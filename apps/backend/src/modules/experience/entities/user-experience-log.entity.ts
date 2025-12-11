@@ -1,5 +1,13 @@
-import { BaseEntity } from '../../typeorm/base.entity';
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { ExperienceSourceType } from '../../../shares/enums/experience-source-type.enum';
 
@@ -7,7 +15,7 @@ import { ExperienceSourceType } from '../../../shares/enums/experience-source-ty
 @Index(['user_id'])
 @Index(['source_type', 'source_id'])
 @Index(['created_at'])
-export class UserExperienceLog extends BaseEntity {
+export class UserExperienceLog {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
@@ -34,4 +42,16 @@ export class UserExperienceLog extends BaseEntity {
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @CreateDateColumn({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  created_at: Date;
+
+  @UpdateDateColumn({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updated_at: Date;
 }
