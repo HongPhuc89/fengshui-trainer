@@ -36,6 +36,27 @@ export class ExperienceController {
   }
 
   /**
+   * Get all users' XP logs (Admin only)
+   * GET /api/experience/users?page=1&limit=25&source_type=quiz_attempt
+   */
+  @Get('users')
+  async getAllUserLogs(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '25',
+    @Query('source_type') sourceType?: ExperienceSourceType,
+    @Query('sort') sort: string = 'created_at',
+    @Query('order') order: string = 'desc',
+  ) {
+    return this.userExperienceService.getAllUserLogs({
+      page: parseInt(page),
+      limit: Math.min(parseInt(limit), 100), // Max 100 per page
+      sourceType,
+      sort,
+      order: order.toLowerCase() as 'asc' | 'desc',
+    });
+  }
+
+  /**
    * Get all levels/ranks
    * GET /api/experience/levels
    */

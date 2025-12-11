@@ -157,6 +157,39 @@ export class UserExperienceService {
   }
 
   /**
+   * Get all users' XP logs (Admin)
+   */
+  async getAllUserLogs(
+    options: {
+      page?: number;
+      limit?: number;
+      sourceType?: ExperienceSourceType;
+      sort?: string;
+      order?: 'asc' | 'desc';
+    } = {},
+  ) {
+    const { page = 1, limit = 25, sourceType, sort = 'created_at', order = 'desc' } = options;
+
+    const queryBuilder = this.logRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.user', 'user')
+      .orderBy(`log.${sort}`, order.toUpperCase() as 'ASC' | 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (sourceType) {
+      queryBuilder.andWhere('log.source_type = :sourceType', { sourceType });
+    }
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data,
+      total,
+    };
+  }
+
+  /**
    * Get level by XP amount
    */
   async getLevelByXP(xp: number): Promise<Level> {

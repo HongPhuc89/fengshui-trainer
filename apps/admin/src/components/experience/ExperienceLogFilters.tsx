@@ -1,16 +1,13 @@
 import { Card, CardContent } from '@mui/material';
-import { FilterList, FilterListItem, useGetList } from 'react-admin';
+import { FilterList, FilterListItem, useListContext } from 'react-admin';
 import { Quiz as QuizIcon } from '@mui/icons-material';
 
 export const ExperienceLogFilters = () => {
-  const { data: logs } = useGetList('experience-logs', {
-    pagination: { page: 1, perPage: 1000 },
-    sort: { field: 'created_at', order: 'DESC' },
-  });
+  const { data } = useListContext();
 
-  // Calculate stats by source type
-  const sourceStats = logs?.reduce(
-    (acc, log) => {
+  // Calculate stats by source type from current page data
+  const sourceStats = (data || []).reduce(
+    (acc, log: any) => {
       const type = log.source_type;
       acc[type] = (acc[type] || 0) + 1;
       return acc;
