@@ -127,8 +127,8 @@ describe('BooksService', () => {
   });
 
   describe('findAll', () => {
-    it('should return only published books', async () => {
-      const publishedBooks = [mockBook];
+    it('should return only published books with chapters', async () => {
+      const publishedBooks = [{ ...mockBook, chapters: [] }];
       repository.find.mockResolvedValue(publishedBooks as any);
 
       const result = await service.findAll();
@@ -136,8 +136,17 @@ describe('BooksService', () => {
       expect(result).toEqual(publishedBooks);
       expect(repository.find).toHaveBeenCalledWith({
         where: { status: BookStatus.PUBLISHED },
-        relations: ['cover_file', 'file'],
+        relations: ['cover_file', 'file', 'chapters'],
       });
+    });
+
+    it('should compute chapter count from chapters array', async () => {
+      const booksWithChapters = [{ ...mockBook, chapters: [{ id: 1 }, { id: 2 }, { id: 3 }] }];
+      repository.find.mockResolvedValue(booksWithChapters as any);
+
+      const result = await service.findAll();
+
+      expect(result[0].chapter_count).toBe(3);
     });
   });
 
