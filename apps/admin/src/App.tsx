@@ -4,6 +4,8 @@ import { authProvider } from './providers/authProvider';
 import { dataProvider } from './providers/dataProvider';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import TimelineIcon from '@mui/icons-material/Timeline';
 
 // User Resources
 import { UserList } from './resources/users/UserList';
@@ -16,6 +18,9 @@ import { BookList } from './resources/books/BookList';
 import { BookShow } from './resources/books/BookShow';
 import { BookEdit } from './resources/books/BookEdit';
 
+// Experience Resources
+import { ExperienceLogList, LevelList, LevelEdit } from './resources/experience';
+
 // Pages
 import { ChapterDetailPage } from './pages/ChapterDetailPage';
 
@@ -24,6 +29,14 @@ function App() {
     <Admin dataProvider={dataProvider} authProvider={authProvider} title="Quiz Game Admin">
       <Resource name="users" list={UserList} show={UserShow} edit={UserEdit} create={UserCreate} icon={PeopleIcon} />
       <Resource name="books" list={BookList} show={BookShow} edit={BookEdit} icon={MenuBookIcon} />
+      <Resource name="experience/users" options={{ label: 'XP Logs' }} list={ExperienceLogList} icon={TimelineIcon} />
+      <Resource
+        name="experience/levels"
+        options={{ label: 'Cultivation Ranks' }}
+        list={LevelList}
+        edit={LevelEdit}
+        icon={EmojiEventsIcon}
+      />
       <CustomRoutes>
         <Route path="/chapters/:bookId/:chapterId" element={<ChapterDetailPage />} />
       </CustomRoutes>
