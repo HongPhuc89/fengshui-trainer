@@ -41,11 +41,19 @@ npm install
 ### Development
 
 ```bash
-# Run all apps in development mode
+# Run ALL apps (backend + admin + mobile) in development mode
 npm run dev
 
-# Run only backend
-npm run backend:dev
+# Run individual apps
+npm run dev:backend   # Backend only
+npm run dev:admin     # Admin dashboard only
+npm run dev:mobile    # Mobile app only
+
+# Alternative: Use Makefile (requires make)
+make dev              # Run all apps
+make backend          # Backend only
+make admin            # Admin only
+make mobile           # Mobile only
 
 # Build all apps
 npm run build
@@ -56,6 +64,8 @@ npm run lint
 # Run tests
 npm run test
 ```
+
+📖 **Xem thêm:** [DEV_COMMANDS.md](./DEV_COMMANDS.md) - Hướng dẫn chi tiết về tất cả các lệnh development
 
 ## 📦 Apps
 

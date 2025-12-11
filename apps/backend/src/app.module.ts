@@ -9,6 +9,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { BooksModule } from './modules/books/books.module';
 import { QuizModule } from './modules/quiz/quiz.module';
 import { MindMapModule } from './modules/mindmap/mindmap.module';
+import { ExperienceModule } from './modules/experience/experience.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MindMapModule } from './modules/mindmap/mindmap.module';
     BooksModule,
     QuizModule,
     MindMapModule,
+    ExperienceModule,
     AdminModule,
   ],
 })

@@ -1,5 +1,5 @@
 import { BaseEntity } from '../../typeorm/base.entity';
-import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserRole } from '../../../shares/enums/user-role.enum';
 import { UserCredential } from '../../user-credential/entities/user-credential.entity';
 
@@ -44,6 +44,12 @@ export class User extends BaseEntity {
     nullable: true,
   })
   refresh_token: string;
+
+  @Column({
+    type: 'integer',
+    default: 0,
+  })
+  experience_points: number;
 
   @OneToOne(() => UserCredential, (credential) => credential.user)
   credential: UserCredential;

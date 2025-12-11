@@ -11,6 +11,10 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:all": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@quiz-game/backend",
+    "dev:admin": "turbo run dev --filter=@quiz-game/admin",
+    "dev:mobile": "turbo run dev --filter=mobile",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
@@ -20,7 +24,8 @@
     "backend:dev": "turbo run dev --filter=@quiz-game/backend",
     "backend:build": "turbo run build --filter=@quiz-game/backend",
     "backend:migration:run": "npm run migration:run --workspace=@quiz-game/backend",
-    "backend:migration:generate": "npm run migration:generate --workspace=@quiz-game/backend"
+    "backend:migration:generate": "npm run migration:generate --workspace=@quiz-game/backend",
+    "backend:create-admin": "npm run create:admin --workspace=@quiz-game/backend"
   },
   "devDependencies": {
     "husky": "^9.1.7",
