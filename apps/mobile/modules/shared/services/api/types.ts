@@ -54,6 +54,7 @@ export interface Book {
   coverImage?: string;
   author?: string;
   published: boolean;
+  chapter_count?: number; // Computed field from backend
   createdAt: string;
   updatedAt: string;
 }

@@ -42,7 +42,7 @@ const BooksListComponent: React.FC<BooksListProps> = ({ books, isLoading, error,
       initial: getBookInitial(book.title),
       category: getCategoryLabel(index),
       gradientColors: getIconGradient(index),
-      chapterCount: Math.floor(Math.random() * 8) + 3,
+      chapterCount: book.chapter_count || 0, // Use actual chapter count from API
       description: book.description || 'Cuốn sách cơ bản nhất cho người mới bắt đầu tìm hiểu về địa lý và phong thủy.',
     }));
   }, [books]);
