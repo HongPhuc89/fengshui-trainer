@@ -40,11 +40,17 @@ export class BooksService {
   async findAll(): Promise<Book[]> {
     const books = await this.bookRepository.find({
       where: { status: BookStatus.PUBLISHED },
-      relations: ['cover_file', 'file'],
+      relations: ['cover_file', 'file', 'chapters'],
     });
 
-    // Attach signed URLs to all books
-    return Promise.all(books.map((book) => this.attachSignedUrls(book)));
+    // Attach signed URLs and compute chapter count
+    return Promise.all(
+      books.map(async (book) => {
+        // Compute actual chapter count from database
+        book.chapter_count = book.chapters?.length || 0;
+        return this.attachSignedUrls(book);
+      }),
+    );
   }
 
   async findOne(id: number): Promise<Book> {
@@ -63,11 +69,17 @@ export class BooksService {
   // Admin methods (all statuses)
   async findAllAdmin(): Promise<Book[]> {
     const books = await this.bookRepository.find({
-      relations: ['cover_file', 'file'],
+      relations: ['cover_file', 'file', 'chapters'],
     });
 
-    // Attach signed URLs to all books
-    return Promise.all(books.map((book) => this.attachSignedUrls(book)));
+    // Attach signed URLs and compute chapter count
+    return Promise.all(
+      books.map(async (book) => {
+        // Compute actual chapter count from database
+        book.chapter_count = book.chapters?.length || 0;
+        return this.attachSignedUrls(book);
+      }),
+    );
   }
 
   async findOneAdmin(id: number): Promise<Book> {
