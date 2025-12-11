@@ -43,14 +43,16 @@ export class BooksService {
       relations: ['cover_file', 'file', 'chapters'],
     });
 
-    // Attach signed URLs and compute chapter count
-    return Promise.all(
+    // Batch process signed URLs for better performance
+    const booksWithUrls = await Promise.all(
       books.map(async (book) => {
         // Compute actual chapter count from database
         book.chapter_count = book.chapters?.length || 0;
         return this.attachSignedUrls(book);
       }),
     );
+
+    return booksWithUrls;
   }
 
   async findOne(id: number): Promise<Book> {

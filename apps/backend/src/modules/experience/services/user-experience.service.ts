@@ -5,9 +5,13 @@ import { User } from '../../users/entities/user.entity';
 import { UserExperienceLog } from '../entities/user-experience-log.entity';
 import { Level } from '../entities/level.entity';
 import { ExperienceSourceType } from '../../../shares/enums/experience-source-type.enum';
+import { QueryCache } from '../../../shares/utils/query-optimization.util';
 
 @Injectable()
 export class UserExperienceService {
+  // Cache for levels (they rarely change)
+  private levelsCache = new QueryCache<Level[]>(3600); // 1 hour TTL
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -140,6 +144,7 @@ export class UserExperienceService {
 
   /**
    * Get leaderboard - Top 10 users by XP (normal users only)
+   * Optimized to prevent N+1 query
    */
   async getLeaderboard() {
     const users = await this.userRepository
@@ -149,25 +154,31 @@ export class UserExperienceService {
       .take(10)
       .getMany();
 
-    // Get level info for each user
-    const leaderboard = await Promise.all(
-      users.map(async (user, index) => {
-        const level = await this.getLevelByXP(user.experience_points);
-        return {
-          rank: index + 1,
-          user_id: user.id,
-          full_name: user.full_name || user.email?.split('@')[0] || 'User',
-          email: user.email,
-          experience_points: user.experience_points,
-          level: {
-            id: level.id,
-            level: level.level,
-            title: level.title,
-            color: level.color,
-          },
-        };
-      }),
-    );
+    // Fetch all levels once to prevent N+1 query
+    const allLevels = await this.levelRepository.find({
+      order: { xp_required: 'DESC' },
+    });
+
+    // Get level info for each user using in-memory lookup
+    const leaderboard = users.map((user, index) => {
+      // Find level by XP in memory (no additional query)
+      const level =
+        allLevels.find((lvl) => user.experience_points >= lvl.xp_required) || allLevels[allLevels.length - 1];
+
+      return {
+        rank: index + 1,
+        user_id: user.id,
+        full_name: user.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email,
+        experience_points: user.experience_points,
+        level: {
+          id: level.id,
+          level: level.level,
+          title: level.title,
+          color: level.color,
+        },
+      };
+    });
 
     return { data: leaderboard };
   }
@@ -273,11 +284,19 @@ export class UserExperienceService {
 
   /**
    * Get level by XP amount
+   * Cached for better performance
    */
   async getLevelByXP(xp: number): Promise<Level> {
-    const levels = await this.levelRepository.find({
-      order: { xp_required: 'DESC' },
-    });
+    // Try to get from cache first
+    let levels = this.levelsCache.get('all_levels');
+
+    if (!levels) {
+      // Cache miss - fetch from database
+      levels = await this.levelRepository.find({
+        order: { xp_required: 'DESC' },
+      });
+      this.levelsCache.set('all_levels', levels);
+    }
 
     const level = levels.find((level) => xp >= level.xp_required);
     return level || levels[levels.length - 1];
@@ -294,11 +313,21 @@ export class UserExperienceService {
 
   /**
    * Get all levels
+   * Cached for better performance
    */
   async getAllLevels(): Promise<Level[]> {
-    return this.levelRepository.find({
-      order: { level: 'ASC' },
-    });
+    // Try to get from cache first
+    let levels = this.levelsCache.get('all_levels');
+
+    if (!levels) {
+      // Cache miss - fetch from database
+      levels = await this.levelRepository.find({
+        order: { level: 'ASC' },
+      });
+      this.levelsCache.set('all_levels', levels);
+    }
+
+    return levels;
   }
 
   /**
@@ -367,6 +396,9 @@ export class UserExperienceService {
     if (updateData.color !== undefined) level.color = updateData.color;
     if (updateData.icon !== undefined) level.icon = updateData.icon;
     if (updateData.rewards !== undefined) level.rewards = updateData.rewards;
+
+    // Clear cache when level is updated
+    this.levelsCache.clear('all_levels');
 
     return this.levelRepository.save(level);
   }
