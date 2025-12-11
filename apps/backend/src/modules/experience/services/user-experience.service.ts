@@ -144,7 +144,7 @@ export class UserExperienceService {
   async getLeaderboard() {
     const users = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.role != :adminRole', { adminRole: 'admin' })
+      .where('user.role = :userRole', { userRole: 'user' })
       .orderBy('user.experience_points', 'DESC')
       .take(10)
       .getMany();
