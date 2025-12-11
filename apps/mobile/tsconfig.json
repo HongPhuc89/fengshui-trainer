@@ -5,7 +5,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@/modules/*": ["modules/*"]
+      "@/modules/*": ["modules/*"],
+      "@/hooks/*": ["hooks/*"],
+      "@/utils/*": ["utils/*"],
+      "@/components/*": ["components/*"],
+      "@/services/*": ["services/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "global.d.ts"]
