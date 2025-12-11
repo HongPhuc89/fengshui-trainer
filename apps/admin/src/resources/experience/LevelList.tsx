@@ -1,26 +1,12 @@
 import { List, Datagrid, TextField, NumberField, DateField, FunctionField, EditButton } from 'react-admin';
-import { Chip } from '@mui/material';
+import { RankBadge } from '../../components/experience';
 
 export const LevelList = () => (
   <List sort={{ field: 'level', order: 'ASC' }} perPage={25}>
     <Datagrid>
       <NumberField source="level" label="Rank Level" />
 
-      <FunctionField
-        label="Title"
-        render={(record: any) => (
-          <Chip
-            label={record.title}
-            size="small"
-            sx={{
-              backgroundColor: record.color || '#808080',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.875rem',
-            }}
-          />
-        )}
-      />
+      <FunctionField label="Title" render={(record: any) => <RankBadge title={record.title} color={record.color} />} />
 
       <NumberField source="xp_required" label="XP Required" options={{ useGrouping: true }} />
 

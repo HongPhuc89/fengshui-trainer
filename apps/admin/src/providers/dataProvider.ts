@@ -101,8 +101,8 @@ function getEndpoint(resource: string): string {
     books: '/admin/books',
     chapters: '/admin/chapters',
     flashcards: '/admin/flashcards',
-    'experience/users': '/experience/users',
-    'experience/levels': '/experience/levels',
+    'experience-logs': '/experience/users',
+    levels: '/experience/levels',
   };
   return endpoints[resource] || `/${resource}`;
 }

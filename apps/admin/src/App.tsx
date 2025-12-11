@@ -29,13 +29,20 @@ function App() {
     <Admin dataProvider={dataProvider} authProvider={authProvider} title="Quiz Game Admin">
       <Resource name="users" list={UserList} show={UserShow} edit={UserEdit} create={UserCreate} icon={PeopleIcon} />
       <Resource name="books" list={BookList} show={BookShow} edit={BookEdit} icon={MenuBookIcon} />
-      <Resource name="experience/users" options={{ label: 'XP Logs' }} list={ExperienceLogList} icon={TimelineIcon} />
       <Resource
-        name="experience/levels"
+        name="experience-logs"
+        options={{ label: 'XP Logs' }}
+        list={ExperienceLogList}
+        icon={TimelineIcon}
+        recordRepresentation="id"
+      />
+      <Resource
+        name="levels"
         options={{ label: 'Cultivation Ranks' }}
         list={LevelList}
         edit={LevelEdit}
         icon={EmojiEventsIcon}
+        recordRepresentation="title"
       />
       <CustomRoutes>
         <Route path="/chapters/:bookId/:chapterId" element={<ChapterDetailPage />} />
