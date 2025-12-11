@@ -12,6 +12,7 @@ interface BookCardProps {
   chapterCount: number;
   initial: string;
   gradientColors: [string, string];
+  coverImage?: string; // Cover image URL
   onPress: () => void;
   index: number; // For staggered animation
 }
@@ -23,6 +24,7 @@ const BookCardComponent: React.FC<BookCardProps> = ({
   chapterCount,
   initial,
   gradientColors,
+  coverImage,
   onPress,
   index,
 }) => {
@@ -91,7 +93,7 @@ const BookCardComponent: React.FC<BookCardProps> = ({
           colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
           style={styles.bookCardGradient}
         >
-          <BookIcon initial={initial} gradientColors={gradientColors} />
+          <BookIcon initial={initial} gradientColors={gradientColors} coverImage={coverImage} />
           <BookInfo title={title} category={category} description={description} chapterCount={chapterCount} />
         </LinearGradient>
       </TouchableOpacity>

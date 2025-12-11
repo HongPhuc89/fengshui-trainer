@@ -55,6 +55,11 @@ export interface Book {
   author?: string;
   published: boolean;
   chapter_count?: number; // Computed field from backend
+  cover_file?: {
+    // Cover file relation
+    id: number;
+    path: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

@@ -92,6 +92,7 @@ const BooksListComponent: React.FC<BooksListProps> = ({ books, isLoading, error,
           chapterCount={book.chapterCount}
           initial={book.initial}
           gradientColors={book.gradientColors}
+          coverImage={book.cover_file?.path} // Cover image from API
           index={index}
           onPress={() => handleBookPress(book.id)}
         />
