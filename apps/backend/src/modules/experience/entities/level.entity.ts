@@ -1,5 +1,4 @@
-import { BaseEntity } from '../../typeorm/base.entity';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 export interface LevelRewards {
   badges?: string[];
@@ -13,7 +12,7 @@ export interface LevelRewards {
 @Entity('levels')
 @Index(['level'], { unique: true })
 @Index(['xp_required'])
-export class Level extends BaseEntity {
+export class Level {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
@@ -34,4 +33,16 @@ export class Level extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   rewards: LevelRewards;
+
+  @CreateDateColumn({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  created_at: Date;
+
+  @UpdateDateColumn({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updated_at: Date;
 }
