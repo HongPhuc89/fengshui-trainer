@@ -177,22 +177,39 @@ npx expo start --web
 
 ### Build
 
+See [BUILD_GUIDE.md](./BUILD_GUIDE.md) for detailed build instructions.
+
+#### Quick Start - Build APK for Testing
+
 ```bash
-# Install EAS CLI
+# Install EAS CLI (one-time)
 npm install -g eas-cli
 
 # Login to Expo
 eas login
 
-# Configure project
-eas build:configure
+# Build APK for testing
+npm run build:android:preview
+```
 
-# Development build
-eas build --profile development --platform ios
-eas build --profile development --platform android
+#### All Build Commands
 
-# Production build
-eas build --profile production --platform all
+```bash
+# Android APK (for testing)
+npm run build:android:preview
+
+# Android APK (local build - faster)
+npm run build:android:apk
+
+# Android AAB (for Google Play Store)
+npm run build:android
+
+# iOS IPA (for App Store)
+npm run build:ios
+
+# Prebuild native projects
+npm run prebuild
+npm run prebuild:clean
 ```
 
 ## 📱 Screens
