@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { experienceService, UserExperienceSummary } from '../../../../../services/api/experience.service';
-import { useAuth } from '../../contexts/AuthContext';
+import { experienceService, UserExperienceSummary } from '../../../../services/api/experience.service';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Hook to fetch user's experience/XP summary
