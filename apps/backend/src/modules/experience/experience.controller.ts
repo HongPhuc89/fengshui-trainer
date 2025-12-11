@@ -25,6 +25,15 @@ export class ExperienceController {
   }
 
   /**
+   * Get leaderboard - Top 10 users by XP (normal users only)
+   * GET /api/experience/leaderboard
+   */
+  @Get('leaderboard')
+  async getLeaderboard() {
+    return this.userExperienceService.getLeaderboard();
+  }
+
+  /**
    * Get user's XP history logs
    * GET /api/experience/users/:userId/logs?page=1&limit=20&source_type=quiz_attempt
    */

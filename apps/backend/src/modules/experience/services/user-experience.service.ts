@@ -139,6 +139,40 @@ export class UserExperienceService {
   }
 
   /**
+   * Get leaderboard - Top 10 users by XP (normal users only)
+   */
+  async getLeaderboard() {
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.role != :adminRole', { adminRole: 'admin' })
+      .orderBy('user.experience_points', 'DESC')
+      .take(10)
+      .getMany();
+
+    // Get level info for each user
+    const leaderboard = await Promise.all(
+      users.map(async (user, index) => {
+        const level = await this.getLevelByXP(user.experience_points);
+        return {
+          rank: index + 1,
+          user_id: user.id,
+          full_name: user.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email,
+          experience_points: user.experience_points,
+          level: {
+            id: level.id,
+            level: level.level,
+            title: level.title,
+            color: level.color,
+          },
+        };
+      }),
+    );
+
+    return { data: leaderboard };
+  }
+
+  /**
    * Get user's XP history logs with pagination
    */
   async getUserXPLogs(

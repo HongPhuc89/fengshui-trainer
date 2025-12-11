@@ -91,4 +91,11 @@ export const experienceService = {
   dailyCheckIn: async (userId: number) => {
     return await apiClient.get(`/experience/users/${userId}/daily-checkin`);
   },
+
+  /**
+   * Get leaderboard - Top 10 users by XP
+   */
+  getLeaderboard: async () => {
+    return await apiClient.get('/experience/leaderboard');
+  },
 };

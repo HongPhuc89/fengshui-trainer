@@ -6,3 +6,4 @@ export { useQuizConfig, useQuiz, useQuizHistory, useQuizAttempt } from './useQui
 export { useMindMap } from './useMindMap';
 export { useUserExperience, useUserExperienceLogs, useLevels } from './useUserExperience';
 export { useDailyCheckIn } from './useDailyCheckIn';
+export { useLeaderboard } from './useLeaderboard';
