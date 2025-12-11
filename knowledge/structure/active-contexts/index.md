@@ -18,7 +18,9 @@ This file tracks all active development contexts and their current status for th
 | 10  | AI Question Generation        | 🔲 Planned   | 2025-11-29   | 10-ai-integration.md                  |
 | 11  | Learning Interface API        | 🔲 Planned   | 2025-11-29   | 11-learning-system.md                 |
 | 12  | Mobile App (Feng Shui Design) | 🔲 Planned   | 2025-12-08   | 12-mobile-app.md                      |
-| 13  | User Experience & Leveling    | 🔲 Planned   | 2025-12-11   | 13-user-experience-leveling-system.md |
+| 13  | User Experience & Leveling    | ✅ Completed | 2025-12-11   | 13-user-experience-leveling-system.md |
+| 14  | Currency System               | ✅ Completed | 2025-12-11   | 14-currency-system-design.md          |
+| 15  | User Profile System           | 📝 Design    | 2025-12-11   | 15-user-profile-system.md             |
 
 ## Recent Completions (December 2025)
 

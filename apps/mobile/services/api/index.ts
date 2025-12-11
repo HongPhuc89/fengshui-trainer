@@ -7,3 +7,4 @@ export * from './book.service';
 export * from './flashcard.service';
 export * from './quiz.service';
 export * from './experience.service';
+export * from './profile.service';

@@ -2,6 +2,7 @@ import { BaseEntity } from '../../typeorm/base.entity';
 import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserRole } from '../../../shares/enums/user-role.enum';
 import { UserCredential } from '../../user-credential/entities/user-credential.entity';
+import { UserProfile } from './user-profile.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -50,6 +51,9 @@ export class User extends BaseEntity {
     default: 0,
   })
   experience_points: number;
+
+  @OneToOne(() => UserProfile, (profile) => profile.user)
+  profile: UserProfile;
 
   @OneToOne(() => UserCredential, (credential) => credential.user)
   credential: UserCredential;

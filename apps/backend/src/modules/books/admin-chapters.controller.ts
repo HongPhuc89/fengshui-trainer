@@ -16,7 +16,6 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
-import type { Multer } from 'multer';
 import { ChaptersService } from './chapters.service';
 import { FlashcardsService } from './flashcards.service';
 import { CreateChapterDto } from './dtos/create-chapter.dto';
@@ -89,7 +88,7 @@ export class AdminChaptersController {
   async previewImport(
     @Param('bookId', ParseIntPipe) bookId: number,
     @Param('chapterId', ParseIntPipe) chapterId: number,
-    @UploadedFile() file: Multer.File,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -107,7 +106,7 @@ export class AdminChaptersController {
   async importFlashcards(
     @Param('bookId', ParseIntPipe) bookId: number,
     @Param('chapterId', ParseIntPipe) chapterId: number,
-    @UploadedFile() file: Multer.File,
+    @UploadedFile() file: Express.Multer.File,
     @Body() options: ImportFlashcardsOptionsDto,
   ) {
     if (!file) {
