@@ -84,4 +84,11 @@ export const experienceService = {
   getLevelByXP: async (xp: number) => {
     return await apiClient.get(`/experience/levels/by-xp/${xp}`);
   },
+
+  /**
+   * Daily check-in (awards 5 XP once per day)
+   */
+  dailyCheckIn: async (userId: number) => {
+    return await apiClient.get(`/experience/users/${userId}/daily-checkin`);
+  },
 };

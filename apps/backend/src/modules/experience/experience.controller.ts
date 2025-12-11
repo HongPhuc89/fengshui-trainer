@@ -16,6 +16,15 @@ export class ExperienceController {
   }
 
   /**
+   * Daily check-in (awards 5 XP once per day)
+   * POST /api/experience/users/:userId/daily-checkin
+   */
+  @Get('users/:userId/daily-checkin')
+  async dailyCheckIn(@Param('userId', ParseIntPipe) userId: number) {
+    return this.userExperienceService.dailyCheckIn(userId);
+  }
+
+  /**
    * Get user's XP history logs
    * GET /api/experience/users/:userId/logs?page=1&limit=20&source_type=quiz_attempt
    */

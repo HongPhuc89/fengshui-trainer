@@ -91,6 +91,54 @@ export class UserExperienceService {
   }
 
   /**
+   * Daily check-in - Awards 5 XP once per day
+   */
+  async dailyCheckIn(userId: number) {
+    // Check if user already checked in today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayCheckIn = await this.logRepository.findOne({
+      where: {
+        user_id: userId,
+        source_type: ExperienceSourceType.DAILY_MISSION,
+      },
+      order: {
+        created_at: 'DESC',
+      },
+    });
+
+    // If already checked in today, return existing check-in
+    if (todayCheckIn) {
+      const checkInDate = new Date(todayCheckIn.created_at);
+      checkInDate.setHours(0, 0, 0, 0);
+
+      if (checkInDate.getTime() === today.getTime()) {
+        return {
+          success: false,
+          message: 'Already checked in today',
+          already_checked_in: true,
+          last_checkin: todayCheckIn.created_at,
+          xp_earned: 0,
+        };
+      }
+    }
+
+    // Award 5 XP for daily check-in
+    const result = await this.awardXP(userId, ExperienceSourceType.DAILY_MISSION, 5, null, 'Daily check-in reward');
+
+    return {
+      success: true,
+      message: 'Daily check-in successful!',
+      already_checked_in: false,
+      xp_earned: 5,
+      level_up: result.levelUp,
+      previous_level: result.previousLevel,
+      current_level: result.newLevel,
+    };
+  }
+
+  /**
    * Get user's XP history logs with pagination
    */
   async getUserXPLogs(

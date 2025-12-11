@@ -4,13 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { spacing } from '@/constants';
-import { useBooks, useUserExperience } from '@/modules/shared/services/hooks';
+import { useBooks, useUserExperience, useDailyCheckIn } from '@/modules/shared/services/hooks';
 import { AppHeader, SectionHeader, BooksList } from '@/components/home';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { books, isLoading, error } = useBooks();
   const { data: userExperience } = useUserExperience();
+
+  // Auto daily check-in when app opens
+  useDailyCheckIn();
 
   // Memoize the callback to prevent BooksList from re-rendering unnecessarily
   const handleBookPress = useCallback(

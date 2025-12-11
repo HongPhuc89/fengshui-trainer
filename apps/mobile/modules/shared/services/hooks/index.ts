@@ -5,3 +5,4 @@ export { useFlashcards, useRandomFlashcards, useFlashcard } from './useFlashcard
 export { useQuizConfig, useQuiz, useQuizHistory, useQuizAttempt } from './useQuiz';
 export { useMindMap } from './useMindMap';
 export { useUserExperience, useUserExperienceLogs, useLevels } from './useUserExperience';
+export { useDailyCheckIn } from './useDailyCheckIn';
