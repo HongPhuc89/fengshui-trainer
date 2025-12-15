@@ -4,7 +4,6 @@ import {
   Show,
   TextField,
   DateField,
-  RichTextField,
   NumberField,
   TabbedShowLayout,
   Tab,
