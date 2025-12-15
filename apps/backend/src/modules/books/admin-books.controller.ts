@@ -1,4 +1,20 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Put,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dtos/create-book.dto';
@@ -56,5 +72,26 @@ export class AdminBooksController {
   @ApiResponse({ status: 200, description: 'The book has been successfully updated.' })
   patch(@Param('id', ParseIntPipe) id: number, @Body() updateBookDto: UpdateBookDto): Promise<Book> {
     return this.booksService.update(id, updateBookDto);
+  }
+
+  @Put(':id/cover')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Upload book cover image' })
+  @ApiResponse({ status: 200, description: 'Cover uploaded successfully.' })
+  @UseInterceptors(FileInterceptor('cover'))
+  async uploadCover(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @CurrentUser() user: User,
+  ): Promise<{ cover_url: string }> {
+    return this.booksService.uploadCover(id, file, user);
   }
 }

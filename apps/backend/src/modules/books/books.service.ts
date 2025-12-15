@@ -8,6 +8,7 @@ import { User } from '../users/entities/user.entity';
 import { BookProcessingService } from './book-processing.service';
 import { BookStatus } from '../../shares/enums/book-status.enum';
 import { UploadService } from '../upload/upload.service';
+import { FileType } from '../../shares/enums/file-type.enum';
 
 @Injectable()
 export class BooksService {
@@ -152,5 +153,23 @@ export class BooksService {
     }
 
     return book;
+  }
+
+  /**
+   * Upload book cover image
+   */
+  async uploadCover(id: number, file: Express.Multer.File, user: User): Promise<{ cover_url: string }> {
+    // Check if book exists
+    const book = await this.findOneAdmin(id);
+
+    // Upload file to storage and create uploaded_file record
+    const uploadedFile = await this.uploadService.uploadFile(file, FileType.COVER, user);
+
+    // Update book with new cover file ID using update query
+    await this.bookRepository.update(id, {
+      cover_file_id: uploadedFile.id,
+    });
+
+    return { cover_url: uploadedFile.path };
   }
 }

@@ -15,8 +15,8 @@ export function AppHeader({ appName, points }: AppHeaderProps) {
         <Text style={styles.subtitle}>Tu tiên chi lộ, bắt đầu từ đây</Text>
       </View>
       <View style={styles.pointsContainer}>
-        <Text style={styles.pointsLabel}>Ngân Lượng</Text>
-        <Text style={styles.points}>💰 {points.toLocaleString()}</Text>
+        <Text style={styles.pointsLabel}>Thiên thư</Text>
+        <Text style={styles.points}>{points.toLocaleString()} 📚</Text>
       </View>
     </View>
   );

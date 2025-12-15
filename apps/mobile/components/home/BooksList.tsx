@@ -7,7 +7,10 @@ interface Book {
   id: number;
   title: string;
   author?: string;
-  cover_image_url?: string;
+  cover_file?: {
+    id: number;
+    path: string;
+  };
   chapter_count?: number;
 }
 
@@ -71,8 +74,8 @@ export function BooksList({ books, isLoading, error, onBookPress }: BooksListPro
           <LinearGradient colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']} style={styles.cardGradient}>
             {/* Cover Section */}
             <View style={styles.coverSection}>
-              {item.cover_image_url ? (
-                <Image source={{ uri: item.cover_image_url }} style={styles.cover} />
+              {item.cover_file?.path ? (
+                <Image source={{ uri: item.cover_file.path }} style={styles.cover} />
               ) : (
                 <LinearGradient
                   colors={getGradient(index) as readonly [string, string, ...string[]]}

@@ -4,7 +4,6 @@ import {
   Show,
   TextField,
   DateField,
-  ImageField,
   RichTextField,
   NumberField,
   TabbedShowLayout,
@@ -13,6 +12,7 @@ import {
   Loading,
   Button,
   useNotify,
+  Labeled,
 } from 'react-admin';
 import axios from 'axios';
 import {
@@ -392,20 +392,156 @@ const ChaptersTab = () => {
   );
 };
 
+const BookDetailsTab = () => {
+  const record = useRecordContext();
+  const [uploading, setUploading] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(record?.cover_file?.path || '');
+  const notify = useNotify();
+
+  useEffect(() => {
+    if (record?.cover_file?.path) {
+      setCoverUrl(record.cover_file.path);
+    }
+  }, [record]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !record) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      notify('Please select an image file', { type: 'error' });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      notify('Image size must be less than 5MB', { type: 'error' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('cover', file);
+
+      const token = localStorage.getItem('token');
+      const response = await axios.put(`${API_URL}/admin/books/${record.id}/cover`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setCoverUrl(response.data.cover_url);
+      notify('Cover updated successfully', { type: 'success' });
+      // Refresh the page to show updated cover
+      window.location.reload();
+    } catch (error: any) {
+      notify(error.response?.data?.message || 'Error uploading cover', { type: 'error' });
+      console.error('Error uploading cover:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!record) return null;
+
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 4, p: 2 }}>
+      {/* Left Column - Book Details */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Labeled label="Tên sách">
+          <TextField source="title" />
+        </Labeled>
+        <Labeled label="Tác giả">
+          <TextField source="author" />
+        </Labeled>
+        <Labeled label="Trạng thái">
+          <TextField source="status" />
+        </Labeled>
+        <Labeled label="Tổng số chương">
+          <NumberField source="chapter_count" />
+        </Labeled>
+        <Labeled label="Ngày tạo">
+          <DateField source="created_at" />
+        </Labeled>
+        <Labeled label="Ngày cập nhật">
+          <DateField source="updated_at" />
+        </Labeled>
+      </Box>
+
+      {/* Right Column - Cover Image */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          position: 'sticky',
+          top: 20,
+          height: 'fit-content',
+        }}
+      >
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: 300,
+            aspectRatio: '2/3',
+            border: '2px dashed #ccc',
+            borderRadius: 2,
+            overflow: 'hidden',
+            backgroundColor: '#f5f5f5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {coverUrl ? (
+            <img
+              src={coverUrl}
+              alt={record.title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <Box sx={{ textAlign: 'center', color: '#999', p: 2 }}>
+              <AddIcon sx={{ fontSize: 48, mb: 1 }} />
+              <Box>No cover image</Box>
+            </Box>
+          )}
+        </Box>
+
+        <MuiButton
+          variant="contained"
+          component="label"
+          disabled={uploading}
+          startIcon={uploading ? null : <AddIcon />}
+          fullWidth
+          sx={{ maxWidth: 300 }}
+        >
+          {uploading ? 'Uploading...' : coverUrl ? 'Change Cover' : 'Upload Cover'}
+          <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+        </MuiButton>
+
+        <Box sx={{ fontSize: 12, color: '#666', textAlign: 'center', maxWidth: 300 }}>
+          Recommended: 400x600px, max 5MB
+          <br />
+          Supported formats: JPG, PNG, WebP
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
 export const BookShow = () => (
   <Show>
     <TabbedShowLayout>
       <Tab label="Book Details">
-        <TextField source="id" />
-        <TextField source="title" />
-        <TextField source="author" />
-        <TextField source="language" />
-        <ImageField source="cover_url" label="Cover" />
-        <RichTextField source="description" />
-        <TextField source="status" />
-        <NumberField source="chapter_count" label="Total Chapters" />
-        <DateField source="created_at" label="Created At" />
-        <DateField source="updated_at" label="Updated At" />
+        <BookDetailsTab />
       </Tab>
 
       <Tab label="Chapters" path="chapters">

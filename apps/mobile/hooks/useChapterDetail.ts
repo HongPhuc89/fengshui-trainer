@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { booksService } from '../services/api';
-import { Chapter } from '../modules/shared/services/api/types';
+import { booksService, Chapter } from '../modules/shared/services/api';
 
 export function useChapterDetail(chapterId: string | string[], bookId: string | string[]) {
   const [chapter, setChapter] = useState<Chapter | null>(null);

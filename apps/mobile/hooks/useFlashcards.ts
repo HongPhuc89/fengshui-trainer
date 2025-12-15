@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Animated } from 'react-native';
-import { flashcardsService } from '../services/api';
-import { Flashcard } from '../modules/shared/services/api/types';
+import { flashcardsService, Flashcard } from '../modules/shared/services/api';
 
 export function useFlashcards(chapterId: string | string[], bookId: string | string[]) {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);

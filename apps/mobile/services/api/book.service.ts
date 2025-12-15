@@ -4,9 +4,12 @@ export interface Book {
   id: number;
   title: string;
   description?: string;
-  cover_image_url?: string;
   author?: string;
   is_active: boolean;
+  cover_file?: {
+    id: number;
+    path: string;
+  };
   created_at: string;
   updated_at: string;
 }
