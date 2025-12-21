@@ -19,6 +19,13 @@
         "simulator": false
       }
     },
+    "local": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"

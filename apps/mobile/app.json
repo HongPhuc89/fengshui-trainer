@@ -37,6 +37,12 @@
       }
     },
     "plugins": ["expo-router"],
-    "scheme": "quizgame"
+    "scheme": "quizgame",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1869d3d-224d-4534-890e-2028595f288f"
+      }
+    }
   }
 }
