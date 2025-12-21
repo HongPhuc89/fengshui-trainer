@@ -19,6 +19,13 @@ import { ConfigService } from '../core/config.service';
           synchronize: false,
           logging: true,
           timezone: 'Z',
+          ssl: {
+            rejectUnauthorized: false,
+          },
+          extra: {
+            // Force IPv4 DNS resolution
+            options: '-c client_encoding=UTF8',
+          },
         };
       },
       inject: [ConfigService],
