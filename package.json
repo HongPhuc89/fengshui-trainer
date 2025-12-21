@@ -28,7 +28,7 @@
     "backend:create-admin": "npm run create:admin --workspace=@quiz-game/backend",
     "deploy": "bash deploy-simple.sh",
     "deploy:vps": "npm run backend:build && bash deploy-simple.sh",
-    "deploy:admin": "bash deploy-admin.sh",
+    "deploy:admin": "npm run admin:build && firebase deploy --only hosting",
     "admin:build": "npm run build --workspace=@quiz-game/admin",
     "admin:serve": "firebase serve --only hosting",
     "env:edit": "bash vps-env-edit.sh"
