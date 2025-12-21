@@ -31,6 +31,10 @@
     "deploy:admin": "npm run admin:build && npx firebase deploy --only hosting",
     "admin:build": "npm run build --workspace=@quiz-game/admin",
     "admin:serve": "npx firebase serve --only hosting",
+    "mobile:build:apk": "cd apps/mobile && npx eas-cli build --platform android --profile preview",
+    "mobile:build:aab": "cd apps/mobile && npx eas-cli build --platform android --profile production",
+    "mobile:build:dev": "cd apps/mobile && npx eas-cli build --platform android --profile development",
+    "mobile:build:ios": "cd apps/mobile && npx eas-cli build --platform ios --profile production",
     "env:edit": "bash vps-env-edit.sh"
   },
   "devDependencies": {
