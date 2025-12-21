@@ -61,3 +61,6 @@ lerna-debug.log*
 # Admin specific
 .adminjs
 
+# Firebase
+.firebase/
+**/.firebase/
