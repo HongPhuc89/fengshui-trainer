@@ -50,6 +50,10 @@ lerna-debug.log*
 **/.env
 **/.env.local
 
+# Deployment
+.deploy.env
+.deploy-temp
+
 # Build
 *.tsbuildinfo
 

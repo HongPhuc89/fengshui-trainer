@@ -2,6 +2,47 @@
 
 Deploy backend to VPS with external database (e.g., Supabase, Railway, etc.)
 
+## ⚡ Quick Deploy (One Command)
+
+### First Time Setup
+
+1. **Copy deployment config:**
+
+   ```bash
+   cp .deploy.env.example .deploy.env
+   ```
+
+2. **Edit `.deploy.env` with your VPS details:**
+
+   ```env
+   VPS_HOST=your-vps-ip-or-domain
+   VPS_USER=deploy
+   VPS_DIR=~/quiz-game-backend
+   ```
+
+3. **Deploy:**
+   ```bash
+   npm run deploy
+   ```
+
+That's it! The script will:
+
+- ✅ Build backend locally
+- ✅ Upload to VPS
+- ✅ Install dependencies
+- ✅ Restart PM2
+- ✅ Show status
+
+### Subsequent Deployments
+
+Just run:
+
+```bash
+npm run deploy
+```
+
+---
+
 ## 📋 Overview
 
 **Architecture:**

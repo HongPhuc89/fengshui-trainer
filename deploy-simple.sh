@@ -15,14 +15,34 @@ echo "🚀 Quiz Game Backend - Simple Deploy"
 echo "====================================="
 echo ""
 
-# Configuration
-read -p "VPS IP or domain: " VPS_HOST
-read -p "VPS user [deploy]: " VPS_USER
-VPS_USER=${VPS_USER:-deploy}
-read -p "VPS directory [~/quiz-game-backend]: " VPS_DIR
-VPS_DIR=${VPS_DIR:-~/quiz-game-backend}
+# Load config from .deploy.env if exists
+if [ -f ".deploy.env" ]; then
+    echo -e "${YELLOW}📋 Loading config from .deploy.env...${NC}"
+    source .deploy.env
+    echo -e "${GREEN}✓ Config loaded${NC}"
+    echo ""
+else
+    # Interactive configuration
+    read -p "VPS IP or domain: " VPS_HOST
+    read -p "VPS user [deploy]: " VPS_USER
+    VPS_USER=${VPS_USER:-deploy}
+    read -p "VPS directory [~/quiz-game-backend]: " VPS_DIR
+    VPS_DIR=${VPS_DIR:-~/quiz-game-backend}
 
-echo ""
+    # Ask to save config
+    read -p "Save config to .deploy.env for future use? (y/n): " SAVE_CONFIG
+    if [ "$SAVE_CONFIG" = "y" ]; then
+        cat > .deploy.env << EOF
+# VPS Deployment Configuration
+VPS_HOST=$VPS_HOST
+VPS_USER=$VPS_USER
+VPS_DIR=$VPS_DIR
+EOF
+        echo -e "${GREEN}✓ Config saved to .deploy.env${NC}"
+        echo ""
+    fi
+fi
+
 echo -e "${YELLOW}Configuration:${NC}"
 echo "  VPS: $VPS_USER@$VPS_HOST"
 echo "  Directory: $VPS_DIR"
@@ -61,8 +81,8 @@ echo ""
 
 # 4. Install dependencies on VPS
 echo -e "${YELLOW}📥 Installing dependencies on VPS...${NC}"
-ssh $VPS_USER@$VPS_HOST << 'EOF'
-cd ~/quiz-game-backend
+ssh $VPS_USER@$VPS_HOST << EOF
+cd $VPS_DIR
 npm install --production
 echo "✓ Dependencies installed"
 EOF
@@ -72,8 +92,8 @@ echo ""
 
 # 5. Restart application
 echo -e "${YELLOW}🔄 Restarting application...${NC}"
-ssh $VPS_USER@$VPS_HOST << 'EOF'
-cd ~/quiz-game-backend
+ssh $VPS_USER@$VPS_HOST << EOF
+cd $VPS_DIR
 pm2 restart quiz-backend || pm2 start ecosystem.config.js
 pm2 save
 echo "✓ Application restarted"
@@ -84,7 +104,7 @@ echo ""
 
 # 6. Check status
 echo -e "${YELLOW}📊 Checking status...${NC}"
-ssh $VPS_USER@$VPS_HOST << 'EOF'
+ssh $VPS_USER@$VPS_HOST << EOF
 pm2 status quiz-backend
 EOF
 

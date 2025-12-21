@@ -25,7 +25,9 @@
     "backend:build": "turbo run build --filter=@quiz-game/backend",
     "backend:migration:run": "npm run migration:run --workspace=@quiz-game/backend",
     "backend:migration:generate": "npm run migration:generate --workspace=@quiz-game/backend",
-    "backend:create-admin": "npm run create:admin --workspace=@quiz-game/backend"
+    "backend:create-admin": "npm run create:admin --workspace=@quiz-game/backend",
+    "deploy": "bash deploy-simple.sh",
+    "deploy:vps": "npm run backend:build && bash deploy-simple.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7",
