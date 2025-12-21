@@ -27,7 +27,8 @@
     "backend:migration:generate": "npm run migration:generate --workspace=@quiz-game/backend",
     "backend:create-admin": "npm run create:admin --workspace=@quiz-game/backend",
     "deploy": "bash deploy-simple.sh",
-    "deploy:vps": "npm run backend:build && bash deploy-simple.sh"
+    "deploy:vps": "npm run backend:build && bash deploy-simple.sh",
+    "env:edit": "bash vps-env-edit.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7",
