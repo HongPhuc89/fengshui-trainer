@@ -1,34 +1,15 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Box,
-  Button,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Alert,
-  Chip,
-  Switch,
-  FormControlLabel,
-  Paper,
-  Stack,
-  Tabs,
-  Tab,
-  Divider,
-} from '@mui/material';
+import { Box, Button, Typography, Chip, Paper, Stack, Divider } from '@mui/material';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
 import PreviewIcon from '@mui/icons-material/Preview';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import EditIcon from '@mui/icons-material/Edit';
-import CodeIcon from '@mui/icons-material/Code';
 import { MarkmapPreview } from './MindMapPreview';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -48,16 +29,9 @@ interface MindMap {
 export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
   const [mindMap, setMindMap] = useState<MindMap | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-
-  const [markdownContent, setMarkdownContent] = useState('');
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    is_active: true,
-  });
   const notify = useNotify();
+  const navigate = useNavigate();
+  const { bookId } = useParams<{ bookId: string }>();
 
   useEffect(() => {
     fetchMindMap();
@@ -79,25 +53,8 @@ export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
     }
   };
 
-  const handleCreate = () => {
-    setFormData({
-      title: `Chapter ${chapterId} Mind Map`,
-      description: 'Visual overview of key concepts',
-      is_active: true,
-    });
-    setMarkdownContent(getDefaultMarkdown());
-    setEditDialogOpen(true);
-  };
-
-  const handleEdit = () => {
-    if (!mindMap) return;
-    setFormData({
-      title: mindMap.title,
-      description: mindMap.description || '',
-      is_active: mindMap.is_active,
-    });
-    setMarkdownContent(mindMap.markdown_content || getDefaultMarkdown());
-    setEditDialogOpen(true);
+  const handleCreateOrEdit = () => {
+    navigate(`/chapters/${bookId}/${chapterId}/mindmap/edit`);
   };
 
   const handleSave = async () => {
@@ -189,7 +146,7 @@ export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
             variant="contained"
             size="large"
             startIcon={<AddIcon />}
-            onClick={handleCreate}
+            onClick={handleCreateOrEdit}
             sx={{ borderRadius: 3 }}
           >
             Create Mind Map
@@ -270,7 +227,12 @@ export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
             )}
 
             <Stack direction="row" spacing={2}>
-              <Button variant="contained" startIcon={<EditIcon />} onClick={handleEdit} sx={{ borderRadius: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={handleCreateOrEdit}
+                sx={{ borderRadius: 2 }}
+              >
                 Edit Mind Map
               </Button>
               <Button variant="outlined" onClick={handleToggleActive} sx={{ borderRadius: 2 }}>
@@ -280,106 +242,6 @@ export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
           </Paper>
         </Stack>
       )}
-
-      {/* Editor Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="xl" fullWidth>
-        <DialogTitle sx={{ borderBottom: '1px solid #eee' }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <AccountTreeIcon color="primary" />
-            <Typography variant="h6">{mindMap ? 'Edit' : 'Create'} Mind Map (Markmap)</Typography>
-          </Stack>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 3 }}>
-          <Stack spacing={3}>
-            <TextField
-              label="Mind Map Title"
-              fullWidth
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              variant="outlined"
-            />
-
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              rows={2}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                />
-              }
-              label="Visible to users"
-            />
-
-            <Divider />
-
-            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-              <Tab icon={<CodeIcon />} label="Markdown Editor" />
-              <Tab icon={<PreviewIcon />} label="Preview" />
-            </Tabs>
-
-            {activeTab === 0 && (
-              <Box>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2" fontWeight={600} gutterBottom>
-                    Markdown Syntax for Mindmap:
-                  </Typography>
-                  <Typography variant="caption" component="div">
-                    • Use <code>#</code> for main topic, <code>##</code> for branches, <code>###</code> for sub-branches
-                    <br />• Use <code>-</code> or <code>*</code> for bullet points
-                    <br />• Indent with spaces to create hierarchy
-                  </Typography>
-                </Alert>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={20}
-                  value={markdownContent}
-                  onChange={(e) => setMarkdownContent(e.target.value)}
-                  placeholder="# Main Topic&#10;&#10;## Branch 1&#10;- Point 1&#10;- Point 2&#10;&#10;## Branch 2&#10;- Point 1"
-                  sx={{
-                    fontFamily: 'monospace',
-                    '& textarea': {
-                      fontFamily: 'monospace',
-                      fontSize: '14px',
-                    },
-                  }}
-                />
-              </Box>
-            )}
-
-            {activeTab === 1 && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Live Preview:
-                </Typography>
-                <MarkmapPreview markdown={markdownContent} />
-              </Box>
-            )}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions sx={{ borderTop: '1px solid #eee', p: 2 }}>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={!formData.title || !markdownContent}
-            sx={{ borderRadius: 2 }}
-          >
-            {mindMap ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

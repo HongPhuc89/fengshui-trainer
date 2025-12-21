@@ -28,6 +28,7 @@ import {
   ChapterQuestionsPage,
   ChapterConfigPage,
   ChapterMindMapPage,
+  ChapterMindMapEditPage,
 } from './pages/chapter';
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
         <Route path="/chapters/:bookId/:chapterId/questions" element={<ChapterQuestionsPage />} />
         <Route path="/chapters/:bookId/:chapterId/config" element={<ChapterConfigPage />} />
         <Route path="/chapters/:bookId/:chapterId/mindmap" element={<ChapterMindMapPage />} />
+        <Route path="/chapters/:bookId/:chapterId/mindmap/edit" element={<ChapterMindMapEditPage />} />
       </CustomRoutes>
     </Admin>
   );
