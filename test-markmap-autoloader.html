@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markmap Autoloader Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .markmap {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .markmap>svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 Markmap Autoloader Test</h1>
+
+        <div class="status">
+            <strong>Status:</strong> <span id="status">Loading...</span>
+        </div>
+
+        <h2>Test Mindmap:</h2>
+        <div class="markmap">
+            <script type="text/template">
+# Ngũ Hành (Five Elements)
+
+## Mộc (Wood) 🌳
+- Màu sắc: Xanh lá
+- Hướng: Đông
+- Tính chất
+  - Sinh trưởng
+  - Phát triển
+
+## Hỏa (Fire) 🔥
+- Màu sắc: Đỏ
+- Hướng: Nam
+- Tính chất
+  - Nhiệt tình
+  - Năng động
+
+## Thổ (Earth) 🏔️
+- Màu sắc: Vàng
+- Hướng: Trung tâm
+- Tính chất
+  - Ổn định
+  - Nuôi dưỡng
+
+## Kim (Metal) ⚙️
+- Màu sắc: Trắng
+- Hướng: Tây
+- Tính chất
+  - Cứng rắn
+  - Quyết đoán
+
+## Thủy (Water) 💧
+- Màu sắc: Đen/Xanh
+- Hướng: Bắc
+- Tính chất
+  - Linh hoạt
+  - Thông minh
+      </script>
+        </div>
+    </div>
+
+    <script>
+        // Check if markmap loaded
+        setTimeout(() => {
+            const status = document.getElementById('status');
+            const markmapDiv = document.querySelector('.markmap');
+            const svg = markmapDiv.querySelector('svg');
+
+            if (svg && svg.children.length > 0) {
+                status.textContent = '✅ Markmap loaded successfully!';
+                status.parentElement.style.background = '#e8f5e9';
+                status.parentElement.style.borderColor = '#4caf50';
+            } else {
+                status.textContent = '❌ Markmap failed to load. Check console for errors.';
+                status.parentElement.style.background = '#ffebee';
+                status.parentElement.style.borderColor = '#f44336';
+                console.error('Markmap did not render. Check network tab for CDN issues.');
+            }
+        }, 3000);
+    </script>
+</body>
+
+</html>

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
 import axios from 'axios';
 import {
@@ -29,6 +29,7 @@ import PreviewIcon from '@mui/icons-material/Preview';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import EditIcon from '@mui/icons-material/Edit';
 import CodeIcon from '@mui/icons-material/Code';
+import { MarkmapPreview } from './MindMapPreview';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -43,110 +44,6 @@ interface MindMap {
   created_at: string;
   updated_at: string;
 }
-
-// Markmap Preview Component (using iframe for isolation)
-const MarkmapPreview = ({ markdown }: { markdown: string }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    if (!iframeRef.current || !markdown) return;
-
-    const iframeDoc = iframeRef.current.contentDocument;
-    if (!iframeDoc) return;
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      overflow: hidden;
-    }
-    svg {
-      width: 100%;
-      height: calc(100vh - 40px);
-      background: transparent;
-    }
-    /* Custom Markmap styles */
-    .markmap-node circle {
-      stroke-width: 2.5;
-    }
-    .markmap-node text {
-      font-weight: 500;
-      font-size: 14px;
-    }
-    .markmap-link {
-      stroke-width: 2;
-      opacity: 0.8;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.18"></script>
-</head>
-<body>
-  <svg id="mindmap"></svg>
-  <script>
-    const { Transformer } = window.markmap;
-    const { Markmap } = window.markmapView;
-
-    const markdown = \`${markdown.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
-
-    const transformer = new Transformer();
-    const { root } = transformer.transform(markdown);
-
-    const svg = document.getElementById('mindmap');
-    const mm = Markmap.create(svg, {
-      color: (node) => {
-        const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-        return colors[node.depth % colors.length];
-      },
-      duration: 500,
-      maxWidth: 300,
-      paddingX: 20,
-      autoFit: true,
-      zoom: true,
-      pan: true,
-    }, root);
-
-    // Auto-fit on load
-    setTimeout(() => {
-      mm.fit();
-    }, 100);
-  </script>
-</body>
-</html>
-    `;
-
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
-  }, [markdown]);
-
-  return (
-    <iframe
-      ref={iframeRef}
-      style={{
-        width: '100%',
-        height: '700px',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-        backgroundColor: '#fff',
-      }}
-      title="Markmap Preview"
-    />
-  );
-};
 
 export const MindMapTab = ({ chapterId }: { chapterId: number }) => {
   const [mindMap, setMindMap] = useState<MindMap | null>(null);
