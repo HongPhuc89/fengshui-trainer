@@ -24,7 +24,7 @@ export const ExperienceLogFilters = () => {
               key={type}
               label={
                 <span style={{ textTransform: 'capitalize' }}>
-                  {type.replace(/_/g, ' ')} ({count})
+                  {type.replace(/_/g, ' ')} ({count as number})
                 </span>
               }
               value={{ source_type: type }}

@@ -76,8 +76,6 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
 
   // Loading states for different operations
   const [creating, setCreating] = useState(false);
-  const [updating, setUpdating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [clearingDuplicates, setClearingDuplicates] = useState(false);
   const [cleaningQuestions, setCleaningQuestions] = useState(false);
@@ -195,7 +193,6 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     if (!editingQuestion) return;
 
     try {
-      setUpdating(true);
       const token = localStorage.getItem('token');
       const options = buildOptionsJson();
 
@@ -219,8 +216,6 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(page);
     } catch (error) {
       notify('Error updating question', { type: 'error' });
-    } finally {
-      setUpdating(false);
     }
   };
 
@@ -228,7 +223,6 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
     if (!window.confirm('Delete this question?')) return;
 
     try {
-      setDeleting(true);
       const token = localStorage.getItem('token');
       await axios.delete(`${API_URL}/admin/chapters/${chapterId}/questions/${questionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -237,8 +231,6 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
       fetchQuestions(page);
     } catch (error) {
       notify('Error deleting question', { type: 'error' });
-    } finally {
-      setDeleting(false);
     }
   };
 

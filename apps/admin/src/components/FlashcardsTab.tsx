@@ -47,7 +47,7 @@ export const FlashcardsTab: React.FC<FlashcardsTabProps> = ({
   bookId,
   chapterId,
   flashcards,
-  total,
+  total: _total,
   page,
   totalPages,
   onRefresh,

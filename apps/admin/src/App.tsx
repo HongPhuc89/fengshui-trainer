@@ -21,8 +21,14 @@ import { BookEdit } from './resources/books/BookEdit';
 // Experience Resources
 import { ExperienceLogList, LevelList, LevelEdit } from './resources/experience';
 
-// Pages
-import { ChapterDetailPage } from './pages/ChapterDetailPage';
+// Chapter Pages
+import {
+  ChapterDetailsPage,
+  ChapterFlashcardsPage,
+  ChapterQuestionsPage,
+  ChapterConfigPage,
+  ChapterMindMapPage,
+} from './pages/chapter';
 
 function App() {
   return (
@@ -45,7 +51,12 @@ function App() {
         recordRepresentation="title"
       />
       <CustomRoutes>
-        <Route path="/chapters/:bookId/:chapterId" element={<ChapterDetailPage />} />
+        {/* Chapter Routes */}
+        <Route path="/chapters/:bookId/:chapterId" element={<ChapterDetailsPage />} />
+        <Route path="/chapters/:bookId/:chapterId/flashcards" element={<ChapterFlashcardsPage />} />
+        <Route path="/chapters/:bookId/:chapterId/questions" element={<ChapterQuestionsPage />} />
+        <Route path="/chapters/:bookId/:chapterId/config" element={<ChapterConfigPage />} />
+        <Route path="/chapters/:bookId/:chapterId/mindmap" element={<ChapterMindMapPage />} />
       </CustomRoutes>
     </Admin>
   );

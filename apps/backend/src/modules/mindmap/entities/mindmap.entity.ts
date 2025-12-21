@@ -68,6 +68,9 @@ export class MindMap {
   @Column({ type: 'jsonb' })
   structure: MindMapStructure;
 
+  @Column({ type: 'text', nullable: true })
+  markdown_content: string;
+
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 

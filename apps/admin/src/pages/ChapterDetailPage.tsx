@@ -18,6 +18,8 @@ interface Chapter {
   title: string;
   content: string;
   order: number;
+  order_index: number;
+  status: string;
   points: number;
   created_at: string;
   updated_at: string;

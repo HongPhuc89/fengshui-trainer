@@ -13,6 +13,10 @@ export class CreateMindMapDto {
   @IsObject()
   structure: MindMapStructure;
 
+  @IsString()
+  @IsOptional()
+  markdown_content?: string;
+
   @IsBoolean()
   @IsOptional()
   is_active?: boolean = true;
@@ -31,6 +35,10 @@ export class UpdateMindMapDto {
   @IsOptional()
   structure?: MindMapStructure;
 
+  @IsString()
+  @IsOptional()
+  markdown_content?: string;
+
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;
@@ -42,6 +50,7 @@ export class MindMapResponseDto {
   title: string;
   description?: string;
   structure: MindMapStructure;
+  markdown_content?: string;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -52,6 +61,7 @@ export class MindMapResponseDto {
     this.title = mindmap.title;
     this.description = mindmap.description;
     this.structure = mindmap.structure;
+    this.markdown_content = mindmap.markdown_content;
     this.is_active = mindmap.is_active;
     this.created_at = mindmap.created_at;
     this.updated_at = mindmap.updated_at;

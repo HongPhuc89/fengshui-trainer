@@ -1,4 +1,4 @@
-import { Box, TextField, FormControl, RadioGroup, FormControlLabel, Radio, Typography } from '@mui/material';
+import { FormControl, RadioGroup, FormControlLabel, Radio, Typography } from '@mui/material';
 
 interface TrueFalseFormProps {
   value: boolean;

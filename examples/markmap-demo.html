@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markmap Demo - Ngũ Hành</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    #mindmap {
+      width: 100%;
+      height: 700px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      background: #f9fafb;
+    }
+    .info {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f0f9ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 8px;
+      color: #1e40af;
+    }
+    .info strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #4f46e5;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.18"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🌟 Markmap Demo - Ngũ Hành (Five Elements)</h1>
+
+    <div class="card">
+      <div class="controls">
+        <button onclick="mm.fit()">🎯 Fit to Screen</button>
+        <button onclick="expandAll()">➕ Expand All</button>
+        <button onclick="collapseAll()">➖ Collapse All</button>
+        <button onclick="resetZoom()">🔄 Reset Zoom</button>
+      </div>
+
+      <svg id="mindmap"></svg>
+
+      <div class="info">
+        <strong>💡 Hướng dẫn sử dụng:</strong>
+        <ul style="margin-left: 20px; line-height: 1.8;">
+          <li>🖱️ <strong>Click</strong> vào node để mở rộng/thu gọn</li>
+          <li>🔍 <strong>Scroll</strong> để zoom in/out</li>
+          <li>👆 <strong>Drag</strong> để di chuyển mindmap</li>
+          <li>🎨 Màu sắc tự động theo cấp độ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const markdown = `# Ngũ Hành - Five Elements
+
+## Mộc (Wood) 🌳
+- **Màu sắc:** Xanh lá cây
+- **Hướng:** Đông
+- **Mùa:** Xuân
+- **Tính chất**
+  - Sinh trưởng
+  - Phát triển
+  - Sáng tạo
+  - Linh hoạt
+- **Ứng dụng**
+  - Cây cối trong nhà
+  - Đồ gỗ
+  - Màu xanh lá
+
+## Hỏa (Fire) 🔥
+- **Màu sắc:** Đỏ, cam
+- **Hướng:** Nam
+- **Mùa:** Hè
+- **Tính chất**
+  - Nhiệt tình
+  - Năng động
+  - Sáng sủa
+  - Hăng hái
+- **Ứng dụng**
+  - Ánh sáng
+  - Nến, đèn
+  - Màu đỏ, cam
+
+## Thổ (Earth) 🏔️
+- **Màu sắc:** Vàng, nâu
+- **Hướng:** Trung tâm
+- **Mùa:** Cuối mùa
+- **Tính chất**
+  - Ổn định
+  - Nuôi dưỡng
+  - Bao dung
+  - Trung thực
+- **Ứng dụng**
+  - Đất sét, gốm
+  - Đá tự nhiên
+  - Màu vàng, nâu
+
+## Kim (Metal) ⚙️
+- **Màu sắc:** Trắng, xám, vàng kim
+- **Hướng:** Tây
+- **Mùa:** Thu
+- **Tính chất**
+  - Cứng rắn
+  - Quyết đoán
+  - Chính xác
+  - Sắc bén
+- **Ứng dụng**
+  - Kim loại
+  - Đồ trang trí bằng kim loại
+  - Màu trắng, xám
+
+## Thủy (Water) 💧
+- **Màu sắc:** Đen, xanh dương
+- **Hướng:** Bắc
+- **Mùa:** Đông
+- **Tính chất**
+  - Linh hoạt
+  - Thông minh
+  - Bí ẩn
+  - Sâu sắc
+- **Ứng dụng**
+  - Nước (hồ cá, thác nước)
+  - Gương
+  - Màu đen, xanh dương
+
+## Quan Hệ Tương Sinh ♻️
+- Mộc sinh Hỏa (Wood feeds Fire)
+- Hỏa sinh Thổ (Fire creates Earth)
+- Thổ sinh Kim (Earth bears Metal)
+- Kim sinh Thủy (Metal collects Water)
+- Thủy sinh Mộc (Water nourishes Wood)
+
+## Quan Hệ Tương Khắc ⚔️
+- Mộc khắc Thổ (Wood parts Earth)
+- Thổ khắc Thủy (Earth dams Water)
+- Thủy khắc Hỏa (Water extinguishes Fire)
+- Hỏa khắc Kim (Fire melts Metal)
+- Kim khắc Mộc (Metal chops Wood)
+`;
+
+    const { Transformer } = window.markmap;
+    const { Markmap } = window.markmapView;
+
+    const transformer = new Transformer();
+    const { root } = transformer.transform(markdown);
+
+    const svg = document.getElementById('mindmap');
+    const mm = Markmap.create(svg, {
+      color: (node) => {
+        const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+        return colors[node.depth % colors.length];
+      },
+      duration: 500,
+      maxWidth: 300,
+      paddingX: 20,
+      autoFit: true,
+      zoom: true,
+      pan: true,
+    }, root);
+
+    // Auto-fit on load
+    setTimeout(() => {
+      mm.fit();
+    }, 100);
+
+    // Helper functions
+    function expandAll() {
+      mm.setData(root, { autoFit: true });
+      mm.fit();
+    }
+
+    function collapseAll() {
+      const collapseNode = (node) => {
+        if (node.children) {
+          node.payload = { ...node.payload, fold: 1 };
+          node.children.forEach(collapseNode);
+        }
+      };
+      collapseNode(root);
+      mm.setData(root);
+    }
+
+    function resetZoom() {
+      mm.fit();
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      mm.fit();
+    });
+  </script>
+</body>
+</html>

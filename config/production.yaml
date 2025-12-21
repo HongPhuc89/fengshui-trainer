@@ -1,0 +1,38 @@
+app:
+  version: 0.0.1
+  env: production
+  name: quiz-game
+  port: 3000
+  prefix: api
+  url: https://your-domain.com
+  brandName: Quiz Game
+  brandUrl: https://your-domain.com
+  swaggerTitle: Quiz Game API
+
+auth:
+  jwt:
+    secretKey: change-this-in-production
+    expireTime: 7d
+    secretKeyActivateToken: change-this-in-production
+    expireTimeActivateToken: 86400
+  refreshToken:
+    secretKey: change-this-in-production
+    expireTime: 30d
+    secretKeyActivateToken: change-this-in-production
+
+logger:
+  level: info
+  useFile: true
+
+database:
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  database: quiz_game
+
+typeorm:
+  log:
+    - error
+  migrationOnStartup: false
+  type: postgres

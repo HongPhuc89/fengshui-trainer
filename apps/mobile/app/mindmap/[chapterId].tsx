@@ -1,49 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { WebView } from 'react-native-webview';
 import { mindmapService } from '../../services/api/mindmap.service';
-import { MindMapNode, MindMapStructure } from '../../types/mindmap';
 
-interface TreeNodeProps {
-  node: MindMapNode;
-  depth: number;
-  allNodes: MindMapNode[];
-}
-
-const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, allNodes }) => {
-  const [collapsed, setCollapsed] = useState(node.collapsed || false);
-  const children = allNodes.filter((n) => n.parentId === node.id);
-  const hasChildren = children.length > 0;
-
-  const indent = depth * 20;
-  const backgroundColor = node.color || getColorByDepth(depth);
-
-  return (
-    <View style={[styles.nodeContainer, { marginLeft: indent }]}>
-      <TouchableOpacity
-        style={[styles.node, { backgroundColor }]}
-        onPress={() => hasChildren && setCollapsed(!collapsed)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.nodeContent}>
-          {node.icon && <Text style={styles.icon}>{node.icon}</Text>}
-          <Text style={styles.nodeText}>{node.text}</Text>
-        </View>
-        {hasChildren && <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={20} color="#fff" />}
-      </TouchableOpacity>
-
-      {!collapsed &&
-        children.map((child) => <TreeNode key={child.id} node={child} depth={depth + 1} allNodes={allNodes} />)}
-    </View>
-  );
-};
+const { width, height } = Dimensions.get('window');
 
 export default function MindmapScreen() {
   const { chapterId, bookId } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
-  const [structure, setStructure] = useState<MindMapStructure | null>(null);
+  const [markdownContent, setMarkdownContent] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -58,13 +26,20 @@ export default function MindmapScreen() {
       setLoading(true);
       setError(null);
       const data = await mindmapService.getMindmapByChapter(Number(bookId), Number(chapterId));
-      setStructure(data.structure);
+
+      if (data.markdown_content) {
+        setMarkdownContent(data.markdown_content);
+      } else {
+        // Fallback to structure if markdown not available
+        setMarkdownContent(convertStructureToMarkdown(data.structure));
+      }
+
       setTitle(data.title);
     } catch (err: any) {
       console.error('Error fetching mindmap:', err);
 
       if (err.response?.status === 404) {
-        setError('Chưa có mindmap cho chương này.\nVui lòng tạo mindmap trong trang Admin.');
+        setError('Chưa có mindmap cho chương này.\\nVui lòng tạo mindmap trong trang Admin.');
       } else if (err.response?.status === 403) {
         setError('Mindmap chưa được kích hoạt hoặc sách chưa được xuất bản.');
       } else {
@@ -73,6 +48,128 @@ export default function MindmapScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Convert old structure format to markdown (for backward compatibility)
+  const convertStructureToMarkdown = (structure: any): string => {
+    if (!structure) return '# No Content';
+
+    let markdown = `# ${structure.centerNode?.text || 'Main Topic'}\\n\\n`;
+
+    if (structure.nodes && structure.nodes.length > 0) {
+      const nodesByParent = new Map<string, any[]>();
+
+      structure.nodes.forEach((node: any) => {
+        const parentId = node.parentId || 'root';
+        if (!nodesByParent.has(parentId)) {
+          nodesByParent.set(parentId, []);
+        }
+        nodesByParent.get(parentId)!.push(node);
+      });
+
+      const renderNodes = (parentId: string, level: number = 2) => {
+        const children = nodesByParent.get(parentId) || [];
+        children.forEach((node: any) => {
+          const prefix = level === 2 ? '##' : '-';
+          const indent = level > 2 ? '  '.repeat(level - 3) : '';
+          markdown += `${indent}${prefix} ${node.text}\\n`;
+          renderNodes(node.id, level + 1);
+        });
+      };
+
+      renderNodes('root');
+    }
+
+    return markdown;
+  };
+
+  const generateMarkmapHTML = (markdown: string) => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
+    }
+    #mindmap {
+      width: 100vw;
+      height: 100vh;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+    /* Customize markmap styles */
+    .markmap-node {
+      cursor: pointer;
+    }
+    .markmap-node circle {
+      fill: #fff;
+      stroke-width: 2;
+    }
+    .markmap-node text {
+      fill: #fff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .markmap-link {
+      stroke: rgba(255, 255, 255, 0.6);
+      stroke-width: 2;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.18"></script>
+</head>
+<body>
+  <svg id="mindmap"></svg>
+  <script>
+    const { Transformer } = window.markmap;
+    const { Markmap, loadCSS, loadJS } = window.markmapView;
+
+    const markdown = \`${markdown.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
+
+    const transformer = new Transformer();
+    const { root, features } = transformer.transform(markdown);
+
+    const svg = document.getElementById('mindmap');
+    const mm = Markmap.create(svg, {
+      color: (node) => {
+        const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+        return colors[node.depth % colors.length];
+      },
+      duration: 500,
+      maxWidth: 300,
+      paddingX: 20,
+      autoFit: true,
+      zoom: true,
+      pan: true,
+    }, root);
+
+    // Auto-fit on load
+    setTimeout(() => {
+      mm.fit();
+    }, 100);
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      mm.fit();
+    });
+  </script>
+</body>
+</html>
+    `;
   };
 
   if (loading) {
@@ -86,7 +183,7 @@ export default function MindmapScreen() {
     );
   }
 
-  if (error || !structure) {
+  if (error || !markdownContent) {
     return (
       <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
         <View style={styles.header}>
@@ -109,48 +206,50 @@ export default function MindmapScreen() {
   }
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {title || 'Mindmap'}
         </Text>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="expand" size={24} color="#fff" />
+        <TouchableOpacity style={styles.iconButton} onPress={fetchMindmap}>
+          <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
-      {/* Content */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.centerNodeTitle}>{structure.centerNode.text}</Text>
-
-          <View style={styles.treeContainer}>
-            <TreeNode node={structure.centerNode} depth={0} allNodes={structure.nodes} />
+      {/* Markmap WebView */}
+      <WebView
+        source={{ html: generateMarkmapHTML(markdownContent) }}
+        style={styles.webview}
+        scrollEnabled={false}
+        bounces={false}
+        scalesPageToFit={true}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.webviewLoading}>
+            <ActivityIndicator size="large" color="#667eea" />
           </View>
-        </View>
+        )}
+      />
 
-        {/* Info */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={20} color="#6366f1" />
-          <Text style={styles.infoText}>Nhấn vào node để mở rộng/thu gọn các nhánh</Text>
-        </View>
-      </ScrollView>
-    </LinearGradient>
+      {/* Info Footer */}
+      <View style={styles.infoFooter}>
+        <Ionicons name="information-circle" size={20} color="#6366f1" />
+        <Text style={styles.infoText}>Chạm và kéo để xem toàn bộ mindmap • Nhấn vào node để mở rộng</Text>
+      </View>
+    </View>
   );
-}
-
-function getColorByDepth(depth: number): string {
-  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-  return colors[depth % colors.length];
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -183,75 +282,31 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  scrollView: {
+  webview: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
+  webviewLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  card: {
+  infoFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  centerNodeTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  treeContainer: {
-    marginTop: 8,
-  },
-  nodeContainer: {
-    marginVertical: 4,
-  },
-  node: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
-    marginVertical: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  nodeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  icon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  nodeText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    flex: 1,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    gap: 12,
+    padding: 12,
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
     flex: 1,
   },

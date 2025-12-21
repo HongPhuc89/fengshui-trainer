@@ -8,6 +8,7 @@ interface Question {
   difficulty: string;
   question_text: string;
   points: number;
+  options: any;
   is_active: boolean;
   created_at: string;
 }
