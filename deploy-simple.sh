@@ -65,6 +65,7 @@ mkdir -p $DEPLOY_DIR
 
 # Copy files
 cp -r dist $DEPLOY_DIR/
+cp -r config $DEPLOY_DIR/
 cp package.json $DEPLOY_DIR/
 cp package-lock.json $DEPLOY_DIR/
 
