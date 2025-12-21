@@ -2,27 +2,35 @@
 
 This file tracks all active development contexts and their current status for the AI Book Trainer project.
 
+**Last Updated:** December 21, 2024
+
+---
+
 ## Current Active Contexts
 
 | ID  | Feature                       | Status       | Last Updated | File Context                          |
 | --- | ----------------------------- | ------------ | ------------ | ------------------------------------- |
-| 01  | Book Management (Core)        | ✅ Completed | 2025-11-30   | 01-book-management.md                 |
-| 02  | Book Upload & Processing      | ✅ Completed | 2025-11-30   | 02-book-management-upload.md          |
-| 03  | Chapter Management            | ✅ Completed | 2025-12-03   | 03-chapter-management.md              |
-| 04  | Flashcard Management          | ✅ Completed | 2025-12-03   | 04-flashcard-management.md            |
-| 05  | Quiz/Exam System              | ✅ Completed | 2025-12-07   | 05-quiz-exam-system.md                |
-| 06  | Mind Map System               | ✅ Completed | 2025-12-07   | 06-mindmap-system.md                  |
-| 07  | Admin Dashboard (React Admin) | ✅ Completed | 2025-12-07   | 07-admin-dashboard.md                 |
-| 08  | Backend Unit Tests            | ✅ Completed | 2025-12-08   | 08-backend-unit-tests.md              |
-| 09  | Quiz Configuration System     | 🔲 Planned   | 2025-12-08   | 09-quiz-config.md                     |
-| 10  | AI Question Generation        | 🔲 Planned   | 2025-11-29   | 10-ai-integration.md                  |
-| 11  | Learning Interface API        | 🔲 Planned   | 2025-11-29   | 11-learning-system.md                 |
-| 12  | Mobile App (Feng Shui Design) | 🔲 Planned   | 2025-12-08   | 12-mobile-app.md                      |
-| 13  | User Experience & Leveling    | ✅ Completed | 2025-12-11   | 13-user-experience-leveling-system.md |
-| 14  | Currency System               | ✅ Completed | 2025-12-11   | 14-currency-system-design.md          |
-| 15  | User Profile System           | 📝 Design    | 2025-12-11   | 15-user-profile-system.md             |
+| 01  | Book Management (Core)        | ✅ Completed | 2024-11-30   | 01-book-management.md                 |
+| 03  | Chapter Management            | ✅ Completed | 2024-12-03   | 03-chapter-management.md              |
+| 04  | Flashcard Management          | ✅ Completed | 2024-12-03   | 04-flashcard-management.md            |
+| 05  | Quiz/Exam System              | ✅ Completed | 2024-12-07   | 05-quiz-exam-system.md                |
+| 06  | Mind Map System               | ✅ Completed | 2024-12-21   | 06-mindmap-system.md                  |
+| 07  | Admin Dashboard (React Admin) | ✅ Completed | 2024-12-21   | 07-admin-dashboard.md                 |
+| 08  | Backend Unit Tests            | ✅ Completed | 2024-12-08   | 08-backend-unit-tests.md              |
+| 08  | Signed URLs (Supabase)        | ✅ Completed | 2024-12-15   | 08-signed-urls.md                     |
+| 09  | Quiz Configuration System     | ✅ Completed | 2024-12-08   | 09-quiz-config.md                     |
+| 09  | Quiz Scoring Implementation   | ✅ Completed | 2024-12-10   | 09-quiz-scoring-implementation.md     |
+| 10  | Quiz Result Modal             | ✅ Completed | 2024-12-10   | 10-quiz-result-modal.md               |
+| 11  | Admin Books API Update        | ✅ Completed | 2024-12-11   | 11-admin-books-api-update.md          |
+| 12  | Flashcard Import/Export       | ✅ Completed | 2024-12-09   | 12-flashcard-import-export.md         |
+| 12  | Mobile App (Feng Shui Design) | ✅ Completed | 2024-12-11   | 12-mobile-app.md                      |
+| 13  | User Experience & Leveling    | ✅ Completed | 2024-12-11   | 13-user-experience-leveling-system.md |
+| 14  | Currency System               | ✅ Completed | 2024-12-11   | 14-currency-system-design.md          |
+| 15  | User Profile System           | ✅ Completed | 2024-12-11   | 15-user-profile-system.md             |
 
-## Recent Completions (December 2025)
+---
+
+## Recent Completions (December 2024)
 
 ### Week 1 (Dec 1-7)
 
@@ -30,90 +38,237 @@ This file tracks all active development contexts and their current status for th
 - ✅ **Mind Map System**: Full CRUD with structure validation, circular reference detection
 - ✅ **Admin Dashboard**: Quiz question management UI with dynamic form fields
 
-### Week 2 (Dec 8)
+### Week 2 (Dec 8-14)
 
 - ✅ **Backend Unit Tests**: Comprehensive test suite with 97 test cases, ~90% passing
-  - 8 service test files created
-  - Coverage for all major modules (Auth, Books, Quiz, MindMap, Users)
-  - Detailed documentation in TEST_README.md
+- ✅ **Quiz Configuration**: Per-chapter quiz settings (time limit, passing score, etc.)
+- ✅ **Quiz Scoring**: Automatic grading with detailed results
+- ✅ **Signed URLs**: Secure file access with Supabase signed URLs
+- ✅ **Flashcard Import/Export**: CSV/JSON import and export functionality
 
-## Next Priority Tasks
+### Week 3 (Dec 15-21)
 
-### 1. Mobile App with Feng Shui Design (ID: 12)
+- ✅ **Mobile App**: React Native app with Feng Shui design (red-gold theme)
+- ✅ **User Experience System**: XP gain, level progression, cultivation ranks
+- ✅ **Currency System**: Virtual currency for unlocking books
+- ✅ **User Profile**: Profile management with avatar, bio, stats
+- ✅ **Admin Routing Refactor**: URL-based navigation for better UX
+- ✅ **Mind Map Editor**: Dedicated edit page with Markmap integration
+- ✅ **VPS Deployment**: Simple deployment guide (build local, deploy to VPS)
 
-**Status**: 🔲 Planned
-**Priority**: High
-**Description**: Build React Native mobile app for Quiz Game with beautiful Feng Shui-inspired UI (red-gold color scheme)
+---
 
-**Requirements**:
+## Architecture Updates
 
-- Setup Expo project with TypeScript + Expo Router
-- Implement Feng Shui design system (red #C41E3A, gold #FFD700)
-- Create authentication flow (login, register)
-- Build core screens: Books, Chapters, Quiz, Flashcards, Mind Map
-- Integrate with existing NestJS backend API
-- Add smooth animations with Reanimated
-- Support iOS, Android, and Web (mobile-first)
+### Frontend
 
-**Tech Stack**:
+- **Admin Dashboard**: React Admin with Material-UI
+  - URL-based routing (no more tabs)
+  - Dedicated edit pages for better navigation
+  - Mind map editor with live preview (Markmap)
+  - Quiz builder with dynamic forms
+  - Flashcard pagination
+  - User management with experience grants
 
-- React Native + Expo
-- Expo Router (file-based routing)
-- NativeWind (TailwindCSS for RN)
-- React Query (API integration)
-- Zustand (state management)
-- React Native Reanimated (animations)
+- **Mobile App**: React Native + Expo
+  - Feng Shui design (red #C41E3A, gold #FFD700)
+  - Authentication flow
+  - Book browsing and chapter selection
+  - Flashcard study mode
+  - Quiz taking with results
+  - Mind map viewing
+  - Profile and progress tracking
 
-**Acceptance Criteria**:
+### Backend
 
-- [ ] Expo project initialized with proper structure
-- [ ] Design system implemented (colors, typography, components)
-- [ ] Authentication flow working
-- [ ] All main screens implemented (Books, Quiz, Flashcards, etc.)
-- [ ] API integration with backend complete
-- [ ] Smooth animations (60fps)
-- [ ] Web build works with mobile viewport
-- [ ] Tested on iOS and Android
+- **NestJS**: Modular architecture
+  - Auth, Books, Chapters, Flashcards
+  - Quiz (Questions, Sessions, Results)
+  - Mind Maps (Markdown-based)
+  - Experience & Levels
+  - User Profiles
+  - Currency System
 
-**Timeline**: 3-4 weeks
+### Database
 
-### 2. Quiz Configuration System (ID: 09)
+- **PostgreSQL**: External managed database
+  - Supabase / Railway / Neon support
+  - TypeORM for ORM
+  - Migrations for schema changes
 
-**Status**: 🔲 Planned
-**Priority**: High
-**Description**: Implement quiz configuration per chapter to control quiz behavior
+### Deployment
 
-**Requirements**:
+- **VPS**: Simple deployment workflow
+  - Build locally (Windows)
+  - Deploy to VPS via SCP
+  - PM2 for process management
+  - Nginx for reverse proxy
+  - External database (no local PostgreSQL)
 
-- Create QuizConfig entity (chapter_id, questions_per_quiz, time_limit, passing_score, difficulty_distribution)
-- CRUD API endpoints for quiz configuration
-- Admin UI for managing quiz settings per chapter
-- Default configuration when chapter is created
-- Validation for configuration values
+---
 
-**Acceptance Criteria**:
+## Technology Stack
 
-- [ ] QuizConfig entity and migration created
-- [ ] Backend CRUD APIs implemented
-- [ ] Admin UI for quiz configuration
-- [ ] Unit tests for QuizConfigService
-- [ ] Integration with quiz attempt flow
+### Backend
 
-### 3. Fix Remaining Unit Tests
+- NestJS 10
+- TypeORM 0.3
+- PostgreSQL (external)
+- Passport + JWT
+- Swagger
+- class-validator
 
-**Status**: 🔄 In Progress
-**Priority**: Medium
-**Tasks**:
+### Admin Dashboard
 
-- Fix 10 failing tests (~10% of total)
-- Improve test coverage to >90%
-- Add integration tests for controllers
+- React Admin
+- Material-UI (MUI)
+- Markmap (mind maps)
+- React Router
 
-### 4. AI Question Generation (ID: 10)
+### Mobile App
 
-**Status**: 🔲 Planned
-**Priority**: Medium
-**Description**: Auto-generate quiz questions from chapter content using AI
+- React Native
+- Expo
+- NativeWind (TailwindCSS)
+- React Query
+- Zustand
+- Reanimated
+
+### Infrastructure
+
+- Turborepo (monorepo)
+- npm Workspaces
+- Husky (git hooks)
+- Prettier + ESLint
+- Supabase (storage)
+
+---
+
+## Current Status
+
+### ✅ Completed Features
+
+**Core Features:**
+
+- Book management (upload, process, CRUD)
+- Chapter management
+- Flashcard generation and management
+- Quiz system (questions, sessions, scoring)
+- Mind map system (Markdown-based with Markmap)
+
+**User Features:**
+
+- Experience and leveling system
+- Currency system for book unlocking
+- User profiles with avatars
+- Progress tracking
+
+**Admin Features:**
+
+- React Admin dashboard
+- Book/chapter management
+- Flashcard pagination
+- Quiz builder with filters
+- Mind map editor (URL-based)
+- User management
+- Experience grants
+
+**Mobile Features:**
+
+- Feng Shui design
+- Authentication
+- Book browsing
+- Flashcard study
+- Quiz taking
+- Mind map viewing
+- Profile management
+
+**Infrastructure:**
+
+- Backend unit tests
+- VPS deployment guide
+- External database support
+- Signed URLs for secure access
+- Import/Export functionality
+
+### 🔄 In Progress
+
+- None (all major features completed)
+
+### 🔲 Future Enhancements
+
+**Potential Features:**
+
+- AI question generation
+- Advanced analytics
+- Social features (leaderboards, achievements)
+- Offline mode for mobile
+- Push notifications
+- Advanced search
+- Content recommendations
+
+---
+
+## Development Workflow
+
+### Local Development
+
+```bash
+npm run dev                    # Run all apps
+npm run backend:dev            # Backend only
+npm run admin:dev              # Admin only
+npm run mobile:dev             # Mobile only
+```
+
+### Testing
+
+```bash
+npm test                       # All tests
+npm test --workspace=@quiz-game/backend  # Backend tests
+```
+
+### Deployment
+
+```bash
+# Backend to VPS
+npm run build --workspace=@quiz-game/backend
+./deploy-simple.sh
+
+# Admin to hosting
+npm run build --workspace=@quiz-game/admin
+# Deploy to Vercel/Netlify
+
+# Mobile to stores
+eas build --platform ios
+eas build --platform android
+```
+
+---
+
+## Documentation
+
+### Main Guides
+
+- `README.md` - Project overview
+- `knowledge/codebase-overview.md` - Architecture
+- `VPS_SIMPLE_DEPLOY.md` - Deployment guide
+- `MARKMAP_GUIDE.md` - Mind map feature
+- `PROFILE_QUICK_START.md` - User profiles
+
+### Context Files
+
+- `01-book-management.md` - Book system
+- `03-chapter-management.md` - Chapter system
+- `04-flashcard-management.md` - Flashcard system
+- `05-quiz-exam-system.md` - Quiz system
+- `06-mindmap-system.md` - Mind map system
+- `07-admin-dashboard.md` - Admin UI
+- `12-mobile-app.md` - Mobile app
+- `13-user-experience-leveling-system.md` - XP & Levels
+- `14-currency-system-design.md` - Currency
+- `15-user-profile-system.md` - Profiles
+
+---
 
 ## Legend
 
@@ -123,11 +278,41 @@ This file tracks all active development contexts and their current status for th
 - ⏸ On Hold: Work is paused for some reason
 - ❌ Blocked: Cannot proceed due to dependencies
 
+---
+
 ## Notes
 
-- All backend services now have comprehensive unit tests
-- Quiz system is functional but needs configuration management
-- Mind map system includes advanced validation (circular refs, size limits)
-- Admin dashboard provides full CRUD for all entities
-- **NEW**: Mobile app task created with Feng Shui design inspiration (red-gold color scheme)
-- Mobile app will use Expo + React Native with web support for development
+### December 2024 Summary
+
+**Major Achievements:**
+
+- Complete quiz system with scoring and results
+- Mind map editor with Markmap integration
+- Mobile app with Feng Shui design
+- User experience and leveling system
+- Currency system for book unlocking
+- User profile management
+- VPS deployment workflow
+- Admin routing refactor (URL-based)
+
+**Architecture Improvements:**
+
+- External database support (Supabase/Railway/Neon)
+- Simple VPS deployment (build local, deploy to VPS)
+- URL-based admin navigation
+- Dedicated edit pages
+- Better code organization
+
+**Quality:**
+
+- Backend unit tests (~90% coverage)
+- Comprehensive documentation
+- Clean architecture
+- Modular design
+
+**Next Steps:**
+
+- Monitor production deployment
+- Gather user feedback
+- Plan future enhancements
+- Optimize performance
