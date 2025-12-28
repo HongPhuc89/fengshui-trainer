@@ -1,0 +1,15 @@
+{
+  "name": "@quiz-game/utils",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared utility functions for Quiz Game",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "echo 'Utils package not implemented yet'",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.7.2"
+  }
+}

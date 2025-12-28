@@ -1,0 +1,81 @@
+# Project Brief – AI Book Trainer (Quiz Game)
+
+## 🧠 Purpose
+
+The AI Book Trainer (Quiz Game) is an intelligent educational platform designed to transform static reading materials into interactive learning experiences. Built on a Turborepo monorepo architecture, it allows administrators to upload books (PDF/DOCX/Text), which are then processed to create structured learning paths with chapters, AI-generated flashcards, mind maps, and quizzes for users.
+
+## 🧩 Core Features
+
+### Implemented
+
+- ✅ **Book Management (Admin)**: Upload, update, delete books with file storage on Supabase
+- ✅ **Content Processing**: Automatic extraction and parsing of PDF, DOCX, TXT files
+- ✅ **Chapter Management**: Manual and automatic chapter creation and organization
+- ✅ **Flashcard System**: AI-powered flashcard generation from chapter content using LangChain
+- ✅ **File Upload Service**: Integration with Supabase for cloud file storage
+- ✅ **User Management**: Role-based access control (Admin vs. User) with JWT authentication
+- ✅ **API Documentation**: Swagger/OpenAPI documentation at `/docs`
+
+### In Progress
+
+- 🔄 **Mind Map Generation**: Visual representation of book concepts and relationships
+- 🔄 **Quiz/Exam System**: Question bank management and quiz generation
+
+### Planned
+
+- ⏸ **Learning Interface (User)**: Interactive reader with progress tracking
+- ⏸ **Performance Tracking**: Detailed analytics on user progress and exam results
+- ⏸ **Admin Dashboard UI**: React-based management interface
+- ⏸ **Mobile Application**: React Native app for mobile learning
+
+## 🎯 Goals
+
+- **Enhance Learning Efficiency**: Make reading more interactive and measurable through flashcards, quizzes, and mind maps
+- **Automate Content Generation**: Reduce the burden of creating manual study materials by using AI
+- **Track Progress**: Provide users and admins with clear insights into learning achievements
+- **Scalability**: Support a growing library of books and a large user base through monorepo architecture
+- **Modern Architecture**: Leverage Turborepo for efficient development and deployment
+
+## 🧑‍💻 Target Users
+
+- **Administrators**: Content managers responsible for uploading and organizing educational materials
+- **Learners/Students**: Individuals seeking to master the content of books through structured reading, flashcards, and quizzes
+- **Organizations**: Companies or schools looking to provide training materials to employees or students
+
+## 💡 Key Constraints
+
+- **AI Accuracy**: Generated flashcards and questions must be relevant and accurate to the source material
+- **File Format Support**: Must reliably handle common book formats (PDF, DOCX, TXT, and future formats)
+- **Data Privacy**: User progress and exam results must be secure
+- **Performance**: Content processing and AI generation should be efficient and scalable
+- **Monorepo Management**: Maintain clean separation between apps and shared packages
+
+## 🔭 Scope
+
+This brief covers the core functionality:
+
+### **MVP** (Completed)
+
+- ✅ User Authentication (Admin/User) with JWT
+- ✅ Book Upload and Storage (Supabase integration)
+- ✅ Content Parsing (PDF, DOCX, TXT)
+- ✅ Chapter Management (CRUD operations)
+- ✅ AI-Powered Flashcard Generation (LangChain integration)
+- ✅ Turborepo Monorepo Setup
+
+### **Phase 2** (In Progress)
+
+- 🔄 Mind Map Generation System
+- 🔄 Quiz/Exam Question Bank
+- ⏸ User Learning Progress Tracking
+- ⏸ Study Session Management
+
+### **Future Extensions**
+
+- Advanced AI integration (OpenAI/Gemini) for deeper content understanding
+- Social features (leaderboards, study groups, discussions)
+- Admin Dashboard (React)
+- Mobile application (React Native)
+- Support for audiobooks and video content
+- Offline learning mode
+- Gamification (badges, achievements, streaks)

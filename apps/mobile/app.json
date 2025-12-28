@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Quiz Game",
+    "slug": "quiz-game",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#C41E3A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.quizgame.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#C41E3A"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.quizgame.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "viewport": {
+        "width": 375,
+        "height": 812,
+        "initialScale": 1,
+        "maximumScale": 1,
+        "userScalable": false
+      }
+    },
+    "plugins": ["expo-router"],
+    "scheme": "quizgame",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1869d3d-224d-4534-890e-2028595f288f"
+      }
+    }
+  }
+}

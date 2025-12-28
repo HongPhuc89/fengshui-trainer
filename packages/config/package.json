@@ -1,0 +1,9 @@
+{
+  "name": "@quiz-game/config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared configuration files for Quiz Game",
+  "scripts": {
+    "lint": "echo 'Config package not implemented yet'"
+  }
+}

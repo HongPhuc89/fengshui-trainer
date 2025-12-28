@@ -1,169 +1,186 @@
-# Quiz Game Backend API
+# Quiz Game - Turborepo Monorepo
 
-Backend API cho ứng dụng Quiz Game được xây dựng với NestJS, TypeORM và PostgreSQL.
+A full-stack Quiz Game application built with Turborepo monorepo architecture.
 
-## Tính năng
+## 📁 Project Structure
 
-- ✅ Đăng ký tài khoản bằng email/password (không cần verify email)
-- ✅ Đăng nhập bằng email/password
-- ✅ JWT Authentication với Access Token và Refresh Token
-- ✅ 3 loại người dùng: Admin, Normal User, Staff
-- ✅ Role-based access control (RBAC)
-- ✅ Swagger API Documentation
+```
+/quiz-game
+│
+├── apps/
+│   ├── backend/         → NestJS API Backend
+│   ├── admin/           → React Admin Dashboard (Coming soon)
+│   └── mobile/          → React Native Mobile App (Coming soon)
+│
+├── packages/
+│   ├── ui/              → Shared React Components
+│   ├── shared/          → Shared DTOs, Interfaces, Types
+│   ├── utils/           → Shared Utility Functions
+│   └── config/          → Shared Configuration Files
+│
+├── node_modules/
+├── package.json         → Root package with workspaces
+├── turbo.json          → Turborepo configuration
+└── tsconfig.base.json  → Base TypeScript configuration
+```
 
-## Yêu cầu
+## 🚀 Getting Started
 
-- Node.js >= 18.x
-- PostgreSQL >= 12.x
-- npm hoặc yarn
+### Prerequisites
 
-## Cài đặt
+- Node.js >= 18.0.0
+- npm >= 9.0.0
 
-1. Clone repository và cài đặt dependencies:
+### Installation
 
 ```bash
-cd quiz_game
+# Install all dependencies for all workspaces
 npm install
 ```
 
-2. Tạo file `.env` từ `.env.example`:
+### Development
 
 ```bash
-cp .env.example .env
-```
+# Run ALL apps (backend + admin + mobile) in development mode
+npm run dev
 
-3. Cấu hình database và các biến môi trường trong file `.env`:
+# Run individual apps
+npm run dev:backend   # Backend only
+npm run dev:admin     # Admin dashboard only
+npm run dev:mobile    # Mobile app only
 
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=quiz_game
+# Alternative: Use Makefile (requires make)
+make dev              # Run all apps
+make backend          # Backend only
+make admin            # Admin only
+make mobile           # Mobile only
 
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRES_IN=7d
-REFRESH_TOKEN_SECRET=your-refresh-secret-key-here
-REFRESH_TOKEN_EXPIRES_IN=30d
-
-APP_PORT=3000
-APP_PREFIX=api
-APP_ENV=development
-```
-
-4. Tạo database:
-
-```sql
-CREATE DATABASE quiz_game;
-```
-
-5. Chạy migrations:
-
-```bash
-npm run migration:run
-```
-
-6. Tạo admin user:
-
-```bash
-npm run create:admin <email> <password> [full_name]
-```
-
-Ví dụ:
-
-```bash
-npm run create:admin admin@example.com password123 "Admin User"
-```
-
-7. Khởi động ứng dụng:
-
-```bash
-# Development
-npm run start:dev
-
-# Production
+# Build all apps
 npm run build
-npm run start:prod
+
+# Lint all workspaces
+npm run lint
+
+# Run tests
+npm run test
 ```
 
-## API Endpoints
+📖 **Xem thêm:** [DEV_COMMANDS.md](./DEV_COMMANDS.md) - Hướng dẫn chi tiết về tất cả các lệnh development
 
-### Authentication
+## 📦 Apps
 
-- `POST /api/auth/register` - Đăng ký tài khoản mới
-- `POST /api/auth/login` - Đăng nhập
-- `GET /api/auth/me` - Lấy thông tin user hiện tại (cần authentication)
-- `POST /api/auth/refresh-token` - Refresh access token
-- `POST /api/auth/logout` - Đăng xuất (cần authentication)
+### Backend (NestJS)
 
-### Swagger Documentation
+Located in `apps/backend/`
 
-Sau khi khởi động server, truy cập:
+The main API server built with NestJS, TypeORM, and PostgreSQL.
 
-- Swagger UI: http://localhost:3000/docs
+**Features:**
 
-## Cấu trúc dự án
+- User authentication with JWT
+- Book management
+- Quiz generation
+- File upload to Supabase
+- RESTful API with Swagger documentation
 
-```
-quiz_game/
-├── src/
-│   ├── modules/
-│   │   ├── auth/              # Module xác thực
-│   │   ├── users/             # Module quản lý users
-│   │   ├── user-credential/   # Module quản lý credentials
-│   │   ├── core/              # Module cấu hình
-│   │   └── typeorm/           # Module database
-│   └── shares/                # Shared utilities
-│       ├── decorators/        # Custom decorators
-│       ├── guards/            # Auth guards
-│       ├── helpers/           # Helper functions
-│       └── enums/             # Enums
-├── config/                    # Configuration files
-├── datasource.ts             # TypeORM datasource
-└── package.json
-```
-
-## User Roles
-
-- **ADMIN**: Quản trị viên hệ thống
-- **NORMAL_USER**: Người dùng thông thường (mặc định khi đăng ký)
-- **STAFF**: Nhân viên
-
-## Ví dụ sử dụng
-
-### Đăng ký tài khoản
+**Run backend:**
 
 ```bash
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "full_name": "John Doe",
-  "role": "NORMAL_USER"  // Optional, mặc định là NORMAL_USER
-}
+npm run backend:dev
 ```
 
-### Đăng nhập
+**Database migrations:**
 
 ```bash
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
+npm run backend:migration:run
+npm run backend:migration:generate
 ```
 
-### Sử dụng token
+### Admin Dashboard
+
+Located in `apps/admin/`
+
+🚧 **Coming soon** - React-based admin interface
+
+### Mobile App
+
+Located in `apps/mobile/`
+
+🚧 **Coming soon** - React Native mobile application
+
+## 📚 Packages
+
+### @quiz-game/ui
+
+Shared React components used across frontend applications.
+
+### @quiz-game/shared
+
+Shared TypeScript types, interfaces, and DTOs used across all applications.
+
+### @quiz-game/utils
+
+Shared utility functions and helpers.
+
+### @quiz-game/config
+
+Shared configuration files (ESLint, TypeScript, etc.).
+
+## 🔧 Turborepo
+
+This monorepo uses [Turborepo](https://turbo.build/repo) for:
+
+- Fast, incremental builds
+- Smart caching
+- Parallel execution
+- Task pipelines
+
+### Available Turbo Commands
 
 ```bash
-GET /api/auth/me
-Authorization: Bearer <access_token>
+# Build all apps and packages
+npm run build
+
+# Run all apps in dev mode
+npm run dev
+
+# Lint all workspaces
+npm run lint
+
+# Run tests across all workspaces
+npm run test
+
+# Type check all workspaces
+npm run type-check
 ```
 
-## License
+## 🌳 Environment Variables
 
-UNLICENSED
+Each app has its own `.env` file. See `.env_example` in each app directory.
+
+### Backend Environment Variables
+
+See `apps/backend/.env_example`
+
+## 📝 Scripts
+
+- `npm run dev` - Run all apps in development mode
+- `npm run build` - Build all apps and packages
+- `npm run lint` - Lint all workspaces
+- `npm run test` - Run tests
+- `npm run clean` - Clean all build artifacts and node_modules
+- `npm run format` - Format all files with Prettier
+- `npm run backend:dev` - Run only backend in dev mode
+- `npm run backend:build` - Build only backend
+
+## 🤝 Contributing
+
+1. Create a new branch
+2. Make your changes
+3. Ensure all tests pass
+4. Format code: `npm run format`
+5. Submit a pull request
+
+## 📄 License
+
+UNLICENSED - Private project
