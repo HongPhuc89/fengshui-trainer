@@ -32,7 +32,7 @@ export class UploadController {
         },
         type: {
           type: 'string',
-          enum: ['book', 'cover'],
+          enum: ['book', 'cover', 'chapter'],
         },
       },
     },

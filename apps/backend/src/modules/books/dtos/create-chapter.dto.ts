@@ -21,4 +21,10 @@ export class CreateChapterDto {
   @IsInt()
   @IsOptional()
   order?: number;
+
+  @ApiProperty({ description: 'File ID for chapter reading material (optional)', required: false })
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  file_id?: number;
 }

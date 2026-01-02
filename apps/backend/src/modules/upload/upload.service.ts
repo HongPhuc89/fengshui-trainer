@@ -35,7 +35,7 @@ export class UploadService {
     }
 
     // Validate file type
-    if (type === FileType.BOOK) {
+    if (type === FileType.BOOK || type === FileType.CHAPTER) {
       const allowedMimes = [
         'application/pdf',
         'text/plain',
@@ -45,10 +45,10 @@ export class UploadService {
         'text/markdown',
       ];
       if (!allowedMimes.includes(file.mimetype)) {
-        throw new BadRequestException('Invalid book file format');
+        throw new BadRequestException(`Invalid ${type} file format`);
       }
       if (file.size > 20 * 1024 * 1024) {
-        throw new BadRequestException('Book file size exceeds 20MB');
+        throw new BadRequestException(`${type} file size exceeds 20MB`);
       }
     } else if (type === FileType.COVER) {
       const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
