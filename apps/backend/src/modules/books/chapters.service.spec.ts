@@ -1,17 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChaptersService } from './chapters.service';
 import { Chapter } from './entities/chapter.entity';
+import { UploadedFile } from '../upload/entities/uploaded-file.entity';
+import { UploadService } from '../upload/upload.service';
 import { BooksService } from './books.service';
 import { CreateChapterDto } from './dtos/create-chapter.dto';
 import { UpdateChapterDto } from './dtos/update-chapter.dto';
 import { QuizConfigService } from '../quiz/services/quiz-config.service';
+import { FileType } from '../../shares/enums/file-type.enum';
 
 describe('ChaptersService', () => {
   let service: ChaptersService;
   let repository: jest.Mocked<Repository<Chapter>>;
+  let uploadedFileRepository: jest.Mocked<Repository<UploadedFile>>;
+  let uploadService: jest.Mocked<UploadService>;
   let booksService: jest.Mocked<BooksService>;
   let quizConfigService: jest.Mocked<QuizConfigService>;
 
@@ -22,10 +27,25 @@ describe('ChaptersService', () => {
     order: 1,
     points: 100,
     book_id: 1,
+    file_id: null,
+    file: null,
     created_at: new Date(),
     updated_at: new Date(),
     book: null,
   } as Chapter;
+
+  const mockUploadedFile: UploadedFile = {
+    id: 1,
+    user_id: 1,
+    type: FileType.CHAPTER,
+    original_name: 'test.pdf',
+    filename: 'uuid.pdf',
+    path: 'https://storage.supabase.co/chapters/uuid.pdf',
+    mimetype: 'application/pdf',
+    size: 1024,
+    created_at: new Date(),
+    updated_at: new Date(),
+  } as UploadedFile;
 
   beforeEach(async () => {
     const mockQueryBuilder = {
@@ -49,6 +69,19 @@ describe('ChaptersService', () => {
           },
         },
         {
+          provide: getRepositoryToken(UploadedFile),
+          useValue: {
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: UploadService,
+          useValue: {
+            extractPathFromUrl: jest.fn(),
+          },
+        },
+        {
           provide: BooksService,
           useValue: {
             findOneAdmin: jest.fn(),
@@ -69,6 +102,8 @@ describe('ChaptersService', () => {
 
     service = module.get<ChaptersService>(ChaptersService);
     repository = module.get(getRepositoryToken(Chapter));
+    uploadedFileRepository = module.get(getRepositoryToken(UploadedFile));
+    uploadService = module.get(UploadService);
     booksService = module.get(BooksService);
     quizConfigService = module.get(QuizConfigService);
   });
@@ -103,6 +138,44 @@ describe('ChaptersService', () => {
       expect(booksService.incrementChapterCount).toHaveBeenCalledWith(1);
     });
 
+    it('should create a chapter with file_id', async () => {
+      const dtoWithFile = { ...createChapterDto, file_id: 1 };
+      const chapterWithFile = { ...mockChapter, file_id: 1 };
+
+      booksService.findOneAdmin.mockResolvedValue({} as any);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      repository.create.mockReturnValue(chapterWithFile as any);
+      repository.save.mockResolvedValue(chapterWithFile as any);
+      booksService.incrementChapterCount.mockResolvedValue(undefined);
+      quizConfigService.createDefaultConfig.mockResolvedValue({} as any);
+
+      const result = await service.create(1, dtoWithFile);
+
+      expect(result.file_id).toBe(1);
+      expect(uploadedFileRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+    });
+
+    it('should throw BadRequestException when file_id does not exist', async () => {
+      const dtoWithFile = { ...createChapterDto, file_id: 999 };
+
+      booksService.findOneAdmin.mockResolvedValue({} as any);
+      uploadedFileRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.create(1, dtoWithFile)).rejects.toThrow(BadRequestException);
+      await expect(service.create(1, dtoWithFile)).rejects.toThrow('File with ID 999 not found');
+    });
+
+    it('should throw BadRequestException when file type is not chapter', async () => {
+      const dtoWithFile = { ...createChapterDto, file_id: 1 };
+      const wrongTypeFile = { ...mockUploadedFile, type: FileType.BOOK };
+
+      booksService.findOneAdmin.mockResolvedValue({} as any);
+      uploadedFileRepository.findOne.mockResolvedValue(wrongTypeFile);
+
+      await expect(service.create(1, dtoWithFile)).rejects.toThrow(BadRequestException);
+      await expect(service.create(1, dtoWithFile)).rejects.toThrow('is not a chapter file');
+    });
+
     it('should auto-assign order when not provided', async () => {
       const dtoWithoutOrder = { title: 'New Chapter', content: 'New Content', points: 100 };
       booksService.findOneAdmin.mockResolvedValue({} as any);
@@ -118,7 +191,7 @@ describe('ChaptersService', () => {
   });
 
   describe('findAllByBook', () => {
-    it('should return all chapters for a book', async () => {
+    it('should return all chapters with file relation', async () => {
       const chapters = [mockChapter];
       repository.find.mockResolvedValue(chapters);
 
@@ -127,6 +200,7 @@ describe('ChaptersService', () => {
       expect(result).toEqual(chapters);
       expect(repository.find).toHaveBeenCalledWith({
         where: { book_id: 1 },
+        relations: ['file'],
         order: { order: 'ASC' },
       });
     });
@@ -146,7 +220,7 @@ describe('ChaptersService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a chapter by id', async () => {
+    it('should return a chapter with file relation', async () => {
       repository.findOne.mockResolvedValue(mockChapter);
 
       const result = await service.findOne(1, 1);
@@ -154,6 +228,7 @@ describe('ChaptersService', () => {
       expect(result).toEqual(mockChapter);
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: 1, book_id: 1 },
+        relations: ['file'],
       });
     });
 
@@ -192,10 +267,53 @@ describe('ChaptersService', () => {
       expect(result).toEqual(updatedChapter);
       expect(repository.save).toHaveBeenCalled();
     });
+
+    it('should update chapter with new file_id', async () => {
+      const updateDto = { file_id: 2 };
+      const chapterWithFile = { ...mockChapter, file_id: 1 };
+      const updatedChapter = { ...mockChapter, file_id: 2 };
+
+      repository.findOne.mockResolvedValue(chapterWithFile);
+      uploadedFileRepository.findOne
+        .mockResolvedValueOnce(mockUploadedFile) // old file
+        .mockResolvedValueOnce({ ...mockUploadedFile, id: 2 }); // new file
+      uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
+      repository.save.mockResolvedValue(updatedChapter as any);
+
+      const result = await service.update(1, 1, updateDto);
+
+      expect(result.file_id).toBe(2);
+      expect(uploadedFileRepository.remove).toHaveBeenCalled();
+    });
+
+    it('should remove file when file_id is set to null', async () => {
+      const updateDto = { file_id: null };
+      const chapterWithFile = { ...mockChapter, file_id: 1 };
+      const updatedChapter = { ...mockChapter, file_id: null };
+
+      repository.findOne.mockResolvedValue(chapterWithFile);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
+      repository.save.mockResolvedValue(updatedChapter as any);
+
+      const result = await service.update(1, 1, updateDto);
+
+      expect(result.file_id).toBeNull();
+      expect(uploadedFileRepository.remove).toHaveBeenCalled();
+    });
+
+    it('should validate new file_id', async () => {
+      const updateDto = { file_id: 999 };
+
+      repository.findOne.mockResolvedValue(mockChapter);
+      uploadedFileRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.update(1, 1, updateDto)).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('delete', () => {
-    it('should delete a chapter successfully', async () => {
+    it('should delete a chapter without file', async () => {
       repository.findOne.mockResolvedValue(mockChapter);
       repository.remove.mockResolvedValue(mockChapter);
       booksService.decrementChapterCount.mockResolvedValue(undefined);
@@ -203,6 +321,22 @@ describe('ChaptersService', () => {
       await service.delete(1, 1);
 
       expect(repository.remove).toHaveBeenCalledWith(mockChapter);
+      expect(booksService.decrementChapterCount).toHaveBeenCalledWith(1);
+    });
+
+    it('should delete a chapter with file', async () => {
+      const chapterWithFile = { ...mockChapter, file_id: 1 };
+
+      repository.findOne.mockResolvedValue(chapterWithFile);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
+      repository.remove.mockResolvedValue(chapterWithFile);
+      booksService.decrementChapterCount.mockResolvedValue(undefined);
+
+      await service.delete(1, 1);
+
+      expect(uploadedFileRepository.remove).toHaveBeenCalledWith(mockUploadedFile);
+      expect(repository.remove).toHaveBeenCalledWith(chapterWithFile);
       expect(booksService.decrementChapterCount).toHaveBeenCalledWith(1);
     });
   });
