@@ -143,7 +143,7 @@ describe('ChaptersService', () => {
       const chapterWithFile = { ...mockChapter, file_id: 1 };
 
       booksService.findOneAdmin.mockResolvedValue({} as any);
-      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile as any);
       repository.create.mockReturnValue(chapterWithFile as any);
       repository.save.mockResolvedValue(chapterWithFile as any);
       booksService.incrementChapterCount.mockResolvedValue(undefined);
@@ -170,7 +170,7 @@ describe('ChaptersService', () => {
       const wrongTypeFile = { ...mockUploadedFile, type: FileType.BOOK };
 
       booksService.findOneAdmin.mockResolvedValue({} as any);
-      uploadedFileRepository.findOne.mockResolvedValue(wrongTypeFile);
+      uploadedFileRepository.findOne.mockResolvedValue(wrongTypeFile as any);
 
       await expect(service.create(1, dtoWithFile)).rejects.toThrow(BadRequestException);
       await expect(service.create(1, dtoWithFile)).rejects.toThrow('is not a chapter file');
@@ -273,10 +273,10 @@ describe('ChaptersService', () => {
       const chapterWithFile = { ...mockChapter, file_id: 1 };
       const updatedChapter = { ...mockChapter, file_id: 2 };
 
-      repository.findOne.mockResolvedValue(chapterWithFile);
+      repository.findOne.mockResolvedValue(chapterWithFile as any);
       uploadedFileRepository.findOne
         .mockResolvedValueOnce(mockUploadedFile) // old file
-        .mockResolvedValueOnce({ ...mockUploadedFile, id: 2 }); // new file
+        .mockResolvedValueOnce({ ...mockUploadedFile, id: 2 } as any); // new file
       uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
       repository.save.mockResolvedValue(updatedChapter as any);
 
@@ -291,8 +291,8 @@ describe('ChaptersService', () => {
       const chapterWithFile = { ...mockChapter, file_id: 1 };
       const updatedChapter = { ...mockChapter, file_id: null };
 
-      repository.findOne.mockResolvedValue(chapterWithFile);
-      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      repository.findOne.mockResolvedValue(chapterWithFile as any);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile as any);
       uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
       repository.save.mockResolvedValue(updatedChapter as any);
 
@@ -315,7 +315,7 @@ describe('ChaptersService', () => {
   describe('delete', () => {
     it('should delete a chapter without file', async () => {
       repository.findOne.mockResolvedValue(mockChapter);
-      repository.remove.mockResolvedValue(mockChapter);
+      repository.remove.mockResolvedValue(mockChapter as any);
       booksService.decrementChapterCount.mockResolvedValue(undefined);
 
       await service.delete(1, 1);
@@ -327,10 +327,10 @@ describe('ChaptersService', () => {
     it('should delete a chapter with file', async () => {
       const chapterWithFile = { ...mockChapter, file_id: 1 };
 
-      repository.findOne.mockResolvedValue(chapterWithFile);
-      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile);
+      repository.findOne.mockResolvedValue(chapterWithFile as any);
+      uploadedFileRepository.findOne.mockResolvedValue(mockUploadedFile as any);
       uploadService.extractPathFromUrl.mockReturnValue('chapters/uuid.pdf');
-      repository.remove.mockResolvedValue(chapterWithFile);
+      repository.remove.mockResolvedValue(chapterWithFile as any);
       booksService.decrementChapterCount.mockResolvedValue(undefined);
 
       await service.delete(1, 1);
