@@ -18,6 +18,7 @@ const AppDataSource = new DataSource({
   timezone: 'Z',
   synchronize: false,
   logging: true,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 async function runMigrations() {
