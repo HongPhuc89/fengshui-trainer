@@ -21,6 +21,14 @@ interface Chapter {
   order_index: number;
   status: string;
   points: number;
+  file_id?: number | null;
+  file?: {
+    id: number;
+    original_name: string;
+    path: string;
+    size: number;
+    mimetype: string;
+  } | null;
   created_at: string;
   updated_at: string;
 }
