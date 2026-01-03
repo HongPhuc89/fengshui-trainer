@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useChapterDetail } from '../../../hooks/useChapterDetail';
 import { LoadingScreen, ErrorScreen } from '../../../components/common';
-import { ChapterHeader, ActionButtons, ChapterContent } from '../../../components/chapter';
+import { ChapterHeader, ActionButtons, ChapterContent, ChapterFileViewer } from '../../../components/chapter';
 
 export default function ChapterDetailScreen() {
   const { chapterId, bookId } = useLocalSearchParams<{ chapterId: string; bookId: string }>();
@@ -33,13 +33,23 @@ export default function ChapterDetailScreen() {
     return <ErrorScreen message={error || 'Không tìm thấy chương'} onRetry={loadChapterData} />;
   }
 
+  // Check if chapter has a file
+  const hasFile = chapter.file && chapter.file.path;
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <ChapterHeader title={chapter.title} onBack={() => router.back()} />
 
-      {/* Content */}
-      <ChapterContent content={chapter.content || chapter.description || 'Nội dung đang được cập nhật...'} />
+      {/* Content - Show file viewer if file exists, otherwise show text content */}
+      {hasFile ? (
+        <ChapterFileViewer 
+          fileUrl={chapter.file!.path} 
+          fileName={chapter.file!.original_name}
+        />
+      ) : (
+        <ChapterContent content={chapter.content || chapter.description || 'Nội dung đang được cập nhật...'} />
+      )}
 
       {/* Action Buttons - Fixed at bottom */}
       <ActionButtons onActionPress={handleActionPress} />
