@@ -66,7 +66,7 @@ export const ReadChapterPage = () => {
       <Card sx={{ borderRadius: 0 }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton onClick={() => navigate(`/#/chapters/${bookId}/${chapterId}`)}>
+            <IconButton onClick={() => navigate(`/chapters/${bookId}/${chapterId}`)}>
               <ArrowBackIcon />
             </IconButton>
             <Box sx={{ flex: 1 }}>
@@ -125,7 +125,7 @@ export const ReadChapterPage = () => {
             <Button
               variant="contained"
               startIcon={<UploadFileIcon />}
-              onClick={() => navigate(`/#/chapters/${bookId}/${chapterId}`)}
+              onClick={() => navigate(`/chapters/${bookId}/${chapterId}`)}
               sx={{ mt: 2 }}
             >
               Go to Chapter Details

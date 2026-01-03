@@ -190,7 +190,7 @@ export const ChapterInfoTab: React.FC<ChapterInfoTabProps> = ({ chapter }) => {
             <IconButton
               size="small"
               color="primary"
-              onClick={() => navigate(`/#/chapters/${chapter.book_id}/${chapter.id}/read`)}
+              onClick={() => navigate(`/chapters/${chapter.book_id}/${chapter.id}/read`)}
               title="View file"
             >
               <VisibilityIcon />
