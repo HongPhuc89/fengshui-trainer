@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 interface ChapterFileViewerProps {
@@ -14,11 +14,6 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
   const handleOpenExternal = () => {
     Linking.openURL(fileUrl);
   };
-
-  // For iOS, we can load PDF directly
-  // For Android, we need Google Docs Viewer
-  const viewerUrl =
-    Platform.OS === 'ios' ? fileUrl : `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`;
 
   return (
     <View style={styles.container}>
@@ -42,14 +37,14 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
       )}
 
       <WebView
-        source={{ uri: viewerUrl }}
+        source={{ uri: fileUrl }}
         style={styles.webview}
         onLoadStart={() => {
-          console.log('WebView loading:', viewerUrl);
+          console.log('WebView loading PDF:', fileUrl);
           setLoading(true);
         }}
         onLoadEnd={() => {
-          console.log('WebView loaded');
+          console.log('WebView loaded PDF successfully');
           setLoading(false);
         }}
         onError={(syntheticEvent) => {
@@ -62,10 +57,7 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
           const { nativeEvent } = syntheticEvent;
           console.error('WebView HTTP error:', nativeEvent.statusCode);
           setLoading(false);
-          setError(`Lỗi tải file (${nativeEvent.statusCode}). Link có thể đã hết hạn.`);
-        }}
-        onMessage={(event) => {
-          console.log('WebView message:', event.nativeEvent.data);
+          setError(`Lỗi tải file (${nativeEvent.statusCode}). Vui lòng thử lại.`);
         }}
         startInLoadingState={true}
         scalesPageToFit={true}
