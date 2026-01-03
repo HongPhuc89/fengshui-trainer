@@ -132,26 +132,36 @@ export class UploadService {
    */
   async getFileUrl(file: any, expiresIn: number = 3600): Promise<string> {
     if (!file || !file.path) {
+      console.log('[UploadService] getFileUrl: No file or path provided');
       return null;
     }
 
     // If path is already a full URL (old data), extract the storage path
     let storagePath = file.path;
+    console.log('[UploadService] getFileUrl: Original path:', storagePath);
+
     if (storagePath.startsWith('http')) {
+      console.log('[UploadService] getFileUrl: Path is a full URL, extracting storage path...');
       try {
         storagePath = this.extractPathFromUrl(storagePath);
+        console.log('[UploadService] getFileUrl: Extracted storage path:', storagePath);
       } catch (error) {
+        console.error('[UploadService] getFileUrl: Failed to extract path:', error.message);
         // If extraction fails, return the original path
         return storagePath;
       }
     }
 
     // Generate fresh signed URL
+    console.log('[UploadService] getFileUrl: Generating signed URL for:', storagePath);
     try {
-      return await this.getSignedUrl(storagePath, expiresIn);
+      const signedUrl = await this.getSignedUrl(storagePath, expiresIn);
+      console.log('[UploadService] getFileUrl: Successfully generated signed URL');
+      return signedUrl;
     } catch (error) {
-      // If signed URL generation fails, return the storage path
-      return storagePath;
+      console.error('[UploadService] getFileUrl: Failed to generate signed URL:', error.message);
+      // Re-throw the error instead of silently returning storage path
+      throw new InternalServerErrorException(`Failed to generate file URL: ${error.message}`);
     }
   }
 }
