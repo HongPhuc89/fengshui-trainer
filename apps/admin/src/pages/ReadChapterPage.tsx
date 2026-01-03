@@ -92,7 +92,7 @@ export const ReadChapterPage = () => {
           isViewable ? (
             <Box sx={{ width: '100%', height: '100%', p: 2 }}>
               <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(file.path)}&embedded=true`}
+                src={file.path}
                 style={{
                   width: '100%',
                   height: '100%',
