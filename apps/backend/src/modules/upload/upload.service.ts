@@ -72,14 +72,21 @@ export class UploadService {
       throw new InternalServerErrorException(`Upload failed: ${error.message}`);
     }
 
-    const { data: publicUrlData } = this.supabase.storage.from(this.bucketName).getPublicUrl(filePath);
+    // Generate signed URL (1 hour expiration)
+    const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
+      .from(this.bucketName)
+      .createSignedUrl(filePath, 3600);
+
+    if (signedUrlError) {
+      throw new InternalServerErrorException(`Failed to generate signed URL: ${signedUrlError.message}`);
+    }
 
     const uploadedFile = this.uploadedFileRepository.create({
       user_id: user.id,
       type,
       original_name: file.originalname,
       filename: fileName,
-      path: publicUrlData.publicUrl,
+      path: signedUrlData.signedUrl,
       mimetype: file.mimetype,
       size: file.size,
     });
