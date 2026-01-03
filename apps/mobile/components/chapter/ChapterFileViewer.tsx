@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 interface ChapterFileViewerProps {
@@ -11,12 +11,14 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use Mozilla's PDF.js viewer (hosted on CDN)
-  const pdfJsViewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`;
-
   const handleOpenExternal = () => {
     Linking.openURL(fileUrl);
   };
+
+  // For iOS, we can load PDF directly
+  // For Android, we need Google Docs Viewer
+  const viewerUrl =
+    Platform.OS === 'ios' ? fileUrl : `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`;
 
   return (
     <View style={styles.container}>
@@ -24,6 +26,9 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F59E0B" />
           <Text style={styles.loadingText}>Đang tải {fileName}...</Text>
+          <TouchableOpacity onPress={handleOpenExternal} style={styles.openButton}>
+            <Text style={styles.openButtonText}>Mở bằng ứng dụng khác</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -37,23 +42,30 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
       )}
 
       <WebView
-        source={{ uri: pdfJsViewerUrl }}
+        source={{ uri: viewerUrl }}
         style={styles.webview}
-        onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        onLoadStart={() => {
+          console.log('WebView loading:', viewerUrl);
+          setLoading(true);
+        }}
+        onLoadEnd={() => {
+          console.log('WebView loaded');
+          setLoading(false);
+        }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.warn('WebView error:', nativeEvent);
+          console.error('WebView error:', nativeEvent);
           setLoading(false);
-          setError('Không thể tải file. Vui lòng thử lại sau.');
+          setError('Không thể tải file. Vui lòng thử mở bằng ứng dụng khác.');
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.warn('WebView HTTP error:', nativeEvent.statusCode);
-          if (nativeEvent.statusCode >= 400) {
-            setLoading(false);
-            setError('Không thể tải file. Link có thể đã hết hạn.');
-          }
+          console.error('WebView HTTP error:', nativeEvent.statusCode);
+          setLoading(false);
+          setError(`Lỗi tải file (${nativeEvent.statusCode}). Link có thể đã hết hạn.`);
+        }}
+        onMessage={(event) => {
+          console.log('WebView message:', event.nativeEvent.data);
         }}
         startInLoadingState={true}
         scalesPageToFit={true}
@@ -62,6 +74,7 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
         mixedContentMode="always"
+        originWhitelist={['*']}
       />
     </View>
   );
@@ -91,6 +104,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     fontSize: 14,
+  },
+  openButton: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+  },
+  openButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   errorContainer: {
     position: 'absolute',
