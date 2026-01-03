@@ -72,21 +72,14 @@ export class UploadService {
       throw new InternalServerErrorException(`Upload failed: ${error.message}`);
     }
 
-    // Generate signed URL (1 hour expiration)
-    const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
-      .from(this.bucketName)
-      .createSignedUrl(filePath, 3600);
-
-    if (signedUrlError) {
-      throw new InternalServerErrorException(`Failed to generate signed URL: ${signedUrlError.message}`);
-    }
-
+    // Store the storage path instead of signed URL
+    // Signed URLs will be generated on-demand to avoid expiration issues
     const uploadedFile = this.uploadedFileRepository.create({
       user_id: user.id,
       type,
       original_name: file.originalname,
       filename: fileName,
-      path: signedUrlData.signedUrl,
+      path: filePath, // Store path like "chapters/uuid.pdf"
       mimetype: file.mimetype,
       size: file.size,
     });
@@ -128,5 +121,37 @@ export class UploadService {
 
     // If URL doesn't match expected format, throw error
     throw new BadRequestException('Invalid Supabase storage URL format');
+  }
+
+  /**
+   * Generate a fresh signed URL for an uploaded file
+   * This is used to avoid expired URL issues when fetching file data
+   * @param file - UploadedFile entity
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Fresh signed URL
+   */
+  async getFileUrl(file: any, expiresIn: number = 3600): Promise<string> {
+    if (!file || !file.path) {
+      return null;
+    }
+
+    // If path is already a full URL (old data), extract the storage path
+    let storagePath = file.path;
+    if (storagePath.startsWith('http')) {
+      try {
+        storagePath = this.extractPathFromUrl(storagePath);
+      } catch (error) {
+        // If extraction fails, return the original path
+        return storagePath;
+      }
+    }
+
+    // Generate fresh signed URL
+    try {
+      return await this.getSignedUrl(storagePath, expiresIn);
+    } catch (error) {
+      // If signed URL generation fails, return the storage path
+      return storagePath;
+    }
   }
 }

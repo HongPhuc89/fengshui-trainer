@@ -89,9 +89,16 @@ export class ChaptersService {
       throw new NotFoundException(`Chapter with ID ${chapterId} not found in book ${bookId}`);
     }
 
+    // Generate fresh signed URL for file if exists
+    if (chapter.file) {
+      const freshUrl = await this.uploadService.getFileUrl(chapter.file);
+      if (freshUrl) {
+        chapter.file.path = freshUrl;
+      }
+    }
+
     return chapter;
   }
-
   async findOneInPublishedBook(bookId: number, chapterId: number): Promise<Chapter> {
     // Verify the book is published
     await this.booksService.findOne(bookId);
