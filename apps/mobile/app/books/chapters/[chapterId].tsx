@@ -25,6 +25,11 @@ export default function ChapterDetailScreen() {
     }
   };
 
+  const handleBack = () => {
+    // Navigate back to book detail instead of using router.back()
+    router.push(`/books/${bookId}`);
+  };
+
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -39,7 +44,7 @@ export default function ChapterDetailScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <ChapterHeader title={chapter.title} onBack={() => router.back()} />
+      <ChapterHeader title={chapter.title} onBack={handleBack} />
 
       {/* Content - Show file viewer if file exists, otherwise show text content */}
       {hasFile ? (
