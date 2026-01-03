@@ -113,10 +113,12 @@ export class UploadService {
    * @returns Storage path (e.g., 'covers/uuid.webp')
    */
   extractPathFromUrl(fullUrl: string): string {
-    // URL format: https://ppjcqetlikzvvoblnybe.supabase.co/storage/v1/object/public/books/covers/uuid.webp
-    const match = fullUrl.match(/\/object\/public\/[^/]+\/(.+)$/);
-    if (match && match[1]) {
-      return match[1];
+    // Handle both public and signed URLs
+    // Public: https://...supabase.co/storage/v1/object/public/books/chapters/uuid.pdf
+    // Signed: https://...supabase.co/storage/v1/object/sign/books/chapters/uuid.pdf?token=...
+    const match = fullUrl.match(/\/object\/(public|sign)\/[^/]+\/(.+?)(\?|$)/);
+    if (match && match[2]) {
+      return match[2];
     }
 
     // If URL doesn't match expected format, throw error
