@@ -11,8 +11,8 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use Google Docs Viewer for better PDF compatibility
-  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  // Use Mozilla's PDF.js viewer (hosted on CDN)
+  const pdfJsViewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`;
 
   const handleOpenExternal = () => {
     Linking.openURL(fileUrl);
@@ -24,9 +24,6 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F59E0B" />
           <Text style={styles.loadingText}>Đang tải {fileName}...</Text>
-          <TouchableOpacity onPress={handleOpenExternal} style={styles.openButton}>
-            <Text style={styles.openButtonText}>Mở bằng ứng dụng khác</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -40,7 +37,7 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
       )}
 
       <WebView
-        source={{ uri: viewerUrl }}
+        source={{ uri: pdfJsViewerUrl }}
         style={styles.webview}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
@@ -48,13 +45,15 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
           const { nativeEvent } = syntheticEvent;
           console.warn('WebView error:', nativeEvent);
           setLoading(false);
-          setError('Không thể tải file trong app. Vui lòng mở bằng ứng dụng khác.');
+          setError('Không thể tải file. Vui lòng thử lại sau.');
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.warn('WebView HTTP error:', nativeEvent.statusCode);
-          setLoading(false);
-          setError('Không thể tải file. Vui lòng thử lại sau.');
+          if (nativeEvent.statusCode >= 400) {
+            setLoading(false);
+            setError('Không thể tải file. Link có thể đã hết hạn.');
+          }
         }}
         startInLoadingState={true}
         scalesPageToFit={true}
@@ -62,6 +61,7 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
         domStorageEnabled={true}
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
+        mixedContentMode="always"
       />
     </View>
   );
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#fff',
   },
   loadingContainer: {
     position: 'absolute',
@@ -91,18 +91,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     fontSize: 14,
-  },
-  openButton: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#F59E0B',
-    borderRadius: 8,
-  },
-  openButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   errorContainer: {
     position: 'absolute',
