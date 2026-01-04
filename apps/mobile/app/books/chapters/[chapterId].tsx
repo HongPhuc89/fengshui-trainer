@@ -49,8 +49,11 @@ export default function ChapterDetailScreen() {
       {/* Content - Show file viewer if file exists, otherwise show text content */}
       {hasFile ? (
         <ChapterFileViewer 
+          chapterId={parseInt(chapterId, 10)}
           fileUrl={chapter.file!.path} 
           fileName={chapter.file!.original_name}
+          fileId={chapter.file!.id}
+          fileUpdatedAt={chapter.file!.updated_at ? new Date(chapter.file!.updated_at) : undefined}
         />
       ) : (
         <ChapterContent content={chapter.content || chapter.description || 'Nội dung đang được cập nhật...'} />

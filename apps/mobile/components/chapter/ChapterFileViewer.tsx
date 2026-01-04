@@ -1,29 +1,131 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useReadingProgress } from '../../hooks/useReadingProgress';
+import { offlineCacheService } from '../../services/offline-cache/offline-cache.service';
 
 interface ChapterFileViewerProps {
+  chapterId: number;
   fileUrl: string;
   fileName: string;
+  fileId?: number;
+  fileUpdatedAt?: Date;
 }
 
-export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps) {
+export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUpdatedAt }: ChapterFileViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cachedFilePath, setCachedFilePath] = useState<string | null>(null);
+  const [caching, setCaching] = useState(false);
+  const webViewRef = useRef<WebView>(null);
+  const { progress, saveProgress } = useReadingProgress(chapterId);
+
+  // Load cached file or use URL
+  useEffect(() => {
+    loadFile();
+  }, [fileUrl, fileId, fileUpdatedAt]);
+
+  // Auto-scroll to last position when progress loads
+  useEffect(() => {
+    if (progress && progress.scrollPosition > 0 && webViewRef.current) {
+      setTimeout(() => {
+        const scrollScript = `
+          window.scrollTo({
+            top: document.documentElement.scrollHeight * ${progress.scrollPosition},
+            behavior: 'smooth'
+          });
+          true;
+        `;
+        webViewRef.current?.injectJavaScript(scrollScript);
+      }, 1000);
+    }
+  }, [progress]);
+
+  const loadFile = async () => {
+    // If we have fileId and updatedAt, try to use cached version
+    if (fileId && fileUpdatedAt) {
+      try {
+        setCaching(true);
+        const localPath = await offlineCacheService.getFile(fileUrl, fileId, fileName, fileUpdatedAt);
+
+        if (localPath) {
+          setCachedFilePath(localPath);
+          console.log('[ChapterFileViewer] Using cached file:', localPath);
+        } else {
+          console.log('[ChapterFileViewer] Using remote URL');
+        }
+      } catch (error) {
+        console.error('[ChapterFileViewer] Failed to load cached file:', error);
+      } finally {
+        setCaching(false);
+      }
+    }
+  };
 
   const handleOpenExternal = () => {
     Linking.openURL(fileUrl);
   };
 
-  // Use Google Docs Viewer for better compatibility
-  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  // Inject JavaScript to track scroll position
+  const injectedJavaScript = `
+    (function() {
+      let lastScrollPosition = 0;
+      let scrollTimeout;
+
+      window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        
+        scrollTimeout = setTimeout(() => {
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const scrollHeight = document.documentElement.scrollHeight;
+          const clientHeight = document.documentElement.clientHeight;
+          const scrollPercent = scrollTop / (scrollHeight - clientHeight);
+          
+          if (Math.abs(scrollPercent - lastScrollPosition) > 0.01) {
+            lastScrollPosition = scrollPercent;
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'scroll',
+              position: scrollPercent
+            }));
+          }
+        }, 500);
+      });
+      
+      true;
+    })();
+  `;
+
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+
+      if (data.type === 'scroll') {
+        saveProgress({ scrollPosition: data.position });
+
+        if (data.position >= 0.9) {
+          saveProgress({ scrollPosition: 1.0, completed: true });
+        }
+      }
+    } catch (error) {
+      console.error('[ChapterFileViewer] Failed to parse message:', error);
+    }
+  };
+
+  // Determine which URL to use
+  const pdfUrl = cachedFilePath || fileUrl;
+  const viewerUrl = cachedFilePath
+    ? `file://${cachedFilePath}` // Use local file directly
+    : `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
 
   return (
     <View style={styles.container}>
-      {loading && (
+      {(loading || caching) && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.loadingText}>Đang tải {fileName}...</Text>
+          <Text style={styles.loadingText}>{caching ? `Đang tải xuống ${fileName}...` : `Đang mở ${fileName}...`}</Text>
+          {progress && progress.scrollPosition > 0 && (
+            <Text style={styles.progressText}>Đã đọc {Math.round(progress.scrollPosition * 100)}%</Text>
+          )}
         </View>
       )}
 
@@ -37,6 +139,7 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
       )}
 
       <WebView
+        ref={webViewRef}
         source={{ uri: viewerUrl }}
         style={styles.webview}
         onLoadStart={() => {
@@ -59,6 +162,8 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
           setLoading(false);
           setError(`Lỗi tải file (${nativeEvent.statusCode}). Vui lòng thử lại.`);
         }}
+        onMessage={handleWebViewMessage}
+        injectedJavaScript={injectedJavaScript}
         startInLoadingState={true}
         scalesPageToFit={true}
         javaScriptEnabled={true}
@@ -69,10 +174,24 @@ export function ChapterFileViewer({ fileUrl, fileName }: ChapterFileViewerProps)
         originWhitelist={['*']}
       />
 
-      {/* Always show external open button */}
-      <TouchableOpacity onPress={handleOpenExternal} style={styles.floatingButton}>
-        <Text style={styles.floatingButtonText}>📱 Mở app khác</Text>
-      </TouchableOpacity>
+      {/* Progress indicator */}
+      {!loading && progress && progress.scrollPosition > 0 && (
+        <View style={styles.progressIndicator}>
+          <View style={[styles.progressBar, { width: `${progress.scrollPosition * 100}%` }]} />
+        </View>
+      )}
+
+      {/* Floating buttons */}
+      <View style={styles.floatingButtons}>
+        {cachedFilePath && (
+          <View style={styles.cachedBadge}>
+            <Text style={styles.cachedBadgeText}>📥 Offline</Text>
+          </View>
+        )}
+        <TouchableOpacity onPress={handleOpenExternal} style={styles.floatingButton}>
+          <Text style={styles.floatingButtonText}>📱 Mở app khác</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -101,6 +220,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     fontSize: 14,
+  },
+  progressText: {
+    color: '#F59E0B',
+    marginTop: 8,
+    fontSize: 12,
   },
   errorContainer: {
     position: 'absolute',
@@ -131,10 +255,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  floatingButton: {
+  progressIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#F59E0B',
+  },
+  floatingButtons: {
     position: 'absolute',
     bottom: 20,
     right: 20,
+    gap: 10,
+  },
+  cachedBadge: {
+    backgroundColor: 'rgba(34, 197, 94, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-end',
+  },
+  cachedBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  floatingButton: {
     backgroundColor: 'rgba(245, 158, 11, 0.9)',
     paddingHorizontal: 16,
     paddingVertical: 10,
