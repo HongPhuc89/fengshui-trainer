@@ -39,7 +39,9 @@
     "mobile:build:web": "cd apps/mobile && npx expo export --platform web",
     "mobile:deploy:web": "npm run mobile:build:web && cd apps/mobile && npx firebase deploy --only hosting",
     "mobile:serve:web": "cd apps/mobile && npx firebase serve --only hosting",
-    "env:edit": "bash vps-env-edit.sh"
+    "env:edit": "bash vps-env-edit.sh",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "devDependencies": {
     "firebase-tools": "^15.1.0",
@@ -77,6 +79,8 @@
   },
   "dependencies": {
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "expo": "~54.0.27",
+    "react-native": "0.81.5"
   }
 }
