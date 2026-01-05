@@ -151,7 +151,8 @@ class _FlashcardsPageState extends ConsumerState<FlashcardsPage> {
                   ),
                   Text(
                     'Đúng: ${state.correctCount}',
-                    style: TextStyle(fontSize: 12, color: Colors.green.shade600),
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.green.shade600),
                   ),
                 ],
               ),

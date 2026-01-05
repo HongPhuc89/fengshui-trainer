@@ -44,7 +44,8 @@ class User extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, email, name, avatar, level, experience, points];
+  List<Object?> get props =>
+      [id, email, name, avatar, level, experience, points];
 }
 
 class LoginRequest {
@@ -95,8 +96,9 @@ class AuthResponse {
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     // Handle both camelCase and snake_case
     final accessToken = (json['accessToken'] ?? json['access_token']) as String;
-    final refreshToken = (json['refreshToken'] ?? json['refresh_token']) as String;
-    
+    final refreshToken =
+        (json['refreshToken'] ?? json['refresh_token']) as String;
+
     return AuthResponse(
       accessToken: accessToken,
       refreshToken: refreshToken,

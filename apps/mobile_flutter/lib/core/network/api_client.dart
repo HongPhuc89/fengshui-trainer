@@ -38,11 +38,13 @@ class ApiClient {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          _logger.d('✅ API Response: ${response.statusCode} ${response.requestOptions.path}');
+          _logger.d(
+              '✅ API Response: ${response.statusCode} ${response.requestOptions.path}');
           return handler.next(response);
         },
         onError: (error, handler) async {
-          _logger.e('❌ API Error: ${error.response?.statusCode} ${error.requestOptions.path}');
+          _logger.e(
+              '❌ API Error: ${error.response?.statusCode} ${error.requestOptions.path}');
 
           // Handle 401 - try to refresh token
           if (error.response?.statusCode == 401) {
@@ -53,7 +55,7 @@ class ApiClient {
                 final opts = error.requestOptions;
                 final token = await _storage.getToken();
                 opts.headers['Authorization'] = 'Bearer $token';
-                
+
                 final response = await _dio.fetch(opts);
                 return handler.resolve(response);
               }

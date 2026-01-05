@@ -25,14 +25,14 @@ class ChapterDetailPage extends ConsumerStatefulWidget {
 class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
   final PdfViewerController _pdfController = PdfViewerController();
   final PdfCacheService _cacheService = PdfCacheService();
-  
+
   int _currentPage = 1;
   int _totalPages = 0;
   bool _hasJumpedToSavedPage = false;
   Chapter? _chapter;
   bool _isLoadingChapter = true;
   String? _error;
-  
+
   String? _pdfPath;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
@@ -46,12 +46,13 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
   Future<void> _loadChapter() async {
     try {
       final repository = ref.read(booksRepositoryProvider);
-      final chapter = await repository.getChapterDetail(widget.bookId, widget.chapterId);
+      final chapter =
+          await repository.getChapterDetail(widget.bookId, widget.chapterId);
       setState(() {
         _chapter = chapter;
         _isLoadingChapter = false;
       });
-      
+
       // Load PDF (with caching)
       await _loadPdf();
     } catch (e) {
@@ -77,7 +78,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
     // On mobile, check cache first
     try {
       String? cachedPath = await _cacheService.getCachedFilePath(pdfUrl);
-      
+
       if (cachedPath != null) {
         // Use cached file
         setState(() {
@@ -125,7 +126,8 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
     });
 
     if (_totalPages > 0) {
-      ref.read(readingProgressProvider(widget.chapterId).notifier)
+      ref
+          .read(readingProgressProvider(widget.chapterId).notifier)
           .updateProgress(_currentPage, _totalPages);
     }
   }
@@ -137,7 +139,8 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
     if (!_hasJumpedToSavedPage) {
       final progressState = ref.read(readingProgressProvider(widget.chapterId));
-      if (progressState.progress != null && progressState.progress!.currentPage > 1) {
+      if (progressState.progress != null &&
+          progressState.progress!.currentPage > 1) {
         _pdfController.jumpToPage(progressState.progress!.currentPage);
       }
       _hasJumpedToSavedPage = true;
@@ -253,7 +256,8 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                             child: LinearProgressIndicator(
                               value: _downloadProgress,
                               backgroundColor: Colors.grey[300],
-                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2D7061)),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF2D7061)),
                             ),
                           ),
                         ],
@@ -263,7 +267,8 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                       children: [
                         if (_totalPages > 0)
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
                             color: Colors.grey[200],
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -272,16 +277,21 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                                   children: [
                                     Text(
                                       'Trang $_currentPage / $_totalPages',
-                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
                                     ),
-                                    if (!kIsWeb && _pdfPath != null && !_pdfPath!.startsWith('http'))
+                                    if (!kIsWeb &&
+                                        _pdfPath != null &&
+                                        !_pdfPath!.startsWith('http'))
                                       const Padding(
                                         padding: EdgeInsets.only(left: 8),
-                                        child: Icon(Icons.offline_pin, size: 16, color: Colors.green),
+                                        child: Icon(Icons.offline_pin,
+                                            size: 16, color: Colors.green),
                                       ),
                                   ],
                                 ),
-                                if (progressState.progress != null && _totalPages > 0)
+                                if (progressState.progress != null &&
+                                    _totalPages > 0)
                                   Text(
                                     'Đã đọc: ${((progressState.progress!.currentPage / _totalPages) * 100).toStringAsFixed(0)}%',
                                     style: TextStyle(color: Colors.grey[600]),

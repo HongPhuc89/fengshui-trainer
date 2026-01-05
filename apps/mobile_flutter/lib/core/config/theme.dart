@@ -13,14 +13,15 @@ class AppColors {
   static const Color secondaryGoldLight = Color(0xFFFFF8DC); // Vàng nhạt/kem
 
   // Accent - Màu phụ
-  static const Color accentJade = Color(0xFF00A86B); // Xanh ngọc - growth, learning
+  static const Color accentJade =
+      Color(0xFF00A86B); // Xanh ngọc - growth, learning
   static const Color accentBrown = Color(0xFF8B4513); // Nâu gỗ - stability
   static const Color accentCream = Color(0xFFFFF8DC); // Kem - softness
 
   // Neutral
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
-  
+
   // Gray scale
   static const Color gray50 = Color(0xFFF9FAFB);
   static const Color gray100 = Color(0xFFF3F4F6);
@@ -52,7 +53,7 @@ class AppTheme {
         error: AppColors.error,
       ),
       scaffoldBackgroundColor: AppColors.gray50,
-      
+
       // AppBar theme - gradient will be applied in widgets
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primaryRed,
@@ -65,7 +66,7 @@ class AppTheme {
           fontWeight: FontWeight.bold,
         ),
       ),
-      
+
       // Card theme
       cardTheme: CardThemeData(
         color: AppColors.white,
@@ -75,7 +76,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      
+
       // Elevated button theme - gradient will be applied in widgets
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -92,7 +93,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text button theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -103,12 +104,13 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppColors.gray200),
@@ -135,7 +137,7 @@ class AppTheme {
           fontSize: 14,
         ),
       ),
-      
+
       // Text theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(

@@ -73,7 +73,8 @@ final mindmapRepositoryProvider = Provider<MindmapRepository>((ref) {
 });
 
 /// Provider for mindmap state
-final mindmapProvider = StateNotifierProvider<MindmapNotifier, MindmapState>((ref) {
+final mindmapProvider =
+    StateNotifierProvider<MindmapNotifier, MindmapState>((ref) {
   final repository = ref.watch(mindmapRepositoryProvider);
   return MindmapNotifier(repository);
 });

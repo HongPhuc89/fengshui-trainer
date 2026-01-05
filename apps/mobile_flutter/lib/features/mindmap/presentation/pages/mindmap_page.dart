@@ -18,7 +18,8 @@ class MindmapPage extends ConsumerStatefulWidget {
 }
 
 class _MindmapPageState extends ConsumerState<MindmapPage> {
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
 
   @override
   void initState() {
@@ -209,13 +210,16 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
   double _calculateCanvasWidth(mindmap) {
     // Estimate width based on max depth
     final depth = mindmap.maxDepth;
-    return 50 + (depth * (150 + 100)) + 50; // padding + (depth * (nodeWidth + spacing)) + padding
+    return 50 +
+        (depth * (150 + 100)) +
+        50; // padding + (depth * (nodeWidth + spacing)) + padding
   }
 
   double _calculateCanvasHeight(mindmap) {
     // Estimate height based on total nodes
     final nodes = mindmap.totalNodes;
-    return (50 + (nodes * (60 + 80))).toDouble(); // padding + (nodes * (nodeHeight + spacing))
+    return (50 + (nodes * (60 + 80)))
+        .toDouble(); // padding + (nodes * (nodeHeight + spacing))
   }
 
   void _zoomIn() {

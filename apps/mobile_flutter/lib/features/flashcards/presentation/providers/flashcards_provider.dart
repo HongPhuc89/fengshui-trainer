@@ -59,8 +59,10 @@ class FlashcardsState {
   bool get isCompleted => currentIndex >= flashcards.length;
 
   int get totalCards => flashcards.length;
-  int get reviewedCount => progressMap.values.where((p) => p.reviewCount > 0).length;
-  int get correctCount => progressMap.values.where((p) => p.correctCount > 0).length;
+  int get reviewedCount =>
+      progressMap.values.where((p) => p.reviewCount > 0).length;
+  int get correctCount =>
+      progressMap.values.where((p) => p.correctCount > 0).length;
 }
 
 /// Flashcards notifier for state management
@@ -102,7 +104,8 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
       final updatedProgressMap = Map<int, FlashcardProgress>.from(progressMap);
       for (final flashcard in flashcards) {
         if (!updatedProgressMap.containsKey(flashcard.id)) {
-          updatedProgressMap[flashcard.id] = FlashcardProgress.initial(flashcard.id);
+          updatedProgressMap[flashcard.id] =
+              FlashcardProgress.initial(flashcard.id);
         }
       }
 
@@ -138,7 +141,8 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
       final progressB = progressMap[b.id] ?? FlashcardProgress.initial(b.id);
 
       // Sort by mastery level (ascending - lower mastery first)
-      final masteryCompare = progressA.masteryLevel.compareTo(progressB.masteryLevel);
+      final masteryCompare =
+          progressA.masteryLevel.compareTo(progressB.masteryLevel);
       if (masteryCompare != 0) return masteryCompare;
 
       // If same mastery, sort by last reviewed (oldest first)
@@ -176,12 +180,14 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
       );
 
       // Update local state
-      final currentProgress = state.currentProgress ?? FlashcardProgress.initial(flashcard.id);
+      final currentProgress =
+          state.currentProgress ?? FlashcardProgress.initial(flashcard.id);
       final updatedProgress = correct
           ? currentProgress.answerCorrect()
           : currentProgress.answerIncorrect();
 
-      final updatedProgressMap = Map<int, FlashcardProgress>.from(state.progressMap);
+      final updatedProgressMap =
+          Map<int, FlashcardProgress>.from(state.progressMap);
       updatedProgressMap[flashcard.id] = updatedProgress;
 
       // Move to next card
@@ -234,7 +240,8 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
       // Reset progress map
       final resetProgressMap = <int, FlashcardProgress>{};
       for (final flashcard in state.flashcards) {
-        resetProgressMap[flashcard.id] = FlashcardProgress.initial(flashcard.id);
+        resetProgressMap[flashcard.id] =
+            FlashcardProgress.initial(flashcard.id);
       }
 
       state = state.copyWith(
@@ -255,7 +262,8 @@ final flashcardsRepositoryProvider = Provider<FlashcardsRepository>((ref) {
 });
 
 /// Provider for flashcards state
-final flashcardsProvider = StateNotifierProvider<FlashcardsNotifier, FlashcardsState>((ref) {
+final flashcardsProvider =
+    StateNotifierProvider<FlashcardsNotifier, FlashcardsState>((ref) {
   final repository = ref.watch(flashcardsRepositoryProvider);
   return FlashcardsNotifier(repository);
 });

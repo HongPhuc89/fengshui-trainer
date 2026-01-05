@@ -149,7 +149,8 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.amber.shade700, size: 20),
+                    Icon(Icons.lightbulb_outline,
+                        color: Colors.amber.shade700, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

@@ -42,7 +42,8 @@ class FlashcardsRepository {
   }
 
   /// Get flashcard progress for a chapter from local storage
-  Future<Map<int, FlashcardProgress>> getFlashcardProgress(int chapterId) async {
+  Future<Map<int, FlashcardProgress>> getFlashcardProgress(
+      int chapterId) async {
     try {
       final key = 'flashcard_progress_$chapterId';
       final jsonString = await _storage.read(key);
@@ -98,7 +99,8 @@ class FlashcardsRepository {
       final progressMap = await getFlashcardProgress(chapterId);
 
       // Get or create progress for this flashcard
-      final currentProgress = progressMap[flashcardId] ?? FlashcardProgress.initial(flashcardId);
+      final currentProgress =
+          progressMap[flashcardId] ?? FlashcardProgress.initial(flashcardId);
 
       // Update progress based on answer
       final updatedProgress = correct

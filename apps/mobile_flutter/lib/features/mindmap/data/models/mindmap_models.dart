@@ -20,7 +20,8 @@ class MindMapNode extends Equatable {
       label: json['label'] as String,
       children: json['children'] != null
           ? (json['children'] as List)
-              .map((child) => MindMapNode.fromJson(child as Map<String, dynamic>))
+              .map((child) =>
+                  MindMapNode.fromJson(child as Map<String, dynamic>))
               .toList()
           : null,
       metadata: json['metadata'] as Map<String, dynamic>?,
@@ -31,7 +32,8 @@ class MindMapNode extends Equatable {
     return {
       'id': id,
       'label': label,
-      if (children != null) 'children': children!.map((c) => c.toJson()).toList(),
+      if (children != null)
+        'children': children!.map((c) => c.toJson()).toList(),
       if (metadata != null) 'metadata': metadata,
     };
   }
@@ -95,9 +97,12 @@ class MindMap extends Equatable {
       chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
       title: json['title'] as String,
       description: json['description'] as String?,
-      structure: MindMapNode.fromJson(json['structure'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['created_at'] as String? ?? json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? json['updatedAt'] as String),
+      structure:
+          MindMapNode.fromJson(json['structure'] as Map<String, dynamic>),
+      createdAt: DateTime.parse(
+          json['created_at'] as String? ?? json['createdAt'] as String),
+      updatedAt: DateTime.parse(
+          json['updated_at'] as String? ?? json['updatedAt'] as String),
     );
   }
 

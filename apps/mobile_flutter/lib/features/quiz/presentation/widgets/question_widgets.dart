@@ -53,7 +53,9 @@ class MultipleAnswerQuestion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = question.optionsList;
-    final selected = selectedAnswers is List ? List<String>.from(selectedAnswers) : <String>[];
+    final selected = selectedAnswers is List
+        ? List<String>.from(selectedAnswers)
+        : <String>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

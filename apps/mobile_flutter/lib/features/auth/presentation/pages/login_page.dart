@@ -52,7 +52,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         } else if (e.toString().contains('404')) {
           errorMessage = 'Tài khoản không tồn tại';
         } else if (e.toString().contains('network')) {
-          errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
+          errorMessage =
+              'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -223,9 +224,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 TextButton(
                                   onPressed: () => context.go('/register'),
                                   style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'Đăng ký ngay',

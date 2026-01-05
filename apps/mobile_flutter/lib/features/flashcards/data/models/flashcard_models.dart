@@ -30,8 +30,10 @@ class Flashcard extends Equatable {
       answer: json['answer'] as String,
       hint: json['hint'] as String?,
       difficulty: json['difficulty'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? json['updatedAt'] as String),
+      createdAt: DateTime.parse(
+          json['created_at'] as String? ?? json['createdAt'] as String),
+      updatedAt: DateTime.parse(
+          json['updated_at'] as String? ?? json['updatedAt'] as String),
     );
   }
 
@@ -49,7 +51,8 @@ class Flashcard extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, chapterId, question, answer, hint, difficulty];
+  List<Object?> get props =>
+      [id, chapterId, question, answer, hint, difficulty];
 }
 
 /// FlashcardProgress model for local tracking
@@ -82,10 +85,14 @@ class FlashcardProgress extends Equatable {
   factory FlashcardProgress.fromJson(Map<String, dynamic> json) {
     return FlashcardProgress(
       flashcardId: json['flashcard_id'] as int? ?? json['flashcardId'] as int,
-      masteryLevel: json['mastery_level'] as int? ?? json['masteryLevel'] as int? ?? 0,
-      lastReviewed: DateTime.parse(json['last_reviewed'] as String? ?? json['lastReviewed'] as String),
-      reviewCount: json['review_count'] as int? ?? json['reviewCount'] as int? ?? 0,
-      correctCount: json['correct_count'] as int? ?? json['correctCount'] as int? ?? 0,
+      masteryLevel:
+          json['mastery_level'] as int? ?? json['masteryLevel'] as int? ?? 0,
+      lastReviewed: DateTime.parse(
+          json['last_reviewed'] as String? ?? json['lastReviewed'] as String),
+      reviewCount:
+          json['review_count'] as int? ?? json['reviewCount'] as int? ?? 0,
+      correctCount:
+          json['correct_count'] as int? ?? json['correctCount'] as int? ?? 0,
     );
   }
 
@@ -128,5 +135,6 @@ class FlashcardProgress extends Equatable {
   }
 
   @override
-  List<Object?> get props => [flashcardId, masteryLevel, lastReviewed, reviewCount, correctCount];
+  List<Object?> get props =>
+      [flashcardId, masteryLevel, lastReviewed, reviewCount, correctCount];
 }

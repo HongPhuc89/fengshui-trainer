@@ -5,7 +5,8 @@ import '../../data/models/reading_progress_models.dart';
 import '../../data/repositories/reading_progress_repository.dart';
 
 // Repository Provider
-final readingProgressRepositoryProvider = Provider<ReadingProgressRepository>((ref) {
+final readingProgressRepositoryProvider =
+    Provider<ReadingProgressRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return ReadingProgressRepository(apiClient);
 });
@@ -44,7 +45,8 @@ class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
   final ReadingProgressRepository _repository;
   final int chapterId;
 
-  ReadingProgressNotifier(this._repository, this.chapterId) : super(ReadingProgressState()) {
+  ReadingProgressNotifier(this._repository, this.chapterId)
+      : super(ReadingProgressState()) {
     loadProgress();
   }
 
@@ -86,7 +88,8 @@ class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
 }
 
 // Reading Progress Provider Family
-final readingProgressProvider = StateNotifierProvider.family<ReadingProgressNotifier, ReadingProgressState, int>((ref, chapterId) {
+final readingProgressProvider = StateNotifierProvider.family<
+    ReadingProgressNotifier, ReadingProgressState, int>((ref, chapterId) {
   final repository = ref.watch(readingProgressRepositoryProvider);
   return ReadingProgressNotifier(repository, chapterId);
 });

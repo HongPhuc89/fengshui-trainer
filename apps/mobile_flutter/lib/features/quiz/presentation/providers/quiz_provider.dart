@@ -57,9 +57,11 @@ class QuizState {
     return null;
   }
 
-  bool get hasNext => attempt != null && currentQuestionIndex < attempt!.questions.length - 1;
+  bool get hasNext =>
+      attempt != null && currentQuestionIndex < attempt!.questions.length - 1;
   bool get hasPrevious => currentQuestionIndex > 0;
-  bool get isLastQuestion => attempt != null && currentQuestionIndex == attempt!.questions.length - 1;
+  bool get isLastQuestion =>
+      attempt != null && currentQuestionIndex == attempt!.questions.length - 1;
 
   int get totalQuestions => attempt?.questions.length ?? 0;
   int get answeredCount => answers.length;
@@ -189,14 +191,16 @@ class QuizNotifier extends StateNotifier<QuizState> {
   /// Move to next question
   void nextQuestion() {
     if (state.hasNext) {
-      state = state.copyWith(currentQuestionIndex: state.currentQuestionIndex + 1);
+      state =
+          state.copyWith(currentQuestionIndex: state.currentQuestionIndex + 1);
     }
   }
 
   /// Move to previous question
   void previousQuestion() {
     if (state.hasPrevious) {
-      state = state.copyWith(currentQuestionIndex: state.currentQuestionIndex - 1);
+      state =
+          state.copyWith(currentQuestionIndex: state.currentQuestionIndex - 1);
     }
   }
 

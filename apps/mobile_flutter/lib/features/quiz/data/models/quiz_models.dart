@@ -36,17 +36,30 @@ class QuizConfig extends Equatable {
     return QuizConfig(
       id: json['id'] as int,
       chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
-      questionCount: json['question_count'] as int? ?? json['questionCount'] as int,
-      easyPercentage: json['easy_percentage'] as int? ?? json['easyPercentage'] as int,
-      mediumPercentage: json['medium_percentage'] as int? ?? json['mediumPercentage'] as int,
-      hardPercentage: json['hard_percentage'] as int? ?? json['hardPercentage'] as int,
-      passingScore: json['passing_score'] as int? ?? json['passingScore'] as int,
+      questionCount:
+          json['question_count'] as int? ?? json['questionCount'] as int,
+      easyPercentage:
+          json['easy_percentage'] as int? ?? json['easyPercentage'] as int,
+      mediumPercentage:
+          json['medium_percentage'] as int? ?? json['mediumPercentage'] as int,
+      hardPercentage:
+          json['hard_percentage'] as int? ?? json['hardPercentage'] as int,
+      passingScore:
+          json['passing_score'] as int? ?? json['passingScore'] as int,
       timeLimit: json['time_limit'] as int? ?? json['timeLimit'] as int?,
-      shuffleQuestions: json['shuffle_questions'] as bool? ?? json['shuffleQuestions'] as bool? ?? false,
-      shuffleOptions: json['shuffle_options'] as bool? ?? json['shuffleOptions'] as bool? ?? false,
-      showCorrectAnswers: json['show_correct_answers'] as bool? ?? json['showCorrectAnswers'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? json['updatedAt'] as String),
+      shuffleQuestions: json['shuffle_questions'] as bool? ??
+          json['shuffleQuestions'] as bool? ??
+          false,
+      shuffleOptions: json['shuffle_options'] as bool? ??
+          json['shuffleOptions'] as bool? ??
+          false,
+      showCorrectAnswers: json['show_correct_answers'] as bool? ??
+          json['showCorrectAnswers'] as bool? ??
+          true,
+      createdAt: DateTime.parse(
+          json['created_at'] as String? ?? json['createdAt'] as String),
+      updatedAt: DateTime.parse(
+          json['updated_at'] as String? ?? json['updatedAt'] as String),
     );
   }
 
@@ -69,7 +82,8 @@ class QuizConfig extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, chapterId, questionCount, passingScore, timeLimit];
+  List<Object?> get props =>
+      [id, chapterId, questionCount, passingScore, timeLimit];
 }
 
 /// Quiz question model
@@ -167,14 +181,17 @@ class QuizAttempt extends Equatable {
       questions: (json['questions'] as List)
           .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
           .toList(),
-      startedAt: DateTime.parse(json['started_at'] as String? ?? json['startedAt'] as String),
+      startedAt: DateTime.parse(
+          json['started_at'] as String? ?? json['startedAt'] as String),
       completedAt: json['completed_at'] != null || json['completedAt'] != null
-          ? DateTime.parse(json['completed_at'] as String? ?? json['completedAt'] as String)
+          ? DateTime.parse(
+              json['completed_at'] as String? ?? json['completedAt'] as String)
           : null,
       score: (json['score'] as num?)?.toDouble(),
       passed: json['passed'] as bool?,
       totalPoints: json['total_points'] as int? ?? json['totalPoints'] as int?,
-      earnedPoints: json['earned_points'] as int? ?? json['earnedPoints'] as int?,
+      earnedPoints:
+          json['earned_points'] as int? ?? json['earnedPoints'] as int?,
     );
   }
 
@@ -237,7 +254,8 @@ class QuizQuestionResult extends Equatable {
     return QuizQuestionResult(
       questionId: json['question_id'] as int? ?? json['questionId'] as int,
       isCorrect: json['is_correct'] as bool? ?? json['isCorrect'] as bool,
-      pointsEarned: json['points_earned'] as int? ?? json['pointsEarned'] as int,
+      pointsEarned:
+          json['points_earned'] as int? ?? json['pointsEarned'] as int,
       userAnswer: json['user_answer'] ?? json['userAnswer'],
       correctAnswer: json['correct_answer'] ?? json['correctAnswer'],
     );
@@ -277,16 +295,21 @@ class SubmitQuizResponse extends Equatable {
       score: (json['score'] as num).toDouble(),
       passed: json['passed'] as bool,
       totalPoints: json['total_points'] as int? ?? json['totalPoints'] as int,
-      earnedPoints: json['earned_points'] as int? ?? json['earnedPoints'] as int,
-      correctAnswers: json['correct_answers'] as int? ?? json['correctAnswers'] as int,
-      totalQuestions: json['total_questions'] as int? ?? json['totalQuestions'] as int,
+      earnedPoints:
+          json['earned_points'] as int? ?? json['earnedPoints'] as int,
+      correctAnswers:
+          json['correct_answers'] as int? ?? json['correctAnswers'] as int,
+      totalQuestions:
+          json['total_questions'] as int? ?? json['totalQuestions'] as int,
       results: (json['results'] as List)
           .map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
           .toList(),
-      completedAt: DateTime.parse(json['completed_at'] as String? ?? json['completedAt'] as String),
+      completedAt: DateTime.parse(
+          json['completed_at'] as String? ?? json['completedAt'] as String),
     );
   }
 
   @override
-  List<Object?> get props => [attemptId, score, passed, totalPoints, earnedPoints];
+  List<Object?> get props =>
+      [attemptId, score, passed, totalPoints, earnedPoints];
 }

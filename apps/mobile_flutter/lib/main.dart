@@ -89,7 +89,8 @@ class MyApp extends ConsumerWidget {
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
-            final attemptId = int.parse(state.uri.queryParameters['attemptId']!);
+            final attemptId =
+                int.parse(state.uri.queryParameters['attemptId']!);
             return QuizResultsPage(
               bookId: bookId,
               chapterId: chapterId,
@@ -116,7 +117,6 @@ class MyApp extends ConsumerWidget {
     );
   }
 }
-
 
 // Temporary Home Page
 class HomePage extends ConsumerWidget {

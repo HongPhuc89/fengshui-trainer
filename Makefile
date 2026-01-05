@@ -60,6 +60,21 @@ flutter-pub-get: ## Install Flutter dependencies
 	cd apps/mobile_flutter && flutter pub get
 	@echo "$(GREEN)✓ Flutter dependencies installed$(NC)"
 
+flutter-format: ## Format all Flutter code
+	@echo "$(CYAN)Formatting Flutter code...$(NC)"
+	cd apps/mobile_flutter && dart format lib/ test/ --line-length 80
+	@echo "$(GREEN)✓ Flutter code formatted$(NC)"
+
+flutter-analyze: ## Analyze Flutter code
+	@echo "$(CYAN)Analyzing Flutter code...$(NC)"
+	cd apps/mobile_flutter && flutter analyze
+	@echo "$(GREEN)✓ Flutter analysis complete$(NC)"
+
+flutter-fix: ## Auto-fix Flutter code issues
+	@echo "$(CYAN)Auto-fixing Flutter code issues...$(NC)"
+	cd apps/mobile_flutter && dart fix --apply
+	@echo "$(GREEN)✓ Flutter fixes applied$(NC)"
+
 build: ## Build all applications
 	@echo "$(CYAN)Building all applications...$(NC)"
 	npm run build

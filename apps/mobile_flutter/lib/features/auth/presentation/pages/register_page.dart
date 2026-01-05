@@ -105,7 +105,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     decoration: InputDecoration(
                       labelText: 'Họ và tên',
                       labelStyle: const TextStyle(color: Colors.white70),
-                      prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                      prefixIcon:
+                          const Icon(Icons.person, color: Colors.white70),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
                       border: OutlineInputBorder(
@@ -130,7 +131,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: const TextStyle(color: Colors.white70),
-                      prefixIcon: const Icon(Icons.email, color: Colors.white70),
+                      prefixIcon:
+                          const Icon(Icons.email, color: Colors.white70),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
                       border: OutlineInputBorder(
@@ -161,7 +163,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: Colors.white70,
                         ),
                         onPressed: () {
@@ -197,10 +201,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     decoration: InputDecoration(
                       labelText: 'Xác nhận mật khẩu',
                       labelStyle: const TextStyle(color: Colors.white70),
-                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: Colors.white70),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                          _obscureConfirmPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: Colors.white70,
                         ),
                         onPressed: () {
@@ -245,7 +252,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : const Text(

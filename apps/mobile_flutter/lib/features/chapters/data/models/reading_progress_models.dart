@@ -28,12 +28,19 @@ class ReadingProgress extends Equatable {
       id: json['id'] as int,
       userId: json['user_id'] as int? ?? json['userId'] as int,
       chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
-      currentPage: json['current_page'] as int? ?? json['currentPage'] as int? ?? 1,
-      totalPages: json['total_pages'] as int? ?? json['totalPages'] as int? ?? 0,
-      scrollPosition: (json['scroll_position'] ?? json['scrollPosition'] ?? 0.0).toDouble(),
-      lastReadAt: DateTime.parse(json['last_read_at'] as String? ?? json['lastReadAt'] as String),
-      readingTime: json['reading_time'] as int? ?? json['readingTime'] as int? ?? 0,
-      isCompleted: json['is_completed'] as bool? ?? json['isCompleted'] as bool? ?? false,
+      currentPage:
+          json['current_page'] as int? ?? json['currentPage'] as int? ?? 1,
+      totalPages:
+          json['total_pages'] as int? ?? json['totalPages'] as int? ?? 0,
+      scrollPosition:
+          (json['scroll_position'] ?? json['scrollPosition'] ?? 0.0).toDouble(),
+      lastReadAt: DateTime.parse(
+          json['last_read_at'] as String? ?? json['lastReadAt'] as String),
+      readingTime:
+          json['reading_time'] as int? ?? json['readingTime'] as int? ?? 0,
+      isCompleted: json['is_completed'] as bool? ??
+          json['isCompleted'] as bool? ??
+          false,
     );
   }
 
@@ -49,7 +56,8 @@ class ReadingProgress extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, chapterId, currentPage, totalPages, isCompleted];
+  List<Object?> get props =>
+      [id, chapterId, currentPage, totalPages, isCompleted];
 }
 
 class UpdateProgressRequest {

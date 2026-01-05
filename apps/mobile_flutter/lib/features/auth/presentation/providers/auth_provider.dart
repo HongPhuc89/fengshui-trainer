@@ -82,7 +82,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } on DioException catch (e) {
       String errorMessage = 'Đăng nhập thất bại';
-      
+
       if (e.response != null) {
         final data = e.response!.data;
         if (data is Map && data.containsKey('message')) {
@@ -130,7 +130,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } on DioException catch (e) {
       String errorMessage = 'Đăng ký thất bại';
-      
+
       if (e.response != null) {
         final data = e.response!.data;
         if (data is Map && data.containsKey('message')) {

@@ -39,7 +39,8 @@ class PdfCacheService {
     return null;
   }
 
-  Future<String?> downloadAndCache(String url, {Function(double)? onProgress}) async {
+  Future<String?> downloadAndCache(String url,
+      {Function(double)? onProgress}) async {
     if (kIsWeb) return null;
     try {
       final cacheKey = _getCacheKey(url);
