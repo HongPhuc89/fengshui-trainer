@@ -36,9 +36,29 @@ admin: ## Run admin dashboard only
 	@echo "$(CYAN)Starting admin dashboard...$(NC)"
 	cd apps/admin && npm run dev
 
-mobile: ## Run mobile app only
+mobile: ## Run mobile app only (React Native)
 	@echo "$(CYAN)Starting mobile app...$(NC)"
 	cd apps/mobile && npm start
+
+flutter-web: ## Run Flutter web app
+	@echo "$(CYAN)Starting Flutter web app...$(NC)"
+	@echo "$(YELLOW)Flutter Web:$(NC) http://localhost:5000"
+	@echo ""
+	cd apps/mobile_flutter && flutter run -d web-server --web-port 5000
+
+flutter-mobile: ## Run Flutter mobile app
+	@echo "$(CYAN)Starting Flutter mobile app...$(NC)"
+	cd apps/mobile_flutter && flutter run
+
+flutter-clean: ## Clean Flutter build artifacts
+	@echo "$(CYAN)Cleaning Flutter build artifacts...$(NC)"
+	cd apps/mobile_flutter && flutter clean
+	@echo "$(GREEN)✓ Flutter cleaned$(NC)"
+
+flutter-pub-get: ## Install Flutter dependencies
+	@echo "$(CYAN)Installing Flutter dependencies...$(NC)"
+	cd apps/mobile_flutter && flutter pub get
+	@echo "$(GREEN)✓ Flutter dependencies installed$(NC)"
 
 build: ## Build all applications
 	@echo "$(CYAN)Building all applications...$(NC)"

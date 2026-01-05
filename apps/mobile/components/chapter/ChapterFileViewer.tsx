@@ -37,12 +37,13 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
           true;
         `;
         webViewRef.current?.injectJavaScript(scrollScript);
-      }, 1000);
+        console.log('[ChapterFileViewer] Auto-scrolled to:', Math.round(progress.scrollPosition * 100) + '%');
+      }, 2000); // Wait longer for Google Docs Viewer to load
     }
-  }, [progress]);
+  }, [progress, loading]);
 
   const loadFile = async () => {
-    // If we have fileId and updatedAt, try to use cached version
+    // If we have fileId and updatedAt, try to cache file in background
     if (fileId && fileUpdatedAt) {
       try {
         setCaching(true);
@@ -50,12 +51,10 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
 
         if (localPath) {
           setCachedFilePath(localPath);
-          console.log('[ChapterFileViewer] Using cached file:', localPath);
-        } else {
-          console.log('[ChapterFileViewer] Using remote URL');
+          console.log('[ChapterFileViewer] File cached for offline use');
         }
       } catch (error) {
-        console.error('[ChapterFileViewer] Failed to load cached file:', error);
+        console.error('[ChapterFileViewer] Failed to cache file:', error);
       } finally {
         setCaching(false);
       }
@@ -72,6 +71,8 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
       let lastScrollPosition = 0;
       let scrollTimeout;
 
+      console.log('[WebView] Scroll tracking initialized');
+
       window.addEventListener('scroll', () => {
         clearTimeout(scrollTimeout);
         
@@ -83,6 +84,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
           
           if (Math.abs(scrollPercent - lastScrollPosition) > 0.01) {
             lastScrollPosition = scrollPercent;
+            console.log('[WebView] Scroll:', Math.round(scrollPercent * 100) + '%');
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'scroll',
               position: scrollPercent
@@ -100,6 +102,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
       const data = JSON.parse(event.nativeEvent.data);
 
       if (data.type === 'scroll') {
+        console.log('[ChapterFileViewer] Scroll event received:', Math.round(data.position * 100) + '%');
         saveProgress({ scrollPosition: data.position });
 
         if (data.position >= 0.9) {
@@ -111,11 +114,9 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
     }
   };
 
-  // Determine which URL to use
-  const pdfUrl = cachedFilePath || fileUrl;
-  const viewerUrl = cachedFilePath
-    ? `file://${cachedFilePath}` // Use local file directly
-    : `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  // Always use Google Docs Viewer for scroll tracking support
+  // Even if file is cached, we still use remote URL for viewing
+  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
 
   return (
     <View style={styles.container}>
@@ -185,7 +186,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
       <View style={styles.floatingButtons}>
         {cachedFilePath && (
           <View style={styles.cachedBadge}>
-            <Text style={styles.cachedBadgeText}>📥 Offline</Text>
+            <Text style={styles.cachedBadgeText}>📥 Cached</Text>
           </View>
         )}
         <TouchableOpacity onPress={handleOpenExternal} style={styles.floatingButton}>
