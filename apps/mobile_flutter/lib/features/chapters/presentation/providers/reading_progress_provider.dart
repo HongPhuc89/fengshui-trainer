@@ -1,5 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/reading_progress_models.dart';
 import '../../data/repositories/reading_progress_repository.dart';
@@ -13,10 +14,6 @@ final readingProgressRepositoryProvider =
 
 // Reading Progress State
 class ReadingProgressState {
-  final ReadingProgress? progress;
-  final bool isLoading;
-  final bool isSaving;
-  final String? error;
 
   ReadingProgressState({
     this.progress,
@@ -24,6 +21,10 @@ class ReadingProgressState {
     this.isSaving = false,
     this.error,
   });
+  final ReadingProgress? progress;
+  final bool isLoading;
+  final bool isSaving;
+  final String? error;
 
   ReadingProgressState copyWith({
     ReadingProgress? progress,
@@ -42,16 +43,16 @@ class ReadingProgressState {
 
 // Reading Progress Notifier
 class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
-  final ReadingProgressRepository _repository;
-  final int chapterId;
 
   ReadingProgressNotifier(this._repository, this.chapterId)
       : super(ReadingProgressState()) {
     loadProgress();
   }
+  final ReadingProgressRepository _repository;
+  final int chapterId;
 
   Future<void> loadProgress() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final progress = await _repository.getProgress(chapterId);
@@ -71,7 +72,7 @@ class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
       );
       final progress = await _repository.updateProgress(chapterId, request);
       state = state.copyWith(progress: progress, isSaving: false);
-    } on DioException catch (e) {
+    } on DioException {
       state = state.copyWith(isSaving: false);
       // Silently fail for progress updates
     }

@@ -2,18 +2,14 @@ import 'package:flutter/material.dart';
 import '../providers/quiz_provider.dart';
 
 class QuizNavigationButtons extends StatelessWidget {
+
+  const QuizNavigationButtons({
+    required this.state, required this.onPrevious, required this.onNext, required this.onSubmit, super.key,
+  });
   final QuizState state;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onSubmit;
-
-  const QuizNavigationButtons({
-    super.key,
-    required this.state,
-    required this.onPrevious,
-    required this.onNext,
-    required this.onSubmit,
-  });
 
   @override
   Widget build(BuildContext context) {

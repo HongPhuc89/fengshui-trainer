@@ -3,18 +3,15 @@ import 'package:flutter/material.dart';
 import '../../data/models/flashcard_models.dart';
 
 class FlashcardWidget extends StatefulWidget {
+
+  const FlashcardWidget({
+    required this.flashcard, required this.isFlipped, required this.onTap, super.key,
+    this.progress,
+  });
   final Flashcard flashcard;
   final FlashcardProgress? progress;
   final bool isFlipped;
   final VoidCallback onTap;
-
-  const FlashcardWidget({
-    Key? key,
-    required this.flashcard,
-    this.progress,
-    required this.isFlipped,
-    required this.onTap,
-  }) : super(key: key);
 
   @override
   State<FlashcardWidget> createState() => _FlashcardWidgetState();
@@ -150,7 +147,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
                 child: Row(
                   children: [
                     Icon(Icons.lightbulb_outline,
-                        color: Colors.amber.shade700, size: 20),
+                        color: Colors.amber.shade700, size: 20,),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

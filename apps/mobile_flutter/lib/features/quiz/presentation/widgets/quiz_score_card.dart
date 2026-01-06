@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import '../../data/models/quiz_models.dart';
 
 class QuizScoreCard extends StatelessWidget {
-  final SubmitQuizResponse result;
 
   const QuizScoreCard({
-    super.key,
-    required this.result,
+    required this.result, super.key,
   });
+  final SubmitQuizResponse result;
 
   @override
   Widget build(BuildContext context) {

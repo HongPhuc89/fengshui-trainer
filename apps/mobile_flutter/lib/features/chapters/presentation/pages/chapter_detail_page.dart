@@ -1,22 +1,22 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+
 import '../../../../core/services/pdf_cache_service.dart';
 import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
 
 class ChapterDetailPage extends ConsumerStatefulWidget {
-  final int bookId;
-  final int chapterId;
 
   const ChapterDetailPage({
-    super.key,
-    required this.bookId,
-    required this.chapterId,
+    required this.bookId, required this.chapterId, super.key,
   });
+  final int bookId;
+  final int chapterId;
 
   @override
   ConsumerState<ChapterDetailPage> createState() => _ChapterDetailPageState();
@@ -35,7 +35,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
   String? _pdfPath;
   bool _isDownloading = false;
-  double _downloadProgress = 0.0;
+  double _downloadProgress = 0;
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
     // On mobile, check cache first
     try {
-      String? cachedPath = await _cacheService.getCachedFilePath(pdfUrl);
+      final String? cachedPath = await _cacheService.getCachedFilePath(pdfUrl);
 
       if (cachedPath != null) {
         // Use cached file
@@ -182,9 +182,6 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
         controller: _pdfController,
         onPageChanged: _onPageChanged,
         onDocumentLoaded: _onDocumentLoaded,
-        enableDoubleTapZooming: true,
-        canShowScrollHead: true,
-        canShowScrollStatus: true,
       );
     } else {
       return SfPdfViewer.file(
@@ -192,9 +189,6 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
         controller: _pdfController,
         onPageChanged: _onPageChanged,
         onDocumentLoaded: _onDocumentLoaded,
-        enableDoubleTapZooming: true,
-        canShowScrollHead: true,
-        canShowScrollStatus: true,
       );
     }
   }
@@ -209,7 +203,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
         actions: [
           if (progressState.isSaving)
             const Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16),
               child: SizedBox(
                 width: 20,
                 height: 20,
@@ -257,7 +251,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                               value: _downloadProgress,
                               backgroundColor: Colors.grey[300],
                               valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF2D7061)),
+                                  Color(0xFF2D7061),),
                             ),
                           ),
                         ],
@@ -268,7 +262,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                         if (_totalPages > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 16),
+                                vertical: 8, horizontal: 16,),
                             color: Colors.grey[200],
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,7 +272,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                                     Text(
                                       'Trang $_currentPage / $_totalPages',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w500),
+                                          fontWeight: FontWeight.w500,),
                                     ),
                                     if (!kIsWeb &&
                                         _pdfPath != null &&
@@ -286,7 +280,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                                       const Padding(
                                         padding: EdgeInsets.only(left: 8),
                                         child: Icon(Icons.offline_pin,
-                                            size: 16, color: Colors.green),
+                                            size: 16, color: Colors.green,),
                                       ),
                                   ],
                                 ),

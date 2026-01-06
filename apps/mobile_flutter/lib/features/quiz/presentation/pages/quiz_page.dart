@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../providers/quiz_provider.dart';
+import '../widgets/difficulty_badge.dart';
 import '../widgets/question_widgets.dart';
 import '../widgets/quiz_app_bar.dart';
-import '../widgets/quiz_start_screen.dart';
 import '../widgets/quiz_navigation_buttons.dart';
-import '../widgets/difficulty_badge.dart';
+import '../widgets/quiz_start_screen.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
-  final int bookId;
-  final int chapterId;
 
   const QuizPage({
-    super.key,
-    required this.bookId,
-    required this.chapterId,
+    required this.bookId, required this.chapterId, super.key,
   });
+  final int bookId;
+  final int chapterId;
 
   @override
   ConsumerState<QuizPage> createState() => _QuizPageState();
@@ -71,7 +70,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     if (state.config != null) {
       return QuizStartScreen(
-        config: state.config!,
+        config: state.config,
         onStart: () {
           ref.read(quizProvider.notifier).startQuiz(
                 bookId: widget.bookId,
@@ -151,7 +150,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       child: Row(
                         children: [
                           const Icon(Icons.stars,
-                              size: 16, color: Colors.amber),
+                              size: 16, color: Colors.amber,),
                           const SizedBox(width: 4),
                           Text(
                             '${question.points} điểm',

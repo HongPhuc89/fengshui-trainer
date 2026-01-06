@@ -3,16 +3,13 @@ import '../../data/models/quiz_models.dart';
 
 /// Multiple Choice Question Widget (Radio buttons)
 class MultipleChoiceQuestion extends StatelessWidget {
+
+  const MultipleChoiceQuestion({
+    required this.question, required this.selectedAnswer, required this.onAnswerChanged, super.key,
+  });
   final QuizQuestion question;
   final dynamic selectedAnswer;
   final ValueChanged<dynamic> onAnswerChanged;
-
-  const MultipleChoiceQuestion({
-    Key? key,
-    required this.question,
-    required this.selectedAnswer,
-    required this.onAnswerChanged,
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +36,13 @@ class MultipleChoiceQuestion extends StatelessWidget {
 
 /// Multiple Answer Question Widget (Checkboxes)
 class MultipleAnswerQuestion extends StatelessWidget {
+
+  const MultipleAnswerQuestion({
+    required this.question, required this.selectedAnswers, required this.onAnswerChanged, super.key,
+  });
   final QuizQuestion question;
   final dynamic selectedAnswers;
   final ValueChanged<dynamic> onAnswerChanged;
-
-  const MultipleAnswerQuestion({
-    Key? key,
-    required this.question,
-    required this.selectedAnswers,
-    required this.onAnswerChanged,
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +61,7 @@ class MultipleAnswerQuestion extends StatelessWidget {
           value: isSelected,
           onChanged: (bool? value) {
             final newSelected = List<String>.from(selected);
-            if (value == true) {
+            if (value ?? false) {
               newSelected.add(option);
             } else {
               newSelected.remove(option);
@@ -83,16 +77,13 @@ class MultipleAnswerQuestion extends StatelessWidget {
 
 /// True/False Question Widget (Two large buttons)
 class TrueFalseQuestion extends StatelessWidget {
+
+  const TrueFalseQuestion({
+    required this.question, required this.selectedAnswer, required this.onAnswerChanged, super.key,
+  });
   final QuizQuestion question;
   final dynamic selectedAnswer;
   final ValueChanged<dynamic> onAnswerChanged;
-
-  const TrueFalseQuestion({
-    Key? key,
-    required this.question,
-    required this.selectedAnswer,
-    required this.onAnswerChanged,
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

@@ -2,10 +2,6 @@ import 'package:equatable/equatable.dart';
 
 /// MindMap node model representing a node in the tree structure
 class MindMapNode extends Equatable {
-  final String id;
-  final String label;
-  final List<MindMapNode>? children;
-  final Map<String, dynamic>? metadata;
 
   const MindMapNode({
     required this.id,
@@ -21,12 +17,16 @@ class MindMapNode extends Equatable {
       children: json['children'] != null
           ? (json['children'] as List)
               .map((child) =>
-                  MindMapNode.fromJson(child as Map<String, dynamic>))
+                  MindMapNode.fromJson(child as Map<String, dynamic>),)
               .toList()
           : null,
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
+  final String id;
+  final String label;
+  final List<MindMapNode>? children;
+  final Map<String, dynamic>? metadata;
 
   Map<String, dynamic> toJson() {
     return {
@@ -73,22 +73,12 @@ class MindMapNode extends Equatable {
 
 /// MindMap model representing the complete mindmap
 class MindMap extends Equatable {
-  final int id;
-  final int chapterId;
-  final String title;
-  final String? description;
-  final MindMapNode structure;
-  final DateTime createdAt;
-  final DateTime updatedAt;
 
   const MindMap({
     required this.id,
     required this.chapterId,
     required this.title,
-    this.description,
-    required this.structure,
-    required this.createdAt,
-    required this.updatedAt,
+    required this.structure, required this.createdAt, required this.updatedAt, this.description,
   });
 
   factory MindMap.fromJson(Map<String, dynamic> json) {
@@ -100,11 +90,18 @@ class MindMap extends Equatable {
       structure:
           MindMapNode.fromJson(json['structure'] as Map<String, dynamic>),
       createdAt: DateTime.parse(
-          json['created_at'] as String? ?? json['createdAt'] as String),
+          json['created_at'] as String? ?? json['createdAt'] as String,),
       updatedAt: DateTime.parse(
-          json['updated_at'] as String? ?? json['updatedAt'] as String),
+          json['updated_at'] as String? ?? json['updatedAt'] as String,),
     );
   }
+  final int id;
+  final int chapterId;
+  final String title;
+  final String? description;
+  final MindMapNode structure;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Map<String, dynamic> toJson() {
     return {

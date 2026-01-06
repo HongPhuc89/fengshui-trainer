@@ -1,23 +1,17 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/models/mindmap_models.dart';
 
 /// Position information for a node
 class NodePosition {
+
+  NodePosition(this.node, this.position, this.depth);
   final MindMapNode node;
   final Offset position;
   final int depth;
-
-  NodePosition(this.node, this.position, this.depth);
 }
 
 /// Custom painter for rendering mindmap
 class MindmapPainter extends CustomPainter {
-  final MindMap mindmap;
-  final double nodeWidth;
-  final double nodeHeight;
-  final double horizontalSpacing;
-  final double verticalSpacing;
 
   MindmapPainter({
     required this.mindmap,
@@ -26,6 +20,11 @@ class MindmapPainter extends CustomPainter {
     this.horizontalSpacing = 100,
     this.verticalSpacing = 80,
   });
+  final MindMap mindmap;
+  final double nodeWidth;
+  final double nodeHeight;
+  final double horizontalSpacing;
+  final double verticalSpacing;
 
   @override
   void paint(Canvas canvas, Size size) {

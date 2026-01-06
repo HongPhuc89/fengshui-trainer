@@ -3,9 +3,9 @@ import '../../../../core/network/api_endpoints.dart';
 import '../models/reading_progress_models.dart';
 
 class ReadingProgressRepository {
-  final ApiClient _apiClient;
 
   ReadingProgressRepository(this._apiClient);
+  final ApiClient _apiClient;
 
   Future<ReadingProgress?> getProgress(int chapterId) async {
     try {

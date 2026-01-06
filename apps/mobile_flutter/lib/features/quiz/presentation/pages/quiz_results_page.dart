@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/quiz_provider.dart';
+
 import '../../data/models/quiz_models.dart';
-import '../widgets/quiz_score_card.dart';
+import '../providers/quiz_provider.dart';
 import '../widgets/quiz_question_result_card.dart';
+import '../widgets/quiz_score_card.dart';
 
 class QuizResultsPage extends ConsumerStatefulWidget {
+
+  const QuizResultsPage({
+    required this.bookId, required this.chapterId, required this.attemptId, super.key,
+  });
   final int bookId;
   final int chapterId;
   final int attemptId;
-
-  const QuizResultsPage({
-    super.key,
-    required this.bookId,
-    required this.chapterId,
-    required this.attemptId,
-  });
 
   @override
   ConsumerState<QuizResultsPage> createState() => _QuizResultsPageState();

@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 
 class FlashcardSwipeBackground extends StatelessWidget {
+
+  const FlashcardSwipeBackground({
+    required this.alignment, required this.color, required this.icon, required this.label, super.key,
+  });
   final Alignment alignment;
   final Color color;
   final IconData icon;
   final String label;
-
-  const FlashcardSwipeBackground({
-    super.key,
-    required this.alignment,
-    required this.color,
-    required this.icon,
-    required this.label,
-  });
 
   @override
   Widget build(BuildContext context) {

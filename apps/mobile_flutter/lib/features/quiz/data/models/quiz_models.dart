@@ -2,19 +2,6 @@ import 'package:equatable/equatable.dart';
 
 /// Quiz configuration model
 class QuizConfig extends Equatable {
-  final int id;
-  final int chapterId;
-  final int questionCount;
-  final int easyPercentage;
-  final int mediumPercentage;
-  final int hardPercentage;
-  final int passingScore;
-  final int? timeLimit; // in seconds
-  final bool shuffleQuestions;
-  final bool shuffleOptions;
-  final bool showCorrectAnswers;
-  final DateTime createdAt;
-  final DateTime updatedAt;
 
   const QuizConfig({
     required this.id,
@@ -24,12 +11,7 @@ class QuizConfig extends Equatable {
     required this.mediumPercentage,
     required this.hardPercentage,
     required this.passingScore,
-    this.timeLimit,
-    required this.shuffleQuestions,
-    required this.shuffleOptions,
-    required this.showCorrectAnswers,
-    required this.createdAt,
-    required this.updatedAt,
+    required this.shuffleQuestions, required this.shuffleOptions, required this.showCorrectAnswers, required this.createdAt, required this.updatedAt, this.timeLimit,
   });
 
   factory QuizConfig.fromJson(Map<String, dynamic> json) {
@@ -57,11 +39,24 @@ class QuizConfig extends Equatable {
           json['showCorrectAnswers'] as bool? ??
           true,
       createdAt: DateTime.parse(
-          json['created_at'] as String? ?? json['createdAt'] as String),
+          json['created_at'] as String? ?? json['createdAt'] as String,),
       updatedAt: DateTime.parse(
-          json['updated_at'] as String? ?? json['updatedAt'] as String),
+          json['updated_at'] as String? ?? json['updatedAt'] as String,),
     );
   }
+  final int id;
+  final int chapterId;
+  final int questionCount;
+  final int easyPercentage;
+  final int mediumPercentage;
+  final int hardPercentage;
+  final int passingScore;
+  final int? timeLimit; // in seconds
+  final bool shuffleQuestions;
+  final bool shuffleOptions;
+  final bool showCorrectAnswers;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Map<String, dynamic> toJson() {
     return {
@@ -88,12 +83,6 @@ class QuizConfig extends Equatable {
 
 /// Quiz question model
 class QuizQuestion extends Equatable {
-  final int id;
-  final String question;
-  final String type; // 'multiple_choice', 'multiple_answer', 'true_false'
-  final dynamic options; // Can be List or Map depending on question type
-  final String difficulty; // 'easy', 'medium', 'hard'
-  final int points;
 
   const QuizQuestion({
     required this.id,
@@ -114,6 +103,12 @@ class QuizQuestion extends Equatable {
       points: json['points'] as int,
     );
   }
+  final int id;
+  final String question;
+  final String type; // 'multiple_choice', 'multiple_answer', 'true_false'
+  final dynamic options; // Can be List or Map depending on question type
+  final String difficulty; // 'easy', 'medium', 'hard'
+  final int points;
 
   Map<String, dynamic> toJson() {
     return {
@@ -149,16 +144,6 @@ class QuizQuestion extends Equatable {
 
 /// Quiz attempt model
 class QuizAttempt extends Equatable {
-  final int id;
-  final int userId;
-  final int chapterId;
-  final List<QuizQuestion> questions;
-  final DateTime startedAt;
-  final DateTime? completedAt;
-  final double? score;
-  final bool? passed;
-  final int? totalPoints;
-  final int? earnedPoints;
 
   const QuizAttempt({
     required this.id,
@@ -182,10 +167,10 @@ class QuizAttempt extends Equatable {
           .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
           .toList(),
       startedAt: DateTime.parse(
-          json['started_at'] as String? ?? json['startedAt'] as String),
+          json['started_at'] as String? ?? json['startedAt'] as String,),
       completedAt: json['completed_at'] != null || json['completedAt'] != null
           ? DateTime.parse(
-              json['completed_at'] as String? ?? json['completedAt'] as String)
+              json['completed_at'] as String? ?? json['completedAt'] as String,)
           : null,
       score: (json['score'] as num?)?.toDouble(),
       passed: json['passed'] as bool?,
@@ -194,6 +179,16 @@ class QuizAttempt extends Equatable {
           json['earned_points'] as int? ?? json['earnedPoints'] as int?,
     );
   }
+  final int id;
+  final int userId;
+  final int chapterId;
+  final List<QuizQuestion> questions;
+  final DateTime startedAt;
+  final DateTime? completedAt;
+  final double? score;
+  final bool? passed;
+  final int? totalPoints;
+  final int? earnedPoints;
 
   Map<String, dynamic> toJson() {
     return {
@@ -217,14 +212,14 @@ class QuizAttempt extends Equatable {
 }
 
 /// Submit quiz request model
-class SubmitQuizRequest {
-  final int attemptId;
-  final Map<int, dynamic> answers; // questionId -> answer
+class SubmitQuizRequest { // questionId -> answer
 
   SubmitQuizRequest({
     required this.attemptId,
     required this.answers,
   });
+  final int attemptId;
+  final Map<int, dynamic> answers;
 
   Map<String, dynamic> toJson() {
     return {
@@ -236,11 +231,6 @@ class SubmitQuizRequest {
 
 /// Quiz result for a single question
 class QuizQuestionResult extends Equatable {
-  final int questionId;
-  final bool isCorrect;
-  final int pointsEarned;
-  final dynamic userAnswer;
-  final dynamic correctAnswer;
 
   const QuizQuestionResult({
     required this.questionId,
@@ -260,6 +250,11 @@ class QuizQuestionResult extends Equatable {
       correctAnswer: json['correct_answer'] ?? json['correctAnswer'],
     );
   }
+  final int questionId;
+  final bool isCorrect;
+  final int pointsEarned;
+  final dynamic userAnswer;
+  final dynamic correctAnswer;
 
   @override
   List<Object?> get props => [questionId, isCorrect, pointsEarned];
@@ -267,15 +262,6 @@ class QuizQuestionResult extends Equatable {
 
 /// Submit quiz response model
 class SubmitQuizResponse extends Equatable {
-  final int attemptId;
-  final double score;
-  final bool passed;
-  final int totalPoints;
-  final int earnedPoints;
-  final int correctAnswers;
-  final int totalQuestions;
-  final List<QuizQuestionResult> results;
-  final DateTime completedAt;
 
   const SubmitQuizResponse({
     required this.attemptId,
@@ -305,9 +291,18 @@ class SubmitQuizResponse extends Equatable {
           .map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
           .toList(),
       completedAt: DateTime.parse(
-          json['completed_at'] as String? ?? json['completedAt'] as String),
+          json['completed_at'] as String? ?? json['completedAt'] as String,),
     );
   }
+  final int attemptId;
+  final double score;
+  final bool passed;
+  final int totalPoints;
+  final int earnedPoints;
+  final int correctAnswers;
+  final int totalQuestions;
+  final List<QuizQuestionResult> results;
+  final DateTime completedAt;
 
   @override
   List<Object?> get props =>

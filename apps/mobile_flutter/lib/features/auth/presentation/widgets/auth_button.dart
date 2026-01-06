@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AuthButton extends StatelessWidget {
+
+  const AuthButton({
+    required this.label, required this.onPressed, super.key,
+    this.isLoading = false,
+    this.isPrimary = true,
+    this.icon,
+  });
   final String label;
   final VoidCallback onPressed;
   final bool isLoading;
   final bool isPrimary;
   final IconData? icon;
-
-  const AuthButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.isLoading = false,
-    this.isPrimary = true,
-    this.icon,
-  });
 
   @override
   Widget build(BuildContext context) {

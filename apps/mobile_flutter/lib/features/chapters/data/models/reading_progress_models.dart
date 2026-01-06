@@ -1,15 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 class ReadingProgress extends Equatable {
-  final int id;
-  final int userId;
-  final int chapterId;
-  final int currentPage;
-  final int totalPages;
-  final double scrollPosition;
-  final DateTime lastReadAt;
-  final int readingTime;
-  final bool isCompleted;
 
   const ReadingProgress({
     required this.id,
@@ -17,8 +8,7 @@ class ReadingProgress extends Equatable {
     required this.chapterId,
     required this.currentPage,
     required this.totalPages,
-    this.scrollPosition = 0.0,
-    required this.lastReadAt,
+    required this.lastReadAt, this.scrollPosition = 0.0,
     this.readingTime = 0,
     this.isCompleted = false,
   });
@@ -35,7 +25,7 @@ class ReadingProgress extends Equatable {
       scrollPosition:
           (json['scroll_position'] ?? json['scrollPosition'] ?? 0.0).toDouble(),
       lastReadAt: DateTime.parse(
-          json['last_read_at'] as String? ?? json['lastReadAt'] as String),
+          json['last_read_at'] as String? ?? json['lastReadAt'] as String,),
       readingTime:
           json['reading_time'] as int? ?? json['readingTime'] as int? ?? 0,
       isCompleted: json['is_completed'] as bool? ??
@@ -43,6 +33,15 @@ class ReadingProgress extends Equatable {
           false,
     );
   }
+  final int id;
+  final int userId;
+  final int chapterId;
+  final int currentPage;
+  final int totalPages;
+  final double scrollPosition;
+  final DateTime lastReadAt;
+  final int readingTime;
+  final bool isCompleted;
 
   Map<String, dynamic> toJson() {
     return {
@@ -61,15 +60,15 @@ class ReadingProgress extends Equatable {
 }
 
 class UpdateProgressRequest {
-  final int currentPage;
-  final int totalPages;
-  final int? readingTime;
 
   UpdateProgressRequest({
     required this.currentPage,
     required this.totalPages,
     this.readingTime,
   });
+  final int currentPage;
+  final int totalPages;
+  final int? readingTime;
 
   Map<String, dynamic> toJson() {
     return {

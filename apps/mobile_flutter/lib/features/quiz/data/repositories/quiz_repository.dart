@@ -5,14 +5,14 @@ import '../../../../core/storage/secure_storage.dart';
 import '../models/quiz_models.dart';
 
 class QuizRepository {
-  final ApiClient _apiClient;
-  final SecureStorage _storage;
 
   QuizRepository({
     ApiClient? apiClient,
     SecureStorage? storage,
   })  : _storage = storage ?? SecureStorage(),
         _apiClient = apiClient ?? ApiClient(storage ?? SecureStorage());
+  final ApiClient _apiClient;
+  final SecureStorage _storage;
 
   /// Get quiz configuration for a chapter
   Future<QuizConfig> getQuizConfig({

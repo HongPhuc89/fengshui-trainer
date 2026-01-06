@@ -4,9 +4,6 @@ import '../config/environment.dart';
 import '../storage/secure_storage.dart';
 
 class ApiClient {
-  late final Dio _dio;
-  final SecureStorage _storage;
-  final Logger _logger = Logger();
 
   ApiClient(this._storage) {
     _dio = Dio(
@@ -23,6 +20,9 @@ class ApiClient {
 
     _setupInterceptors();
   }
+  late final Dio _dio;
+  final SecureStorage _storage;
+  final Logger _logger = Logger();
 
   void _setupInterceptors() {
     _dio.interceptors.add(
@@ -32,25 +32,32 @@ class ApiClient {
           final token = await _storage.getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
+            _logger.d('🔑 Token added to request: ${token.substring(0, 20)}...');
+          } else {
+            _logger.w('⚠️ No token found in storage');
           }
 
-          _logger.d('🔑 API Request: ${options.method} ${options.path}');
+          _logger.d('📤 API Request: ${options.method} ${options.path}');
+          _logger.d('📋 Headers: ${options.headers}');
           return handler.next(options);
         },
         onResponse: (response, handler) {
           _logger.d(
-              '✅ API Response: ${response.statusCode} ${response.requestOptions.path}');
+              '✅ API Response: ${response.statusCode} ${response.requestOptions.path}',);
           return handler.next(response);
         },
         onError: (error, handler) async {
           _logger.e(
-              '❌ API Error: ${error.response?.statusCode} ${error.requestOptions.path}');
+              '❌ API Error: ${error.response?.statusCode} ${error.requestOptions.path}',);
+          _logger.e('❌ Error message: ${error.message}');
 
           // Handle 401 - try to refresh token
           if (error.response?.statusCode == 401) {
+            _logger.w('🔄 Attempting to refresh token...');
             try {
               final refreshed = await _refreshToken();
               if (refreshed) {
+                _logger.i('✅ Token refreshed successfully, retrying request');
                 // Retry original request
                 final opts = error.requestOptions;
                 final token = await _storage.getToken();
@@ -58,9 +65,11 @@ class ApiClient {
 
                 final response = await _dio.fetch(opts);
                 return handler.resolve(response);
+              } else {
+                _logger.e('❌ Token refresh failed');
               }
             } catch (e) {
-              _logger.e('Failed to refresh token: $e');
+              _logger.e('❌ Failed to refresh token: $e');
             }
           }
 
@@ -73,7 +82,10 @@ class ApiClient {
   Future<bool> _refreshToken() async {
     try {
       final refreshToken = await _storage.getRefreshToken();
-      if (refreshToken == null) return false;
+      if (refreshToken == null) {
+        _logger.w('⚠️ No refresh token found');
+        return false;
+      }
 
       final response = await _dio.post(
         '/auth/refresh',
@@ -86,8 +98,10 @@ class ApiClient {
       await _storage.saveToken(newToken);
       await _storage.saveRefreshToken(newRefreshToken);
 
+      _logger.i('✅ New tokens saved');
       return true;
     } catch (e) {
+      _logger.e('❌ Refresh token error: $e');
       return false;
     }
   }

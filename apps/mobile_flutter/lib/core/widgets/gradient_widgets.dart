@@ -3,14 +3,13 @@ import '../config/theme.dart';
 
 /// Gradient background widget matching React Native design
 class GradientBackground extends StatelessWidget {
-  final Widget child;
-  final String variant;
 
   const GradientBackground({
-    Key? key,
-    required this.child,
+    required this.child, super.key,
     this.variant = 'redGold',
-  }) : super(key: key);
+  });
+  final Widget child;
+  final String variant;
 
   @override
   Widget build(BuildContext context) {
@@ -67,28 +66,25 @@ class GradientBackground extends StatelessWidget {
 
 /// Gradient button widget
 class GradientButton extends StatelessWidget {
+
+  const GradientButton({
+    required this.text, super.key,
+    this.onPressed,
+    this.loading = false,
+    this.fullWidth = false,
+    this.padding,
+  });
   final String text;
   final VoidCallback? onPressed;
   final bool loading;
   final bool fullWidth;
   final EdgeInsetsGeometry? padding;
 
-  const GradientButton({
-    Key? key,
-    required this.text,
-    this.onPressed,
-    this.loading = false,
-    this.fullWidth = false,
-    this.padding,
-  }) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
-    Widget button = Container(
+    final Widget button = Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
           colors: [
             AppColors.primaryRed,
             AppColors.secondaryGold,

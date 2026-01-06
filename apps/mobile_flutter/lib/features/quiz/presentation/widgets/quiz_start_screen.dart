@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
 class QuizStartScreen extends StatelessWidget {
-  final dynamic config;
-  final VoidCallback onStart;
 
   const QuizStartScreen({
-    super.key,
-    required this.config,
-    required this.onStart,
+    required this.config, required this.onStart, super.key,
   });
+  final dynamic config;
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {

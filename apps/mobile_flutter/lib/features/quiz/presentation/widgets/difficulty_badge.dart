@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 class DifficultyBadge extends StatelessWidget {
-  final String difficulty;
 
   const DifficultyBadge({
-    super.key,
-    required this.difficulty,
+    required this.difficulty, super.key,
   });
+  final String difficulty;
 
   @override
   Widget build(BuildContext context) {

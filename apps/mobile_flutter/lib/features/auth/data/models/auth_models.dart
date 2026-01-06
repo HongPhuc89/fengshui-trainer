@@ -1,13 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 class User extends Equatable {
-  final int id;
-  final String email;
-  final String name;
-  final String? avatar;
-  final int level;
-  final int experience;
-  final int points;
 
   const User({
     required this.id,
@@ -30,6 +23,13 @@ class User extends Equatable {
       points: json['points'] as int? ?? 0,
     );
   }
+  final int id;
+  final String email;
+  final String name;
+  final String? avatar;
+  final int level;
+  final int experience;
+  final int points;
 
   Map<String, dynamic> toJson() {
     return {
@@ -49,10 +49,10 @@ class User extends Equatable {
 }
 
 class LoginRequest {
-  final String email;
-  final String password;
 
   LoginRequest({required this.email, required this.password});
+  final String email;
+  final String password;
 
   Map<String, dynamic> toJson() {
     return {
@@ -63,15 +63,15 @@ class LoginRequest {
 }
 
 class RegisterRequest {
-  final String email;
-  final String password;
-  final String name;
 
   RegisterRequest({
     required this.email,
     required this.password,
     required this.name,
   });
+  final String email;
+  final String password;
+  final String name;
 
   Map<String, dynamic> toJson() {
     return {
@@ -83,9 +83,6 @@ class RegisterRequest {
 }
 
 class AuthResponse {
-  final String accessToken;
-  final String refreshToken;
-  final User user;
 
   AuthResponse({
     required this.accessToken,
@@ -105,4 +102,7 @@ class AuthResponse {
       user: User.fromJson(json['user'] as Map<String, dynamic>),
     );
   }
+  final String accessToken;
+  final String refreshToken;
+  final User user;
 }

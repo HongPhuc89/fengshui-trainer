@@ -78,7 +78,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       body: GradientBackground(
-        variant: 'redGold',
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -125,7 +124,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'Email',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -159,7 +158,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'Mật khẩu',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -214,7 +213,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
+                                const Text(
                                   'Chưa có tài khoản? ',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -225,7 +224,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   onPressed: () => context.go('/register'),
                                   style: TextButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
+                                        horizontal: 8,),
                                     minimumSize: Size.zero,
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,

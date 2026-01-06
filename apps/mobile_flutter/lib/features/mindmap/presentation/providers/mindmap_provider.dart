@@ -5,15 +5,15 @@ import '../../data/repositories/mindmap_repository.dart';
 
 /// Mindmap state class
 class MindmapState {
-  final MindMap? mindmap;
-  final bool isLoading;
-  final String? error;
 
   const MindmapState({
     this.mindmap,
     this.isLoading = false,
     this.error,
   });
+  final MindMap? mindmap;
+  final bool isLoading;
+  final String? error;
 
   MindmapState copyWith({
     MindMap? mindmap,
@@ -30,16 +30,16 @@ class MindmapState {
 
 /// Mindmap notifier for state management
 class MindmapNotifier extends StateNotifier<MindmapState> {
-  final MindmapRepository _repository;
 
   MindmapNotifier(this._repository) : super(const MindmapState());
+  final MindmapRepository _repository;
 
   /// Load mindmap for a chapter
   Future<void> loadMindmap({
     required int bookId,
     required int chapterId,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final mindmap = await _repository.getMindmap(
@@ -50,7 +50,6 @@ class MindmapNotifier extends StateNotifier<MindmapState> {
       state = state.copyWith(
         mindmap: mindmap,
         isLoading: false,
-        error: null,
       );
     } catch (e) {
       debugPrint('Error loading mindmap: $e');

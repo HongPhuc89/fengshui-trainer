@@ -5,12 +5,6 @@ import '../../data/repositories/flashcards_repository.dart';
 
 /// Flashcards state class
 class FlashcardsState {
-  final List<Flashcard> flashcards;
-  final Map<int, FlashcardProgress> progressMap;
-  final int currentIndex;
-  final bool isFlipped;
-  final bool isLoading;
-  final String? error;
 
   const FlashcardsState({
     this.flashcards = const [],
@@ -20,6 +14,12 @@ class FlashcardsState {
     this.isLoading = false,
     this.error,
   });
+  final List<Flashcard> flashcards;
+  final Map<int, FlashcardProgress> progressMap;
+  final int currentIndex;
+  final bool isFlipped;
+  final bool isLoading;
+  final String? error;
 
   FlashcardsState copyWith({
     List<Flashcard>? flashcards,
@@ -67,10 +67,10 @@ class FlashcardsState {
 
 /// Flashcards notifier for state management
 class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
-  final FlashcardsRepository _repository;
-  int? _currentChapterId;
 
   FlashcardsNotifier(this._repository) : super(const FlashcardsState());
+  final FlashcardsRepository _repository;
+  int? _currentChapterId;
 
   /// Load flashcards for a chapter
   Future<void> loadFlashcards({
@@ -78,7 +78,7 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
     required int chapterId,
     int count = 20,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     _currentChapterId = chapterId;
 
     try {
@@ -118,7 +118,6 @@ class FlashcardsNotifier extends StateNotifier<FlashcardsState> {
         currentIndex: 0,
         isFlipped: false,
         isLoading: false,
-        error: null,
       );
     } catch (e) {
       debugPrint('Error loading flashcards: $e');

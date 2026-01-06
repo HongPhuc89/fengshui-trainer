@@ -1,7 +1,8 @@
 import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PdfCacheService {
@@ -40,7 +41,7 @@ class PdfCacheService {
   }
 
   Future<String?> downloadAndCache(String url,
-      {Function(double)? onProgress}) async {
+      {Function(double)? onProgress,}) async {
     if (kIsWeb) return null;
     try {
       final cacheKey = _getCacheKey(url);

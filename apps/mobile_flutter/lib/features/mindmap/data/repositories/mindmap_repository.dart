@@ -5,14 +5,14 @@ import '../../../../core/storage/secure_storage.dart';
 import '../models/mindmap_models.dart';
 
 class MindmapRepository {
-  final ApiClient _apiClient;
-  final SecureStorage _storage;
 
   MindmapRepository({
     ApiClient? apiClient,
     SecureStorage? storage,
   })  : _storage = storage ?? SecureStorage(),
         _apiClient = apiClient ?? ApiClient(storage ?? SecureStorage());
+  final ApiClient _apiClient;
+  final SecureStorage _storage;
 
   /// Get mindmap for a chapter
   Future<MindMap> getMindmap({

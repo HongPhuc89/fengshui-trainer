@@ -20,13 +20,11 @@ install: ## Install all dependencies
 	npm install
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
-dev: ## Run backend, admin, and mobile concurrently
-	@echo "$(CYAN)Starting all applications...$(NC)"
-	@echo "$(YELLOW)Backend:$(NC) http://localhost:3000"
-	@echo "$(YELLOW)Admin:$(NC)   http://localhost:5173"
-	@echo "$(YELLOW)Mobile:$(NC)  Expo DevTools"
-	@echo ""
-	npm run dev
+dev: ## Run Flutter mobile app
+	@echo "$(CYAN)Starting backend...$(NC)"
+	npm run backend:dev
+	@echo "$(CYAN)Starting Flutter mobile app...$(NC)"
+	cd apps/mobile_flutter && flutter run -d web-server --web-port 5000
 
 backend: ## Run backend only
 	@echo "$(CYAN)Starting backend...$(NC)"

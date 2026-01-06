@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import 'core/config/theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/books/presentation/pages/books_list_page.dart';
 import 'features/books/presentation/pages/book_detail_page.dart';
+import 'features/books/presentation/pages/books_list_page.dart';
 import 'features/chapters/presentation/pages/chapter_detail_page.dart';
 import 'features/flashcards/presentation/pages/flashcards_page.dart';
+import 'features/mindmap/presentation/pages/mindmap_page.dart';
 import 'features/quiz/presentation/pages/quiz_page.dart';
 import 'features/quiz/presentation/pages/quiz_results_page.dart';
-import 'features/mindmap/presentation/pages/mindmap_page.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -22,22 +23,33 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch auth provider to ensure it's initialized
+    final authState = ref.watch(authProvider);
+    
     final router = GoRouter(
       initialLocation: '/login',
       redirect: (context, state) {
-        final authState = ref.read(authProvider);
         final isAuthenticated = authState.isAuthenticated;
         final isGoingToLogin = state.matchedLocation == '/login';
         final isGoingToRegister = state.matchedLocation == '/register';
 
+        // Debug logging
+        print('🔍 Router redirect check:');
+        print('   - isAuthenticated: $isAuthenticated');
+        print('   - Current location: ${state.matchedLocation}');
+        print('   - User: ${authState.user?.email ?? "null"}');
+
         if (!isAuthenticated && !isGoingToLogin && !isGoingToRegister) {
+          print('   ➡️ Redirecting to /login (not authenticated)');
           return '/login';
         }
 
         if (isAuthenticated && (isGoingToLogin || isGoingToRegister)) {
+          print('   ➡️ Redirecting to /home (already authenticated)');
           return '/home';
         }
 
+        print('   ✅ No redirect needed');
         return null;
       },
       routes: [
@@ -54,10 +66,10 @@ class MyApp extends ConsumerWidget {
           builder: (context, state) => const BooksListPage(),
         ),
         GoRoute(
-          path: '/books/:bookId',
+          path: '/books/:id',
           builder: (context, state) {
-            final bookId = int.parse(state.pathParameters['bookId']!);
-            return BookDetailPage(bookId: bookId);
+            final id = int.parse(state.pathParameters['id']!);
+            return BookDetailPage(bookId: id);
           },
         ),
         GoRoute(
@@ -89,8 +101,7 @@ class MyApp extends ConsumerWidget {
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
-            final attemptId =
-                int.parse(state.uri.queryParameters['attemptId']!);
+            final attemptId = int.parse(state.uri.queryParameters['attemptId']!);
             return QuizResultsPage(
               bookId: bookId,
               chapterId: chapterId,
@@ -110,80 +121,10 @@ class MyApp extends ConsumerWidget {
     );
 
     return MaterialApp.router(
-      title: 'Fengshui Trainer',
+      title: 'Feng Shui Trainer',
       theme: AppTheme.lightTheme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-// Temporary Home Page
-class HomePage extends ConsumerWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                context.go('/login');
-              }
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.check_circle,
-              size: 80,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Đăng nhập thành công!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (user != null) ...[
-              Text(
-                'Xin chào, ${user.name}!',
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Email: ${user.email}',
-                style: const TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Level: ${user.level} | XP: ${user.experience}',
-                style: const TextStyle(color: Colors.grey),
-              ),
-            ],
-            const SizedBox(height: 32),
-            const Text(
-              '🎉 Flutter App is working!',
-              style: TextStyle(fontSize: 16),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

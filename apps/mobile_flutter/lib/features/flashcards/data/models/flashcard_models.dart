@@ -2,24 +2,14 @@ import 'package:equatable/equatable.dart';
 
 /// Flashcard model matching backend API structure
 class Flashcard extends Equatable {
-  final int id;
-  final int chapterId;
-  final String question;
-  final String answer;
-  final String? hint;
-  final String? difficulty; // 'easy', 'medium', 'hard'
-  final DateTime createdAt;
-  final DateTime updatedAt;
 
   const Flashcard({
     required this.id,
     required this.chapterId,
     required this.question,
     required this.answer,
-    this.hint,
+    required this.createdAt, required this.updatedAt, this.hint,
     this.difficulty,
-    required this.createdAt,
-    required this.updatedAt,
   });
 
   factory Flashcard.fromJson(Map<String, dynamic> json) {
@@ -31,11 +21,19 @@ class Flashcard extends Equatable {
       hint: json['hint'] as String?,
       difficulty: json['difficulty'] as String?,
       createdAt: DateTime.parse(
-          json['created_at'] as String? ?? json['createdAt'] as String),
+          json['created_at'] as String? ?? json['createdAt'] as String,),
       updatedAt: DateTime.parse(
-          json['updated_at'] as String? ?? json['updatedAt'] as String),
+          json['updated_at'] as String? ?? json['updatedAt'] as String,),
     );
   }
+  final int id;
+  final int chapterId;
+  final String question;
+  final String answer;
+  final String? hint;
+  final String? difficulty; // 'easy', 'medium', 'hard'
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Map<String, dynamic> toJson() {
     return {
@@ -58,11 +56,6 @@ class Flashcard extends Equatable {
 /// FlashcardProgress model for local tracking
 /// Stores user's learning progress for each flashcard
 class FlashcardProgress extends Equatable {
-  final int flashcardId;
-  final int masteryLevel; // 0-5, where 5 is fully mastered
-  final DateTime lastReviewed;
-  final int reviewCount;
-  final int correctCount;
 
   const FlashcardProgress({
     required this.flashcardId,
@@ -88,13 +81,18 @@ class FlashcardProgress extends Equatable {
       masteryLevel:
           json['mastery_level'] as int? ?? json['masteryLevel'] as int? ?? 0,
       lastReviewed: DateTime.parse(
-          json['last_reviewed'] as String? ?? json['lastReviewed'] as String),
+          json['last_reviewed'] as String? ?? json['lastReviewed'] as String,),
       reviewCount:
           json['review_count'] as int? ?? json['reviewCount'] as int? ?? 0,
       correctCount:
           json['correct_count'] as int? ?? json['correctCount'] as int? ?? 0,
     );
   }
+  final int flashcardId;
+  final int masteryLevel; // 0-5, where 5 is fully mastered
+  final DateTime lastReviewed;
+  final int reviewCount;
+  final int correctCount;
 
   Map<String, dynamic> toJson() {
     return {
@@ -130,7 +128,7 @@ class FlashcardProgress extends Equatable {
 
   /// Calculate accuracy percentage
   double get accuracy {
-    if (reviewCount == 0) return 0.0;
+    if (reviewCount == 0) return 0;
     return (correctCount / reviewCount) * 100;
   }
 

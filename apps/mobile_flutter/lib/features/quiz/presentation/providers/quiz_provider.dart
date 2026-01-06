@@ -6,14 +6,6 @@ import '../../data/repositories/quiz_repository.dart';
 
 /// Quiz state class
 class QuizState {
-  final QuizConfig? config;
-  final QuizAttempt? attempt;
-  final int currentQuestionIndex;
-  final Map<int, dynamic> answers; // questionId -> answer
-  final int? timeRemaining; // seconds remaining
-  final bool isLoading;
-  final String? error;
-  final SubmitQuizResponse? result;
 
   const QuizState({
     this.config,
@@ -25,6 +17,14 @@ class QuizState {
     this.error,
     this.result,
   });
+  final QuizConfig? config;
+  final QuizAttempt? attempt;
+  final int currentQuestionIndex;
+  final Map<int, dynamic> answers; // questionId -> answer
+  final int? timeRemaining; // seconds remaining
+  final bool isLoading;
+  final String? error;
+  final SubmitQuizResponse? result;
 
   QuizState copyWith({
     QuizConfig? config,
@@ -70,12 +70,12 @@ class QuizState {
 
 /// Quiz notifier for state management
 class QuizNotifier extends StateNotifier<QuizState> {
+
+  QuizNotifier(this._repository) : super(const QuizState());
   final QuizRepository _repository;
   Timer? _timer;
   int? _bookId;
   int? _chapterId;
-
-  QuizNotifier(this._repository) : super(const QuizState());
 
   @override
   void dispose() {
@@ -88,7 +88,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
     required int bookId,
     required int chapterId,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     _bookId = bookId;
     _chapterId = chapterId;
 
@@ -101,7 +101,6 @@ class QuizNotifier extends StateNotifier<QuizState> {
       state = state.copyWith(
         config: config,
         isLoading: false,
-        error: null,
       );
     } catch (e) {
       debugPrint('Error loading quiz config: $e');
@@ -117,7 +116,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
     required int bookId,
     required int chapterId,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     _bookId = bookId;
     _chapterId = chapterId;
 
@@ -136,8 +135,6 @@ class QuizNotifier extends StateNotifier<QuizState> {
         answers: {},
         timeRemaining: timeLimit,
         isLoading: false,
-        error: null,
-        result: null,
       );
 
       // Start timer if time limit exists
@@ -213,7 +210,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
     // Stop timer
     _timer?.cancel();
 
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final request = SubmitQuizRequest(
@@ -230,7 +227,6 @@ class QuizNotifier extends StateNotifier<QuizState> {
       state = state.copyWith(
         result: result,
         isLoading: false,
-        error: null,
       );
     } catch (e) {
       debugPrint('Error submitting quiz: $e');

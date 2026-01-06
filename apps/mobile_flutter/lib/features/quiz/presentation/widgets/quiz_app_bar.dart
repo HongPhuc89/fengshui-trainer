@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import '../providers/quiz_provider.dart';
 
 class QuizAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final QuizState state;
-  final String Function() formatTimeRemaining;
 
   const QuizAppBar({
-    super.key,
-    required this.state,
-    required this.formatTimeRemaining,
+    required this.state, required this.formatTimeRemaining, super.key,
   });
+  final QuizState state;
+  final String Function() formatTimeRemaining;
 
   @override
   Widget build(BuildContext context) {

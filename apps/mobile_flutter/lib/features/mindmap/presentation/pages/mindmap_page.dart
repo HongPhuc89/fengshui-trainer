@@ -4,14 +4,12 @@ import '../providers/mindmap_provider.dart';
 import '../widgets/mindmap_painter.dart';
 
 class MindmapPage extends ConsumerStatefulWidget {
-  final int bookId;
-  final int chapterId;
 
   const MindmapPage({
-    Key? key,
-    required this.bookId,
-    required this.chapterId,
-  }) : super(key: key);
+    required this.bookId, required this.chapterId, super.key,
+  });
+  final int bookId;
+  final int chapterId;
 
   @override
   ConsumerState<MindmapPage> createState() => _MindmapPageState();
@@ -90,7 +88,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
       );
     }
 
-    return _buildMindmapView(state.mindmap!);
+    return _buildMindmapView(state.mindmap);
   }
 
   Widget _buildError(String error) {
@@ -154,7 +152,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
           child: InteractiveViewer(
             transformationController: _transformationController,
             minScale: 0.1,
-            maxScale: 4.0,
+            maxScale: 4,
             boundaryMargin: const EdgeInsets.all(double.infinity),
             child: CustomPaint(
               painter: MindmapPainter(mindmap: mindmap),

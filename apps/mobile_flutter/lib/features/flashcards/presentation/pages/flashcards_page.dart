@@ -4,14 +4,12 @@ import '../providers/flashcards_provider.dart';
 import '../widgets/flashcard_widget.dart';
 
 class FlashcardsPage extends ConsumerStatefulWidget {
-  final int bookId;
-  final int chapterId;
 
   const FlashcardsPage({
-    Key? key,
-    required this.bookId,
-    required this.chapterId,
-  }) : super(key: key);
+    required this.bookId, required this.chapterId, super.key,
+  });
+  final int bookId;
+  final int chapterId;
 
   @override
   ConsumerState<FlashcardsPage> createState() => _FlashcardsPageState();
@@ -26,7 +24,6 @@ class _FlashcardsPageState extends ConsumerState<FlashcardsPage> {
       ref.read(flashcardsProvider.notifier).loadFlashcards(
             bookId: widget.bookId,
             chapterId: widget.chapterId,
-            count: 20,
           );
     });
   }
@@ -109,7 +106,6 @@ class _FlashcardsPageState extends ConsumerState<FlashcardsPage> {
                 ref.read(flashcardsProvider.notifier).loadFlashcards(
                       bookId: widget.bookId,
                       chapterId: widget.chapterId,
-                      count: 20,
                     );
               },
               icon: const Icon(Icons.refresh),

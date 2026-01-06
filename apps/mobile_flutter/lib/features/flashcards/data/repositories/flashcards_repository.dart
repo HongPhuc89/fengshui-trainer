@@ -6,14 +6,14 @@ import '../../../../core/storage/secure_storage.dart';
 import '../models/flashcard_models.dart';
 
 class FlashcardsRepository {
-  final ApiClient _apiClient;
-  final SecureStorage _storage;
 
   FlashcardsRepository({
     ApiClient? apiClient,
     SecureStorage? storage,
   })  : _storage = storage ?? SecureStorage(),
         _apiClient = apiClient ?? ApiClient(storage ?? SecureStorage());
+  final ApiClient _apiClient;
+  final SecureStorage _storage;
 
   /// Get random flashcards from a chapter
   /// [count] Number of flashcards to retrieve (1-50, default: 20)
@@ -43,7 +43,7 @@ class FlashcardsRepository {
 
   /// Get flashcard progress for a chapter from local storage
   Future<Map<int, FlashcardProgress>> getFlashcardProgress(
-      int chapterId) async {
+      int chapterId,) async {
     try {
       final key = 'flashcard_progress_$chapterId';
       final jsonString = await _storage.read(key);

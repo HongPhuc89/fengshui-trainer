@@ -1,5 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/models/auth_models.dart';
@@ -23,10 +25,6 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 // Auth State
 class AuthState {
-  final User? user;
-  final bool isLoading;
-  final String? error;
-  final bool isAuthenticated;
 
   AuthState({
     this.user,
@@ -34,6 +32,10 @@ class AuthState {
     this.error,
     this.isAuthenticated = false,
   });
+  final User? user;
+  final bool isLoading;
+  final String? error;
+  final bool isAuthenticated;
 
   AuthState copyWith({
     User? user,
@@ -52,24 +54,68 @@ class AuthState {
 
 // Auth Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repository;
 
   AuthNotifier(this._repository) : super(AuthState()) {
+    if (kDebugMode) {
+      print('🔧 AuthNotifier initialized, checking auth status...');
+    }
     _checkAuthStatus();
   }
+  final AuthRepository _repository;
 
   Future<void> _checkAuthStatus() async {
+    if (kDebugMode) {
+      print('🔍 Checking auth status...');
+    }
+    
     final isLoggedIn = await _repository.isLoggedIn();
+    if (kDebugMode) {
+      print('🔍 Token exists in storage: $isLoggedIn');
+    }
+    
     if (isLoggedIn) {
-      // Just mark as authenticated, user will be loaded from login response
-      state = state.copyWith(
-        isAuthenticated: true,
-      );
+      try {
+        if (kDebugMode) {
+          print('📡 Fetching current user from API...');
+        }
+        
+        // Load user data from API
+        final user = await _repository.getCurrentUser();
+        
+        if (kDebugMode) {
+          print('✅ User loaded successfully: ${user.email}');
+        }
+        
+        state = state.copyWith(
+          user: user,
+          isAuthenticated: true,
+        );
+        
+        if (kDebugMode) {
+          print('✅ Auth state updated: isAuthenticated=true, user=${user.email}');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Failed to load user: $e');
+        }
+        
+        // If token is invalid or expired, clear it
+        await _repository.logout();
+        state = AuthState();
+        
+        if (kDebugMode) {
+          print('🗑️ Cleared invalid token, reset to logged out state');
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('ℹ️ No token found, user needs to login');
+      }
     }
   }
 
   Future<void> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final request = LoginRequest(email: email, password: password);
@@ -80,6 +126,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         isLoading: false,
       );
+      
+      if (kDebugMode) {
+        print('✅ Login successful: ${response.user.email}');
+      }
     } on DioException catch (e) {
       String errorMessage = 'Đăng nhập thất bại';
 
@@ -113,7 +163,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> register(String email, String password, String name) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final request = RegisterRequest(

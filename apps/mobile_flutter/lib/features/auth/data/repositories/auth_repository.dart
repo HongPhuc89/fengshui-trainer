@@ -4,10 +4,10 @@ import '../../../../core/storage/secure_storage.dart';
 import '../models/auth_models.dart';
 
 class AuthRepository {
-  final ApiClient _apiClient;
-  final SecureStorage _storage;
 
   AuthRepository(this._apiClient, this._storage);
+  final ApiClient _apiClient;
+  final SecureStorage _storage;
 
   Future<AuthResponse> login(LoginRequest request) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
