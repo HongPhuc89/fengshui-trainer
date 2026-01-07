@@ -202,6 +202,7 @@ export class MindMapService {
         'mindmap.title',
         'mindmap.description',
         'mindmap.structure',
+        'mindmap.markdown_content',
         'mindmap.is_active',
         'mindmap.created_at',
         'mindmap.updated_at',
