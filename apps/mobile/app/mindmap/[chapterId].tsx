@@ -152,32 +152,36 @@ export default function MindmapScreen() {
   <svg id="mindmap"></svg>
   <script>
     try {
+      let waitCount = 0;
       function startMarkmap() {
         const markmap = window.markmap;
         const markmapView = window.markmapView;
         const markmapToolbar = window.markmapToolbar;
         
-        if (!markmap || (!markmapView && !markmap.Markmap) || !markmapToolbar) {
+        // Check if basic markmap is ready
+        const isMarkmapReady = !!markmap && !!(markmapView || (markmap && markmap.Markmap));
+        const isToolbarReady = !!markmapToolbar || !!(markmap && markmap.toolbar);
+
+        if (!isMarkmapReady || (!isToolbarReady && waitCount < 25)) {
+          waitCount++;
           window.ReactNativeWebView.postMessage(JSON.stringify({ 
             type: 'log', 
-            message: 'Waiting for markmap dependencies...' 
+            message: 'Waiting for deps: markmap=' + !!markmap + ', view=' + !!isMarkmapReady + ', toolbar=' + !!isToolbarReady 
           }));
-          setTimeout(startMarkmap, 100);
+          setTimeout(startMarkmap, 200);
           return;
         }
 
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Dependencies ready' }));
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Ready to render. Toolbar: ' + isToolbarReady }));
 
         const { Transformer } = markmap;
         const Markmap = (markmapView && markmapView.Markmap) || markmap.Markmap;
-        const { Toolbar } = markmapToolbar;
-
-        if (!Markmap || !Transformer || !Toolbar) {
-          throw new Error('Could not find Markmap, Transformer or Toolbar in globals');
+        
+        if (!Markmap || !Transformer) {
+          throw new Error('Markmap or Transformer not found');
         }
 
         const markdown = \`${markdownInJs}\`;
-
         const transformer = new Transformer();
         const { root } = transformer.transform(markdown);
 
@@ -195,14 +199,22 @@ export default function MindmapScreen() {
           pan: true,
         }, root);
 
-        // Add Toolbar
-        const toolbar = Toolbar.create(mm);
-        toolbar.attach(document.body);
+        // Add Toolbar if available
+        const Toolbar = (markmapToolbar && markmapToolbar.Toolbar) || (markmap && markmap.toolbar && markmap.toolbar.Toolbar);
+        if (Toolbar) {
+          try {
+            const toolbar = Toolbar.create(mm);
+            toolbar.attach(document.body);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Toolbar attached' }));
+          } catch (e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Toolbar error: ' + e.message }));
+          }
+        }
 
         // Auto-fit on load
         setTimeout(() => {
           mm.fit();
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered and fitted' }));
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered' }));
         }, 200);
 
         // Handle window resize
