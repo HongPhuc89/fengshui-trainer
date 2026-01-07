@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CACHE_DIR = FileSystem.documentDirectory + 'pdf_cache/';
 const METADATA_KEY = '@pdf_cache:metadata';
+const MAX_CACHED_FILES = 10; // Giới hạn 10 files để tránh app quá nặng
 
 interface CacheMetadata {
   [fileId: string]: {
@@ -11,6 +12,7 @@ interface CacheMetadata {
     localPath: string;
     updatedAt: string;
     downloadedAt: string;
+    lastAccessedAt: string; // Track last access for LRU
     size: number;
   };
 }
@@ -74,6 +76,36 @@ class OfflineCacheService {
     }
   }
 
+  private async evictOldFiles(metadata: CacheMetadata): Promise<void> {
+    const files = Object.values(metadata);
+
+    if (files.length <= MAX_CACHED_FILES) {
+      return; // No need to evict
+    }
+
+    // Sort by lastAccessedAt (oldest first)
+    const sortedFiles = files.sort(
+      (a, b) => new Date(a.lastAccessedAt).getTime() - new Date(b.lastAccessedAt).getTime(),
+    );
+
+    // Calculate how many to remove
+    const toRemove = files.length - MAX_CACHED_FILES;
+    const filesToDelete = sortedFiles.slice(0, toRemove);
+
+    console.log(`[OfflineCache] Evicting ${toRemove} old files to maintain ${MAX_CACHED_FILES} file limit`);
+
+    // Delete files
+    for (const file of filesToDelete) {
+      try {
+        await FileSystem.deleteAsync(file.localPath, { idempotent: true });
+        delete metadata[file.fileId];
+        console.log('[OfflineCache] Evicted:', file.fileName);
+      } catch (error) {
+        console.warn('[OfflineCache] Failed to evict file:', error);
+      }
+    }
+  }
+
   async cacheFile(fileUrl: string, fileId: number, fileName: string, updatedAt: Date): Promise<string> {
     try {
       await this.ensureCacheDir();
@@ -115,8 +147,12 @@ class OfflineCacheService {
         localPath,
         updatedAt: updatedAt.toISOString(),
         downloadedAt: new Date().toISOString(),
+        lastAccessedAt: new Date().toISOString(),
         size,
       };
+
+      // Evict old files if cache is too large
+      await this.evictOldFiles(metadata);
 
       await this.saveMetadata(metadata);
 
@@ -135,6 +171,11 @@ class OfflineCacheService {
 
       if (isValid) {
         const metadata = await this.loadMetadata();
+
+        // Update lastAccessedAt for LRU tracking
+        metadata[fileId].lastAccessedAt = new Date().toISOString();
+        await this.saveMetadata(metadata);
+
         console.log('[OfflineCache] Using cached file');
         return metadata[fileId].localPath;
       }

@@ -22,6 +22,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
   const [isReady, setIsReady] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const pdfRef = useRef<any>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { progress, saveProgress } = useReadingProgress(chapterId);
 
   // Wait for progress to load before rendering PDF
@@ -49,6 +50,15 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
     setIsReady(false); // Reset ready flag when file changes
     setIsInitialLoad(true); // Reset initial load flag
   }, [fileUrl, fileId, fileUpdatedAt]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadFile = async () => {
     // If we have fileId and updatedAt, try to cache file in background
@@ -108,15 +118,22 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
 
     setCurrentPage(page);
 
-    // Calculate scroll position based on page number
-    const scrollPosition = page / numberOfPages;
-    saveProgress({ scrollPosition });
-
-    // Mark as completed when reaching last page
-    if (page === numberOfPages) {
-      console.log('[ChapterFileViewer] Reached last page, marking as completed');
-      saveProgress({ scrollPosition: 1.0, completed: true });
+    // Debounce save to reduce stuttering
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      // Calculate scroll position based on page number
+      const scrollPosition = page / numberOfPages;
+      saveProgress({ scrollPosition });
+
+      // Mark as completed when reaching last page
+      if (page === numberOfPages) {
+        console.log('[ChapterFileViewer] Reached last page, marking as completed');
+        saveProgress({ scrollPosition: 1.0, completed: true });
+      }
+    }, 500); // Wait 500ms after user stops scrolling
   };
 
   const handleError = (error: any) => {
@@ -125,8 +142,10 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
     setError('Không thể tải PDF. Vui lòng thử mở bằng ứng dụng khác.');
   };
 
-  // Use remote URL (don't use cached file for now to avoid issues)
-  const pdfSource = { uri: fileUrl, cache: true };
+  // Use cached file if available (offline-first), otherwise use remote URL
+  const pdfSource = cachedFilePath ? { uri: cachedFilePath, cache: true } : { uri: fileUrl, cache: true };
+
+  console.log('[ChapterFileViewer] PDF source:', cachedFilePath ? 'CACHED' : 'REMOTE', pdfSource.uri);
 
   return (
     <View style={styles.container}>
@@ -160,10 +179,14 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
           onError={handleError}
           style={styles.pdf}
           trustAllCerts={false}
-          enablePaging={true}
+          enablePaging={false}
           horizontal={false}
-          spacing={10}
+          spacing={0}
           fitPolicy={0}
+          enableAntialiasing={true}
+          onPageSingleTap={(page) => {
+            console.log('[ChapterFileViewer] Page tapped:', page);
+          }}
         />
       )}
 
