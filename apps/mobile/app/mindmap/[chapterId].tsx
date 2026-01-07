@@ -93,7 +93,7 @@ export default function MindmapScreen() {
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * {
       margin: 0;
@@ -104,6 +104,8 @@ export default function MindmapScreen() {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       overflow: hidden;
+      width: 100vw;
+      height: 100vh;
     }
     #mindmap {
       width: 100vw;
@@ -131,49 +133,90 @@ export default function MindmapScreen() {
       stroke: rgba(255, 255, 255, 0.6);
       stroke-width: 2;
     }
+    .markmap-toolbar {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
   <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.18"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-toolbar@0.18"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-toolbar@0.18/dist/style.css">
 </head>
 <body>
   <svg id="mindmap"></svg>
   <script>
     try {
-      const { Transformer } = window.markmap;
-      const { Markmap } = window.markmapView;
+      function startMarkmap() {
+        const markmap = window.markmap;
+        const markmapView = window.markmapView;
+        const markmapToolbar = window.markmapToolbar;
+        
+        if (!markmap || (!markmapView && !markmap.Markmap) || !markmapToolbar) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ 
+            type: 'log', 
+            message: 'Waiting for markmap dependencies...' 
+          }));
+          setTimeout(startMarkmap, 100);
+          return;
+        }
 
-      const markdown = \`${markdownInJs}\`;
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Dependencies ready' }));
 
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Starting transformation' }));
+        const { Transformer } = markmap;
+        const Markmap = (markmapView && markmapView.Markmap) || markmap.Markmap;
+        const { Toolbar } = markmapToolbar;
 
-      const transformer = new Transformer();
-      const { root } = transformer.transform(markdown);
+        if (!Markmap || !Transformer || !Toolbar) {
+          throw new Error('Could not find Markmap, Transformer or Toolbar in globals');
+        }
 
-      const svg = document.getElementById('mindmap');
-      const mm = Markmap.create(svg, {
-        color: (node) => {
-          const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-          return colors[node.depth % colors.length];
-        },
-        duration: 500,
-        maxWidth: 300,
-        paddingX: 20,
-        autoFit: true,
-        zoom: true,
-        pan: true,
-      }, root);
+        const markdown = \`${markdownInJs}\`;
 
-      // Auto-fit on load
-      setTimeout(() => {
-        mm.fit();
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered and fitted' }));
-      }, 200);
+        const transformer = new Transformer();
+        const { root } = transformer.transform(markdown);
 
-      // Handle window resize
-      window.addEventListener('resize', () => {
-        mm.fit();
-      });
+        const svg = document.getElementById('mindmap');
+        const mm = Markmap.create(svg, {
+          color: (node) => {
+            const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+            return colors[node.depth % colors.length];
+          },
+          duration: 500,
+          maxWidth: 300,
+          paddingX: 20,
+          autoFit: true,
+          zoom: true,
+          pan: true,
+        }, root);
+
+        // Add Toolbar
+        const toolbar = Toolbar.create(mm);
+        toolbar.attach(document.body);
+
+        // Auto-fit on load
+        setTimeout(() => {
+          mm.fit();
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered and fitted' }));
+        }, 200);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+          mm.fit();
+        });
+      }
+
+      // Start the initialization
+      if (document.readyState === 'complete') {
+        startMarkmap();
+      } else {
+        window.addEventListener('load', startMarkmap);
+      }
     } catch (e) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: e.message, stack: e.stack }));
     }
