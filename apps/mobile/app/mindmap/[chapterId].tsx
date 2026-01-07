@@ -25,6 +25,7 @@ export default function MindmapScreen() {
     try {
       setLoading(true);
       setError(null);
+      console.log('🗺️ Fetching mindmap for book:', bookId, 'chapter:', chapterId);
       const data = await mindMapService.getMindMapByChapter(Number(bookId), Number(chapterId));
 
       if (data.markdown_content) {
@@ -39,7 +40,7 @@ export default function MindmapScreen() {
       console.error('Error fetching mindmap:', err);
 
       if (err.response?.status === 404) {
-        setError('Chưa có mindmap cho chương này.\\nVui lòng tạo mindmap trong trang Admin.');
+        setError('Chưa có mindmap cho chương này.\nVui lòng tạo mindmap trong trang Admin.');
       } else if (err.response?.status === 403) {
         setError('Mindmap chưa được kích hoạt hoặc sách chưa được xuất bản.');
       } else {
@@ -54,7 +55,7 @@ export default function MindmapScreen() {
   const convertStructureToMarkdown = (structure: any): string => {
     if (!structure) return '# No Content';
 
-    let markdown = `# ${structure.centerNode?.text || 'Main Topic'}\\n\\n`;
+    let markdown = `# ${structure.centerNode?.text || 'Main Topic'}\n\n`;
 
     if (structure.nodes && structure.nodes.length > 0) {
       const nodesByParent = new Map<string, any[]>();
@@ -72,7 +73,7 @@ export default function MindmapScreen() {
         children.forEach((node: any) => {
           const prefix = level === 2 ? '##' : '-';
           const indent = level > 2 ? '  '.repeat(level - 3) : '';
-          markdown += `${indent}${prefix} ${node.text}\\n`;
+          markdown += `${indent}${prefix} ${node.text}\n`;
           renderNodes(node.id, level + 1);
         });
       };
@@ -84,6 +85,9 @@ export default function MindmapScreen() {
   };
 
   const generateMarkmapHTML = (markdown: string) => {
+    const sanitizedMarkdown = markdown.replace(/\r/g, '');
+    const markdownInJs = sanitizedMarkdown.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
     return `
 <!DOCTYPE html>
 <html>
@@ -135,37 +139,44 @@ export default function MindmapScreen() {
 <body>
   <svg id="mindmap"></svg>
   <script>
-    const { Transformer } = window.markmap;
-    const { Markmap, loadCSS, loadJS } = window.markmapView;
+    try {
+      const { Transformer } = window.markmap;
+      const { Markmap } = window.markmapView;
 
-    const markdown = \`${markdown.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
+      const markdown = \`${markdownInJs}\`;
 
-    const transformer = new Transformer();
-    const { root, features } = transformer.transform(markdown);
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Starting transformation' }));
 
-    const svg = document.getElementById('mindmap');
-    const mm = Markmap.create(svg, {
-      color: (node) => {
-        const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-        return colors[node.depth % colors.length];
-      },
-      duration: 500,
-      maxWidth: 300,
-      paddingX: 20,
-      autoFit: true,
-      zoom: true,
-      pan: true,
-    }, root);
+      const transformer = new Transformer();
+      const { root } = transformer.transform(markdown);
 
-    // Auto-fit on load
-    setTimeout(() => {
-      mm.fit();
-    }, 100);
+      const svg = document.getElementById('mindmap');
+      const mm = Markmap.create(svg, {
+        color: (node) => {
+          const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+          return colors[node.depth % colors.length];
+        },
+        duration: 500,
+        maxWidth: 300,
+        paddingX: 20,
+        autoFit: true,
+        zoom: true,
+        pan: true,
+      }, root);
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      mm.fit();
-    });
+      // Auto-fit on load
+      setTimeout(() => {
+        mm.fit();
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered and fitted' }));
+      }, 200);
+
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        mm.fit();
+      });
+    } catch (e) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: e.message, stack: e.stack }));
+    }
   </script>
 </body>
 </html>
@@ -230,6 +241,18 @@ export default function MindmapScreen() {
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'log') {
+              console.log('🌐 [WebView Log]:', data.message);
+            } else if (data.type === 'error') {
+              console.error('🌐 [WebView Error]:', data.message, data.stack);
+            }
+          } catch (e) {
+            console.log('🌐 [WebView Message]:', event.nativeEvent.data);
+          }
+        }}
         renderLoading={() => (
           <View style={styles.webviewLoading}>
             <ActivityIndicator size="large" color="#667eea" />
