@@ -20,11 +20,11 @@ install: ## Install all dependencies
 	npm install
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
-dev: ## Run Flutter mobile app
+dev: ## Run mobile app (React Native)
 	@echo "$(CYAN)Starting backend...$(NC)"
 	npm run backend:dev
-	@echo "$(CYAN)Starting Flutter mobile app...$(NC)"
-	cd apps/mobile_flutter && flutter run -d web-server --web-port 5000
+	@echo "$(CYAN)Starting mobile app...$(NC)"
+	cd apps/mobile && npm start
 
 backend: ## Run backend only
 	@echo "$(CYAN)Starting backend...$(NC)"

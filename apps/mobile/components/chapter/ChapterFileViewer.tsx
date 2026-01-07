@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking, Platform } from 'react-native';
+import Pdf from 'react-native-pdf';
 import { useReadingProgress } from '../../hooks/useReadingProgress';
 import { offlineCacheService } from '../../services/offline-cache/offline-cache.service';
 
@@ -17,30 +17,38 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
   const [error, setError] = useState<string | null>(null);
   const [cachedFilePath, setCachedFilePath] = useState<string | null>(null);
   const [caching, setCaching] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isReady, setIsReady] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const pdfRef = useRef<any>(null);
   const { progress, saveProgress } = useReadingProgress(chapterId);
+
+  // Wait for progress to load before rendering PDF
+  useEffect(() => {
+    if (progress !== null) {
+      // Progress loaded (either has data or confirmed no data)
+      if (progress.scrollPosition > 0 && totalPages > 0) {
+        // Calculate initial page from saved progress BEFORE rendering PDF
+        const initialPage = Math.max(1, Math.floor(progress.scrollPosition * totalPages));
+        console.log(
+          '[ChapterFileViewer] 📊 Calculating initial page:',
+          initialPage,
+          'from position:',
+          progress.scrollPosition,
+        );
+        setCurrentPage(initialPage);
+      }
+      setIsReady(true);
+    }
+  }, [progress, totalPages]);
 
   // Load cached file or use URL
   useEffect(() => {
     loadFile();
+    setIsReady(false); // Reset ready flag when file changes
+    setIsInitialLoad(true); // Reset initial load flag
   }, [fileUrl, fileId, fileUpdatedAt]);
-
-  // Auto-scroll to last position when progress loads
-  useEffect(() => {
-    if (progress && progress.scrollPosition > 0 && webViewRef.current) {
-      setTimeout(() => {
-        const scrollScript = `
-          window.scrollTo({
-            top: document.documentElement.scrollHeight * ${progress.scrollPosition},
-            behavior: 'smooth'
-          });
-          true;
-        `;
-        webViewRef.current?.injectJavaScript(scrollScript);
-        console.log('[ChapterFileViewer] Auto-scrolled to:', Math.round(progress.scrollPosition * 100) + '%');
-      }, 2000); // Wait longer for Google Docs Viewer to load
-    }
-  }, [progress, loading]);
 
   const loadFile = async () => {
     // If we have fileId and updatedAt, try to cache file in background
@@ -51,7 +59,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
 
         if (localPath) {
           setCachedFilePath(localPath);
-          console.log('[ChapterFileViewer] File cached for offline use');
+          console.log('[ChapterFileViewer] File cached for offline use:', localPath);
         }
       } catch (error) {
         console.error('[ChapterFileViewer] Failed to cache file:', error);
@@ -65,58 +73,60 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
     Linking.openURL(fileUrl);
   };
 
-  // Inject JavaScript to track scroll position
-  const injectedJavaScript = `
-    (function() {
-      let lastScrollPosition = 0;
-      let scrollTimeout;
+  const handleLoadComplete = (numberOfPages: number, filePath: string) => {
+    console.log('[ChapterFileViewer] PDF loaded:', numberOfPages, 'pages');
+    console.log('[ChapterFileViewer] Current progress:', progress);
 
-      console.log('[WebView] Scroll tracking initialized');
+    setLoading(false);
+    setTotalPages(numberOfPages);
+    setError(null);
 
-      window.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        
-        scrollTimeout = setTimeout(() => {
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          const scrollHeight = document.documentElement.scrollHeight;
-          const clientHeight = document.documentElement.clientHeight;
-          const scrollPercent = scrollTop / (scrollHeight - clientHeight);
-          
-          if (Math.abs(scrollPercent - lastScrollPosition) > 0.01) {
-            lastScrollPosition = scrollPercent;
-            console.log('[WebView] Scroll:', Math.round(scrollPercent * 100) + '%');
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'scroll',
-              position: scrollPercent
-            }));
-          }
-        }, 500);
-      });
-      
-      true;
-    })();
-  `;
+    // Calculate and set initial page
+    if (progress && progress.scrollPosition > 0) {
+      const savedPage = Math.max(1, Math.floor(progress.scrollPosition * numberOfPages));
+      console.log('[ChapterFileViewer] 🎯 Setting initial page:', savedPage, '/', numberOfPages);
+      setCurrentPage(savedPage);
 
-  const handleWebViewMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-
-      if (data.type === 'scroll') {
-        console.log('[ChapterFileViewer] Scroll event received:', Math.round(data.position * 100) + '%');
-        saveProgress({ scrollPosition: data.position });
-
-        if (data.position >= 0.9) {
-          saveProgress({ scrollPosition: 1.0, completed: true });
-        }
-      }
-    } catch (error) {
-      console.error('[ChapterFileViewer] Failed to parse message:', error);
+      // Allow page changes to be saved after a short delay
+      setTimeout(() => {
+        setIsInitialLoad(false);
+        console.log('[ChapterFileViewer] ✅ Initial load complete, now tracking changes');
+      }, 1000);
+    } else {
+      setIsInitialLoad(false);
     }
   };
 
-  // Always use Google Docs Viewer for scroll tracking support
-  // Even if file is cached, we still use remote URL for viewing
-  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  const handlePageChanged = (page: number, numberOfPages: number) => {
+    console.log('[ChapterFileViewer] Page changed:', page, '/', numberOfPages, '| isInitialLoad:', isInitialLoad);
+
+    // Skip saving during initial load
+    if (isInitialLoad) {
+      console.log('[ChapterFileViewer] ⏭️ Skipping save during initial load');
+      return;
+    }
+
+    setCurrentPage(page);
+
+    // Calculate scroll position based on page number
+    const scrollPosition = page / numberOfPages;
+    saveProgress({ scrollPosition });
+
+    // Mark as completed when reaching last page
+    if (page === numberOfPages) {
+      console.log('[ChapterFileViewer] Reached last page, marking as completed');
+      saveProgress({ scrollPosition: 1.0, completed: true });
+    }
+  };
+
+  const handleError = (error: any) => {
+    console.error('[ChapterFileViewer] PDF error:', error);
+    setLoading(false);
+    setError('Không thể tải PDF. Vui lòng thử mở bằng ứng dụng khác.');
+  };
+
+  // Use remote URL (don't use cached file for now to avoid issues)
+  const pdfSource = { uri: fileUrl, cache: true };
 
   return (
     <View style={styles.container}>
@@ -139,46 +149,37 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
         </View>
       )}
 
-      <WebView
-        ref={webViewRef}
-        source={{ uri: viewerUrl }}
-        style={styles.webview}
-        onLoadStart={() => {
-          console.log('[ChapterFileViewer] Loading PDF:', fileName);
-          setLoading(true);
-        }}
-        onLoadEnd={() => {
-          console.log('[ChapterFileViewer] PDF loaded successfully');
-          setLoading(false);
-        }}
-        onError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.error('[ChapterFileViewer] WebView error:', nativeEvent);
-          setLoading(false);
-          setError('Không thể tải file. Vui lòng thử mở bằng ứng dụng khác.');
-        }}
-        onHttpError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.error('[ChapterFileViewer] HTTP error:', nativeEvent.statusCode);
-          setLoading(false);
-          setError(`Lỗi tải file (${nativeEvent.statusCode}). Vui lòng thử lại.`);
-        }}
-        onMessage={handleWebViewMessage}
-        injectedJavaScript={injectedJavaScript}
-        startInLoadingState={true}
-        scalesPageToFit={true}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        allowFileAccess={true}
-        allowUniversalAccessFromFileURLs={true}
-        mixedContentMode="always"
-        originWhitelist={['*']}
-      />
+      {!error && isReady && (
+        <Pdf
+          ref={pdfRef}
+          key={`pdf-${chapterId}-${fileUrl}`}
+          source={pdfSource}
+          page={currentPage}
+          onLoadComplete={handleLoadComplete}
+          onPageChanged={handlePageChanged}
+          onError={handleError}
+          style={styles.pdf}
+          trustAllCerts={false}
+          enablePaging={true}
+          horizontal={false}
+          spacing={10}
+          fitPolicy={0}
+        />
+      )}
 
       {/* Progress indicator */}
-      {!loading && progress && progress.scrollPosition > 0 && (
+      {!loading && totalPages > 0 && (
         <View style={styles.progressIndicator}>
-          <View style={[styles.progressBar, { width: `${progress.scrollPosition * 100}%` }]} />
+          <View style={[styles.progressBar, { width: `${(currentPage / totalPages) * 100}%` }]} />
+        </View>
+      )}
+
+      {/* Page counter */}
+      {!loading && totalPages > 0 && (
+        <View style={styles.pageCounter}>
+          <Text style={styles.pageCounterText}>
+            {currentPage} / {totalPages}
+          </Text>
         </View>
       )}
 
@@ -186,7 +187,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
       <View style={styles.floatingButtons}>
         {cachedFilePath && (
           <View style={styles.cachedBadge}>
-            <Text style={styles.cachedBadgeText}>📥 Cached</Text>
+            <Text style={styles.cachedBadgeText}>📥 Offline</Text>
           </View>
         )}
         <TouchableOpacity onPress={handleOpenExternal} style={styles.floatingButton}>
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1f3a',
   },
-  webview: {
+  pdf: {
     flex: 1,
     backgroundColor: '#fff',
   },
@@ -267,6 +268,20 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     backgroundColor: '#F59E0B',
+  },
+  pageCounter: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  pageCounterText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   floatingButtons: {
     position: 'absolute',

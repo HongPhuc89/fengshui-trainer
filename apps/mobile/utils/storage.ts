@@ -32,7 +32,21 @@ class UniversalStorage {
       }
     } else {
       // Native: use AsyncStorage
-      return AsyncStorage.getItem(key);
+      try {
+        console.log('📖 AsyncStorage.getItem:', key);
+        const result = await AsyncStorage.getItem(key);
+        console.log('📄 Result:', result ? `Found (${result.length} chars)` : 'Not found');
+        return result;
+      } catch (error: any) {
+        console.error('❌ AsyncStorage.getItem error:', error);
+        console.error('📍 Error details:', {
+          message: error?.message || 'Unknown error',
+          stack: error?.stack || 'No stack trace',
+          key,
+          platform: Platform.OS,
+        });
+        return null;
+      }
     }
   }
 
@@ -54,7 +68,29 @@ class UniversalStorage {
       }
     } else {
       // Native: use AsyncStorage
-      await AsyncStorage.setItem(key, value);
+      try {
+        console.log('💾 AsyncStorage.setItem START:', key);
+        console.log('📦 Value length:', value.length);
+        await AsyncStorage.setItem(key, value);
+        console.log('✅ AsyncStorage.setItem SUCCESS');
+
+        // Verification step
+        const verification = await AsyncStorage.getItem(key);
+        console.log('🔍 Verification:', verification ? 'SAVED' : 'FAILED');
+        if (!verification) {
+          console.error('❌ CRITICAL: Data not found after save!');
+        } else {
+          console.log('📄 Verified data length:', verification.length);
+        }
+      } catch (error: any) {
+        console.error('❌ AsyncStorage.setItem error:', error);
+        console.error('📍 Error details:', {
+          message: error?.message || 'Unknown error',
+          stack: error?.stack || 'No stack trace',
+          key,
+          platform: Platform.OS,
+        });
+      }
     }
   }
 

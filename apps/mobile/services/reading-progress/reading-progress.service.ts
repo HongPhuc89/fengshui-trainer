@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { apiClient } from '../../modules/shared/services/api/client';
 
 const STORAGE_PREFIX = '@reading_progress:';
@@ -15,7 +16,10 @@ class ReadingProgressService {
   // Save to AsyncStorage immediately (local)
   async saveLocal(chapterId: number, progress: Partial<ReadingProgress>): Promise<void> {
     try {
+      console.log('[ReadingProgress] 🔧 Platform:', Platform.OS);
       const key = `${STORAGE_PREFIX}${chapterId}`;
+      console.log('[ReadingProgress] 💾 Saving to key:', key);
+
       const existing = await this.getLocal(chapterId);
 
       const updated: ReadingProgress = {
@@ -26,10 +30,27 @@ class ReadingProgressService {
         lastReadAt: new Date(),
       };
 
+      console.log('[ReadingProgress] 📦 Data to save:', JSON.stringify(updated));
       await AsyncStorage.setItem(key, JSON.stringify(updated));
+
+      // Verification step
+      const verification = await AsyncStorage.getItem(key);
+      console.log('[ReadingProgress] ✅ Verification - Data saved:', verification ? 'YES' : 'NO');
+      if (verification) {
+        console.log('[ReadingProgress] 📄 Saved data:', verification);
+      } else {
+        console.error('[ReadingProgress] ❌ CRITICAL: Data not found after save!');
+      }
+
       console.log('[ReadingProgress] Saved locally:', chapterId, updated.scrollPosition);
-    } catch (error) {
-      console.error('[ReadingProgress] Failed to save local:', error);
+    } catch (error: any) {
+      console.error('[ReadingProgress] ❌ Save failed');
+      console.error('[ReadingProgress] 📍 Error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace',
+        chapterId,
+        platform: Platform.OS,
+      });
     }
   }
 
@@ -37,16 +58,31 @@ class ReadingProgressService {
   async getLocal(chapterId: number): Promise<ReadingProgress | null> {
     try {
       const key = `${STORAGE_PREFIX}${chapterId}`;
+      console.log('[ReadingProgress] 📖 Getting from key:', key);
+
       const data = await AsyncStorage.getItem(key);
+      console.log('[ReadingProgress] 📄 Raw data:', data ? `Found (${data.length} chars)` : 'Not found');
 
       if (!data) return null;
 
       const progress = JSON.parse(data);
       progress.lastReadAt = new Date(progress.lastReadAt);
 
+      console.log('[ReadingProgress] ✅ Parsed progress:', {
+        chapterId: progress.chapterId,
+        scrollPosition: progress.scrollPosition,
+        completed: progress.completed,
+      });
+
       return progress;
-    } catch (error) {
-      console.error('[ReadingProgress] Failed to get local:', error);
+    } catch (error: any) {
+      console.error('[ReadingProgress] ❌ Failed to get local');
+      console.error('[ReadingProgress] 📍 Error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace',
+        chapterId,
+        platform: Platform.OS,
+      });
       return null;
     }
   }
