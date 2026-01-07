@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { mindmapService } from '../../services/api/mindmap.service';
+import { mindMapService } from '../../modules/shared/services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,7 +25,7 @@ export default function MindmapScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await mindmapService.getMindmapByChapter(Number(bookId), Number(chapterId));
+      const data = await mindMapService.getMindMapByChapter(Number(bookId), Number(chapterId));
 
       if (data.markdown_content) {
         setMarkdownContent(data.markdown_content);
