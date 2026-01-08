@@ -115,7 +115,7 @@ jobs:
           echo "Commit: $COMMIT_HASH"
 
           # Create required directories on VPS
-          ssh $VPS_USER@$VPS_HOST "mkdir -p $VPS_DIR/backups $VPS_DIR/apps/backend $VPS_DIR/config"
+          ssh $VPS_USER@$VPS_HOST "mkdir -p $VPS_DIR/backups $VPS_DIR/apps/backend $VPS_DIR/config $VPS_DIR/logs"
 
           # Backup current deployment
           ssh $VPS_USER@$VPS_HOST "
