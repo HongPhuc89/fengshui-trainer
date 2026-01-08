@@ -37,6 +37,11 @@ export function useBookDetail(bookId: string | string[]) {
         booksService.getChaptersByBookId(id),
       ]);
 
+      // Map cover_file.path to coverImage for easier access
+      if (bookData.cover_file?.path && !bookData.coverImage) {
+        bookData.coverImage = bookData.cover_file.path;
+      }
+
       setBook(bookData);
       setChapters(chaptersData);
 
