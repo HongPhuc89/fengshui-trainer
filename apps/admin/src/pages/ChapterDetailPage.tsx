@@ -9,6 +9,7 @@ import { MindMapTab } from '../components/MindMapTab';
 import { FlashcardsTab } from '../components/FlashcardsTab';
 import { ChapterInfoTab } from '../components/ChapterInfoTab';
 import { QuizConfigTab } from '../components/QuizConfigTab';
+import { ReadChapterTab } from '../components/ReadChapterTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -21,6 +22,14 @@ interface Chapter {
   order_index: number;
   status: string;
   points: number;
+  file_id?: number | null;
+  file?: {
+    id: number;
+    original_name: string;
+    path: string;
+    size: number;
+    mimetype: string;
+  } | null;
   created_at: string;
   updated_at: string;
 }
@@ -122,6 +131,7 @@ export const ChapterDetailPage = () => {
 
         <Tabs value={tabValue} onChange={(_e, v) => setTabValue(v)}>
           <Tab label="Chapter Details" />
+          <Tab label="Read Chapter" />
           <Tab label="Flashcards" />
           <Tab label="Quiz Questions" />
           <Tab label="Quiz Config" />
@@ -133,6 +143,10 @@ export const ChapterDetailPage = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
+          <ReadChapterTab file={chapter.file} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
           <FlashcardsTab
             bookId={Number(bookId)}
             chapterId={Number(chapterId)}
@@ -145,15 +159,15 @@ export const ChapterDetailPage = () => {
           />
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={3}>
           <QuizQuestionsTab chapterId={Number(chapterId)} />
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <QuizConfigTab chapterId={Number(chapterId)} />
         </TabPanel>
 
-        <TabPanel value={tabValue} index={4}>
+        <TabPanel value={tabValue} index={5}>
           <MindMapTab chapterId={Number(chapterId)} />
         </TabPanel>
       </CardContent>

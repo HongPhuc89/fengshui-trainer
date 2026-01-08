@@ -9,6 +9,9 @@ class ApiClient {
   private instance: AxiosInstance;
 
   constructor() {
+    console.log('🌐 [API Client] Initializing with base URL:', API_BASE_URL);
+    console.log('📍 [API Client] Environment:', process.env.EXPO_PUBLIC_ENV || 'unknown');
+
     this.instance = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
@@ -37,6 +40,15 @@ class ApiClient {
     this.instance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
+        // Log detailed error information
+        console.error('❌ [API Client] Request failed:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          message: error.message,
+          data: error.response?.data,
+        });
+
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && originalRequest) {

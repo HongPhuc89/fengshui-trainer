@@ -84,7 +84,25 @@ export const QuizConfigTab: React.FC<QuizConfigTabProps> = ({ chapterId }) => {
       );
       setConfig(response.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create default configuration');
+      // If API fails, set default values in UI so user can edit and save
+      setConfig({
+        id: 0,
+        chapter_id: chapterId,
+        title: 'Quiz Chapter',
+        description: '',
+        questions_per_quiz: 10,
+        time_limit_minutes: 30,
+        passing_score_percentage: 70,
+        easy_percentage: 40,
+        medium_percentage: 40,
+        hard_percentage: 20,
+        is_active: true,
+        shuffle_questions: true,
+        shuffle_options: true,
+        show_results_immediately: true,
+        max_attempts: 0,
+      });
+      setError('Không tìm thấy cấu hình. Đã tạo cấu hình mặc định. Vui lòng lưu lại.');
     }
   };
 

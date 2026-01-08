@@ -1,6 +1,7 @@
 import { BaseEntity } from '../../typeorm/base.entity';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Book } from './book.entity';
+import { UploadedFile } from '../../upload/entities/uploaded-file.entity';
 
 @Entity('chapters')
 export class Chapter extends BaseEntity {
@@ -25,4 +26,11 @@ export class Chapter extends BaseEntity {
 
   @Column({ type: 'int', default: 0 })
   points: number;
+
+  @Column({ name: 'file_id', nullable: true })
+  file_id: number | null;
+
+  @ManyToOne(() => UploadedFile, { nullable: true })
+  @JoinColumn({ name: 'file_id' })
+  file: UploadedFile | null;
 }

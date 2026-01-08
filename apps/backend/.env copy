@@ -1,0 +1,24 @@
+DB_HOST=db.ppjcqetlikzvvoblnybe.supabase.co
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=ChuyenSPK38
+DB_DATABASE=postgres
+
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRES_IN=7d
+REFRESH_TOKEN_SECRET=your-refresh-secret-key-here
+REFRESH_TOKEN_EXPIRES_IN=30d
+
+APP_PORT=3000
+APP_PREFIX=api
+APP_ENV=development
+
+# Supabase Configuration
+SUPABASE_URL=https://ppjcqetlikzvvoblnybe.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwamNxZXRsaWt6dnZvYmxueWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNzM0NzYsImV4cCI6MjA3OTc0OTQ3Nn0.KWgy8z8yASv8K1XKY2wdIDiovsZIvTWyYZhKnkIoU4k
+SUPABASE_BUCKET=books
+
+# Firebase Configuration (Optional - for Firebase deployment)
+FIREBASE_PROJECT_ID=fengshui-trainer8x
+FIREBASE_PRIVATE_KEY=fengshui-trainer8x-firebase-adminsdk-fbsvc-ce5c8c938f.json
+FIREBASE_CLIENT_EMAIL=hongphuc889@gmail.com

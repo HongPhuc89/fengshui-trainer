@@ -7,7 +7,7 @@ set -e
 
 ENVIRONMENT=${1:-production}
 BUILD_DIR="apps/backend/dist"
-DEPLOY_DIR="/var/www/quiz-game/current"
+VPS_DIR="/var/www/quiz-game/current"
 
 echo "🚀 Starting deployment for environment: $ENVIRONMENT"
 
@@ -36,16 +36,17 @@ echo ""
 echo "📝 Next steps:"
 echo ""
 echo "1. Copy files to server:"
-echo "   rsync -avz --delete $BUILD_DIR/ user@server:$DEPLOY_DIR/dist/"
-echo "   rsync -avz apps/backend/package*.json user@server:$DEPLOY_DIR/"
+echo "   rsync -avz --delete $BUILD_DIR/ user@server:$VPS_DIR/dist/"
+echo "   rsync -avz apps/backend/package*.json user@server:$VPS_DIR/"
 echo ""
 echo "2. On the server, run:"
-echo "   cd $DEPLOY_DIR"
+echo "   cd $VPS_DIR"
 echo "   npm ci --production"
 echo "   npm run migration:run"
 echo "   pm2 restart quiz-game-api"
 echo ""
-echo "3. Or use the deployment guide in DEPLOYMENT.md"
+echo "3. Or use the deployment guide in documents/DEPLOYMENT_GUIDE.md
+"
 echo ""
 
 echo "✨ Deployment preparation complete!"

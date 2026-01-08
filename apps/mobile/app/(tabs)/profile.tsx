@@ -1,18 +1,41 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing } from '@/constants';
+import { useAuth } from '@/modules/shared/services/contexts/AuthContext';
 import { useProfileData } from '../../hooks/useProfileData';
 import { useProfile } from '../../hooks/useProfile';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { ProfileHeader, XPProgressCard, StatCard } from '../../components/profile';
 import { ProfileInfoSection } from '../../components/profile/ProfileInfoSection';
+import { CustomAlert } from '../../components/ui/CustomAlert';
 
 export default function ProfileScreen() {
+  const { logout } = useAuth();
   const { userName, currentLevel, nextLevel, totalXP, xpProgress } = useProfileData();
   const { profile, loading, error, refreshProfile } = useProfile();
   const { uploading, showAvatarOptions } = useAvatarUpload(refreshProfile);
+  const [showLogoutAlert, setShowLogoutAlert] = useState(false);
+
+  const handleLogout = () => {
+    setShowLogoutAlert(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutAlert(false);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Optionally, you could show another CustomAlert for the error here
+    }
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutAlert(false);
+  };
 
   if (loading) {
     return (
@@ -71,6 +94,12 @@ export default function ProfileScreen() {
           {/* Profile Info */}
           <ProfileInfoSection dateOfBirth={profile?.profile?.date_of_birth} gender={profile?.profile?.gender} />
 
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#ff6b6b" />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
+
           {uploading && (
             <View style={styles.uploadingOverlay}>
               <ActivityIndicator size="small" color="#FFD700" />
@@ -78,6 +107,19 @@ export default function ProfileScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* Custom Logout Alert */}
+        <CustomAlert
+          visible={showLogoutAlert}
+          title="Đăng xuất"
+          message="Bạn có chắc chắn muốn đăng xuất?"
+          icon="log-out-outline"
+          iconColor="#ff6b6b"
+          confirmText="Đăng xuất"
+          cancelText="Hủy"
+          onConfirm={confirmLogout}
+          onCancel={cancelLogout}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -131,5 +173,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: spacing.sm,
     fontSize: 14,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+    borderRadius: 12,
+    padding: spacing.md,
+    marginTop: spacing.xl,
+    gap: spacing.sm,
+  },
+  logoutText: {
+    color: '#ff6b6b',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

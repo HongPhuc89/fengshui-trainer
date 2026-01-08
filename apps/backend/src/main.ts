@@ -17,6 +17,25 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from './modules/core/config.service';
+import { execSync } from 'child_process';
+
+// Get git commit hash
+function getGitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
+// Get git branch
+function getGitBranch(): string {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
+  } catch (error) {
+    return 'unknown';
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -43,10 +62,16 @@ async function bootstrap() {
 
   app.setGlobalPrefix(prefix);
 
+  const gitHash = getGitHash();
+  const gitBranch = getGitBranch();
+  const version = `1.0.0 (${gitBranch}@${gitHash})`;
+
   const config = new DocumentBuilder()
     .setTitle('Quiz Game API')
-    .setDescription('Quiz Game Backend API Documentation')
-    .setVersion('1.0')
+    .setDescription(
+      `Quiz Game Backend API Documentation\n\n**Version:** ${version}\n**Commit:** ${gitHash}\n**Branch:** ${gitBranch}`,
+    )
+    .setVersion(version)
     .addBearerAuth()
     .build();
 

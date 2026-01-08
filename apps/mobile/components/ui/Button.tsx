@@ -48,14 +48,20 @@ export function Button({
       <TouchableOpacity
         onPress={onPress}
         disabled={disabled || loading}
-        style={[buttonStyles, { padding: 0 }]}
+        style={[
+          styles.button,
+          fullWidth && styles.fullWidth,
+          disabled && styles.disabled,
+          { padding: 0, overflow: 'hidden' },
+          style,
+        ]}
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#8B0000', '#B8860B']}
+          colors={['#DC143C', '#8B0000', '#B8860B']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.gradient, styles[`button_${size}`]]}
+          style={[styles.gradient, styles[`button_${size}`], fullWidth && { width: '100%' }]}
         >
           {content}
         </LinearGradient>

@@ -1,20 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSizes } from '@/constants';
 import { Book } from '@/modules/shared/services/api/types';
+import { imageCacheService } from '../../services/offline-cache/image-cache.service';
 
 interface BookHeaderCardProps {
   book: Book;
 }
 
 export function BookHeaderCard({ book }: BookHeaderCardProps) {
+  const [imageSource, setImageSource] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      if (book.coverImage) {
+        try {
+          setImageError(false);
+          const cachedPath = await imageCacheService.getImage(book.coverImage);
+          setImageSource(cachedPath);
+        } catch (error) {
+          console.error('[BookHeaderCard] Failed to load image:', error);
+          setImageError(true);
+        }
+      }
+      setImageLoading(false);
+    };
+
+    loadImage();
+  }, [book.coverImage]);
+
   return (
     <View style={styles.bookHeaderCard}>
       {/* Book Cover */}
       <View style={styles.coverContainer}>
-        {book.coverImage ? (
-          <Image source={{ uri: book.coverImage }} style={styles.cover} resizeMode="cover" />
+        {imageSource && !imageLoading && !imageError ? (
+          <Image
+            source={{ uri: imageSource }}
+            style={styles.cover}
+            resizeMode="cover"
+            onError={() => {
+              console.warn('[BookHeaderCard] Image failed to load');
+              setImageError(true);
+            }}
+          />
         ) : (
           <View style={styles.placeholderCover}>
             <Ionicons name="book" size={40} color="#6B7280" />

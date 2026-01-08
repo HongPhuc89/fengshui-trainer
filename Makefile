@@ -20,13 +20,11 @@ install: ## Install all dependencies
 	npm install
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
-dev: ## Run backend, admin, and mobile concurrently
-	@echo "$(CYAN)Starting all applications...$(NC)"
-	@echo "$(YELLOW)Backend:$(NC) http://localhost:3000"
-	@echo "$(YELLOW)Admin:$(NC)   http://localhost:5173"
-	@echo "$(YELLOW)Mobile:$(NC)  Expo DevTools"
-	@echo ""
-	npm run dev
+dev: ## Run mobile app (React Native)
+	@echo "$(CYAN)Starting backend...$(NC)"
+	npm run backend:dev
+	@echo "$(CYAN)Starting mobile app...$(NC)"
+	cd apps/mobile && npm start
 
 backend: ## Run backend only
 	@echo "$(CYAN)Starting backend...$(NC)"
@@ -36,9 +34,44 @@ admin: ## Run admin dashboard only
 	@echo "$(CYAN)Starting admin dashboard...$(NC)"
 	cd apps/admin && npm run dev
 
-mobile: ## Run mobile app only
+mobile: ## Run mobile app only (React Native)
 	@echo "$(CYAN)Starting mobile app...$(NC)"
 	cd apps/mobile && npm start
+
+flutter-web: ## Run Flutter web app
+	@echo "$(CYAN)Starting Flutter web app...$(NC)"
+	@echo "$(YELLOW)Flutter Web:$(NC) http://localhost:5000"
+	@echo ""
+	cd apps/mobile_flutter && flutter run -d web-server --web-port 5000
+
+flutter-mobile: ## Run Flutter mobile app
+	@echo "$(CYAN)Starting Flutter mobile app...$(NC)"
+	cd apps/mobile_flutter && flutter run
+
+flutter-clean: ## Clean Flutter build artifacts
+	@echo "$(CYAN)Cleaning Flutter build artifacts...$(NC)"
+	cd apps/mobile_flutter && flutter clean
+	@echo "$(GREEN)✓ Flutter cleaned$(NC)"
+
+flutter-pub-get: ## Install Flutter dependencies
+	@echo "$(CYAN)Installing Flutter dependencies...$(NC)"
+	cd apps/mobile_flutter && flutter pub get
+	@echo "$(GREEN)✓ Flutter dependencies installed$(NC)"
+
+flutter-format: ## Format all Flutter code
+	@echo "$(CYAN)Formatting Flutter code...$(NC)"
+	cd apps/mobile_flutter && dart format lib/ test/ --line-length 80
+	@echo "$(GREEN)✓ Flutter code formatted$(NC)"
+
+flutter-analyze: ## Analyze Flutter code
+	@echo "$(CYAN)Analyzing Flutter code...$(NC)"
+	cd apps/mobile_flutter && flutter analyze
+	@echo "$(GREEN)✓ Flutter analysis complete$(NC)"
+
+flutter-fix: ## Auto-fix Flutter code issues
+	@echo "$(CYAN)Auto-fixing Flutter code issues...$(NC)"
+	cd apps/mobile_flutter && dart fix --apply
+	@echo "$(GREEN)✓ Flutter fixes applied$(NC)"
 
 build: ## Build all applications
 	@echo "$(CYAN)Building all applications...$(NC)"

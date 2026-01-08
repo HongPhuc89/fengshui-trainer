@@ -33,7 +33,7 @@ export default function BookDetailScreen() {
     <LinearGradient colors={['#1a1f3a', '#2d1f3a', '#3a1f2d']} style={styles.container}>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
-        <BackHeader onBack={() => router.back()} />
+        <BackHeader onBack={() => router.push('/(tabs)')} />
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Book Header Card */}

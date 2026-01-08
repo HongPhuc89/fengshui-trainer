@@ -1,0 +1,161 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Get commit info
+        id: commit
+        run: |
+          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+
+      - name: Build backend
+        run: |
+          echo "🏗️ Building backend..."
+          cd apps/backend
+          npm run build
+
+          # Verify config directory exists in dist
+          if [ ! -d "dist/config" ]; then
+            echo "⚠️  Config directory not found in dist, copying..."
+            mkdir -p dist/config
+            cp -r ../../config/* dist/config/
+          fi
+      - name: Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          mkdir -p deploy-package
+
+          # Backend
+          cp -r apps/backend/dist deploy-package/backend-dist
+          cp apps/backend/package*.json deploy-package/
+          # Config
+          cp -r config deploy-package/
+
+          # PM2 config
+          cp ecosystem.config.js deploy-package/
+
+          echo "✅ Package created"
+          ls -la deploy-package/
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rsync built files to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_DIR: ${{ secrets.VPS_DIR }}
+          COMMIT_HASH: ${{ steps.commit.outputs.hash }}
+        run: |
+          echo "🚀 Deploying to VPS..."
+          echo "Commit: $COMMIT_HASH"
+
+          # Create backup directory on VPS
+          ssh $VPS_USER@$VPS_HOST "mkdir -p $VPS_DIR/backups"
+
+          # Backup current deployment
+          ssh $VPS_USER@$VPS_HOST "
+            if [ -d '$VPS_DIR/apps/backend/dist' ]; then
+              tar -czf $VPS_DIR/backups/backup-\$(date +%Y%m%d-%H%M%S).tar.gz \
+                -C $VPS_DIR apps/backend/dist 2>/dev/null || true
+              echo '📦 Backup created'
+            fi
+          "
+
+          # Rsync built files to VPS
+          echo "📤 Uploading backend..."
+          rsync -avz --delete deploy-package/backend-dist/ $VPS_USER@$VPS_HOST:$VPS_DIR/apps/backend/dist/
+          echo "📤 Uploading package files..."
+          rsync -avz deploy-package/package*.json $VPS_USER@$VPS_HOST:$VPS_DIR/apps/backend/
+          echo "📤 Uploading config..."
+          rsync -avz --delete deploy-package/config/ $VPS_USER@$VPS_HOST:$VPS_DIR/config/
+
+          echo "📤 Uploading PM2 config..."
+          rsync -avz deploy-package/ecosystem.config.js $VPS_USER@$VPS_HOST:$VPS_DIR/
+
+      - name: Install dependencies and restart services
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_DIR: ${{ secrets.VPS_DIR }}
+        run: |
+          ssh $VPS_USER@$VPS_HOST << 'ENDSSH'
+            set -e
+            cd ${{ secrets.VPS_DIR }}
+
+            echo "📝 Installing production dependencies..."
+            cd apps/backend
+            npm ci --production
+            cd ../..
+
+            echo "🔄 Restarting services..."
+            pm2 restart backend || pm2 start ecosystem.config.js --only backend
+
+            echo "✅ Deployment completed!"
+          ENDSSH
+
+      - name: Verify deployment
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          echo "🔍 Verifying deployment..."
+          ssh $VPS_USER@$VPS_HOST << 'ENDSSH'
+            pm2 list
+            echo ""
+            echo "📊 Recent logs:"
+            pm2 logs --lines 20 --nostream
+          ENDSSH
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment successful!"
+            echo "Commit: ${{ steps.commit.outputs.hash }}"
+          else
+            echo "❌ Deployment failed!"
+          fi

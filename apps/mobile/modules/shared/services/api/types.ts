@@ -73,10 +73,17 @@ export interface Chapter {
   content?: string;
   order: number;
   published: boolean;
+  file_id?: number | null;
+  file?: {
+    id: number;
+    original_name: string;
+    path: string;
+    size: number;
+    mimetype: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
-
 // Flashcard Types
 export interface Flashcard {
   id: number;
@@ -165,6 +172,7 @@ export interface MindMap {
   title: string;
   description?: string;
   structure: MindMapNode;
+  markdown_content?: string;
   createdAt: string;
   updatedAt: string;
 }

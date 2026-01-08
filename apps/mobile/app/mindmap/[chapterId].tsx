@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { mindmapService } from '../../services/api/mindmap.service';
+import { mindMapService } from '../../modules/shared/services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -14,6 +14,34 @@ export default function MindmapScreen() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+
+  const handleZoomIn = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.rescale(1.2);
+      }
+      true;
+    `);
+  };
+
+  const handleZoomOut = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.rescale(0.8);
+      }
+      true;
+    `);
+  };
+
+  const handleFit = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.fit();
+      }
+      true;
+    `);
+  };
 
   useEffect(() => {
     if (chapterId && bookId) {
@@ -25,7 +53,8 @@ export default function MindmapScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await mindmapService.getMindmapByChapter(Number(bookId), Number(chapterId));
+      console.log('🗺️ Fetching mindmap for book:', bookId, 'chapter:', chapterId);
+      const data = await mindMapService.getMindMapByChapter(Number(bookId), Number(chapterId));
 
       if (data.markdown_content) {
         setMarkdownContent(data.markdown_content);
@@ -39,7 +68,7 @@ export default function MindmapScreen() {
       console.error('Error fetching mindmap:', err);
 
       if (err.response?.status === 404) {
-        setError('Chưa có mindmap cho chương này.\\nVui lòng tạo mindmap trong trang Admin.');
+        setError('Chưa có mindmap cho chương này.\nVui lòng tạo mindmap trong trang Admin.');
       } else if (err.response?.status === 403) {
         setError('Mindmap chưa được kích hoạt hoặc sách chưa được xuất bản.');
       } else {
@@ -54,7 +83,7 @@ export default function MindmapScreen() {
   const convertStructureToMarkdown = (structure: any): string => {
     if (!structure) return '# No Content';
 
-    let markdown = `# ${structure.centerNode?.text || 'Main Topic'}\\n\\n`;
+    let markdown = `# ${structure.centerNode?.text || 'Main Topic'}\n\n`;
 
     if (structure.nodes && structure.nodes.length > 0) {
       const nodesByParent = new Map<string, any[]>();
@@ -72,7 +101,7 @@ export default function MindmapScreen() {
         children.forEach((node: any) => {
           const prefix = level === 2 ? '##' : '-';
           const indent = level > 2 ? '  '.repeat(level - 3) : '';
-          markdown += `${indent}${prefix} ${node.text}\\n`;
+          markdown += `${indent}${prefix} ${node.text}\n`;
           renderNodes(node.id, level + 1);
         });
       };
@@ -84,12 +113,15 @@ export default function MindmapScreen() {
   };
 
   const generateMarkmapHTML = (markdown: string) => {
+    const sanitizedMarkdown = markdown.replace(/\r/g, '');
+    const markdownInJs = sanitizedMarkdown.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
     return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * {
       margin: 0;
@@ -100,6 +132,8 @@ export default function MindmapScreen() {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       overflow: hidden;
+      width: 100vw;
+      height: 100vh;
     }
     #mindmap {
       width: 100vw;
@@ -127,45 +161,108 @@ export default function MindmapScreen() {
       stroke: rgba(255, 255, 255, 0.6);
       stroke-width: 2;
     }
+    .markmap-toolbar {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
   <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.18"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-toolbar@0.18"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-toolbar@0.18/dist/style.css">
 </head>
 <body>
   <svg id="mindmap"></svg>
   <script>
-    const { Transformer } = window.markmap;
-    const { Markmap, loadCSS, loadJS } = window.markmapView;
+    try {
+      let waitCount = 0;
+      function startMarkmap() {
+        const markmap = window.markmap;
+        const markmapView = window.markmapView;
+        const markmapToolbar = window.markmapToolbar;
+        
+        // Check if basic markmap is ready
+        const isMarkmapReady = !!markmap && !!(markmapView || (markmap && markmap.Markmap));
+        const isToolbarReady = !!markmapToolbar || !!(markmap && markmap.toolbar);
 
-    const markdown = \`${markdown.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
+        if (!isMarkmapReady || (!isToolbarReady && waitCount < 25)) {
+          waitCount++;
+          window.ReactNativeWebView.postMessage(JSON.stringify({ 
+            type: 'log', 
+            message: 'Waiting for deps: markmap=' + !!markmap + ', view=' + !!isMarkmapReady + ', toolbar=' + !!isToolbarReady 
+          }));
+          setTimeout(startMarkmap, 200);
+          return;
+        }
 
-    const transformer = new Transformer();
-    const { root, features } = transformer.transform(markdown);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Ready to render. Toolbar: ' + isToolbarReady }));
 
-    const svg = document.getElementById('mindmap');
-    const mm = Markmap.create(svg, {
-      color: (node) => {
-        const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-        return colors[node.depth % colors.length];
-      },
-      duration: 500,
-      maxWidth: 300,
-      paddingX: 20,
-      autoFit: true,
-      zoom: true,
-      pan: true,
-    }, root);
+        const { Transformer } = markmap;
+        const Markmap = (markmapView && markmapView.Markmap) || markmap.Markmap;
+        
+        if (!Markmap || !Transformer) {
+          throw new Error('Markmap or Transformer not found');
+        }
 
-    // Auto-fit on load
-    setTimeout(() => {
-      mm.fit();
-    }, 100);
+        const markdown = \`${markdownInJs}\`;
+        const transformer = new Transformer();
+        const { root } = transformer.transform(markdown);
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      mm.fit();
-    });
+        const svg = document.getElementById('mindmap');
+        const mm = Markmap.create(svg, {
+          color: (node) => {
+            const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+            return colors[node.depth % colors.length];
+          },
+          duration: 500,
+          maxWidth: 300,
+          paddingX: 20,
+          autoFit: true,
+          zoom: true,
+          pan: true,
+        }, root);
+
+        // Store instance globally for zoom controls
+        window.markmapInstance = mm;
+
+        // Add Toolbar if available
+        const Toolbar = (markmapToolbar && markmapToolbar.Toolbar) || (markmap && markmap.toolbar && markmap.toolbar.Toolbar);
+        if (Toolbar) {
+          try {
+            const toolbar = Toolbar.create(mm);
+            toolbar.attach(document.body);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Toolbar attached' }));
+          } catch (e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Toolbar error: ' + e.message }));
+          }
+        }
+
+        // Auto-fit on load
+        setTimeout(() => {
+          mm.fit();
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'Mindmap rendered' }));
+        }, 200);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+          mm.fit();
+        });
+      }
+
+      // Start the initialization
+      if (document.readyState === 'complete') {
+        startMarkmap();
+      } else {
+        window.addEventListener('load', startMarkmap);
+      }
+    } catch (e) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: e.message, stack: e.stack }));
+    }
   </script>
 </body>
 </html>
@@ -222,6 +319,7 @@ export default function MindmapScreen() {
 
       {/* Markmap WebView */}
       <WebView
+        ref={webViewRef}
         source={{ html: generateMarkmapHTML(markdownContent) }}
         style={styles.webview}
         scrollEnabled={false}
@@ -230,12 +328,37 @@ export default function MindmapScreen() {
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'log') {
+              console.log('🌐 [WebView Log]:', data.message);
+            } else if (data.type === 'error') {
+              console.error('🌐 [WebView Error]:', data.message, data.stack);
+            }
+          } catch (e) {
+            console.log('🌐 [WebView Message]:', event.nativeEvent.data);
+          }
+        }}
         renderLoading={() => (
           <View style={styles.webviewLoading}>
             <ActivityIndicator size="large" color="#667eea" />
           </View>
         )}
       />
+
+      {/* Zoom Controls */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+          <Ionicons name="remove" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleFit}>
+          <Ionicons name="scan-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {/* Info Footer */}
       <View style={styles.infoFooter}>
@@ -338,5 +461,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#667eea',
+  },
+  zoomControls: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    gap: 12,
+  },
+  zoomButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(102, 126, 234, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

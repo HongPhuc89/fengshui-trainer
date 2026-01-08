@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useQuiz } from '../../hooks/useQuiz';
 import { calculateProgress } from '../../utils/quizHelpers';
 import {
@@ -53,51 +54,53 @@ export default function ModernQuizScreen() {
   const isSubmitted = submittedAnswers.has(currentQuestion.id);
 
   return (
-    <LinearGradient colors={['#1e1b4b', '#312e81', '#4c1d95']} style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <QuizHeader
-          currentQuestion={currentQuestionIndex + 1}
-          totalQuestions={session.questions.length}
-          points={currentQuestion.points}
-        />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <LinearGradient colors={['#1e1b4b', '#312e81', '#4c1d95']} style={styles.container}>
+        <View style={styles.content}>
+          {/* Header */}
+          <QuizHeader
+            currentQuestion={currentQuestionIndex + 1}
+            totalQuestions={session.questions.length}
+            points={currentQuestion.points}
+          />
 
-        {/* Progress Bar */}
-        <QuizProgressBar progress={progress} />
+          {/* Progress Bar */}
+          <QuizProgressBar progress={progress} />
 
-        {/* Question */}
-        <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
+          {/* Question */}
+          <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
 
-        {/* Render Question Type */}
-        <QuestionRenderer
-          question={currentQuestion}
-          selectedAnswer={answers[currentQuestion.id]}
-          onAnswer={handleSelectAnswer}
-          isLocked={isSubmitted}
-        />
+          {/* Render Question Type */}
+          <QuestionRenderer
+            question={currentQuestion}
+            selectedAnswer={answers[currentQuestion.id]}
+            onAnswer={handleSelectAnswer}
+            isLocked={isSubmitted}
+          />
 
-        {/* Locked indicator */}
-        {isSubmitted && <LockedBanner />}
+          {/* Locked indicator */}
+          {isSubmitted && <LockedBanner />}
 
-        {/* Confirm Answer Button or Submit Quiz */}
-        <QuizActions
-          isLastQuestion={isLastQuestion}
-          isAnswered={isAnswered}
-          isSubmitted={isSubmitted}
-          isSubmitting={submitting}
-          onConfirm={handleConfirmAnswer}
-          onSubmit={handleSubmitQuiz}
-        />
+          {/* Confirm Answer Button or Submit Quiz */}
+          <QuizActions
+            isLastQuestion={isLastQuestion}
+            isAnswered={isAnswered}
+            isSubmitted={isSubmitted}
+            isSubmitting={submitting}
+            onConfirm={handleConfirmAnswer}
+            onSubmit={handleSubmitQuiz}
+          />
 
-        {/* Answer Feedback */}
-        {answerFeedback && answerFeedback.questionId === currentQuestion.id && (
-          <QuizFeedback isCorrect={answerFeedback.isCorrect} />
-        )}
+          {/* Answer Feedback */}
+          {answerFeedback && answerFeedback.questionId === currentQuestion.id && (
+            <QuizFeedback isCorrect={answerFeedback.isCorrect} />
+          )}
 
-        {/* Timer */}
-        <QuizTimer timeRemaining={timeRemaining} />
-      </ScrollView>
-    </LinearGradient>
+          {/* Timer */}
+          <QuizTimer timeRemaining={timeRemaining} />
+        </View>
+      </LinearGradient>
+    </GestureHandlerRootView>
   );
 }
 
@@ -105,10 +108,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
+  content: {
     flex: 1,
-  },
-  scrollContent: {
     padding: 20,
     paddingBottom: 40,
   },

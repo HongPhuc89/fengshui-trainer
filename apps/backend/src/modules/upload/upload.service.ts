@@ -35,7 +35,7 @@ export class UploadService {
     }
 
     // Validate file type
-    if (type === FileType.BOOK) {
+    if (type === FileType.BOOK || type === FileType.CHAPTER) {
       const allowedMimes = [
         'application/pdf',
         'text/plain',
@@ -45,10 +45,10 @@ export class UploadService {
         'text/markdown',
       ];
       if (!allowedMimes.includes(file.mimetype)) {
-        throw new BadRequestException('Invalid book file format');
+        throw new BadRequestException(`Invalid ${type} file format`);
       }
       if (file.size > 20 * 1024 * 1024) {
-        throw new BadRequestException('Book file size exceeds 20MB');
+        throw new BadRequestException(`${type} file size exceeds 20MB`);
       }
     } else if (type === FileType.COVER) {
       const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
@@ -72,14 +72,14 @@ export class UploadService {
       throw new InternalServerErrorException(`Upload failed: ${error.message}`);
     }
 
-    const { data: publicUrlData } = this.supabase.storage.from(this.bucketName).getPublicUrl(filePath);
-
+    // Store the storage path instead of signed URL
+    // Signed URLs will be generated on-demand to avoid expiration issues
     const uploadedFile = this.uploadedFileRepository.create({
       user_id: user.id,
       type,
       original_name: file.originalname,
       filename: fileName,
-      path: publicUrlData.publicUrl,
+      path: filePath, // Store path like "chapters/uuid.pdf"
       mimetype: file.mimetype,
       size: file.size,
     });
@@ -113,13 +113,57 @@ export class UploadService {
    * @returns Storage path (e.g., 'covers/uuid.webp')
    */
   extractPathFromUrl(fullUrl: string): string {
-    // URL format: https://ppjcqetlikzvvoblnybe.supabase.co/storage/v1/object/public/books/covers/uuid.webp
-    const match = fullUrl.match(/\/object\/public\/[^/]+\/(.+)$/);
-    if (match && match[1]) {
-      return match[1];
+    // Handle both public and signed URLs
+    // Public: https://...supabase.co/storage/v1/object/public/books/chapters/uuid.pdf
+    // Signed: https://...supabase.co/storage/v1/object/sign/books/chapters/uuid.pdf?token=...
+    const match = fullUrl.match(/\/object\/(public|sign)\/[^/]+\/(.+?)(\?|$)/);
+    if (match && match[2]) {
+      return match[2];
     }
 
     // If URL doesn't match expected format, throw error
     throw new BadRequestException('Invalid Supabase storage URL format');
+  }
+
+  /**
+   * Generate a fresh signed URL for an uploaded file
+   * This is used to avoid expired URL issues when fetching file data
+   * @param file - UploadedFile entity
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Fresh signed URL
+   */
+  async getFileUrl(file: any, expiresIn: number = 3600): Promise<string> {
+    if (!file || !file.path) {
+      console.log('[UploadService] getFileUrl: No file or path provided');
+      return null;
+    }
+
+    // If path is already a full URL (old data), extract the storage path
+    let storagePath = file.path;
+    console.log('[UploadService] getFileUrl: Original path:', storagePath);
+
+    if (storagePath.startsWith('http')) {
+      console.log('[UploadService] getFileUrl: Path is a full URL, extracting storage path...');
+      try {
+        storagePath = this.extractPathFromUrl(storagePath);
+        console.log('[UploadService] getFileUrl: Extracted storage path:', storagePath);
+      } catch (error) {
+        console.error('[UploadService] getFileUrl: Failed to extract path:', error.message);
+        // If extraction fails, return the original path
+        return storagePath;
+      }
+    }
+
+    // Generate fresh signed URL
+    console.log('[UploadService] getFileUrl: Generating signed URL for:', storagePath);
+    try {
+      const signedUrl = await this.getSignedUrl(storagePath, expiresIn);
+      console.log('[UploadService] getFileUrl: Successfully generated signed URL');
+      return signedUrl;
+    } catch (error) {
+      console.error('[UploadService] getFileUrl: Failed to generate signed URL:', error.message);
+      // Re-throw the error instead of silently returning storage path
+      throw new InternalServerErrorException(`Failed to generate file URL: ${error.message}`);
+    }
   }
 }

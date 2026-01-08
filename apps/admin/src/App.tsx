@@ -30,6 +30,7 @@ import {
   ChapterMindMapPage,
   ChapterMindMapEditPage,
 } from './pages/chapter';
+import { ReadChapterPage } from './pages/ReadChapterPage';
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
       <CustomRoutes>
         {/* Chapter Routes */}
         <Route path="/chapters/:bookId/:chapterId" element={<ChapterDetailsPage />} />
+        <Route path="/chapters/:bookId/:chapterId/read" element={<ReadChapterPage />} />
         <Route path="/chapters/:bookId/:chapterId/flashcards" element={<ChapterFlashcardsPage />} />
         <Route path="/chapters/:bookId/:chapterId/questions" element={<ChapterQuestionsPage />} />
         <Route path="/chapters/:bookId/:chapterId/config" element={<ChapterConfigPage />} />
