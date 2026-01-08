@@ -114,8 +114,8 @@ jobs:
           echo "🚀 Deploying to VPS ($DEPLOY_ENV)..."
           echo "Commit: $COMMIT_HASH"
 
-          # Create backup directory on VPS
-          ssh $VPS_USER@$VPS_HOST "mkdir -p $VPS_DIR/backups"
+          # Create required directories on VPS
+          ssh $VPS_USER@$VPS_HOST "mkdir -p $VPS_DIR/backups $VPS_DIR/apps/backend $VPS_DIR/config"
 
           # Backup current deployment
           ssh $VPS_USER@$VPS_HOST "

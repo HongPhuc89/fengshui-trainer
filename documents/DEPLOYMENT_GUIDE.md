@@ -102,8 +102,9 @@ git push origin feature-branch
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# PM2
+# PM2 và Rsync
 sudo npm install -g pm2
+sudo apt-get install -y rsync
 ```
 
 ### 2. Tạo thư mục project
