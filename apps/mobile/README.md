@@ -177,40 +177,62 @@ npx expo start --web
 
 ### Build
 
-See [BUILD_GUIDE.md](./BUILD_GUIDE.md) for detailed build instructions.
+#### Build APK Locally (Recommended)
 
-#### Quick Start - Build APK for Testing
+Build APK directly on your machine - fastest method for testing.
+
+**Prerequisites:**
 
 ```bash
-# Install EAS CLI (one-time)
+# Install EAS CLI globally (one-time setup)
 npm install -g eas-cli
 
-# Login to Expo
+# Login to Expo account
 eas login
-
-# Build APK for testing
-npm run build:android:preview
 ```
 
-#### All Build Commands
+**Build APK:**
 
 ```bash
-# Android APK (for testing)
-npm run build:android:preview
+# Navigate to mobile directory
+cd apps/mobile
 
-# Android APK (local build - faster)
+# Build APK locally
 npm run build:android:apk
-
-# Android AAB (for Google Play Store)
-npm run build:android
-
-# iOS IPA (for App Store)
-npm run build:ios
-
-# Prebuild native projects
-npm run prebuild
-npm run prebuild:clean
 ```
+
+The APK file will be generated in your local directory and can be installed directly on Android devices.
+
+---
+
+#### Other Build Options
+
+**Build APK on EAS Cloud (for testing):**
+
+```bash
+npm run build:android:preview
+```
+
+**Build AAB for Google Play Store (production):**
+
+```bash
+npm run build:android
+```
+
+**Build iOS IPA for App Store:**
+
+```bash
+npm run build:ios
+```
+
+**Prebuild native projects:**
+
+```bash
+npm run prebuild          # Generate native projects
+npm run prebuild:clean    # Clean and regenerate
+```
+
+For detailed build instructions, see [BUILD_GUIDE.md](./BUILD_GUIDE.md).
 
 ## 📱 Screens
 

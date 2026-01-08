@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking, Platform } from 'react-native';
 import Pdf from 'react-native-pdf';
 import { useReadingProgress } from '../../hooks/useReadingProgress';
@@ -143,9 +143,12 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
   };
 
   // Use cached file if available (offline-first), otherwise use remote URL
-  const pdfSource = cachedFilePath ? { uri: cachedFilePath, cache: true } : { uri: fileUrl, cache: true };
-
-  console.log('[ChapterFileViewer] PDF source:', cachedFilePath ? 'CACHED' : 'REMOTE', pdfSource.uri);
+  // Memoize to prevent unnecessary re-renders
+  const pdfSource = useMemo(() => {
+    const source = cachedFilePath ? { uri: cachedFilePath, cache: true } : { uri: fileUrl, cache: true };
+    console.log('[ChapterFileViewer] PDF source:', cachedFilePath ? 'CACHED' : 'REMOTE', source.uri);
+    return source;
+  }, [cachedFilePath, fileUrl]);
 
   return (
     <View style={styles.container}>
@@ -171,7 +174,7 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
       {!error && isReady && (
         <Pdf
           ref={pdfRef}
-          key={`pdf-${chapterId}-${fileUrl}`}
+          key={`pdf-${chapterId}-${cachedFilePath || fileUrl}`}
           source={pdfSource}
           page={currentPage}
           onLoadComplete={handleLoadComplete}
@@ -184,6 +187,8 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
           spacing={0}
           fitPolicy={0}
           enableAntialiasing={true}
+          maxScale={3}
+          minScale={0.5}
           onPageSingleTap={(page) => {
             console.log('[ChapterFileViewer] Page tapped:', page);
           }}
