@@ -12,6 +12,7 @@ module.exports = {
             env: {
                 NODE_ENV: 'production',
                 PORT: 3000,
+                NODE_CONFIG_DIR: '../../config',
             },
             error_file: '~/.pm2/logs/backend-error.log',
             out_file: '~/.pm2/logs/backend-out.log',
