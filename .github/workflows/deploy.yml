@@ -149,7 +149,7 @@ jobs:
 
             echo "📝 Installing production dependencies..."
             cd apps/backend
-            npm install --omit=dev
+            npm install --omit=dev --legacy-peer-deps
             cd ../..
 
             echo "🔄 Restarting services..."
