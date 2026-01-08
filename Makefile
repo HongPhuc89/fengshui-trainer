@@ -114,6 +114,10 @@ migration-generate: ## Generate new migration
 	@echo "$(CYAN)Generating migration...$(NC)"
 	npm run backend:migration:generate
 
+deploy: ## Deploy backend to VPS from local
+	@echo "$(CYAN)Deploying backend to VPS...$(NC)"
+	npm run deploy
+
 create-admin: ## Create admin user
 	@echo "$(CYAN)Creating admin user...$(NC)"
 	cd apps/backend && npm run create:admin

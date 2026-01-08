@@ -1,14 +1,14 @@
 name: Deploy to VPS
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'apps/backend/**'
-      - 'config/**'
-      - 'ecosystem.config.js'
-      - '.github/workflows/deploy.yml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'apps/backend/**'
+  #     - 'config/**'
+  #     - 'ecosystem.config.js'
+  #     - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
