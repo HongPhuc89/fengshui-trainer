@@ -3,38 +3,10 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from './modules/core/config.service';
-import { execSync } from 'child_process';
 import './shares/helpers/utils'; // Ensure .env and config are loaded early
 
-// Get git commit hash
-function getGitHash(): string {
-  // First, try to get from environment variable (set during build in CI/CD)
-  if (process.env.GIT_COMMIT_HASH) {
-    return process.env.GIT_COMMIT_HASH;
-  }
-
-  // Fall back to git command (for local development)
-  try {
-    return execSync('git rev-parse --short HEAD').toString().trim();
-  } catch (error) {
-    return 'unknown';
-  }
-}
-
-// Get git branch
-function getGitBranch(): string {
-  // First, try to get from environment variable (set during build in CI/CD)
-  if (process.env.GIT_BRANCH) {
-    return process.env.GIT_BRANCH;
-  }
-
-  // Fall back to git command (for local development)
-  try {
-    return execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
-  } catch (error) {
-    return 'unknown';
-  }
-}
+// Import version info generated during build
+import * as versionInfo from './version.json';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -61,8 +33,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix(prefix);
 
-  const gitHash = getGitHash();
-  const gitBranch = getGitBranch();
+  const gitHash = versionInfo.commitHash || 'unknown';
+  const gitBranch = versionInfo.branch || 'unknown';
   const version = `1.0.0 (${gitBranch}@${gitHash})`;
 
   const config = new DocumentBuilder()

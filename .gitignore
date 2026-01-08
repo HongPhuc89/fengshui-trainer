@@ -65,3 +65,6 @@ lerna-debug.log*
 .firebase/
 **/.firebase/
 saved_ebooks
+
+# Auto-generated version file
+**/version.json

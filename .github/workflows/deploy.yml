@@ -81,13 +81,8 @@ jobs:
           npm ci
 
       - name: Build backend
-        env:
-          GIT_COMMIT_HASH: ${{ steps.commit.outputs.hash }}
-          GIT_BRANCH: ${{ steps.commit.outputs.branch }}
         run: |
           echo "🏗️ Building backend..."
-          echo "Git Commit: $GIT_COMMIT_HASH"
-          echo "Git Branch: $GIT_BRANCH"
           cd apps/backend
           npm run build
 
