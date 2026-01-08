@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Text, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,32 +10,31 @@ import { useProfile } from '../../hooks/useProfile';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { ProfileHeader, XPProgressCard, StatCard } from '../../components/profile';
 import { ProfileInfoSection } from '../../components/profile/ProfileInfoSection';
+import { CustomAlert } from '../../components/ui/CustomAlert';
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
   const { userName, currentLevel, nextLevel, totalXP, xpProgress } = useProfileData();
   const { profile, loading, error, refreshProfile } = useProfile();
   const { uploading, showAvatarOptions } = useAvatarUpload(refreshProfile);
+  const [showLogoutAlert, setShowLogoutAlert] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-      {
-        text: 'Hủy',
-        style: 'cancel',
-      },
-      {
-        text: 'Đăng xuất',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-          } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
-          }
-        },
-      },
-    ]);
+    setShowLogoutAlert(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutAlert(false);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Optionally, you could show another CustomAlert for the error here
+    }
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutAlert(false);
   };
 
   if (loading) {
@@ -108,6 +107,19 @@ export default function ProfileScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* Custom Logout Alert */}
+        <CustomAlert
+          visible={showLogoutAlert}
+          title="Đăng xuất"
+          message="Bạn có chắc chắn muốn đăng xuất?"
+          icon="log-out-outline"
+          iconColor="#ff6b6b"
+          confirmText="Đăng xuất"
+          cancelText="Hủy"
+          onConfirm={confirmLogout}
+          onCancel={cancelLogout}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
