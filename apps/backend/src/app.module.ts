@@ -10,6 +10,7 @@ import { BooksModule } from './modules/books/books.module';
 import { QuizModule } from './modules/quiz/quiz.module';
 import { MindMapModule } from './modules/mindmap/mindmap.module';
 import { ExperienceModule } from './modules/experience/experience.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ExperienceModule } from './modules/experience/experience.module';
     MindMapModule,
     ExperienceModule,
     AdminModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
