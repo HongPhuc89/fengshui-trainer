@@ -34,6 +34,7 @@ export interface IAppConfiguration {
 
 @Injectable()
 export class ConfigService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly configuration: any;
 
   constructor() {
@@ -45,6 +46,11 @@ export class ConfigService {
   }
 
   getDatabaseConfiguration(): IDatabaseConfiguration {
+    if (!this.configuration.database) {
+      throw new Error(
+        'Database configuration is missing! Check if your config files are loaded and DB_ environment variables are set.',
+      );
+    }
     return {
       ...this.configuration.database,
       port: Number(this.configuration.database.port),
@@ -52,6 +58,9 @@ export class ConfigService {
   }
 
   getAppConfiguration(): IAppConfiguration {
+    if (!this.configuration.app) {
+      throw new Error('App configuration is missing!');
+    }
     return this.configuration.app;
   }
 

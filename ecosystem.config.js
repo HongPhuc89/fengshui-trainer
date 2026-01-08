@@ -5,7 +5,7 @@ module.exports = {
         {
             name: 'backend',
             cwd: path.join(__dirname, 'apps/backend'),
-            script: 'dist/src/main.js',
+            script: path.join(__dirname, 'apps/backend/dist/main.js'),
             instances: 1,
             autorestart: true,
             watch: false,
