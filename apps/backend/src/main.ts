@@ -8,6 +8,12 @@ import './shares/helpers/utils'; // Ensure .env and config are loaded early
 
 // Get git commit hash
 function getGitHash(): string {
+  // First, try to get from environment variable (set during build in CI/CD)
+  if (process.env.GIT_COMMIT_HASH) {
+    return process.env.GIT_COMMIT_HASH;
+  }
+
+  // Fall back to git command (for local development)
   try {
     return execSync('git rev-parse --short HEAD').toString().trim();
   } catch (error) {
@@ -17,6 +23,12 @@ function getGitHash(): string {
 
 // Get git branch
 function getGitBranch(): string {
+  // First, try to get from environment variable (set during build in CI/CD)
+  if (process.env.GIT_BRANCH) {
+    return process.env.GIT_BRANCH;
+  }
+
+  // Fall back to git command (for local development)
   try {
     return execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
   } catch (error) {
