@@ -48,25 +48,21 @@ Workflow được trigger khi:
 2. **Setup Node.js** - Cài đặt Node.js 20
 3. **Get commit info** - Lấy thông tin commit (hash, branch, message)
 4. **Install dependencies** - Install npm packages
-5. **Build applications:**
    - Build backend (`apps/backend/dist`)
-   - Build admin (`apps/admin/dist`)
    - Copy config files vào dist
-6. **Create deployment package:**
+5. **Create deployment package:**
    - Backend dist + package.json
-   - Admin dist
    - Config files
    - PM2 config
-7. **Setup SSH** - Cấu hình SSH key
-8. **Rsync to VPS:**
+6. **Setup SSH** - Cấu hình SSH key
+7. **Rsync to VPS:**
    - Backup deployment hiện tại
    - Upload backend dist
-   - Upload admin dist
    - Upload config và PM2 config
-9. **Install & Restart:**
+8. **Install & Restart:**
    - Install production dependencies trên VPS
    - Restart PM2 services
-10. **Verify deployment** - Kiểm tra PM2 status và logs
+9. **Verify deployment** - Kiểm tra PM2 status và logs
 
 ### ⚡ Lợi ích của cách deploy này:
 
@@ -119,7 +115,7 @@ sudo chown ubuntu:ubuntu /home/ubuntu/fengshui-trainer
 cd /home/ubuntu/fengshui-trainer
 
 # Tạo cấu trúc thư mục
-mkdir -p apps/backend apps/admin config backups
+mkdir -p apps/backend config backups
 ```
 
 ### 3. Cấu hình .env files
