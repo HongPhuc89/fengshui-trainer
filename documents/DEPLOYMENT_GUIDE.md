@@ -45,14 +45,35 @@ Workflow được trigger khi:
 ### Các bước trong workflow:
 
 1. **Checkout code** - Clone repository
-2. **Get commit info** - Lấy thông tin commit (hash, branch, message)
-3. **Setup SSH** - Cấu hình SSH key
-4. **Deploy to VPS** - Thực hiện deployment:
-   - Pull latest code
-   - Install dependencies
-   - Build applications
+2. **Setup Node.js** - Cài đặt Node.js 20
+3. **Get commit info** - Lấy thông tin commit (hash, branch, message)
+4. **Install dependencies** - Install npm packages
+5. **Build applications:**
+   - Build backend (`apps/backend/dist`)
+   - Build admin (`apps/admin/dist`)
+   - Copy config files vào dist
+6. **Create deployment package:**
+   - Backend dist + package.json
+   - Admin dist
+   - Config files
+   - PM2 config
+7. **Setup SSH** - Cấu hình SSH key
+8. **Rsync to VPS:**
+   - Backup deployment hiện tại
+   - Upload backend dist
+   - Upload admin dist
+   - Upload config và PM2 config
+9. **Install & Restart:**
+   - Install production dependencies trên VPS
    - Restart PM2 services
-5. **Verify deployment** - Kiểm tra PM2 status và logs
+10. **Verify deployment** - Kiểm tra PM2 status và logs
+
+### ⚡ Lợi ích của cách deploy này:
+
+- **Nhanh hơn** - Build trên GitHub runner (mạnh hơn VPS)
+- **Tiết kiệm tài nguyên VPS** - Không cần build trên VPS
+- **An toàn** - Tự động backup trước khi deploy
+- **Nhỏ gọn** - Chỉ upload built files
 
 ## 🚀 Cách sử dụng
 
@@ -87,53 +108,79 @@ sudo apt-get install -y nodejs
 
 # PM2
 sudo npm install -g pm2
-
-# Git
-sudo apt-get install -y git
 ```
 
-### 2. Clone repository
+### 2. Tạo thư mục project
 
 ```bash
-cd /home/ubuntu
-git clone git@github.com:username/fengshui-trainer.git
-cd fengshui-trainer
+# Tạo thư mục cho project
+sudo mkdir -p /home/ubuntu/fengshui-trainer
+sudo chown ubuntu:ubuntu /home/ubuntu/fengshui-trainer
+cd /home/ubuntu/fengshui-trainer
+
+# Tạo cấu trúc thư mục
+mkdir -p apps/backend apps/admin config backups
 ```
 
-### 3. Cấu hình PM2
+### 3. Cấu hình .env files
 
-Tạo file `ecosystem.config.js`:
+Tạo các file `.env` cần thiết trên VPS:
 
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: 'backend',
-      cwd: './apps/backend',
-      script: 'npm',
-      args: 'run start:prod',
-      env: {
-        NODE_ENV: 'production',
-      },
-    },
-    {
-      name: 'admin',
-      cwd: './apps/admin',
-      script: 'npx',
-      args: 'serve -s dist -l 3001',
-      env: {
-        NODE_ENV: 'production',
-      },
-    },
-  ],
-};
+```bash
+# Backend .env
+nano apps/backend/.env
+
+# Admin .env (nếu cần)
+nano apps/admin/.env
 ```
 
-### 4. Setup PM2 startup
+### 4. Cấu hình PM2
+
+File `ecosystem.config.js` sẽ được upload tự động từ GitHub Actions.
+
+### 5. Setup PM2 startup
 
 ```bash
 pm2 startup
+# Copy và chạy command được suggest
 pm2 save
+```
+
+### 6. Cấu hình Nginx (Optional)
+
+```nginx
+# /etc/nginx/sites-available/fengshui-trainer
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Admin panel
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+```bash
+# Enable site
+sudo ln -s /etc/nginx/sites-available/fengshui-trainer /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ## 🔍 Troubleshooting
@@ -152,10 +199,25 @@ chmod 644 ~/.ssh/github_actions.pub
 ### Build Failed
 
 ```bash
-# SSH vào VPS và check logs
-ssh user@vps-host
-cd /path/to/project
+# Check GitHub Actions logs
+# Actions tab → Select failed workflow → View logs
+
+# Test build locally
+npm ci
 npm run build
+```
+
+### Rsync Failed
+
+```bash
+# Test SSH connection
+ssh user@vps-host
+
+# Test rsync manually
+rsync -avz --dry-run local-file user@vps-host:/path/
+
+# Check disk space on VPS
+ssh user@vps-host "df -h"
 ```
 
 ### PM2 Not Restarting
@@ -173,15 +235,17 @@ pm2 delete all
 pm2 start ecosystem.config.js
 ```
 
-### Git Pull Failed
+### Backup and Rollback
 
 ```bash
-# Reset local changes
-git reset --hard origin/main
+# List backups
+ssh user@vps-host "ls -lh /path/to/project/backups/"
 
-# Hoặc stash changes
-git stash
-git pull origin main
+# Rollback to previous version
+ssh user@vps-host
+cd /path/to/project
+tar -xzf backups/backup-YYYYMMDD-HHMMSS.tar.gz
+pm2 restart all
 ```
 
 ## 📊 Monitoring
