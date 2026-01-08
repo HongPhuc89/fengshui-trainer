@@ -14,6 +14,34 @@ export default function MindmapScreen() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+
+  const handleZoomIn = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.rescale(1.2);
+      }
+      true;
+    `);
+  };
+
+  const handleZoomOut = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.rescale(0.8);
+      }
+      true;
+    `);
+  };
+
+  const handleFit = () => {
+    webViewRef.current?.injectJavaScript(`
+      if (window.markmapInstance) {
+        window.markmapInstance.fit();
+      }
+      true;
+    `);
+  };
 
   useEffect(() => {
     if (chapterId && bookId) {
@@ -199,6 +227,9 @@ export default function MindmapScreen() {
           pan: true,
         }, root);
 
+        // Store instance globally for zoom controls
+        window.markmapInstance = mm;
+
         // Add Toolbar if available
         const Toolbar = (markmapToolbar && markmapToolbar.Toolbar) || (markmap && markmap.toolbar && markmap.toolbar.Toolbar);
         if (Toolbar) {
@@ -288,6 +319,7 @@ export default function MindmapScreen() {
 
       {/* Markmap WebView */}
       <WebView
+        ref={webViewRef}
         source={{ html: generateMarkmapHTML(markdownContent) }}
         style={styles.webview}
         scrollEnabled={false}
@@ -314,6 +346,19 @@ export default function MindmapScreen() {
           </View>
         )}
       />
+
+      {/* Zoom Controls */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+          <Ionicons name="remove" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleFit}>
+          <Ionicons name="scan-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {/* Info Footer */}
       <View style={styles.infoFooter}>
@@ -416,5 +461,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#667eea',
+  },
+  zoomControls: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    gap: 12,
+  },
+  zoomButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(102, 126, 234, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
