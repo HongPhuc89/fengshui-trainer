@@ -9,9 +9,13 @@ const localEnv = path.join(cwd, '.env');
 const rootEnv = path.join(cwd, '../../.env');
 
 if (fs.existsSync(localEnv)) {
+  console.log(`[Config] Loading .env from ${localEnv}`);
   dotenvConfig({ path: localEnv });
 } else if (fs.existsSync(rootEnv)) {
+  console.log(`[Config] Loading .env from ${rootEnv}`);
   dotenvConfig({ path: rootEnv });
+} else {
+  console.log('[Config] No .env file found');
 }
 
 // 2. Automatically determine NODE_CONFIG_DIR if not set
@@ -28,6 +32,8 @@ if (!process.env.NODE_CONFIG_DIR) {
     process.env.NODE_CONFIG_DIR = distConfig;
   }
 }
+
+console.log(`[Config] NODE_CONFIG_DIR: ${process.env.NODE_CONFIG_DIR}`);
 
 // 3. Use require to ensure config reads the latest environment variables
 // eslint-disable-next-line @typescript-eslint/no-require-imports

@@ -1,23 +1,10 @@
-// Set config directory path before loading config
-// This ensures config files are found when running from dist/
-import * as path from 'path';
-if (!process.env.NODE_CONFIG_DIR) {
-  // In production (dist/), config is at dist/config
-  // In development, config is at project root
-  const configDir = __dirname.includes('dist')
-    ? path.join(__dirname, '..', 'config')
-    : path.join(__dirname, '..', '..', '..', 'config');
-  process.env.NODE_CONFIG_DIR = configDir;
-}
-
-import { config as dotenvConfig } from 'dotenv';
-dotenvConfig();
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from './modules/core/config.service';
 import { execSync } from 'child_process';
+import './shares/helpers/utils'; // Ensure .env and config are loaded early
 
 // Get git commit hash
 function getGitHash(): string {
