@@ -37,7 +37,9 @@ jobs:
         run: |
           echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
-          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          git log -1 --pretty=%B >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         run: |
