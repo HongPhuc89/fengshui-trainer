@@ -64,5 +64,4 @@ lerna-debug.log*
 # Firebase
 .firebase/
 **/.firebase/
-
-books
+saved_ebooks

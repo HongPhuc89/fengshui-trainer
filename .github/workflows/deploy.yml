@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/backend/**'
+      - 'config/**'
+      - 'ecosystem.config.js'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
