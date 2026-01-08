@@ -153,7 +153,9 @@ jobs:
             cd ../..
 
             echo "🔄 Restarting services..."
-            pm2 restart backend || pm2 start ecosystem.config.js --only backend
+            pm2 delete backend || true
+            pm2 start ecosystem.config.js --only backend
+            pm2 save
 
             echo "✅ Deployment completed!"
           ENDSSH
