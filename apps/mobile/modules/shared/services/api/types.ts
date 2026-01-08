@@ -172,6 +172,7 @@ export interface MindMap {
   title: string;
   description?: string;
   structure: MindMapNode;
+  markdown_content?: string;
   createdAt: string;
   updatedAt: string;
 }
