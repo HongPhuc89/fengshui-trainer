@@ -38,10 +38,6 @@ export default function LoginScreen() {
       console.log('✅ Login successful');
 
       // AuthProvider will handle navigation automatically
-      // Show success message (non-blocking)
-      setTimeout(() => {
-        Alert.alert('Đăng nhập thành công!', 'Chào mừng bạn quay trở lại!');
-      }, 500);
     } catch (err: any) {
       console.error('❌ Login failed:', err);
 
