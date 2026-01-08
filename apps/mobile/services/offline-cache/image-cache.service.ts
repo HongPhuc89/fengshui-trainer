@@ -162,6 +162,11 @@ class ImageCacheService {
   }
 
   async getImage(imageUrl: string): Promise<string> {
+    // Return original URL if empty or invalid
+    if (!imageUrl || !imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+
     try {
       // Try to get from cache first
       const cachedPath = await this.getCachedImage(imageUrl);
@@ -173,8 +178,8 @@ class ImageCacheService {
       console.log('[ImageCache] Cache miss, downloading');
       return await this.cacheImage(imageUrl);
     } catch (error) {
-      console.error('[ImageCache] Failed to get image:', error);
-      // Return original URL as fallback
+      console.warn('[ImageCache] Failed to cache image, using original URL:', error);
+      // Return original URL as fallback - don't throw error
       return imageUrl;
     }
   }

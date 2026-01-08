@@ -12,16 +12,18 @@ interface BookHeaderCardProps {
 export function BookHeaderCard({ book }: BookHeaderCardProps) {
   const [imageSource, setImageSource] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const loadImage = async () => {
       if (book.coverImage) {
         try {
+          setImageError(false);
           const cachedPath = await imageCacheService.getImage(book.coverImage);
           setImageSource(cachedPath);
         } catch (error) {
           console.error('[BookHeaderCard] Failed to load image:', error);
-          setImageSource(book.coverImage); // Fallback to original URL
+          setImageError(true);
         }
       }
       setImageLoading(false);
@@ -34,8 +36,16 @@ export function BookHeaderCard({ book }: BookHeaderCardProps) {
     <View style={styles.bookHeaderCard}>
       {/* Book Cover */}
       <View style={styles.coverContainer}>
-        {imageSource && !imageLoading ? (
-          <Image source={{ uri: imageSource }} style={styles.cover} resizeMode="cover" />
+        {imageSource && !imageLoading && !imageError ? (
+          <Image
+            source={{ uri: imageSource }}
+            style={styles.cover}
+            resizeMode="cover"
+            onError={() => {
+              console.warn('[BookHeaderCard] Image failed to load');
+              setImageError(true);
+            }}
+          />
         ) : (
           <View style={styles.placeholderCover}>
             <Ionicons name="book" size={40} color="#6B7280" />
