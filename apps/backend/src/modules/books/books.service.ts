@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dtos/create-book.dto';
 import { UpdateBookDto } from './dtos/update-book.dto';
@@ -9,6 +10,7 @@ import { BookProcessingService } from './book-processing.service';
 import { BookStatus } from '../../shares/enums/book-status.enum';
 import { UploadService } from '../upload/upload.service';
 import { FileType } from '../../shares/enums/file-type.enum';
+import { MediaUrlHelper } from '../../shares/helpers/media-url.helper';
 
 @Injectable()
 export class BooksService {
@@ -17,6 +19,8 @@ export class BooksService {
     private readonly bookRepository: Repository<Book>,
     private readonly bookProcessingService: BookProcessingService,
     private readonly uploadService: UploadService,
+    private readonly configService: ConfigService,
+    private readonly mediaUrlHelper: MediaUrlHelper,
   ) {}
 
   async create(createBookDto: CreateBookDto, user: User): Promise<Book> {
@@ -38,7 +42,7 @@ export class BooksService {
   }
 
   // User-facing methods (published books only)
-  async findAll(): Promise<Book[]> {
+  async findAll(baseUrl?: string): Promise<Book[]> {
     const books = await this.bookRepository.find({
       where: { status: BookStatus.PUBLISHED },
       relations: ['cover_file', 'file', 'chapters'],
@@ -49,14 +53,14 @@ export class BooksService {
       books.map(async (book) => {
         // Compute actual chapter count from database
         book.chapter_count = book.chapters?.length || 0;
-        return this.attachSignedUrls(book);
+        return this.attachSignedUrls(book, baseUrl);
       }),
     );
 
     return booksWithUrls;
   }
 
-  async findOne(id: number): Promise<Book> {
+  async findOne(id: number, baseUrl?: string): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { id, status: BookStatus.PUBLISHED },
       relations: ['cover_file', 'file', 'chapters'],
@@ -66,11 +70,11 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    return this.attachSignedUrls(book);
+    return this.attachSignedUrls(book, baseUrl);
   }
 
   // Admin methods (all statuses)
-  async findAllAdmin(): Promise<Book[]> {
+  async findAllAdmin(baseUrl?: string): Promise<Book[]> {
     const books = await this.bookRepository.find({
       relations: ['cover_file', 'file', 'chapters'],
     });
@@ -80,12 +84,12 @@ export class BooksService {
       books.map(async (book) => {
         // Compute actual chapter count from database
         book.chapter_count = book.chapters?.length || 0;
-        return this.attachSignedUrls(book);
+        return this.attachSignedUrls(book, baseUrl);
       }),
     );
   }
 
-  async findOneAdmin(id: number): Promise<Book> {
+  async findOneAdmin(id: number, baseUrl?: string): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { id },
       relations: ['cover_file', 'file', 'chapters'],
@@ -95,7 +99,7 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    return this.attachSignedUrls(book);
+    return this.attachSignedUrls(book, baseUrl);
   }
 
   async update(id: number, updateBookDto: UpdateBookDto): Promise<Book> {
@@ -127,17 +131,14 @@ export class BooksService {
 
   /**
    * Generate media proxy URLs for book cover and file
-   * Returns /api/media/:id instead of Supabase signed URLs
    */
-  private async attachSignedUrls(book: Book): Promise<Book> {
-    if (book.cover_file?.id) {
-      // Use media proxy URL format
-      book.cover_file.path = `/api/media/${book.cover_file.id}`;
+  private async attachSignedUrls(book: Book, baseUrl?: string): Promise<Book> {
+    if (book.cover_file) {
+      this.mediaUrlHelper.attachMediaUrl(book.cover_file, baseUrl);
     }
 
-    if (book.file?.id) {
-      // Use media proxy URL format
-      book.file.path = `/api/media/${book.file.id}`;
+    if (book.file) {
+      this.mediaUrlHelper.attachMediaUrl(book.file, baseUrl);
     }
 
     return book;

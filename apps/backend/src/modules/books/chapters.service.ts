@@ -21,7 +21,7 @@ export class ChaptersService {
     private readonly uploadService: UploadService,
     @Inject(forwardRef(() => QuizConfigService))
     private readonly quizConfigService: QuizConfigService,
-  ) { }
+  ) {}
 
   async create(bookId: number, createChapterDto: CreateChapterDto): Promise<Chapter> {
     // Verify that the book exists (use admin method to allow any status)
@@ -64,22 +64,32 @@ export class ChaptersService {
     return savedChapter;
   }
 
-  async findAllByBook(bookId: number): Promise<Chapter[]> {
-    return this.chapterRepository.find({
+  async findAllByBook(bookId: number, baseUrl?: string): Promise<Chapter[]> {
+    const chapters = await this.chapterRepository.find({
       where: { book_id: bookId },
       relations: ['file'],
       order: { order: 'ASC' },
     });
+
+    // Generate media URLs for all chapters
+    return Promise.all(
+      chapters.map(async (chapter) => {
+        if (chapter.file) {
+          chapter.file.path = await this.uploadService.getFileUrl(chapter.file, baseUrl);
+        }
+        return chapter;
+      }),
+    );
   }
 
-  async findAllByPublishedBook(bookId: number): Promise<Chapter[]> {
+  async findAllByPublishedBook(bookId: number, baseUrl?: string): Promise<Chapter[]> {
     // Verify the book is published
-    await this.booksService.findOne(bookId); // This only returns published books
+    await this.booksService.findOne(bookId, baseUrl); // This only returns published books
 
-    return this.findAllByBook(bookId);
+    return this.findAllByBook(bookId, baseUrl);
   }
 
-  async findOne(bookId: number, chapterId: number): Promise<Chapter> {
+  async findOne(bookId: number, chapterId: number, baseUrl?: string): Promise<Chapter> {
     const chapter = await this.chapterRepository.findOne({
       where: { id: chapterId, book_id: bookId },
       relations: ['file'],
@@ -91,7 +101,7 @@ export class ChaptersService {
 
     // Generate fresh signed URL for file if exists
     if (chapter.file) {
-      const freshUrl = await this.uploadService.getFileUrl(chapter.file);
+      const freshUrl = await this.uploadService.getFileUrl(chapter.file, baseUrl);
       if (freshUrl) {
         chapter.file.path = freshUrl;
       }
@@ -99,11 +109,11 @@ export class ChaptersService {
 
     return chapter;
   }
-  async findOneInPublishedBook(bookId: number, chapterId: number): Promise<Chapter> {
+  async findOneInPublishedBook(bookId: number, chapterId: number, baseUrl?: string): Promise<Chapter> {
     // Verify the book is published
-    await this.booksService.findOne(bookId);
+    await this.booksService.findOne(bookId, baseUrl);
 
-    return this.findOne(bookId, chapterId);
+    return this.findOne(bookId, chapterId, baseUrl);
   }
 
   async update(bookId: number, chapterId: number, updateChapterDto: UpdateChapterDto): Promise<Chapter> {

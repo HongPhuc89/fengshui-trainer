@@ -12,10 +12,11 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { ChaptersService } from './chapters.service';
 import { FlashcardsService } from './flashcards.service';
 import { CreateChapterDto } from './dtos/create-chapter.dto';
@@ -49,8 +50,9 @@ export class AdminChaptersController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get all chapters for a book (all statuses)' })
   @ApiResponse({ status: 200, description: 'Return all chapters for the book.' })
-  findAll(@Param('bookId', ParseIntPipe) bookId: number): Promise<Chapter[]> {
-    return this.chaptersService.findAllByBook(bookId);
+  findAll(@Param('bookId', ParseIntPipe) bookId: number, @Req() req: Request): Promise<Chapter[]> {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.chaptersService.findAllByBook(bookId, baseUrl);
   }
 
   // Flashcard Import/Export endpoints (must be before :id routes)
@@ -121,8 +123,13 @@ export class AdminChaptersController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get a chapter by id (any book status)' })
   @ApiResponse({ status: 200, description: 'Return the chapter.' })
-  findOne(@Param('bookId', ParseIntPipe) bookId: number, @Param('id', ParseIntPipe) id: number): Promise<Chapter> {
-    return this.chaptersService.findOne(bookId, id);
+  findOne(
+    @Param('bookId', ParseIntPipe) bookId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<Chapter> {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.chaptersService.findOne(bookId, id, baseUrl);
   }
 
   @Put(':id')

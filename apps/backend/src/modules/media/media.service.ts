@@ -85,15 +85,27 @@ export class MediaService {
     return join(this.cacheDir, `${hash}.${ext}`);
   }
 
-  private async downloadFromSupabase(path: string): Promise<Buffer> {
+  private async downloadFromSupabase(pathOrUrl: string): Promise<Buffer> {
     try {
-      this.logger.log(`Downloading from Supabase: ${path}`);
+      this.logger.log(`Downloading from Supabase: ${pathOrUrl}`);
 
-      // Extract bucket and file path
       const bucket = this.configService.get<string>('SUPABASE_BUCKET', 'books');
 
+      // Extract storage path if input is a full URL
+      let storagePath = pathOrUrl;
+      if (pathOrUrl.startsWith('http')) {
+        // Extract path from URL like: https://...supabase.co/storage/v1/object/public/books/covers/uuid.jpg
+        const match = pathOrUrl.match(/\/object\/(public|sign)\/[^/]+\/(.+?)(\?|$)/);
+        if (match && match[2]) {
+          storagePath = match[2];
+          this.logger.log(`Extracted storage path: ${storagePath}`);
+        } else {
+          throw new Error('Invalid Supabase URL format');
+        }
+      }
+
       // Get signed URL and download
-      const signedUrl = await this.supabaseService.getSignedUrl(bucket, path, 60);
+      const signedUrl = await this.supabaseService.getSignedUrl(bucket, storagePath, 60);
 
       // Download file using fetch
       const response = await fetch(signedUrl);

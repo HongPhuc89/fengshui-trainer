@@ -9,6 +9,7 @@ import { User } from 'src/modules/users/entities/user.entity';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import 'multer';
+import { MediaUrlHelper } from '../../shares/helpers/media-url.helper';
 
 @Injectable()
 export class UploadService {
@@ -19,6 +20,7 @@ export class UploadService {
     @InjectRepository(UploadedFile)
     private uploadedFileRepository: Repository<UploadedFile>,
     private configService: ConfigService,
+    private mediaUrlHelper: MediaUrlHelper,
   ) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
@@ -127,20 +129,11 @@ export class UploadService {
 
   /**
    * Generate URL for an uploaded file using media proxy
-   * This returns /api/media/:id instead of direct Supabase URLs
-   * Benefits: No expired tokens, better caching, centralized access control
    * @param file - UploadedFile entity
+   * @param baseUrl - Optional base URL
    * @returns Media proxy URL
    */
-  async getFileUrl(file: any): Promise<string> {
-    if (!file || !file.id) {
-      console.log('[UploadService] getFileUrl: No file or ID provided');
-      return null;
-    }
-
-    // Return media proxy URL format: /api/media/:id
-    const mediaUrl = `/api/media/${file.id}`;
-    console.log('[UploadService] getFileUrl: Generated media proxy URL:', mediaUrl);
-    return mediaUrl;
+  async getFileUrl(file: any, baseUrl?: string): Promise<string> {
+    return this.mediaUrlHelper.getMediaUrl(file?.id, baseUrl);
   }
 }

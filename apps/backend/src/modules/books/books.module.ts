@@ -20,17 +20,11 @@ import { AdminFlashcardsController } from './admin-flashcards.controller';
 import { ReadingProgressController, UserProgressController } from './controllers/reading-progress.controller';
 import { UploadModule } from '../upload/upload.module';
 import { QuizModule } from '../quiz/quiz.module';
+import { MediaUrlHelper } from '../../shares/helpers/media-url.helper';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Book,
-      Chapter,
-      BookChunk,
-      UploadedFile,
-      Flashcard,
-      ReadingProgress,
-    ]),
+    TypeOrmModule.forFeature([Book, Chapter, BookChunk, UploadedFile, Flashcard, ReadingProgress]),
     UploadModule,
     QuizModule,
   ],
@@ -50,13 +44,8 @@ import { QuizModule } from '../quiz/quiz.module';
     ChaptersService,
     FlashcardsService,
     ReadingProgressService,
+    MediaUrlHelper,
   ],
-  exports: [
-    BookProcessingService,
-    BooksService,
-    ChaptersService,
-    FlashcardsService,
-    ReadingProgressService,
-  ],
+  exports: [BookProcessingService, BooksService, ChaptersService, FlashcardsService, ReadingProgressService],
 })
 export class BooksModule {}
