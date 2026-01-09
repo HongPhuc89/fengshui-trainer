@@ -11,6 +11,7 @@ import { QuizModule } from './modules/quiz/quiz.module';
 import { MindMapModule } from './modules/mindmap/mindmap.module';
 import { ExperienceModule } from './modules/experience/experience.module';
 import { HealthModule } from './modules/health/health.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { HealthModule } from './modules/health/health.module';
     ExperienceModule,
     AdminModule,
     HealthModule,
+    MediaModule,
   ],
 })
 export class AppModule {}
