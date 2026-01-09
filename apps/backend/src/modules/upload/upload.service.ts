@@ -126,44 +126,21 @@ export class UploadService {
   }
 
   /**
-   * Generate a fresh signed URL for an uploaded file
-   * This is used to avoid expired URL issues when fetching file data
+   * Generate URL for an uploaded file using media proxy
+   * This returns /api/media/:id instead of direct Supabase URLs
+   * Benefits: No expired tokens, better caching, centralized access control
    * @param file - UploadedFile entity
-   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
-   * @returns Fresh signed URL
+   * @returns Media proxy URL
    */
-  async getFileUrl(file: any, expiresIn: number = 3600): Promise<string> {
-    if (!file || !file.path) {
-      console.log('[UploadService] getFileUrl: No file or path provided');
+  async getFileUrl(file: any): Promise<string> {
+    if (!file || !file.id) {
+      console.log('[UploadService] getFileUrl: No file or ID provided');
       return null;
     }
 
-    // If path is already a full URL (old data), extract the storage path
-    let storagePath = file.path;
-    console.log('[UploadService] getFileUrl: Original path:', storagePath);
-
-    if (storagePath.startsWith('http')) {
-      console.log('[UploadService] getFileUrl: Path is a full URL, extracting storage path...');
-      try {
-        storagePath = this.extractPathFromUrl(storagePath);
-        console.log('[UploadService] getFileUrl: Extracted storage path:', storagePath);
-      } catch (error) {
-        console.error('[UploadService] getFileUrl: Failed to extract path:', error.message);
-        // If extraction fails, return the original path
-        return storagePath;
-      }
-    }
-
-    // Generate fresh signed URL
-    console.log('[UploadService] getFileUrl: Generating signed URL for:', storagePath);
-    try {
-      const signedUrl = await this.getSignedUrl(storagePath, expiresIn);
-      console.log('[UploadService] getFileUrl: Successfully generated signed URL');
-      return signedUrl;
-    } catch (error) {
-      console.error('[UploadService] getFileUrl: Failed to generate signed URL:', error.message);
-      // Re-throw the error instead of silently returning storage path
-      throw new InternalServerErrorException(`Failed to generate file URL: ${error.message}`);
-    }
+    // Return media proxy URL format: /api/media/:id
+    const mediaUrl = `/api/media/${file.id}`;
+    console.log('[UploadService] getFileUrl: Generated media proxy URL:', mediaUrl);
+    return mediaUrl;
   }
 }
