@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/config/environment.dart';
 import 'core/config/theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
@@ -15,6 +16,16 @@ import 'features/quiz/presentation/pages/quiz_page.dart';
 import 'features/quiz/presentation/pages/quiz_results_page.dart';
 
 void main() {
+  // Log environment configuration
+  print('🚀 ========================================');
+  print('🚀 Fengshui Trainer App Starting...');
+  print('🚀 ========================================');
+  print('🌐 API Base URL: ${Environment.apiBaseUrl}');
+  print('📱 App Name: ${Environment.appName}');
+  print('📦 App Version: ${Environment.appVersion}');
+  print('🔧 Environment: ${Environment.isDevelopment ? 'Development' : 'Production'}');
+  print('🚀 ========================================');
+  
   runApp(const ProviderScope(child: MyApp()));
 }
 

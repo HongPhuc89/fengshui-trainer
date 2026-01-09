@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/services/pdf_cache_service.dart';
+import '../../../../core/storage/secure_storage.dart';
 import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
@@ -24,7 +25,7 @@ class ChapterDetailPage extends ConsumerStatefulWidget {
 
 class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
   final PdfViewerController _pdfController = PdfViewerController();
-  final PdfCacheService _cacheService = PdfCacheService();
+  late final PdfCacheService _cacheService;
 
   int _currentPage = 1;
   int _totalPages = 0;
@@ -40,6 +41,7 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
   @override
   void initState() {
     super.initState();
+    _cacheService = PdfCacheService(SecureStorage());
     _loadChapter();
   }
 
@@ -148,17 +150,23 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
   }
 
   String? _getPdfUrl() {
-    if (_chapter == null) {
+    if (_chapter == null || _chapter!.files == null || _chapter!.files!.isEmpty) {
+      print('[ChapterDetail] No PDF file found in chapter');
       return null;
     }
 
-    // TEMPORARY: Hardcoded PDF URL for chapter 6 testing
-    // TODO: Update Chapter model to include file.path field
-    if (widget.chapterId == 6) {
-      return 'https://ppjcqetlikzvvoblnybe.supabase.co/storage/v1/object/sign/books/chapters/523eb379-8777-499c-a363-5cb2bd1f657d.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kNjYwNzUzZC01MzM1LTRjMTMtOTNkNi0wODU1NGM2ZWJhYzMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJib29rcy9jaGFwdGVycy81MjNlYjM3OS04Nzc3LTQ5OWMtYTM2My01Y2IyYmQxZjY1N2QucGRmIiwiaWF0IjoxNzY3NTk4Mjg2LCJleHAiOjE3Njc2MDE4ODZ9.B5X8Ahmdz40xMCOAabDRJZ4Gyn8zmla2ggsegn99kzo';
+    // Find first PDF file
+    try {
+      final pdfFile = _chapter!.files!.firstWhere(
+        (file) => file.fileType.toLowerCase() == 'pdf',
+      );
+      print('[ChapterDetail] Found PDF file: ${pdfFile.fileName}');
+      print('[ChapterDetail] PDF URL: ${pdfFile.fileUrl}');
+      return pdfFile.fileUrl;
+    } catch (e) {
+      print('[ChapterDetail] No PDF file found in files array');
+      return null;
     }
-
-    return null;
   }
 
   Widget _buildPdfViewer() {

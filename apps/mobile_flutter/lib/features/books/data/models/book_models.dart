@@ -55,12 +55,21 @@ class Chapter extends Equatable {
   });
 
   factory Chapter.fromJson(Map<String, dynamic> json) {
+    // Parse files array if present
+    List<ChapterFile>? filesList;
+    if (json['files'] != null && json['files'] is List) {
+      filesList = (json['files'] as List)
+          .map((fileJson) => ChapterFile.fromJson(fileJson as Map<String, dynamic>))
+          .toList();
+    }
+
     return Chapter(
       id: json['id'] as int,
       bookId: json['book_id'] as int,
       title: json['title'] as String,
       orderIndex: json['order'] as int,
       content: json['content'] as String?,
+      files: filesList,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
