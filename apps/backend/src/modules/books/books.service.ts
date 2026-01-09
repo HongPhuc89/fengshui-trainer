@@ -126,30 +126,18 @@ export class BooksService {
   }
 
   /**
-   * Generate signed URLs for book cover and file
-   * This replaces the static storage URLs with temporary signed URLs (valid for 1 hour)
+   * Generate media proxy URLs for book cover and file
+   * Returns /api/media/:id instead of Supabase signed URLs
    */
   private async attachSignedUrls(book: Book): Promise<Book> {
-    if (book.cover_file?.path) {
-      try {
-        const coverPath = this.uploadService.extractPathFromUrl(book.cover_file.path);
-        const signedUrl = await this.uploadService.getSignedUrl(coverPath);
-        book.cover_file.path = signedUrl;
-      } catch (error) {
-        console.error('Failed to generate signed URL for cover:', error);
-        // Keep original URL if signed URL generation fails
-      }
+    if (book.cover_file?.id) {
+      // Use media proxy URL format
+      book.cover_file.path = `/api/media/${book.cover_file.id}`;
     }
 
-    if (book.file?.path) {
-      try {
-        const filePath = this.uploadService.extractPathFromUrl(book.file.path);
-        const signedUrl = await this.uploadService.getSignedUrl(filePath);
-        book.file.path = signedUrl;
-      } catch (error) {
-        console.error('Failed to generate signed URL for file:', error);
-        // Keep original URL if signed URL generation fails
-      }
+    if (book.file?.id) {
+      // Use media proxy URL format
+      book.file.path = `/api/media/${book.file.id}`;
     }
 
     return book;
