@@ -1,5 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../utils/storage';
+
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 const CACHE_DIR = FileSystem.documentDirectory + 'pdf_cache/';
 const METADATA_KEY = '@pdf_cache:metadata';
@@ -115,8 +118,13 @@ class OfflineCacheService {
 
       console.log('[OfflineCache] Downloading file:', fileName);
 
+      // Get auth token
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
+
       // Download file
-      const downloadResult = await FileSystem.downloadAsync(fileUrl, localPath);
+      const downloadResult = await FileSystem.downloadAsync(fileUrl, localPath, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
 
       if (downloadResult.status !== 200) {
         throw new Error(`Download failed with status ${downloadResult.status}`);
@@ -126,7 +134,7 @@ class OfflineCacheService {
 
       // Get file size
       const fileInfo = await FileSystem.getInfoAsync(localPath);
-      const size = fileInfo.size || 0;
+      const size = 'size' in fileInfo ? fileInfo.size : 0;
 
       // Update metadata
       const metadata = await this.loadMetadata();

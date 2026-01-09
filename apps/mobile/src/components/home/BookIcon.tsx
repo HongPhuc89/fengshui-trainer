@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { spacing } from '@/constants';
+import { storage } from '../../../utils/storage';
+
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 interface BookIconProps {
   initial: string;
@@ -10,12 +13,29 @@ interface BookIconProps {
 }
 
 const BookIconComponent: React.FC<BookIconProps> = ({ initial, gradientColors, coverImage }) => {
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, []);
+
   return (
     <View style={styles.bookIconContainer}>
       <LinearGradient colors={gradientColors} style={styles.bookIcon}>
         {coverImage ? (
           // Show cover image if available
-          <Image source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
+          <Image
+            source={{
+              uri: coverImage,
+              headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+            }}
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
         ) : (
           // Fallback to initial letter
           <View style={styles.bookIconInner}>

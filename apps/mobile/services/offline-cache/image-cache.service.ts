@@ -1,5 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../utils/storage';
+
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 const CACHE_DIR = FileSystem.documentDirectory + 'image_cache/';
 const METADATA_KEY = '@image_cache:metadata';
@@ -123,8 +126,13 @@ class ImageCacheService {
 
       console.log('[ImageCache] Downloading image:', imageUrl);
 
+      // Get auth token
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
+
       // Download image
-      const downloadResult = await FileSystem.downloadAsync(imageUrl, localPath);
+      const downloadResult = await FileSystem.downloadAsync(imageUrl, localPath, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
 
       if (downloadResult.status !== 200) {
         throw new Error(`Download failed with status ${downloadResult.status}`);

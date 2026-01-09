@@ -3,6 +3,9 @@ import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Linking, P
 import Pdf from 'react-native-pdf';
 import { useReadingProgress } from '../../hooks/useReadingProgress';
 import { offlineCacheService } from '../../services/offline-cache/offline-cache.service';
+import { storage } from '../../utils/storage';
+
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 interface ChapterFileViewerProps {
   chapterId: number;
@@ -13,6 +16,7 @@ interface ChapterFileViewerProps {
 }
 
 export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUpdatedAt }: ChapterFileViewerProps) {
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cachedFilePath, setCachedFilePath] = useState<string | null>(null);
@@ -24,6 +28,15 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
   const pdfRef = useRef<any>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { progress, saveProgress } = useReadingProgress(chapterId);
+
+  // Fetch token on mount
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, []);
 
   // Wait for progress to load before rendering PDF
   useEffect(() => {
@@ -145,10 +158,15 @@ export function ChapterFileViewer({ chapterId, fileUrl, fileName, fileId, fileUp
   // Use cached file if available (offline-first), otherwise use remote URL
   // Memoize to prevent unnecessary re-renders
   const pdfSource = useMemo(() => {
-    const source = cachedFilePath ? { uri: cachedFilePath, cache: true } : { uri: fileUrl, cache: true };
+    const isRemote = !cachedFilePath;
+    const source = {
+      uri: cachedFilePath || fileUrl,
+      cache: true,
+      headers: isRemote && authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+    };
     console.log('[ChapterFileViewer] PDF source:', cachedFilePath ? 'CACHED' : 'REMOTE', source.uri);
     return source;
-  }, [cachedFilePath, fileUrl]);
+  }, [cachedFilePath, fileUrl, authToken]);
 
   return (
     <View style={styles.container}>

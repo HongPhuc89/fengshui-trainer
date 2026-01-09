@@ -4,15 +4,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSizes } from '@/constants';
 import { Book } from '@/modules/shared/services/api/types';
 import { imageCacheService } from '../../services/offline-cache/image-cache.service';
+import { storage } from '../../utils/storage';
+
+const STORAGE_KEY_TOKEN = '@quiz_game:auth_token';
 
 interface BookHeaderCardProps {
   book: Book;
 }
 
 export function BookHeaderCard({ book }: BookHeaderCardProps) {
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [imageSource, setImageSource] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await storage.getItem(STORAGE_KEY_TOKEN);
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, []);
 
   useEffect(() => {
     const loadImage = async () => {
@@ -32,13 +44,18 @@ export function BookHeaderCard({ book }: BookHeaderCardProps) {
     loadImage();
   }, [book.coverImage]);
 
+  const isRemote = imageSource && imageSource.startsWith('http');
+
   return (
     <View style={styles.bookHeaderCard}>
       {/* Book Cover */}
       <View style={styles.coverContainer}>
         {imageSource && !imageLoading && !imageError ? (
           <Image
-            source={{ uri: imageSource }}
+            source={{
+              uri: imageSource,
+              headers: isRemote && authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+            }}
             style={styles.cover}
             resizeMode="cover"
             onError={() => {
