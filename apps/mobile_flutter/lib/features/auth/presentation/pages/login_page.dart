@@ -85,11 +85,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Header
+                  // Logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 120,
+                    width: 120,
+                  ),
+                  const SizedBox(height: 24),
                   const Text(
-                    '🎋 Đăng nhập',
+                    'Fengshui Trainer',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppColors.white,
                     ),

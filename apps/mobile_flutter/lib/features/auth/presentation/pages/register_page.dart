@@ -77,12 +77,18 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Title
+                  // Logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 100,
+                    width: 100,
+                  ),
+                  const SizedBox(height: 24),
                   const Text(
-                    'Tạo tài khoản',
+                    'Fengshui Trainer',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
