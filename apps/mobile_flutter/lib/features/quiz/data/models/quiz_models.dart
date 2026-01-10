@@ -87,8 +87,8 @@ class QuizQuestion extends Equatable {
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
       id: json['id'] as int? ?? 0,
-      question: json['question'] as String? ?? '',
-      type: json['type'] as String? ?? 'multiple_choice',
+      question: (json['question_text'] ?? json['question']) as String? ?? '',
+      type: (json['question_type'] ?? json['type']) as String? ?? 'multiple_choice',
       options: json['options'], // Keep as dynamic
       difficulty: json['difficulty'] as String? ?? 'medium',
       points: json['points'] as int? ?? 1,
