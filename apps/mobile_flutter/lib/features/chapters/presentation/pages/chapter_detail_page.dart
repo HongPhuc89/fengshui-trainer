@@ -11,6 +11,7 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
+import '../widgets/bottom_menu_bar.dart';
 
 class ChapterDetailPage extends ConsumerStatefulWidget {
 
@@ -205,6 +206,10 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
           onPressed: () => context.go('/books/${widget.bookId}'),
         ),
         title: Text(_chapter?.title ?? 'Đọc chương'),
+      ),
+      bottomNavigationBar: BottomMenuBar(
+        bookId: widget.bookId,
+        chapterId: widget.chapterId,
       ),
       body: _isLoadingChapter
           ? const Center(child: CircularProgressIndicator())
