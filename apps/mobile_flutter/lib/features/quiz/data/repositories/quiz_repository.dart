@@ -22,9 +22,10 @@ class QuizRepository {
     required int chapterId,
   }) async {
     // Return default config since API doesn't have separate config endpoint
-    return const QuizConfig(
+    final now = DateTime.now();
+    return QuizConfig(
       id: 0,
-      chapterId: 0,
+      chapterId: chapterId,
       questionCount: 10,
       easyPercentage: 30,
       mediumPercentage: 50,
@@ -34,8 +35,8 @@ class QuizRepository {
       shuffleQuestions: true,
       shuffleOptions: true,
       showCorrectAnswers: true,
-      createdAt: null,
-      updatedAt: null,
+      createdAt: now,
+      updatedAt: now,
     );
   }
 
