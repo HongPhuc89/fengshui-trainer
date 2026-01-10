@@ -16,32 +16,23 @@ class QuizConfig extends Equatable {
 
   factory QuizConfig.fromJson(Map<String, dynamic> json) {
     return QuizConfig(
-      id: json['id'] as int,
-      chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
-      questionCount:
-          json['question_count'] as int? ?? json['questionCount'] as int,
-      easyPercentage:
-          json['easy_percentage'] as int? ?? json['easyPercentage'] as int,
-      mediumPercentage:
-          json['medium_percentage'] as int? ?? json['mediumPercentage'] as int,
-      hardPercentage:
-          json['hard_percentage'] as int? ?? json['hardPercentage'] as int,
-      passingScore:
-          json['passing_score'] as int? ?? json['passingScore'] as int,
-      timeLimit: json['time_limit'] as int? ?? json['timeLimit'] as int?,
-      shuffleQuestions: json['shuffle_questions'] as bool? ??
-          json['shuffleQuestions'] as bool? ??
-          false,
-      shuffleOptions: json['shuffle_options'] as bool? ??
-          json['shuffleOptions'] as bool? ??
-          false,
-      showCorrectAnswers: json['show_correct_answers'] as bool? ??
-          json['showCorrectAnswers'] as bool? ??
-          true,
-      createdAt: DateTime.parse(
-          json['created_at'] as String? ?? json['createdAt'] as String,),
-      updatedAt: DateTime.parse(
-          json['updated_at'] as String? ?? json['updatedAt'] as String,),
+      id: json['id'] as int? ?? 0,
+      chapterId: (json['chapter_id'] ?? json['chapterId']) as int? ?? 0,
+      questionCount: (json['question_count'] ?? json['questionCount']) as int? ?? 10,
+      easyPercentage: (json['easy_percentage'] ?? json['easyPercentage']) as int? ?? 30,
+      mediumPercentage: (json['medium_percentage'] ?? json['mediumPercentage']) as int? ?? 50,
+      hardPercentage: (json['hard_percentage'] ?? json['hardPercentage']) as int? ?? 20,
+      passingScore: (json['passing_score'] ?? json['passingScore']) as int? ?? 70,
+      timeLimit: (json['time_limit'] ?? json['timeLimit']) as int?,
+      shuffleQuestions: (json['shuffle_questions'] ?? json['shuffleQuestions']) as bool? ?? false,
+      shuffleOptions: (json['shuffle_options'] ?? json['shuffleOptions']) as bool? ?? false,
+      showCorrectAnswers: (json['show_correct_answers'] ?? json['showCorrectAnswers']) as bool? ?? true,
+      createdAt: json['created_at'] != null || json['createdAt'] != null
+          ? DateTime.parse((json['created_at'] ?? json['createdAt']) as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null || json['updatedAt'] != null
+          ? DateTime.parse((json['updated_at'] ?? json['updatedAt']) as String)
+          : DateTime.now(),
     );
   }
   final int id;
