@@ -14,6 +14,10 @@ class BookDetailPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1a1a2e), // Dark background
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
         title: const Text('Danh sách chương'),
         backgroundColor: const Color(0xFF2D7061),
         foregroundColor: Colors.white,

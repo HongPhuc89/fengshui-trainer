@@ -15,8 +15,8 @@ class ReadingProgress extends Equatable {
 
   factory ReadingProgress.fromJson(Map<String, dynamic> json) {
     return ReadingProgress(
-      id: json['id'] as int,
-      userId: json['user_id'] as int? ?? json['userId'] as int,
+      id: json['id'] as int? ?? 0, // ID may be null for new progress
+      userId: json['user_id'] as int? ?? json['userId'] as int? ?? 0,
       chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
       currentPage:
           json['current_page'] as int? ?? json['currentPage'] as int? ?? 1,
@@ -25,11 +25,12 @@ class ReadingProgress extends Equatable {
       scrollPosition:
           (json['scroll_position'] ?? json['scrollPosition'] ?? 0.0).toDouble(),
       lastReadAt: DateTime.parse(
-          json['last_read_at'] as String? ?? json['lastReadAt'] as String,),
+          json['last_read_at'] as String? ?? json['lastReadAt'] as String? ?? DateTime.now().toIso8601String(),),
       readingTime:
           json['reading_time'] as int? ?? json['readingTime'] as int? ?? 0,
       isCompleted: json['is_completed'] as bool? ??
           json['isCompleted'] as bool? ??
+          json['completed'] as bool? ??
           false,
     );
   }

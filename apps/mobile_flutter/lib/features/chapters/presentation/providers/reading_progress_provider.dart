@@ -1,89 +1,93 @@
-import 'package:dio/dio.dart';
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/models/reading_progress_models.dart';
-import '../../data/repositories/reading_progress_repository.dart';
-
-// Repository Provider
-final readingProgressRepositoryProvider =
-    Provider<ReadingProgressRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return ReadingProgressRepository(apiClient);
-});
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Reading Progress State
 class ReadingProgressState {
 
   ReadingProgressState({
-    this.progress,
-    this.isLoading = false,
-    this.isSaving = false,
-    this.error,
+    this.currentPage = 1,
+    this.totalPages = 0,
+    this.lastReadAt,
   });
-  final ReadingProgress? progress;
-  final bool isLoading;
-  final bool isSaving;
-  final String? error;
+  final int currentPage;
+  final int totalPages;
+  final DateTime? lastReadAt;
 
   ReadingProgressState copyWith({
-    ReadingProgress? progress,
-    bool? isLoading,
-    bool? isSaving,
-    String? error,
+    int? currentPage,
+    int? totalPages,
+    DateTime? lastReadAt,
   }) {
     return ReadingProgressState(
-      progress: progress ?? this.progress,
-      isLoading: isLoading ?? this.isLoading,
-      isSaving: isSaving ?? this.isSaving,
-      error: error,
+      currentPage: currentPage ?? this.currentPage,
+      totalPages: totalPages ?? this.totalPages,
+      lastReadAt: lastReadAt ?? this.lastReadAt,
     );
+  }
+
+  double get progressPercentage {
+    if (totalPages == 0) return 0.0;
+    return (currentPage / totalPages).clamp(0.0, 1.0);
   }
 }
 
-// Reading Progress Notifier
+// Reading Progress Notifier - Local Only
 class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
 
-  ReadingProgressNotifier(this._repository, this.chapterId)
-      : super(ReadingProgressState()) {
-    loadProgress();
+  ReadingProgressNotifier(this.chapterId) : super(ReadingProgressState()) {
+    _loadProgress();
   }
-  final ReadingProgressRepository _repository;
   final int chapterId;
 
-  Future<void> loadProgress() async {
-    state = state.copyWith(isLoading: true);
-
+  Future<void> _loadProgress() async {
     try {
-      final progress = await _repository.getProgress(chapterId);
-      state = state.copyWith(progress: progress, isLoading: false);
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'reading_progress_$chapterId';
+      final jsonString = prefs.getString(key);
+      
+      if (jsonString != null) {
+        final json = jsonDecode(jsonString) as Map<String, dynamic>;
+        state = ReadingProgressState(
+          currentPage: json['currentPage'] as int? ?? 1,
+          totalPages: json['totalPages'] as int? ?? 0,
+          lastReadAt: json['lastReadAt'] != null 
+              ? DateTime.parse(json['lastReadAt'] as String)
+              : null,
+        );
+        print('[ReadingProgress] Loaded: page ${state.currentPage}/${state.totalPages}');
+      }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      print('[ReadingProgress] Failed to load: $e');
+      // Reset to default state on error
+      state = ReadingProgressState(currentPage: 1, totalPages: 0);
     }
   }
 
   Future<void> updateProgress(int currentPage, int totalPages) async {
-    state = state.copyWith(isSaving: true);
-
+    // Update state
+    state = state.copyWith(
+      currentPage: currentPage,
+      totalPages: totalPages,
+      lastReadAt: DateTime.now(),
+    );
+    
+    // Save to local storage
     try {
-      final request = UpdateProgressRequest(
-        currentPage: currentPage,
-        totalPages: totalPages,
-      );
-      final progress = await _repository.updateProgress(chapterId, request);
-      state = state.copyWith(progress: progress, isSaving: false);
-    } on DioException {
-      state = state.copyWith(isSaving: false);
-      // Silently fail for progress updates
-    }
-  }
-
-  Future<void> markAsCompleted() async {
-    try {
-      await _repository.markAsCompleted(chapterId);
-      await loadProgress();
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'reading_progress_$chapterId';
+      
+      final json = {
+        'currentPage': currentPage,
+        'totalPages': totalPages,
+        'lastReadAt': DateTime.now().toIso8601String(),
+      };
+      
+      await prefs.setString(key, jsonEncode(json));
+      print('[ReadingProgress] Saved: page $currentPage/$totalPages');
     } catch (e) {
-      // Silently fail
+      print('[ReadingProgress] Failed to save: $e');
     }
   }
 }
@@ -91,6 +95,5 @@ class ReadingProgressNotifier extends StateNotifier<ReadingProgressState> {
 // Reading Progress Provider Family
 final readingProgressProvider = StateNotifierProvider.family<
     ReadingProgressNotifier, ReadingProgressState, int>((ref, chapterId) {
-  final repository = ref.watch(readingProgressRepositoryProvider);
-  return ReadingProgressNotifier(repository, chapterId);
+  return ReadingProgressNotifier(chapterId);
 });

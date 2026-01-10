@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/services/pdf_cache_service.dart';
@@ -141,9 +142,8 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
     if (!_hasJumpedToSavedPage) {
       final progressState = ref.read(readingProgressProvider(widget.chapterId));
-      if (progressState.progress != null &&
-          progressState.progress!.currentPage > 1) {
-        _pdfController.jumpToPage(progressState.progress!.currentPage);
+      if (progressState.currentPage > 1) {
+        _pdfController.jumpToPage(progressState.currentPage);
       }
       _hasJumpedToSavedPage = true;
     }
@@ -155,18 +155,11 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
       return null;
     }
 
-    // Find first PDF file
-    try {
-      final pdfFile = _chapter!.files!.firstWhere(
-        (file) => file.fileType.toLowerCase() == 'pdf',
-      );
-      print('[ChapterDetail] Found PDF file: ${pdfFile.fileName}');
-      print('[ChapterDetail] PDF URL: ${pdfFile.fileUrl}');
-      return pdfFile.fileUrl;
-    } catch (e) {
-      print('[ChapterDetail] No PDF file found in files array');
-      return null;
-    }
+    // Get first file (should be PDF)
+    final pdfFile = _chapter!.files!.first;
+    print('[ChapterDetail] Found PDF file: ${pdfFile.fileName}');
+    print('[ChapterDetail] PDF URL: ${pdfFile.fileUrl}');
+    return pdfFile.fileUrl;
   }
 
   Widget _buildPdfViewer() {
@@ -207,21 +200,11 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/books/${widget.bookId}'),
+        ),
         title: Text(_chapter?.title ?? 'Đọc chương'),
-        actions: [
-          if (progressState.isSaving)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            ),
-        ],
       ),
       body: _isLoadingChapter
           ? const Center(child: CircularProgressIndicator())
@@ -292,10 +275,9 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
                                       ),
                                   ],
                                 ),
-                                if (progressState.progress != null &&
-                                    _totalPages > 0)
+                                if (_totalPages > 0)
                                   Text(
-                                    'Đã đọc: ${((progressState.progress!.currentPage / _totalPages) * 100).toStringAsFixed(0)}%',
+                                    'Đã đọc: ${(progressState.progressPercentage * 100).toStringAsFixed(0)}%',
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                               ],
