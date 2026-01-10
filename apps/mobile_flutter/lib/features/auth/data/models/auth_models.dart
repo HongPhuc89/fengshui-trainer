@@ -9,6 +9,7 @@ class User extends Equatable {
     this.avatar,
     this.level = 1,
     this.experience = 0,
+    this.experiencePoints = 0,
     this.points = 0,
   });
 
@@ -16,10 +17,13 @@ class User extends Equatable {
     return User(
       id: json['id'] as int,
       email: json['email'] as String,
-      name: (json['name'] as String?) ?? json['email'] as String,
+      name: (json['full_name'] as String?) ?? 
+            (json['name'] as String?) ?? 
+            json['email'] as String,
       avatar: json['avatar'] as String?,
       level: json['level'] as int? ?? 1,
       experience: json['experience'] as int? ?? 0,
+      experiencePoints: json['experience_points'] as int? ?? 0,
       points: json['points'] as int? ?? 0,
     );
   }
@@ -29,6 +33,7 @@ class User extends Equatable {
   final String? avatar;
   final int level;
   final int experience;
+  final int experiencePoints;
   final int points;
 
   Map<String, dynamic> toJson() {
@@ -39,13 +44,14 @@ class User extends Equatable {
       'avatar': avatar,
       'level': level,
       'experience': experience,
+      'experience_points': experiencePoints,
       'points': points,
     };
   }
 
   @override
   List<Object?> get props =>
-      [id, email, name, avatar, level, experience, points];
+      [id, email, name, avatar, level, experience, experiencePoints, points];
 }
 
 class LoginRequest {
