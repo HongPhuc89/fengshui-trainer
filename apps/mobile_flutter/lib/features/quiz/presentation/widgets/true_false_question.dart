@@ -18,20 +18,22 @@ class TrueFalseQuestion extends StatelessWidget {
         Expanded(
           child: _buildOptionButton(
             context: context,
-            label: 'Đúng',
+            label: 'ĐÚNG',
             value: true,
             icon: Icons.check_circle_outline,
-            color: const Color(0xFF10b981),
+            selectedIcon: Icons.check_circle,
+            color: const Color(0xFF10b981), // Green
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildOptionButton(
             context: context,
-            label: 'Sai',
+            label: 'SAI',
             value: false,
             icon: Icons.cancel_outlined,
-            color: const Color(0xFFef4444),
+            selectedIcon: Icons.cancel,
+            color: const Color(0xFFef4444), // Red
           ),
         ),
       ],
@@ -43,36 +45,48 @@ class TrueFalseQuestion extends StatelessWidget {
     required String label,
     required bool value,
     required IconData icon,
+    required IconData selectedIcon,
     required Color color,
   }) {
     final isSelected = selectedAnswer == value;
 
     return GestureDetector(
       onTap: () => onAnswer(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 24),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? color.withOpacity(0.15) : Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? color : Colors.white.withOpacity(0.2),
-            width: 2,
+            color: isSelected ? color : color.withOpacity(0.3),
+            width: 2.5,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
         ),
         child: Column(
           children: [
             Icon(
-              icon,
-              size: 48,
-              color: isSelected ? color : Colors.white.withOpacity(0.6),
+              isSelected ? selectedIcon : icon,
+              size: 56,
+              color: isSelected ? color : color.withOpacity(0.5),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               label,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.8),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+                letterSpacing: 2,
               ),
             ),
           ],

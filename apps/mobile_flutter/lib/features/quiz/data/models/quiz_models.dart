@@ -131,6 +131,18 @@ class QuizQuestion extends Equatable {
       (index) => QuizOption.fromDynamic(list[index], index),
     );
   }
+
+  /// Check if this is a multiple choice question
+  bool get isMultipleChoice => type == 'multiple_choice';
+
+  /// Check if this is a multiple answer question
+  bool get isMultipleAnswer => type == 'multiple_answer';
+
+  /// Check if this is a true/false question
+  bool get isTrueFalse => type == 'true_false';
+
+  @override
+  List<Object?> get props => [id, question, type, difficulty, points];
 }
 
 class QuizOption {
@@ -151,19 +163,6 @@ class QuizOption {
       text: data.toString(),
     );
   }
-}
-
-  /// Check if this is a multiple choice question
-  bool get isMultipleChoice => type == 'multiple_choice';
-
-  /// Check if this is a multiple answer question
-  bool get isMultipleAnswer => type == 'multiple_answer';
-
-  /// Check if this is a true/false question
-  bool get isTrueFalse => type == 'true_false';
-
-  @override
-  List<Object?> get props => [id, question, type, difficulty, points];
 }
 
 /// Quiz attempt model
