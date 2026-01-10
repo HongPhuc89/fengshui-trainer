@@ -23,17 +23,18 @@ class ApiEndpoints {
   static String flashcardDetail(int bookId, int chapterId, int flashcardId) =>
       '/books/$bookId/chapters/$chapterId/flashcards/$flashcardId';
 
-  // Quiz
-  static String quizConfig(int bookId, int chapterId) =>
-      '/books/$bookId/chapters/$chapterId/quiz/info';
-  static String quizStart(int bookId, int chapterId) =>
-      '/books/$bookId/chapters/$chapterId/quiz/start';
-  static String quizSubmit(int bookId, int chapterId) =>
-      '/books/$bookId/chapters/$chapterId/quiz/submit';
-  static String quizAttempts(int bookId, int chapterId) =>
-      '/books/$bookId/chapters/$chapterId/quiz/attempts';
-  static String quizAttemptDetail(int bookId, int chapterId, int attemptId) =>
-      '/books/$bookId/chapters/$chapterId/quiz/attempts/$attemptId';
+  // Quiz (using quiz-sessions API)
+  static String quizStart(int chapterId) =>
+      '/quiz-sessions/start/$chapterId';
+  static String quizAnswer(String sessionId) =>
+      '/quiz-sessions/$sessionId/answer';
+  static String quizComplete(String sessionId) =>
+      '/quiz-sessions/$sessionId/complete';
+  static String quizSession(String sessionId) =>
+      '/quiz-sessions/$sessionId';
+  static String quizHistory(int chapterId) =>
+      '/quiz-sessions/chapter/$chapterId/history';
+  static const String quizMySessions = '/quiz-sessions/my-sessions';
 
   // Mindmap
   static String mindmap(int bookId, int chapterId) =>

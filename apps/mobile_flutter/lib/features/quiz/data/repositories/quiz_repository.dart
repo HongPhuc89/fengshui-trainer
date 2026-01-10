@@ -15,20 +15,28 @@ class QuizRepository {
   final SecureStorage _storage;
 
   /// Get quiz configuration for a chapter
+  /// Note: Quiz config is embedded in the quiz session response
+  /// This method is kept for compatibility but returns default config
   Future<QuizConfig> getQuizConfig({
     required int bookId,
     required int chapterId,
   }) async {
-    try {
-      final response = await _apiClient.get(
-        ApiEndpoints.quizConfig(bookId, chapterId),
-      );
-
-      return QuizConfig.fromJson(response as Map<String, dynamic>);
-    } catch (e) {
-      debugPrint('Error fetching quiz config: $e');
-      throw Exception('Không thể tải cấu hình quiz. Vui lòng thử lại.');
-    }
+    // Return default config since API doesn't have separate config endpoint
+    return const QuizConfig(
+      id: 0,
+      chapterId: 0,
+      questionCount: 10,
+      easyPercentage: 30,
+      mediumPercentage: 50,
+      hardPercentage: 20,
+      passingScore: 70,
+      timeLimit: 600,
+      shuffleQuestions: true,
+      shuffleOptions: true,
+      showCorrectAnswers: true,
+      createdAt: null,
+      updatedAt: null,
+    );
   }
 
   /// Start a new quiz attempt
@@ -39,7 +47,7 @@ class QuizRepository {
   }) async {
     try {
       final response = await _apiClient.post(
-        ApiEndpoints.quizStart(bookId, chapterId),
+        ApiEndpoints.quizStart(chapterId),
       );
 
       return QuizAttempt.fromJson(response as Map<String, dynamic>);
@@ -49,16 +57,16 @@ class QuizRepository {
     }
   }
 
-  /// Submit quiz answers
+  /// Submit quiz answers (complete quiz session)
   Future<SubmitQuizResponse> submitQuiz({
     required int bookId,
     required int chapterId,
     required SubmitQuizRequest request,
   }) async {
     try {
+      // Use session ID from attempt
       final response = await _apiClient.post(
-        ApiEndpoints.quizSubmit(bookId, chapterId),
-        data: request.toJson(),
+        ApiEndpoints.quizComplete(request.attemptId.toString()),
       );
 
       return SubmitQuizResponse.fromJson(response as Map<String, dynamic>);
@@ -75,7 +83,7 @@ class QuizRepository {
   }) async {
     try {
       final response = await _apiClient.get(
-        ApiEndpoints.quizAttempts(bookId, chapterId),
+        ApiEndpoints.quizHistory(chapterId),
       );
 
       if (response is List) {
@@ -99,7 +107,7 @@ class QuizRepository {
   }) async {
     try {
       final response = await _apiClient.get(
-        ApiEndpoints.quizAttemptDetail(bookId, chapterId, attemptId),
+        ApiEndpoints.quizSession(attemptId.toString()),
       );
 
       return QuizAttempt.fromJson(response as Map<String, dynamic>);
