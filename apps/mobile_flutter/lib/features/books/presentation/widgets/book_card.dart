@@ -7,7 +7,7 @@ import 'book_info.dart';
 class BookCard extends StatefulWidget {
   const BookCard({
     required this.title,
-    required this.category,
+    required this.author,
     required this.description,
     required this.chapterCount,
     required this.initial,
@@ -19,7 +19,7 @@ class BookCard extends StatefulWidget {
   });
 
   final String title;
-  final String category;
+  final String author;
   final String description;
   final int chapterCount;
   final String initial;
@@ -120,7 +120,7 @@ class _BookCardState extends State<BookCard>
                   ),
                   BookInfo(
                     title: widget.title,
-                    category: widget.category,
+                    author: widget.author,
                     description: widget.description,
                     chapterCount: widget.chapterCount,
                   ),

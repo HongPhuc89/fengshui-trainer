@@ -181,7 +181,7 @@ class BooksListPage extends ConsumerWidget {
                           final book = booksState.books[index];
                           return BookCard(
                             title: book.title,
-                            category: _getCategoryLabel(index),
+                            author: book.author ?? 'VÔ DANH',
                             description: book.description ??
                                 'Cuốn sách cơ bản nhất cho người mới bắt đầu tìm hiểu về địa lý và phong thủy.',
                             chapterCount: book.totalChapters,

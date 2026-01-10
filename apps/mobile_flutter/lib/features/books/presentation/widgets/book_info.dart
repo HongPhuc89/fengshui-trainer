@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 class BookInfo extends StatelessWidget {
   const BookInfo({
     required this.title,
-    required this.category,
+    required this.author,
     required this.description,
     required this.chapterCount,
     super.key,
   });
 
   final String title;
-  final String category;
+  final String author;
   final String description;
   final int chapterCount;
 
@@ -35,9 +35,9 @@ class BookInfo extends StatelessWidget {
           ),
           const SizedBox(height: 4),
 
-          // Category label
+          // Author label
           Text(
-            category,
+            author.toUpperCase(),
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
