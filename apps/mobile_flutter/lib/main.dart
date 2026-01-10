@@ -10,6 +10,7 @@ import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/books/presentation/pages/book_detail_page.dart';
 import 'features/books/presentation/pages/books_list_page.dart';
 import 'features/chapters/presentation/pages/chapter_detail_page.dart';
+import 'features/chapters/presentation/pages/chapter_reading_page.dart';
 import 'features/flashcards/presentation/pages/flashcards_page.dart';
 import 'features/mindmap/presentation/pages/mindmap_page.dart';
 import 'features/quiz/presentation/pages/quiz_page.dart';
@@ -119,6 +120,14 @@ class MyApp extends ConsumerWidget {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
             return ChapterDetailPage(bookId: bookId, chapterId: chapterId);
+          },
+        ),
+        GoRoute(
+          path: '/books/:bookId/chapters/:chapterId/read',
+          builder: (context, state) {
+            final bookId = int.parse(state.pathParameters['bookId']!);
+            final chapterId = int.parse(state.pathParameters['chapterId']!);
+            return ChapterReadingPage(bookId: bookId, chapterId: chapterId);
           },
         ),
         GoRoute(

@@ -64,8 +64,8 @@ class BottomMenuBar extends StatelessWidget {
                         Color(0xFF1D4ED8),
                       ],
                       onTap: () {
-                        // Already on chapter detail page (PDF viewer)
-                        // Could scroll to top or do nothing
+                        // Navigate to PDF reading page
+                        context.go('/books/$bookId/chapters/$chapterId/read');
                       },
                     ),
                   ),
