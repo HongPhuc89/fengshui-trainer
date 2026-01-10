@@ -44,7 +44,9 @@ class QuestionRenderer extends StatelessWidget {
   }
 
   Widget _buildQuestionWidget() {
-    switch (question.type) {
+    final questionType = question.type.toLowerCase();
+    
+    switch (questionType) {
       case 'true_false':
         return TrueFalseQuestion(
           selectedAnswer: selectedAnswer,
