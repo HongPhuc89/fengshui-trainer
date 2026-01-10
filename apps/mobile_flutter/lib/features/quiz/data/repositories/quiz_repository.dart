@@ -87,6 +87,8 @@ class QuizRepository {
         ApiEndpoints.quizComplete(sessionId),
       );
 
+      debugPrint('🐛 Quiz Complete Response: $response');
+
       return SubmitQuizResponse.fromJson(response as Map<String, dynamic>);
     } catch (e) {
       debugPrint('Error completing quiz: $e');

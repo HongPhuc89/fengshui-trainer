@@ -182,23 +182,32 @@ class QuizAttempt extends Equatable {
   });
 
   factory QuizAttempt.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
     return QuizAttempt(
-      id: json['id'] as int? ?? 0,
-      userId: (json['user_id'] ?? json['userId']) as int? ?? 0,
-      chapterId: (json['chapter_id'] ?? json['chapterId']) as int? ?? 0,
+      id: toInt(json['id']),
+      userId: toInt(json['user_id'] ?? json['userId']),
+      chapterId: toInt(json['chapter_id'] ?? json['chapterId']),
       questions: (json['questions'] as List? ?? [])
           .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
           .toList(),
-      startedAt: json['started_at'] != null || json['startedAt'] != null
-          ? DateTime.parse((json['started_at'] ?? json['startedAt']) as String)
-          : DateTime.now(),
-      completedAt: json['completed_at'] != null || json['completedAt'] != null
-          ? DateTime.parse((json['completed_at'] ?? json['completedAt']) as String)
-          : null,
+      startedAt: DateTime.tryParse(
+            (json['started_at'] ?? json['startedAt'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
+      completedAt: DateTime.tryParse(
+        (json['completed_at'] ?? json['completedAt'] ?? '').toString(),
+      ),
       score: (json['score'] as num?)?.toDouble(),
       passed: json['passed'] as bool?,
-      totalPoints: (json['total_points'] ?? json['totalPoints']) as int?,
-      earnedPoints: (json['earned_points'] ?? json['earnedPoints']) as int?,
+      totalPoints: toInt(json['total_points'] ?? json['totalPoints']),
+      earnedPoints: toInt(json['earned_points'] ?? json['earnedPoints']),
     );
   }
   final int id;
@@ -263,11 +272,18 @@ class QuizQuestionResult extends Equatable {
   });
 
   factory QuizQuestionResult.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
     return QuizQuestionResult(
-      questionId: json['question_id'] as int? ?? json['questionId'] as int,
-      isCorrect: json['is_correct'] as bool? ?? json['isCorrect'] as bool,
-      pointsEarned:
-          json['points_earned'] as int? ?? json['pointsEarned'] as int,
+      questionId: toInt(json['question_id'] ?? json['questionId']),
+      isCorrect: json['is_correct'] as bool? ?? json['isCorrect'] as bool? ?? false,
+      pointsEarned: toInt(json['points_earned'] ?? json['pointsEarned']),
       userAnswer: json['user_answer'] ?? json['userAnswer'],
       correctAnswer: json['correct_answer'] ?? json['correctAnswer'],
     );
@@ -288,6 +304,7 @@ class SubmitQuizResponse extends Equatable {
   const SubmitQuizResponse({
     required this.attemptId,
     required this.score,
+    required this.percentage,
     required this.passed,
     required this.totalPoints,
     required this.earnedPoints,
@@ -298,26 +315,55 @@ class SubmitQuizResponse extends Equatable {
   });
 
   factory SubmitQuizResponse.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse int
+    int toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    // Helper to safely parse double
+    double todouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    final earnedPoints = toInt(json['earned_points'] ?? json['earnedPoints'] ?? json['score']);
+    final totalPoints = toInt(json['total_points'] ?? json['totalPoints']);
+    
+    // Use percentage from JSON or calculate it
+    double percentage = todouble(json['percentage'] ?? json['percentage_score']);
+    if (percentage == 0 && totalPoints > 0) {
+      percentage = (earnedPoints / totalPoints) * 100;
+    }
+
     return SubmitQuizResponse(
-      attemptId: json['attempt_id'] as int? ?? json['attemptId'] as int,
-      score: (json['score'] as num).toDouble(),
-      passed: json['passed'] as bool,
-      totalPoints: json['total_points'] as int? ?? json['totalPoints'] as int,
-      earnedPoints:
-          json['earned_points'] as int? ?? json['earnedPoints'] as int,
-      correctAnswers:
-          json['correct_answers'] as int? ?? json['correctAnswers'] as int,
-      totalQuestions:
-          json['total_questions'] as int? ?? json['totalQuestions'] as int,
-      results: (json['results'] as List)
-          .map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
-          .toList(),
-      completedAt: DateTime.parse(
-          json['completed_at'] as String? ?? json['completedAt'] as String,),
+      attemptId: toInt(json['attempt_id'] ?? json['attemptId']),
+      score: todouble(json['score']),
+      percentage: percentage,
+      passed: json['passed'] as bool? ?? false,
+      totalPoints: totalPoints,
+      earnedPoints: earnedPoints,
+      correctAnswers: toInt(json['correct_answers'] ?? json['correctAnswers']),
+      totalQuestions: toInt(json['total_questions'] ?? json['totalQuestions']),
+      results: (json['results'] as List?)
+              ?.map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
+              .toList() ??
+          [],
+      completedAt: DateTime.tryParse(
+            (json['completed_at'] ?? json['completedAt'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
     );
   }
   final int attemptId;
   final double score;
+  final double percentage;
   final bool passed;
   final int totalPoints;
   final int earnedPoints;
@@ -328,5 +374,5 @@ class SubmitQuizResponse extends Equatable {
 
   @override
   List<Object?> get props =>
-      [attemptId, score, passed, totalPoints, earnedPoints];
+      [attemptId, score, percentage, passed, totalPoints, earnedPoints];
 }

@@ -75,7 +75,7 @@ class QuizScoreCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${result.score.toStringAsFixed(1)}%',
+            '${result.percentage.toStringAsFixed(1)}%',
             style: const TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.bold,
