@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import { getAuthenticatedMediaUrl } from '../../utils/mediaUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -498,7 +499,7 @@ const BookDetailsTab = () => {
         >
           {coverUrl ? (
             <img
-              src={coverUrl}
+              src={getAuthenticatedMediaUrl(coverUrl)}
               alt={record.title}
               style={{
                 width: '100%',

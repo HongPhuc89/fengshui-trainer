@@ -24,10 +24,10 @@ export class MediaUrlHelper {
     }
 
     const config = getConfig();
-    const apiPrefix = baseUrl ? '' : config.app?.prefix || 'api';
+    const apiPrefix = config.app?.prefix || 'api';
     const hostUrl = baseUrl || config.app?.url || '';
 
-    const path = `/${apiPrefix}/media/${fileId}`.replace(/\/+/g, '/');
+    const path = `/${apiPrefix}/media/${fileId}`;
 
     return hostUrl ? `${hostUrl}${path}` : path;
   }

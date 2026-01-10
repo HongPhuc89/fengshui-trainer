@@ -15,7 +15,10 @@ async function bootstrap() {
   const { port, prefix, url } = appConfig;
 
   app.enableCors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow all origins for development, but handle credentials correctly
+      callback(null, true);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: '*',

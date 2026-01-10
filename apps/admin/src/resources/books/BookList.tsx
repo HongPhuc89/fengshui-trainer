@@ -7,8 +7,9 @@ import {
   ShowButton,
   CreateButton,
   TopToolbar,
-  ImageField,
+  FunctionField,
 } from 'react-admin';
+import { getAuthenticatedMediaUrl } from '../../utils/mediaUrl';
 
 const BookListActions = () => (
   <TopToolbar>
@@ -20,10 +21,15 @@ export const BookList = () => (
   <List actions={<BookListActions />}>
     <Datagrid>
       <TextField source="id" />
-      <ImageField
-        source="cover_file.path"
+      <FunctionField
         label="Cover"
-        sx={{ '& img': { maxWidth: 50, maxHeight: 75, objectFit: 'cover' } }}
+        render={(record: any) => (
+          <img
+            src={getAuthenticatedMediaUrl(record.cover_file?.path)}
+            alt={record.title}
+            style={{ maxWidth: 50, maxHeight: 75, objectFit: 'cover' }}
+          />
+        )}
       />
       <TextField source="title" />
       <TextField source="author" />

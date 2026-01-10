@@ -7,6 +7,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { getAuthenticatedMediaUrl } from '../utils/mediaUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -59,6 +60,7 @@ export const ReadChapterPage = () => {
   const file = chapter.file;
   const isPDF = file?.mimetype === 'application/pdf';
   const isViewable = isPDF;
+  const authenticatedFileUrl = file ? getAuthenticatedMediaUrl(file.path) : '';
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -78,7 +80,11 @@ export const ReadChapterPage = () => {
               )}
             </Box>
             {file && (
-              <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => window.open(file.path, '_blank')}>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={() => window.open(authenticatedFileUrl, '_blank')}
+              >
                 Download
               </Button>
             )}
@@ -92,7 +98,7 @@ export const ReadChapterPage = () => {
           isViewable ? (
             <Box sx={{ width: '100%', height: '100%', p: 2 }}>
               <iframe
-                src={file.path}
+                src={authenticatedFileUrl}
                 style={{
                   width: '100%',
                   height: '100%',
