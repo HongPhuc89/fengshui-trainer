@@ -47,6 +47,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     return Scaffold(
       appBar: QuizAppBar(
+        bookId: widget.bookId,
+        chapterId: widget.chapterId,
         state: state,
         formatTimeRemaining: () =>
             ref.read(quizProvider.notifier).formatTimeRemaining(),
