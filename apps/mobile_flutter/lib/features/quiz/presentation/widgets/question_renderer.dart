@@ -56,7 +56,7 @@ class QuestionRenderer extends StatelessWidget {
         );
 
       case 'multiple_choice':
-        final options = question.optionsList;
+        final options = question.quizOptions;
         return MultipleChoiceQuestion(
           options: options,
           selectedAnswer: selectedAnswer as String?,
@@ -64,7 +64,7 @@ class QuestionRenderer extends StatelessWidget {
         );
 
       case 'multiple_answer':
-        final options = question.optionsList;
+        final options = question.quizOptions;
         final selectedAnswers = selectedAnswer is List
             ? List<String>.from(selectedAnswer as List)
             : <String>[];

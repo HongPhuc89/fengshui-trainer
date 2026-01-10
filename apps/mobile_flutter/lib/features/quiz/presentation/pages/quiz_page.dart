@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/quiz_provider.dart';
 import '../widgets/quiz_header.dart';
@@ -53,7 +54,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (state.result != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final attemptId = state.attempt?.id ?? state.result?.id ?? 0;
+        final attemptId = state.attempt?.id ?? state.result?.attemptId ?? 0;
         context.go(
           '/books/${widget.bookId}/chapters/${widget.chapterId}/quiz/results?attemptId=$attemptId',
         );

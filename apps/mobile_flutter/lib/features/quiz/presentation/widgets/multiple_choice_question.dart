@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/models/quiz_models.dart';
 
 /// Multiple choice question widget (single selection)
 class MultipleChoiceQuestion extends StatelessWidget {
@@ -9,7 +10,7 @@ class MultipleChoiceQuestion extends StatelessWidget {
     super.key,
   });
 
-  final List<String> options;
+  final List<QuizOption> options;
   final String? selectedAnswer;
   final Function(String) onAnswer;
 
@@ -19,13 +20,13 @@ class MultipleChoiceQuestion extends StatelessWidget {
       children: options.asMap().entries.map((entry) {
         final index = entry.key;
         final option = entry.value;
-        final isSelected = selectedAnswer == option;
+        final isSelected = selectedAnswer == option.id;
         final optionLabel = String.fromCharCode(65 + index); // A, B, C, D...
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: GestureDetector(
-            onTap: () => onAnswer(option),
+            onTap: () => onAnswer(option.id),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -69,7 +70,7 @@ class MultipleChoiceQuestion extends StatelessWidget {
                   // Option text
                   Expanded(
                     child: Text(
-                      option,
+                      option.text,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,

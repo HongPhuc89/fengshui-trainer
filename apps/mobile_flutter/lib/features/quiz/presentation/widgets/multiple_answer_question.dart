@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/models/quiz_models.dart';
 
 /// Multiple answer question widget (multiple selections allowed)
 class MultipleAnswerQuestion extends StatelessWidget {
@@ -9,16 +10,16 @@ class MultipleAnswerQuestion extends StatelessWidget {
     super.key,
   });
 
-  final List<String> options;
+  final List<QuizOption> options;
   final List<String> selectedAnswers;
   final Function(List<String>) onAnswer;
 
-  void _toggleOption(String option) {
+  void _toggleOption(String optionId) {
     final newAnswers = List<String>.from(selectedAnswers);
-    if (newAnswers.contains(option)) {
-      newAnswers.remove(option);
+    if (newAnswers.contains(optionId)) {
+      newAnswers.remove(optionId);
     } else {
-      newAnswers.add(option);
+      newAnswers.add(optionId);
     }
     onAnswer(newAnswers);
   }
@@ -63,13 +64,13 @@ class MultipleAnswerQuestion extends StatelessWidget {
         ...options.asMap().entries.map((entry) {
           final index = entry.key;
           final option = entry.value;
-          final isSelected = selectedAnswers.contains(option);
+          final isSelected = selectedAnswers.contains(option.id);
           final optionLabel = String.fromCharCode(65 + index); // A, B, C, D...
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: GestureDetector(
-              onTap: () => _toggleOption(option),
+              onTap: () => _toggleOption(option.id),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -138,7 +139,7 @@ class MultipleAnswerQuestion extends StatelessWidget {
                     // Option text
                     Expanded(
                       child: Text(
-                        option,
+                        option.text,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,

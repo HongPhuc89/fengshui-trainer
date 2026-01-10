@@ -112,13 +112,46 @@ class QuizQuestion extends Equatable {
     };
   }
 
-  /// Get options as a list of strings (for multiple choice/answer)
-  List<String> get optionsList {
+  /// Get options as raw objects
+  List<dynamic> get rawOptions {
     if (options is List) {
-      return (options as List).map((e) => e.toString()).toList();
+      return options as List;
+    }
+    if (options is Map && options['options'] is List) {
+      return (options as Map)['options'] as List;
     }
     return [];
   }
+
+  /// Get options as QuizOption objects
+  List<QuizOption> get quizOptions {
+    final list = rawOptions;
+    return List.generate(
+      list.length,
+      (index) => QuizOption.fromDynamic(list[index], index),
+    );
+  }
+}
+
+class QuizOption {
+  final String id;
+  final String text;
+
+  QuizOption({required this.id, required this.text});
+
+  factory QuizOption.fromDynamic(dynamic data, int index) {
+    if (data is Map) {
+      return QuizOption(
+        id: data['id']?.toString() ?? String.fromCharCode(97 + index),
+        text: data['text']?.toString() ?? data.toString(),
+      );
+    }
+    return QuizOption(
+      id: String.fromCharCode(97 + index),
+      text: data.toString(),
+    );
+  }
+}
 
   /// Check if this is a multiple choice question
   bool get isMultipleChoice => type == 'multiple_choice';
