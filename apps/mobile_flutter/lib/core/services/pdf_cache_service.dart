@@ -34,7 +34,11 @@ class PdfCacheService {
   }
 
   String _getCacheKey(String url) {
-    return url.hashCode.toString();
+    // Extract base URL without query parameters (e.g., signed tokens)
+    // This ensures the same file is cached even if the signed URL token changes
+    final uri = Uri.parse(url);
+    final baseUrl = '${uri.scheme}://${uri.host}${uri.path}';
+    return baseUrl.hashCode.toString();
   }
 
   Future<String?> getCachedFilePath(String url) async {
@@ -43,8 +47,14 @@ class PdfCacheService {
       final cacheKey = _getCacheKey(url);
       final cacheDir = await _getCacheDir();
       final file = File('${cacheDir.path}/$cacheKey.pdf');
+      
       if (await file.exists()) {
+        print('[PdfCache] ✅ Using cached file for: $url');
+        print('[PdfCache] Cache key: $cacheKey');
         return file.path;
+      } else {
+        print('[PdfCache] ❌ No cache found for: $url');
+        print('[PdfCache] Cache key: $cacheKey');
       }
     } catch (e) {
       print('Error getting cached file: $e');
