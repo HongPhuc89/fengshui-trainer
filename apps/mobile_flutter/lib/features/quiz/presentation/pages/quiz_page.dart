@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../providers/quiz_provider.dart';
-import '../widgets/difficulty_badge.dart';
-import '../widgets/question_widgets.dart';
-import '../widgets/quiz_app_bar.dart';
-import '../widgets/quiz_navigation_buttons.dart';
-import '../widgets/quiz_start_screen.dart';
+import '../widgets/quiz_header.dart';
+import '../widgets/quiz_progress_bar.dart';
+import '../widgets/quiz_timer.dart';
+import '../widgets/quiz_feedback.dart';
+import '../widgets/quiz_actions.dart';
+import '../widgets/locked_banner.dart';
+import '../widgets/question_renderer.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
-
   const QuizPage({
-    required this.bookId, required this.chapterId, super.key,
+    required this.bookId,
+    required this.chapterId,
+    super.key,
   });
+
   final int bookId;
   final int chapterId;
 
@@ -26,10 +29,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Load config and start quiz automatically
       ref.read(quizProvider.notifier).loadQuizConfig(
             bookId: widget.bookId,
             chapterId: widget.chapterId,
           );
+      // Auto-start quiz
+      Future.delayed(const Duration(milliseconds: 500), () {
+        ref.read(quizProvider.notifier).startQuiz(
+              bookId: widget.bookId,
+              chapterId: widget.chapterId,
+            );
+      });
     });
   }
 
@@ -37,29 +48,56 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(quizProvider);
 
+    // Navigate to results if quiz is completed
     if (state.result != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go(
-          '/books/${widget.bookId}/chapters/${widget.chapterId}/quiz/results?attemptId=${state.result!.attemptId}',
+        Navigator.of(context).pushReplacementNamed(
+          '/quiz-result',
+          arguments: {
+            'result': state.result,
+            'bookId': widget.bookId,
+            'chapterId': widget.chapterId,
+          },
         );
       });
     }
 
     return Scaffold(
-      appBar: QuizAppBar(
-        bookId: widget.bookId,
-        chapterId: widget.chapterId,
-        state: state,
-        formatTimeRemaining: () =>
-            ref.read(quizProvider.notifier).formatTimeRemaining(),
+      backgroundColor: const Color(0xFF1e1b4b),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1e1b4b),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Quiz',
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
-      body: _buildBody(state),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1e1b4b),
+              Color(0xFF312e81),
+              Color(0xFF4c1d95),
+            ],
+          ),
+        ),
+        child: _buildBody(state),
+      ),
     );
   }
 
   Widget _buildBody(QuizState state) {
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
 
     if (state.error != null) {
@@ -70,20 +108,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       return _buildQuizView(state);
     }
 
-    if (state.config != null) {
-      return QuizStartScreen(
-        config: state.config,
-        onStart: () {
-          ref.read(quizProvider.notifier).startQuiz(
-                bookId: widget.bookId,
-                chapterId: widget.chapterId,
-              );
-        },
-      );
-    }
-
     return const Center(
-      child: Text('Không tìm thấy quiz cho chương này'),
+      child: Text(
+        'Đang tải quiz...',
+        style: TextStyle(color: Colors.white, fontSize: 16),
+      ),
     );
   }
 
@@ -96,17 +125,24 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(error, textAlign: TextAlign.center),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white),
+            ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                ref.read(quizProvider.notifier).loadQuizConfig(
+                ref.read(quizProvider.notifier).startQuiz(
                       bookId: widget.bookId,
                       chapterId: widget.chapterId,
                     );
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8b5cf6),
+              ),
             ),
           ],
         ),
@@ -117,108 +153,160 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   Widget _buildQuizView(QuizState state) {
     final question = state.currentQuestion;
     if (question == null) {
-      return const SizedBox.shrink();
+      return const Center(
+        child: Text(
+          'Không có câu hỏi',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
     }
 
     final currentAnswer = state.answers[question.id];
+    final isAnswered = currentAnswer != null;
+    final progress = (state.currentQuestionIndex + 1) / state.totalQuestions;
 
-    return Column(
-      children: [
-        LinearProgressIndicator(
-          value: (state.currentQuestionIndex + 1) / state.totalQuestions,
-          backgroundColor: Colors.grey.shade200,
-          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header with question number and points
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: QuizHeader(
+              currentQuestion: state.currentQuestionIndex + 1,
+              totalQuestions: state.totalQuestions,
+              points: question.points,
+            ),
+          ),
+
+          // Progress bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: QuizProgressBar(progress: progress),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Question content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Question text
+                  Text(
+                    question.question,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Question renderer
+                  QuestionRenderer(
+                    question: question,
+                    selectedAnswer: currentAnswer,
+                    onAnswer: (answer) {
+                      ref.read(quizProvider.notifier).answerQuestion(
+                            question.id,
+                            answer,
+                          );
+                    },
+                    isLocked: false,
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+
+          // Actions (Next/Submit)
+          Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Timer
+                if (state.timeRemaining != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: QuizTimer(timeRemaining: state.timeRemaining!),
+                  ),
+
+                // Navigation buttons
                 Row(
                   children: [
-                    DifficultyBadge(difficulty: question.difficulty),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.stars,
-                              size: 16, color: Colors.amber,),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${question.points} điểm',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                    // Previous button
+                    if (state.hasPrevious)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            ref.read(quizProvider.notifier).previousQuestion();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: const BorderSide(color: Colors.white),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                        ],
+                          child: const Text(
+                            'Trước',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (state.hasPrevious) const SizedBox(width: 12),
+
+                    // Next/Submit button
+                    Expanded(
+                      flex: state.hasPrevious ? 1 : 1,
+                      child: ElevatedButton(
+                        onPressed: isAnswered
+                            ? () {
+                                if (state.isLastQuestion) {
+                                  _showSubmitConfirmation();
+                                } else {
+                                  ref.read(quizProvider.notifier).nextQuestion();
+                                }
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: state.isLastQuestion
+                              ? const Color(0xFF10b981)
+                              : const Color(0xFF8b5cf6),
+                          disabledBackgroundColor: Colors.white.withOpacity(0.1),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          state.isLastQuestion ? 'Nộp bài' : 'Tiếp theo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isAnswered
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.5),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  question.question,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                _buildQuestionWidget(question, currentAnswer),
               ],
             ),
           ),
-        ),
-        QuizNavigationButtons(
-          state: state,
-          onPrevious: () => ref.read(quizProvider.notifier).previousQuestion(),
-          onNext: () => ref.read(quizProvider.notifier).nextQuestion(),
-          onSubmit: _showSubmitConfirmation,
-        ),
-      ],
+        ],
+      ),
     );
-  }
-
-  Widget _buildQuestionWidget(question, currentAnswer) {
-    if (question.isMultipleChoice) {
-      return MultipleChoiceQuestion(
-        question: question,
-        selectedAnswer: currentAnswer,
-        onAnswerChanged: (answer) {
-          ref.read(quizProvider.notifier).answerQuestion(question.id, answer);
-        },
-      );
-    } else if (question.isMultipleAnswer) {
-      return MultipleAnswerQuestion(
-        question: question,
-        selectedAnswers: currentAnswer,
-        onAnswerChanged: (answer) {
-          ref.read(quizProvider.notifier).answerQuestion(question.id, answer);
-        },
-      );
-    } else if (question.isTrueFalse) {
-      return TrueFalseQuestion(
-        question: question,
-        selectedAnswer: currentAnswer,
-        onAnswerChanged: (answer) {
-          ref.read(quizProvider.notifier).answerQuestion(question.id, answer);
-        },
-      );
-    }
-
-    return const Text('Loại câu hỏi không được hỗ trợ');
   }
 
   void _showSubmitConfirmation() {
@@ -258,6 +346,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               Navigator.pop(context);
               ref.read(quizProvider.notifier).submitQuiz();
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10b981),
+            ),
             child: const Text('Nộp bài'),
           ),
         ],
