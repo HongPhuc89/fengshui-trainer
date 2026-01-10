@@ -51,6 +51,7 @@ class Chapter extends Equatable {
     required this.title,
     required this.orderIndex,
     required this.createdAt, required this.updatedAt, this.content,
+    this.description,
     this.files,
   });
 
@@ -75,6 +76,7 @@ class Chapter extends Equatable {
       title: json['title'] as String,
       orderIndex: json['order'] as int,
       content: json['content'] as String?,
+      description: json['description'] as String?,
       files: filesList,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -85,6 +87,7 @@ class Chapter extends Equatable {
   final String title;
   final int orderIndex;
   final String? content;
+  final String? description;
   final List<ChapterFile>? files;
   final DateTime createdAt;
   final DateTime updatedAt;
