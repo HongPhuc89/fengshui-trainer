@@ -25,16 +25,16 @@ class ApiEndpoints {
 
   // Quiz (using quiz-sessions API)
   static String quizStart(int chapterId) =>
-      '/api/quiz-sessions/start/$chapterId';
+      '/quiz-sessions/start/$chapterId';
   static String quizAnswer(String sessionId) =>
-      '/api/quiz-sessions/$sessionId/answer';
+      '/quiz-sessions/$sessionId/answer';
   static String quizComplete(String sessionId) =>
-      '/api/quiz-sessions/$sessionId/complete';
+      '/quiz-sessions/$sessionId/complete';
   static String quizSession(String sessionId) =>
-      '/api/quiz-sessions/$sessionId';
+      '/quiz-sessions/$sessionId';
   static String quizHistory(int chapterId) =>
-      '/api/quiz-sessions/chapter/$chapterId/history';
-  static const String quizMySessions = '/api/quiz-sessions/my-sessions';
+      '/quiz-sessions/chapter/$chapterId/history';
+  static const String quizMySessions = '/quiz-sessions/my-sessions';
 
   // Mindmap
   static String mindmap(int bookId, int chapterId) =>
