@@ -52,6 +52,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // Navigate to results if quiz is completed
     if (state.result != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => QuizResultPage(
@@ -71,11 +72,36 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Show confirmation dialog before closing
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Thoát Quiz?'),
+                content: const Text('Bạn có chắc muốn thoát? Tiến trình sẽ không được lưu.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Hủy'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pop(context); // Close quiz page
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFef4444),
+                    ),
+                    child: const Text('Thoát'),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-        title: Text(
+        title: const Text(
           'Quiz',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white),
         ),
       ),
       body: Container(
