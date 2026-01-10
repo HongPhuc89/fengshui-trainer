@@ -35,7 +35,7 @@ class _QuizResultsPageState extends ConsumerState<QuizResultsPage> {
           icon: const Icon(Icons.close),
           onPressed: () {
             ref.read(quizProvider.notifier).reset();
-            context.go('/books/${widget.bookId}');
+            context.go('/books/${widget.bookId}/chapters/${widget.chapterId}');
           },
         ),
       ),
@@ -139,7 +139,7 @@ class _QuizResultsPageState extends ConsumerState<QuizResultsPage> {
           child: OutlinedButton.icon(
             onPressed: () {
               ref.read(quizProvider.notifier).reset();
-              context.go('/books/${widget.bookId}');
+              context.go('/books/${widget.bookId}/chapters/${widget.chapterId}');
             },
             icon: const Icon(Icons.arrow_back),
             label: const Text('Quay lại chương'),

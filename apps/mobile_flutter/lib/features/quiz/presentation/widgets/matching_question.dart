@@ -1,19 +1,34 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+
+class MatchingPair {
+  final String left;
+  final String right;
+
+  MatchingPair({required this.left, required this.right});
+
+  factory MatchingPair.fromJson(Map<String, dynamic> json) {
+    return MatchingPair(
+      left: json['left'] as String? ?? '',
+      right: json['right'] as String? ?? '',
+    );
+  }
+}
 
 /// Matching question widget - connect left items to right items
 class MatchingQuestion extends StatefulWidget {
   const MatchingQuestion({
-    required this.leftItems,
-    required this.rightItems,
+    required this.pairs,
     required this.selectedMatches,
     required this.onAnswer,
+    this.disabled = false,
     super.key,
   });
 
-  final List<String> leftItems;
-  final List<String> rightItems;
+  final List<MatchingPair> pairs;
   final Map<String, String> selectedMatches; // leftItem -> rightItem
   final Function(Map<String, String>) onAnswer;
+  final bool disabled;
 
   @override
   State<MatchingQuestion> createState() => _MatchingQuestionState();
@@ -22,15 +37,31 @@ class MatchingQuestion extends StatefulWidget {
 class _MatchingQuestionState extends State<MatchingQuestion> {
   late Map<String, String> matches;
   String? selectedLeft;
+  late List<String> shuffledRightItems;
 
   @override
   void initState() {
     super.initState();
     matches = Map.from(widget.selectedMatches);
+    // Shuffle right items once on init
+    shuffledRightItems = widget.pairs.map((p) => p.right).toList();
+    if (!widget.disabled) {
+      shuffledRightItems.shuffle(Random());
+    }
+  }
+
+  @override
+  void didUpdateWidget(MatchingQuestion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedMatches != matches) {
+      matches = Map.from(widget.selectedMatches);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final leftItems = widget.pairs.map((p) => p.left).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -47,17 +78,20 @@ class _MatchingQuestionState extends State<MatchingQuestion> {
           child: Row(
             children: [
               Icon(
-                Icons.info_outline,
+                widget.disabled ? Icons.lock_outline : Icons.link,
                 size: 16,
                 color: const Color(0xFF6366f1),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Chọn mục bên trái, sau đó chọn mục bên phải để nối',
-                  style: TextStyle(
+                  widget.disabled
+                      ? 'Đã xác nhận các cặp'
+                      : 'Chọn mục bên trái, sau đó chọn mục bên phải để nối',
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: const Color(0xFF6366f1),
+                    color: Color(0xFF93c5fd),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -74,71 +108,54 @@ class _MatchingQuestionState extends State<MatchingQuestion> {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.leftItems.asMap().entries.map((entry) {
+                children: leftItems.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
                   final isSelected = selectedLeft == item;
                   final matchedRight = matches[item];
+                  final color = _getLeftColor(index);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedLeft = item;
-                        });
-                      },
+                      onTap: widget.disabled ? null : () => _handleLeftClick(item),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFF6366f1).withOpacity(0.2)
-                              : Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                              ? color.withOpacity(0.2)
+                              : matchedRight != null
+                                  ? color.withOpacity(0.3)
+                                  : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF6366f1)
-                                : matchedRight != null
-                                    ? const Color(0xFF10b981)
-                                    : Colors.white.withOpacity(0.2),
+                            color: isSelected || matchedRight != null
+                                ? color
+                                : Colors.white.withOpacity(0.1),
                             width: 2,
                           ),
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366f1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  String.fromCharCode(65 + index), // A, B, C...
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 item,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white,
+                                  color: isSelected || matchedRight != null
+                                      ? Colors.white
+                                      : const Color(0xFFe2e8f0),
+                                  fontWeight: isSelected || matchedRight != null
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
                             if (matchedRight != null)
                               Icon(
-                                Icons.check_circle,
-                                color: const Color(0xFF10b981),
-                                size: 20,
+                                Icons.link,
+                                color: color,
+                                size: 16,
                               ),
                           ],
                         ),
@@ -149,95 +166,62 @@ class _MatchingQuestionState extends State<MatchingQuestion> {
               ),
             ),
 
-            // Connection indicator
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                children: List.generate(
-                  widget.leftItems.length,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      width: 40,
-                      height: 56,
-                      child: Center(
-                        child: Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white.withOpacity(0.3),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            const SizedBox(width: 12),
+            Container(
+              width: 2,
+              height: leftItems.length * 68.0, // Rough estimate
+              color: Colors.white.withOpacity(0.1),
             ),
+            const SizedBox(width: 12),
 
             // Right column
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.rightItems.asMap().entries.map((entry) {
-                  final index = entry.key;
+                children: shuffledRightItems.asMap().entries.map((entry) {
                   final item = entry.value;
-                  final isMatched = matches.containsValue(item);
+                  final matchedLeft = _getMatchedLeft(item);
+                  final isMatched = matchedLeft != null;
+                  final color = isMatched ? _getLeftColor(leftItems.indexOf(matchedLeft)) : null;
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GestureDetector(
-                      onTap: selectedLeft != null
-                          ? () {
-                              setState(() {
-                                matches[selectedLeft!] = item;
-                                selectedLeft = null;
-                              });
-                              widget.onAnswer(matches);
-                            }
-                          : null,
+                      onTap: widget.disabled ? null : () => _handleRightClick(item),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isMatched
-                              ? const Color(0xFF10b981).withOpacity(0.2)
-                              : Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                              ? color!.withOpacity(0.3)
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: isMatched
-                                ? const Color(0xFF10b981)
-                                : Colors.white.withOpacity(0.2),
+                            color: color ?? Colors.white.withOpacity(0.1),
                             width: 2,
                           ),
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10b981),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}', // 1, 2, 3...
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 item,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white,
+                                  color: isMatched
+                                      ? Colors.white
+                                      : const Color(0xFFe2e8f0),
+                                  fontWeight: isMatched
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
+                            if (isMatched)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF10b981),
+                                size: 16,
+                              ),
                           ],
                         ),
                       ),
@@ -252,7 +236,7 @@ class _MatchingQuestionState extends State<MatchingQuestion> {
         const SizedBox(height: 16),
 
         // Clear button
-        if (matches.isNotEmpty)
+        if (!widget.disabled && matches.isNotEmpty)
           TextButton.icon(
             onPressed: () {
               setState(() {
@@ -269,5 +253,46 @@ class _MatchingQuestionState extends State<MatchingQuestion> {
           ),
       ],
     );
+  }
+
+  void _handleLeftClick(String item) {
+    setState(() {
+      selectedLeft = item;
+    });
+  }
+
+  void _handleRightClick(String item) {
+    if (selectedLeft != null) {
+      final newMatches = Map<String, String>.from(matches);
+      newMatches[selectedLeft!] = item;
+      setState(() {
+        matches = newMatches;
+        selectedLeft = null;
+      });
+      widget.onAnswer(newMatches);
+    }
+  }
+
+  String? _getMatchedLeft(String rightItem) {
+    for (final entry in matches.entries) {
+      if (entry.value == rightItem) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  Color _getLeftColor(int index) {
+    const pairColors = [
+      Color(0xFFef4444), // red
+      Color(0xFF3b82f6), // blue
+      Color(0xFF10b981), // green
+      Color(0xFFf59e0b), // amber
+      Color(0xFF8b5cf6), // purple
+      Color(0xFFec4899), // pink
+      Color(0xFF14b8a6), // teal
+      Color(0xFFf97316), // orange
+    ];
+    return pairColors[index % pairColors.length];
   }
 }

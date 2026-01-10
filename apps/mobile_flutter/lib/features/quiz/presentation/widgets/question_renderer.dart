@@ -4,6 +4,7 @@ import 'true_false_question.dart';
 import 'multiple_choice_question.dart';
 import 'multiple_answer_question.dart';
 import 'matching_question.dart';
+import 'ordering_question.dart';
 
 /// Question renderer that switches between different question types
 class QuestionRenderer extends StatelessWidget {
@@ -74,19 +75,41 @@ class QuestionRenderer extends StatelessWidget {
         );
 
       case 'matching':
-        // Parse matching options
+        // Parse matching options (pairs: List of {left, right})
         final optionsMap = question.options as Map<String, dynamic>? ?? {};
-        final leftItems = (optionsMap['left'] as List?)?.cast<String>() ?? [];
-        final rightItems = (optionsMap['right'] as List?)?.cast<String>() ?? [];
+        final pairsJson = optionsMap['pairs'] as List? ?? [];
+        final pairs = pairsJson
+            .map((p) => MatchingPair.fromJson(p as Map<String, dynamic>))
+            .toList();
+        
         final selectedMatches = selectedAnswer is Map
             ? Map<String, String>.from(selectedAnswer as Map)
             : <String, String>{};
         
         return MatchingQuestion(
-          leftItems: leftItems,
-          rightItems: rightItems,
+          pairs: pairs,
           selectedMatches: selectedMatches,
           onAnswer: (answer) => onAnswer(answer),
+          disabled: isLocked,
+        );
+
+      case 'ordering':
+        // Parse ordering options (items: List of {id, text})
+        final optionsMap = question.options as Map<String, dynamic>? ?? {};
+        final itemsJson = optionsMap['items'] as List? ?? [];
+        final items = itemsJson
+            .map((i) => OrderingItem.fromJson(i as Map<String, dynamic>))
+            .toList();
+            
+        final selectedOrder = selectedAnswer is List
+            ? List<String>.from(selectedAnswer as List)
+            : <String>[];
+            
+        return OrderingQuestion(
+          items: items,
+          selectedOrder: selectedOrder,
+          onAnswer: (answer) => onAnswer(answer),
+          disabled: isLocked,
         );
 
       default:

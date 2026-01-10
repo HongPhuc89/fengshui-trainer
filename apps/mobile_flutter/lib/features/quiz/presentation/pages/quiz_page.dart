@@ -9,7 +9,7 @@ import '../widgets/quiz_feedback.dart';
 import '../widgets/quiz_actions.dart';
 import '../widgets/locked_banner.dart';
 import '../widgets/question_renderer.dart';
-import 'quiz_result_page.dart';
+import 'quiz_results_page.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({
@@ -53,14 +53,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (state.result != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => QuizResultPage(
-              result: state.result!,
-              bookId: widget.bookId,
-              chapterId: widget.chapterId,
-            ),
-          ),
+        final attemptId = state.attempt?.id ?? state.result?.id ?? 0;
+        context.go(
+          '/books/${widget.bookId}/chapters/${widget.chapterId}/quiz/results?attemptId=$attemptId',
         );
       });
     }
@@ -98,7 +93,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             if (shouldExit == true && mounted) {
               // Reset quiz state
               ref.read(quizProvider.notifier).reset();
-              if (mounted) Navigator.of(context).pop();
+              if (mounted) {
+                // Navigate back to chapter detail using GoRouter
+                context.go('/books/${widget.bookId}/chapters/${widget.chapterId}');
+              }
             }
           },
         ),
