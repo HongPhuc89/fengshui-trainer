@@ -14,20 +14,27 @@ class ReadingProgress extends Equatable {
   });
 
   factory ReadingProgress.fromJson(Map<String, dynamic> json) {
+    final chapterId = (json['chapter_id'] as num?)?.toInt() ?? 
+                       (json['chapterId'] as num?)?.toInt() ?? 0;
+    
     return ReadingProgress(
-      id: json['id'] as int? ?? 0, // ID may be null for new progress
-      userId: json['user_id'] as int? ?? json['userId'] as int? ?? 0,
-      chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['user_id'] as num?)?.toInt() ?? 
+              (json['userId'] as num?)?.toInt() ?? 0,
+      chapterId: chapterId,
       currentPage:
-          json['current_page'] as int? ?? json['currentPage'] as int? ?? 1,
+          (json['current_page'] as num?)?.toInt() ?? 
+          (json['currentPage'] as num?)?.toInt() ?? 1,
       totalPages:
-          json['total_pages'] as int? ?? json['totalPages'] as int? ?? 0,
+          (json['total_pages'] as num?)?.toInt() ?? 
+          (json['totalPages'] as num?)?.toInt() ?? 0,
       scrollPosition:
           (json['scroll_position'] ?? json['scrollPosition'] ?? 0.0).toDouble(),
       lastReadAt: DateTime.parse(
           json['last_read_at'] as String? ?? json['lastReadAt'] as String? ?? DateTime.now().toIso8601String(),),
       readingTime:
-          json['reading_time'] as int? ?? json['readingTime'] as int? ?? 0,
+          (json['reading_time'] as num?)?.toInt() ?? 
+          (json['readingTime'] as num?)?.toInt() ?? 0,
       isCompleted: json['is_completed'] as bool? ??
           json['isCompleted'] as bool? ??
           json['completed'] as bool? ??
