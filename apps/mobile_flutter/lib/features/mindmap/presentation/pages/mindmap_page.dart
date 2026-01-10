@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/mindmap_provider.dart';
 import '../widgets/mindmap_painter.dart';
 
@@ -43,6 +44,10 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/books/${widget.bookId}/chapters/${widget.chapterId}'),
+        ),
         title: Text(state.mindmap?.title ?? 'Mindmap'),
         actions: [
           if (state.mindmap != null) ...[
