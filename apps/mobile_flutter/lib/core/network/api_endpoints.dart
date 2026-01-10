@@ -41,11 +41,13 @@ class ApiEndpoints {
 
   // Profile
   static const String profile = '/auth/me';
+  
   // Experience
   static const String leaderboard = '/experience/leaderboard';
   static const String experience = '/experience/users';
   static const String dailyCheckin = '/experience/users/daily-checkin';
-  // Flashcards
+  
+  // Flashcards random (used by repository)
   static String flashcardsRandom(int bookId, int chapterId) =>
       '/books/$bookId/chapters/$chapterId/flashcards/random';
 }

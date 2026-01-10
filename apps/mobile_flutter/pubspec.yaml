@@ -28,6 +28,9 @@ dependencies:
   # PDF Viewer
   syncfusion_flutter_pdfviewer: ^28.1.33
 
+  # WebView for Mindmap
+  webview_flutter: ^4.10.0
+
   # UI
   cached_network_image: ^3.4.1
   flutter_svg: ^2.0.10+1

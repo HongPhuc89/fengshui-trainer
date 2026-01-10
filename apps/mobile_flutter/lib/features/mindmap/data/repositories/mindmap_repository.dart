@@ -2,20 +2,16 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/storage/secure_storage.dart';
-import '../models/mindmap_models.dart';
+import '../models/mindmap_model.dart';
 
 class MindmapRepository {
+  MindmapRepository({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient(SecureStorage());
 
-  MindmapRepository({
-    ApiClient? apiClient,
-    SecureStorage? storage,
-  })  : _storage = storage ?? SecureStorage(),
-        _apiClient = apiClient ?? ApiClient(storage ?? SecureStorage());
   final ApiClient _apiClient;
-  final SecureStorage _storage;
 
   /// Get mindmap for a chapter
-  Future<MindMap> getMindmap({
+  Future<Mindmap> getMindmapByChapter({
     required int bookId,
     required int chapterId,
   }) async {
@@ -24,7 +20,7 @@ class MindmapRepository {
         ApiEndpoints.mindmap(bookId, chapterId),
       );
 
-      return MindMap.fromJson(response as Map<String, dynamic>);
+      return Mindmap.fromJson(response as Map<String, dynamic>);
     } catch (e) {
       debugPrint('Error fetching mindmap: $e');
       throw Exception('Không thể tải mindmap. Vui lòng thử lại.');

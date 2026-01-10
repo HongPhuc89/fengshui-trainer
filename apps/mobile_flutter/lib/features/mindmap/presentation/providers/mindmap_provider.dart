@@ -1,22 +1,22 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/models/mindmap_models.dart';
+import '../../data/models/mindmap_model.dart';
 import '../../data/repositories/mindmap_repository.dart';
 
 /// Mindmap state class
 class MindmapState {
-
   const MindmapState({
     this.mindmap,
     this.isLoading = false,
     this.error,
   });
-  final MindMap? mindmap;
+
+  final Mindmap? mindmap;
   final bool isLoading;
   final String? error;
 
   MindmapState copyWith({
-    MindMap? mindmap,
+    Mindmap? mindmap,
     bool? isLoading,
     String? error,
   }) {
@@ -30,8 +30,8 @@ class MindmapState {
 
 /// Mindmap notifier for state management
 class MindmapNotifier extends StateNotifier<MindmapState> {
-
   MindmapNotifier(this._repository) : super(const MindmapState());
+
   final MindmapRepository _repository;
 
   /// Load mindmap for a chapter
@@ -42,7 +42,7 @@ class MindmapNotifier extends StateNotifier<MindmapState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final mindmap = await _repository.getMindmap(
+      final mindmap = await _repository.getMindmapByChapter(
         bookId: bookId,
         chapterId: chapterId,
       );
@@ -58,11 +58,6 @@ class MindmapNotifier extends StateNotifier<MindmapState> {
         error: e.toString(),
       );
     }
-  }
-
-  /// Reset state
-  void reset() {
-    state = const MindmapState();
   }
 }
 
