@@ -73,20 +73,16 @@ class BooksListPage extends ConsumerWidget {
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD700),
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
+                Text(
                   'Thiên thư',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF2D7061),
+                    color: Colors.white.withOpacity(0.8),
                   ),
                 ),
                 Row(
@@ -97,7 +93,7 @@ class BooksListPage extends ConsumerWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D7061),
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(width: 4),
