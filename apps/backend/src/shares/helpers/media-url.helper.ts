@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getConfig } from './utils';
 
 /**
  * Utility service for generating media proxy URLs
@@ -22,10 +23,13 @@ export class MediaUrlHelper {
       return null;
     }
 
-    const apiPrefix = this.configService.get<string>('APP_PREFIX', 'api');
-    const path = `/${apiPrefix}/media/${fileId}`;
+    const config = getConfig();
+    const apiPrefix = baseUrl ? '' : config.app?.prefix || 'api';
+    const hostUrl = baseUrl || config.app?.url || '';
 
-    return baseUrl ? `${baseUrl}${path}` : path;
+    const path = `/${apiPrefix}/media/${fileId}`.replace(/\/+/g, '/');
+
+    return hostUrl ? `${hostUrl}${path}` : path;
   }
 
   /**

@@ -45,14 +45,12 @@ export class BooksService {
   async findAll(baseUrl?: string): Promise<Book[]> {
     const books = await this.bookRepository.find({
       where: { status: BookStatus.PUBLISHED },
-      relations: ['cover_file', 'file', 'chapters'],
+      relations: ['cover_file'],
     });
 
     // Batch process signed URLs for better performance
     const booksWithUrls = await Promise.all(
       books.map(async (book) => {
-        // Compute actual chapter count from database
-        book.chapter_count = book.chapters?.length || 0;
         return this.attachSignedUrls(book, baseUrl);
       }),
     );
@@ -63,7 +61,7 @@ export class BooksService {
   async findOne(id: number, baseUrl?: string): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { id, status: BookStatus.PUBLISHED },
-      relations: ['cover_file', 'file', 'chapters'],
+      relations: ['cover_file'],
     });
 
     if (!book) {
@@ -76,14 +74,12 @@ export class BooksService {
   // Admin methods (all statuses)
   async findAllAdmin(baseUrl?: string): Promise<Book[]> {
     const books = await this.bookRepository.find({
-      relations: ['cover_file', 'file', 'chapters'],
+      relations: ['cover_file'],
     });
 
     // Attach signed URLs and compute chapter count
     return Promise.all(
       books.map(async (book) => {
-        // Compute actual chapter count from database
-        book.chapter_count = book.chapters?.length || 0;
         return this.attachSignedUrls(book, baseUrl);
       }),
     );
@@ -92,7 +88,7 @@ export class BooksService {
   async findOneAdmin(id: number, baseUrl?: string): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { id },
-      relations: ['cover_file', 'file', 'chapters'],
+      relations: ['cover_file'],
     });
 
     if (!book) {
@@ -135,10 +131,6 @@ export class BooksService {
   private async attachSignedUrls(book: Book, baseUrl?: string): Promise<Book> {
     if (book.cover_file) {
       this.mediaUrlHelper.attachMediaUrl(book.cover_file, baseUrl);
-    }
-
-    if (book.file) {
-      this.mediaUrlHelper.attachMediaUrl(book.file, baseUrl);
     }
 
     return book;
