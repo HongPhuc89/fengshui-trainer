@@ -24,12 +24,12 @@ class FlashcardsRepository {
   }) async {
     try {
       final response = await _apiClient.get(
-        ApiEndpoints.chapterFlashcardsRandom(bookId, chapterId),
+        ApiEndpoints.flashcardsRandom(bookId, chapterId),
         queryParameters: {'count': count},
       );
 
-      if (response.data is List) {
-        return (response.data as List)
+      if (response is List) {
+        return (response as List)
             .map((json) => Flashcard.fromJson(json as Map<String, dynamic>))
             .toList();
       }

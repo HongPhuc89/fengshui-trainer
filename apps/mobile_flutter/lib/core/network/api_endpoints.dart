@@ -45,4 +45,7 @@ class ApiEndpoints {
   static const String leaderboard = '/experience/leaderboard';
   static const String experience = '/experience/users';
   static const String dailyCheckin = '/experience/users/daily-checkin';
+  // Flashcards
+  static String flashcardsRandom(int bookId, int chapterId) =>
+      '/books/$bookId/chapters/$chapterId/flashcards/random';
 }
