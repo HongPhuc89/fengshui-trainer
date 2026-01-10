@@ -83,16 +83,16 @@ class MyApp extends ConsumerWidget {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/leaderboard',
-                  builder: (context, state) => const LeaderboardPage(),
+                  path: '/books',
+                  builder: (context, state) => const BooksListPage(),
                 ),
               ],
             ),
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/books',
-                  builder: (context, state) => const BooksListPage(),
+                  path: '/leaderboard',
+                  builder: (context, state) => const LeaderboardPage(),
                 ),
               ],
             ),
