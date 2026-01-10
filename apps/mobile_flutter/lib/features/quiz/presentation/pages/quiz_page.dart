@@ -72,23 +72,20 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () {
+          onPressed: () async {
             // Show confirmation dialog before closing
-            showDialog(
+            final shouldExit = await showDialog<bool>(
               context: context,
-              builder: (context) => AlertDialog(
+              builder: (dialogContext) => AlertDialog(
                 title: const Text('Thoát Quiz?'),
                 content: const Text('Bạn có chắc muốn thoát? Tiến trình sẽ không được lưu.'),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
                     child: const Text('Hủy'),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pop(context); // Close quiz page
-                    },
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFef4444),
                     ),
@@ -97,6 +94,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 ],
               ),
             );
+
+            if (shouldExit == true && mounted) {
+              // Reset quiz state
+              ref.read(quizProvider.notifier).reset();
+              if (mounted) Navigator.of(context).pop();
+            }
           },
         ),
         title: const Text(
