@@ -15,17 +15,17 @@ class User extends Equatable {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       email: (json['email'] as String?) ?? '',
       name: (json['full_name'] as String?) ?? 
             (json['name'] as String?) ?? 
             (json['email'] as String?) ?? 
             'Unknown',
       avatar: json['avatar'] as String?,
-      level: (json['level'] as num?)?.toInt() ?? 1,
-      experience: (json['experience'] as num?)?.toInt() ?? 0,
-      experiencePoints: (json['experience_points'] as num?)?.toInt() ?? 0,
-      points: (json['points'] as num?)?.toInt() ?? 0,
+      level: int.tryParse(json['level']?.toString() ?? '') ?? 1,
+      experience: int.tryParse(json['experience']?.toString() ?? '') ?? 0,
+      experiencePoints: int.tryParse(json['experience_points']?.toString() ?? '') ?? 0,
+      points: int.tryParse(json['points']?.toString() ?? '') ?? 0,
     );
   }
   final int id;
