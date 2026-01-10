@@ -9,6 +9,7 @@ import '../widgets/quiz_feedback.dart';
 import '../widgets/quiz_actions.dart';
 import '../widgets/locked_banner.dart';
 import '../widgets/question_renderer.dart';
+import 'quiz_result_page.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({
@@ -51,13 +52,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // Navigate to results if quiz is completed
     if (state.result != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed(
-          '/quiz-result',
-          arguments: {
-            'result': state.result,
-            'bookId': widget.bookId,
-            'chapterId': widget.chapterId,
-          },
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => QuizResultPage(
+              result: state.result!,
+              bookId: widget.bookId,
+              chapterId: widget.chapterId,
+            ),
+          ),
         );
       });
     }
