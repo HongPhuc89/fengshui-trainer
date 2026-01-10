@@ -151,23 +151,22 @@ class QuizAttempt extends Equatable {
 
   factory QuizAttempt.fromJson(Map<String, dynamic> json) {
     return QuizAttempt(
-      id: json['id'] as int,
-      userId: json['user_id'] as int? ?? json['userId'] as int,
-      chapterId: json['chapter_id'] as int? ?? json['chapterId'] as int,
-      questions: (json['questions'] as List)
+      id: json['id'] as int? ?? 0,
+      userId: (json['user_id'] ?? json['userId']) as int? ?? 0,
+      chapterId: (json['chapter_id'] ?? json['chapterId']) as int? ?? 0,
+      questions: (json['questions'] as List? ?? [])
           .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
           .toList(),
-      startedAt: DateTime.parse(
-          json['started_at'] as String? ?? json['startedAt'] as String,),
+      startedAt: json['started_at'] != null || json['startedAt'] != null
+          ? DateTime.parse((json['started_at'] ?? json['startedAt']) as String)
+          : DateTime.now(),
       completedAt: json['completed_at'] != null || json['completedAt'] != null
-          ? DateTime.parse(
-              json['completed_at'] as String? ?? json['completedAt'] as String,)
+          ? DateTime.parse((json['completed_at'] ?? json['completedAt']) as String)
           : null,
       score: (json['score'] as num?)?.toDouble(),
       passed: json['passed'] as bool?,
-      totalPoints: json['total_points'] as int? ?? json['totalPoints'] as int?,
-      earnedPoints:
-          json['earned_points'] as int? ?? json['earnedPoints'] as int?,
+      totalPoints: (json['total_points'] ?? json['totalPoints']) as int?,
+      earnedPoints: (json['earned_points'] ?? json['earnedPoints']) as int?,
     );
   }
   final int id;
