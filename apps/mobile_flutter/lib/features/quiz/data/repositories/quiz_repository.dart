@@ -58,22 +58,39 @@ class QuizRepository {
     }
   }
 
-  /// Submit quiz answers (complete quiz session)
-  Future<SubmitQuizResponse> submitQuiz({
-    required int bookId,
-    required int chapterId,
-    required SubmitQuizRequest request,
+  /// Submit an answer for a single question
+  Future<void> submitAnswer({
+    required String sessionId,
+    required int questionId,
+    required dynamic answer,
   }) async {
     try {
-      // Use session ID from attempt
+      await _apiClient.post(
+        ApiEndpoints.quizAnswer(sessionId),
+        data: {
+          'question_id': questionId,
+          'answer': answer,
+        },
+      );
+    } catch (e) {
+      debugPrint('Error submitting answer: $e');
+      throw Exception('Không thể gửi câu trả lời. Vui lòng thử lại.');
+    }
+  }
+
+  /// Complete quiz and get results (after all answers submitted)
+  Future<SubmitQuizResponse> completeQuiz({
+    required String sessionId,
+  }) async {
+    try {
       final response = await _apiClient.post(
-        ApiEndpoints.quizComplete(request.attemptId.toString()),
+        ApiEndpoints.quizComplete(sessionId),
       );
 
       return SubmitQuizResponse.fromJson(response as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('Error submitting quiz: $e');
-      throw Exception('Không thể nộp bài quiz. Vui lòng thử lại.');
+      debugPrint('Error completing quiz: $e');
+      throw Exception('Không thể hoàn thành quiz. Vui lòng thử lại.');
     }
   }
 

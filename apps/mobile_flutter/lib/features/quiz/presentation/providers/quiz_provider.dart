@@ -213,16 +213,27 @@ class QuizNotifier extends StateNotifier<QuizState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final request = SubmitQuizRequest(
-        attemptId: state.attempt!.id,
-        answers: state.answers,
-      );
+      final sessionId = state.attempt!.id.toString();
+      
+      // Step 1: Submit all answers first
+      for (final entry in state.answers.entries) {
+        final questionId = entry.key;
+        final answer = entry.value;
+        
+        try {
+          await _repository.submitAnswer(
+            sessionId: sessionId,
+            questionId: questionId,
+            answer: answer,
+          );
+        } catch (e) {
+          debugPrint('Error submitting answer for question $questionId: $e');
+          // Continue submitting other answers even if one fails
+        }
+      }
 
-      final result = await _repository.submitQuiz(
-        bookId: _bookId!,
-        chapterId: _chapterId!,
-        request: request,
-      );
+      // Step 2: Complete quiz to get results
+      final result = await _repository.completeQuiz(sessionId: sessionId);
 
       state = state.copyWith(
         result: result,
