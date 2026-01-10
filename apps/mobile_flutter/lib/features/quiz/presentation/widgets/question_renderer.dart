@@ -3,6 +3,7 @@ import '../../data/models/quiz_models.dart';
 import 'true_false_question.dart';
 import 'multiple_choice_question.dart';
 import 'multiple_answer_question.dart';
+import 'matching_question.dart';
 
 /// Question renderer that switches between different question types
 class QuestionRenderer extends StatelessWidget {
@@ -69,6 +70,22 @@ class QuestionRenderer extends StatelessWidget {
         return MultipleAnswerQuestion(
           options: options,
           selectedAnswers: selectedAnswers,
+          onAnswer: (answer) => onAnswer(answer),
+        );
+
+      case 'matching':
+        // Parse matching options
+        final optionsMap = question.options as Map<String, dynamic>? ?? {};
+        final leftItems = (optionsMap['left'] as List?)?.cast<String>() ?? [];
+        final rightItems = (optionsMap['right'] as List?)?.cast<String>() ?? [];
+        final selectedMatches = selectedAnswer is Map
+            ? Map<String, String>.from(selectedAnswer as Map)
+            : <String, String>{};
+        
+        return MatchingQuestion(
+          leftItems: leftItems,
+          rightItems: rightItems,
+          selectedMatches: selectedMatches,
           onAnswer: (answer) => onAnswer(answer),
         );
 
