@@ -14,6 +14,9 @@ import 'features/flashcards/presentation/pages/flashcards_page.dart';
 import 'features/mindmap/presentation/pages/mindmap_page.dart';
 import 'features/quiz/presentation/pages/quiz_page.dart';
 import 'features/quiz/presentation/pages/quiz_results_page.dart';
+import 'features/home/presentation/pages/leaderboard_page.dart';
+import 'features/home/presentation/pages/profile_page.dart';
+import 'features/home/presentation/pages/main_screen.dart';
 
 void main() {
   // Log environment configuration
@@ -38,7 +41,7 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     
     final router = GoRouter(
-      initialLocation: '/login',
+      initialLocation: '/books',
       redirect: (context, state) {
         final isAuthenticated = authState.isAuthenticated;
         final isGoingToLogin = state.matchedLocation == '/login';
@@ -56,8 +59,8 @@ class MyApp extends ConsumerWidget {
         }
 
         if (isAuthenticated && (isGoingToLogin || isGoingToRegister)) {
-          print('   ➡️ Redirecting to /home (already authenticated)');
-          return '/home';
+          print('   ➡️ Redirecting to /books (already authenticated)');
+          return '/books';
         }
 
         print('   ✅ No redirect needed');
@@ -72,9 +75,36 @@ class MyApp extends ConsumerWidget {
           path: '/register',
           builder: (context, state) => const RegisterPage(),
         ),
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const BooksListPage(),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return MainScreen(navigationShell: navigationShell);
+          },
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/leaderboard',
+                  builder: (context, state) => const LeaderboardPage(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/books',
+                  builder: (context, state) => const BooksListPage(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/profile',
+                  builder: (context, state) => const ProfilePage(),
+                ),
+              ],
+            ),
+          ],
         ),
         GoRoute(
           path: '/books/:id',
