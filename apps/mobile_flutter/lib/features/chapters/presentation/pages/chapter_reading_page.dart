@@ -8,6 +8,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/services/pdf_cache_service.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/utils/media_url_helper.dart';
 import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
@@ -69,8 +70,12 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
   }
 
   Future<void> _loadPdf() async {
-    final pdfUrl = _getPdfUrl();
-    if (pdfUrl == null) return;
+    final rawPdfUrl = _getPdfUrl();
+    if (rawPdfUrl == null) return;
+
+    // Get authenticated URL (with token)
+    final pdfUrl = await MediaUrlHelper.getAuthenticatedMediaUrl(rawPdfUrl);
+    print('[ChapterReading] Authenticated PDF URL: $pdfUrl');
 
     // On web, just use network URL
     if (kIsWeb) {

@@ -36,9 +36,14 @@ class PdfCacheService {
   String _getCacheKey(String url) {
     // Extract base URL without query parameters (e.g., signed tokens)
     // This ensures the same file is cached even if the signed URL token changes
-    final uri = Uri.parse(url);
-    final baseUrl = '${uri.scheme}://${uri.host}${uri.path}';
-    return baseUrl.hashCode.toString();
+    try {
+      final uri = Uri.parse(url);
+      final baseUrl = '${uri.scheme}://${uri.host}${uri.path}';
+      // Use the path for hash to be more stable across different auth tokens
+      return baseUrl.hashCode.toString();
+    } catch (e) {
+      return url.hashCode.toString();
+    }
   }
 
   Future<String?> getCachedFilePath(String url) async {
@@ -49,42 +54,55 @@ class PdfCacheService {
       final file = File('${cacheDir.path}/$cacheKey.pdf');
       
       if (await file.exists()) {
-        print('[PdfCache] ✅ Using cached file for: $url');
-        print('[PdfCache] Cache key: $cacheKey');
+        final size = await file.length();
+        print('[PdfCache] ✅ Found cached file: $cacheKey.pdf (${(size / 1024 / 1024).toStringAsFixed(2)} MB)');
         return file.path;
       } else {
-        print('[PdfCache] ❌ No cache found for: $url');
-        print('[PdfCache] Cache key: $cacheKey');
+        print('[PdfCache] 🔍 No cache for key: $cacheKey');
       }
     } catch (e) {
-      print('Error getting cached file: $e');
+      print('[PdfCache] Error checking cache: $e');
     }
     return null;
   }
 
   Future<String?> downloadAndCache(String url,
       {Function(double)? onProgress,}) async {
-    if (kIsWeb) return null;
+    if (kIsWeb) {
+      print('[PdfCache] 🌐 Web platform detected, skipping download/cache');
+      return null;
+    }
+    
     try {
-      print('[PdfCache] Starting download from URL: $url');
+      print('[PdfCache] ⏳ Starting download: $url');
       
       final cacheKey = _getCacheKey(url);
       final cacheDir = await _getCacheDir();
       final filePath = '${cacheDir.path}/$cacheKey.pdf';
 
-      // Get auth token for protected URLs
-      final token = await _storage.getToken();
-      final headers = <String, dynamic>{};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-        print('[PdfCache] Adding auth token to download request');
-      } else {
-        print('[PdfCache] ⚠️ No auth token found');
+      // Check if URL is absolute
+      if (!url.startsWith('http')) {
+        print('[PdfCache] ❌ Error: URL must be absolute. Received: $url');
+        return null;
       }
 
-      print('[PdfCache] Downloading to: $filePath');
+      final headers = <String, dynamic>{};
+      // Only add header if token is not already in the URL
+      if (!url.contains('token=')) {
+        final token = await _storage.getToken();
+        if (token != null) {
+          headers['Authorization'] = 'Bearer $token';
+          print('[PdfCache] 🔑 Adding Bearer token to headers');
+        } else {
+          print('[PdfCache] ⚠️ No token in URL and no token found in storage');
+        }
+      } else {
+        print('[PdfCache] ✅ URL already contains token');
+      }
+
+      print('[PdfCache] 📂 Target path: $filePath');
       
-      await _dio.download(
+      final response = await _dio.download(
         url,
         filePath,
         options: Options(headers: headers),
@@ -95,16 +113,21 @@ class PdfCacheService {
         },
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('$_cacheKeyPrefix$cacheKey', url);
-      print('[PdfCache] PDF downloaded and cached successfully');
-      return filePath;
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('$_cacheKeyPrefix$cacheKey', url);
+        print('[PdfCache] ✨ Download complete and cached: $cacheKey.pdf');
+        return filePath;
+      } else {
+        print('[PdfCache] ❌ Download failed with status: ${response.statusCode}');
+        return null;
+      }
     } catch (e) {
-      print('Error downloading PDF: $e');
+      print('[PdfCache] ❌ Error downloading PDF: $e');
       if (e is DioException) {
         print('[PdfCache] Status code: ${e.response?.statusCode}');
         print('[PdfCache] Response data: ${e.response?.data}');
-        print('[PdfCache] Request URL: ${e.requestOptions.uri}');
+        print('[PdfCache] Request details: ${e.requestOptions.method} ${e.requestOptions.uri}');
       }
       return null;
     }
