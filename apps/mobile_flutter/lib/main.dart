@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +21,17 @@ import 'features/home/presentation/pages/leaderboard_page.dart';
 import 'features/home/presentation/pages/profile_page.dart';
 import 'features/home/presentation/pages/main_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp();
+    await FirebaseAnalytics.instance.logEvent(name: 'app_start');
+    print('🔥 Firebase initialized successfully and logged app_start');
+  } catch (e) {
+    print('⚠️ Firebase initialization failed: $e');
+  }
+
   // Log environment configuration
   print('🚀 ========================================');
   print('🚀 Fengshui Trainer App Starting...');
