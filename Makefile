@@ -58,6 +58,17 @@ flutter-build-apk: ## Build Flutter release APK
 	cd apps/mobile_flutter && flutter build apk --release --dart-define=API_BASE_URL=https://book-api.hongphuc.top/api/
 	@echo "$(GREEN)✓ Build complete: apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk$(NC)"
 
+flutter-install-apk: ## Install and launch Flutter APK on device
+	@echo "$(CYAN)Uninstalling old app...$(NC)"
+	adb uninstall com.quizgame.mobile_flutter || true
+	@echo "$(CYAN)Installing new APK...$(NC)"
+	adb install apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk
+	@echo "$(CYAN)Launching app...$(NC)"
+	adb shell monkey -p com.quizgame.mobile_flutter -c android.intent.category.LAUNCHER 1
+	@echo "$(GREEN)✓ Installation complete$(NC)"
+
+flutter-deploy-apk: flutter-build-apk flutter-install-apk ## Build, install and launch Flutter APK
+
 flutter-pub-get: ## Install Flutter dependencies
 	@echo "$(CYAN)Installing Flutter dependencies...$(NC)"
 	cd apps/mobile_flutter && flutter pub get
