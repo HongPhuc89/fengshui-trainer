@@ -38,9 +38,31 @@ class Book extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  Book copyWith({
+    int? id,
+    String? title,
+    String? description,
+    String? author,
+    String? coverImage,
+    int? totalChapters,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Book(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      author: author ?? this.author,
+      coverImage: coverImage ?? this.coverImage,
+      totalChapters: totalChapters ?? this.totalChapters,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   @override
   List<Object?> get props =>
-      [id, title, description, coverImage, totalChapters];
+      [id, title, description, coverImage, totalChapters, createdAt, updatedAt];
 }
 
 class Chapter extends Equatable {
