@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/services/pdf_cache_service.dart';
@@ -13,6 +14,7 @@ import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
 import '../widgets/bottom_menu_bar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class ChapterReadingPage extends ConsumerStatefulWidget {
   const ChapterReadingPage({
@@ -202,6 +204,15 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'ChapterReadingPage',
+      parameters: {
+        'bookId': widget.bookId.toString(),
+        'chapterId': widget.chapterId.toString(),
+      },
+    );
+
     final progressState = ref.watch(readingProgressProvider(widget.chapterId));
 
     return Scaffold(

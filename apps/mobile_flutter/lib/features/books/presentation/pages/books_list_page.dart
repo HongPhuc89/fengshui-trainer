@@ -42,6 +42,9 @@ class BooksListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(screenName: 'BooksListPage');
+
     final booksState = ref.watch(booksProvider);
     final authState = ref.watch(authProvider);
 

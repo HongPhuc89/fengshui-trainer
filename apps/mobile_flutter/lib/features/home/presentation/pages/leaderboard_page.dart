@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import '../../data/models/leaderboard_model.dart';
 import '../providers/leaderboard_provider.dart';
 
@@ -8,6 +9,9 @@ class LeaderboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(screenName: 'LeaderboardPage');
+
     final leaderboardState = ref.watch(leaderboardProvider);
 
     return Scaffold(

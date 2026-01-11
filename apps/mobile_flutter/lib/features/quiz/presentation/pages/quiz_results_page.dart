@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../../data/models/quiz_models.dart';
 import '../providers/quiz_provider.dart';
@@ -25,6 +26,16 @@ class _QuizResultsPageState extends ConsumerState<QuizResultsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'QuizResultsPage',
+      parameters: {
+        'bookId': widget.bookId.toString(),
+        'chapterId': widget.chapterId.toString(),
+        'attemptId': widget.attemptId.toString(),
+      },
+    );
+
     final state = ref.watch(quizProvider);
     final result = state.result;
 

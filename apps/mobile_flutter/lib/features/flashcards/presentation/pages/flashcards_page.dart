@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import '../providers/flashcards_provider.dart';
 
 class FlashcardsPage extends ConsumerStatefulWidget {
@@ -31,6 +32,15 @@ class _FlashcardsPageState extends ConsumerState<FlashcardsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'FlashcardsPage',
+      parameters: {
+        'bookId': widget.bookId.toString(),
+        'chapterId': widget.chapterId.toString(),
+      },
+    );
+
     final state = ref.watch(flashcardsProvider);
 
     return Scaffold(

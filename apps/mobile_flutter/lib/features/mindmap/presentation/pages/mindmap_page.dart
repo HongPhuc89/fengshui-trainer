@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../providers/mindmap_provider.dart';
 
@@ -247,6 +248,15 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'MindmapPage',
+      parameters: {
+        'bookId': widget.bookId.toString(),
+        'chapterId': widget.chapterId.toString(),
+      },
+    );
+
     final state = ref.watch(mindmapProvider);
 
     return Scaffold(

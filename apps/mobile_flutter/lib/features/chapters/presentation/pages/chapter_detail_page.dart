@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
@@ -50,6 +51,15 @@ class _ChapterDetailPageState extends ConsumerState<ChapterDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'ChapterDetailPage',
+      parameters: {
+        'bookId': widget.bookId.toString(),
+        'chapterId': widget.chapterId.toString(),
+      },
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBE6), // Cream/beige background like book pages
       appBar: AppBar(

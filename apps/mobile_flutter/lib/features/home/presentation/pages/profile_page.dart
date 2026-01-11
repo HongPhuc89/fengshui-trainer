@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -7,6 +8,9 @@ class ProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(screenName: 'ProfilePage');
+
     final authState = ref.watch(authProvider);
     final user = authState.user;
 

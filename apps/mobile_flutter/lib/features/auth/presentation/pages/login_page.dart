@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import '../../../../core/config/theme.dart';
 import '../../../../core/widgets/gradient_widgets.dart';
 import '../providers/auth_provider.dart';
@@ -74,6 +75,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(screenName: 'LoginPage');
+
     final authState = ref.watch(authProvider);
 
     return Scaffold(

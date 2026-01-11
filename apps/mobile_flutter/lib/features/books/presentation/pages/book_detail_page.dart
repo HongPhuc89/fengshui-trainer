@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import '../providers/books_provider.dart';
 import '../../../../core/utils/media_url_helper.dart';
 
@@ -11,6 +12,12 @@ class BookDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Log screen view to Firebase
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'BookDetailPage',
+      parameters: {'bookId': bookId.toString()},
+    );
+
     final chaptersState = ref.watch(chaptersProvider(bookId));
     final booksState = ref.watch(booksProvider);
     
