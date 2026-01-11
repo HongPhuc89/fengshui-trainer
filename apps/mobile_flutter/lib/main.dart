@@ -55,6 +55,9 @@ class MyApp extends ConsumerWidget {
     
     final router = GoRouter(
       initialLocation: '/books',
+      observers: [
+        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      ],
       redirect: (context, state) {
         final isAuthenticated = authState.isAuthenticated;
         final isGoingToLogin = state.matchedLocation == '/login';
