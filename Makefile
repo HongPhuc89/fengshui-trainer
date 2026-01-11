@@ -121,3 +121,7 @@ deploy: ## Deploy backend to VPS from local
 create-admin: ## Create admin user
 	@echo "$(CYAN)Creating admin user...$(NC)"
 	cd apps/backend && npm run create:admin
+
+deploy-admin: ## Deploy admin to Firebase Hosting
+	@echo "$(CYAN)Deploying admin to Firebase...$(NC)"
+	./deploy-admin.sh

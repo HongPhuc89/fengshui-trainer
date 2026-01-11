@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
+import '../../../../core/utils/media_url_helper.dart';
 
 class BooksListPage extends ConsumerWidget {
   const BooksListPage({super.key});
@@ -179,17 +180,27 @@ class BooksListPage extends ConsumerWidget {
                         itemCount: booksState.books.length,
                         itemBuilder: (context, index) {
                           final book = booksState.books[index];
-                          return BookCard(
-                            title: book.title,
-                            author: book.author ?? 'VÔ DANH',
-                            description: book.description ??
-                                'Cuốn sách cơ bản nhất cho người mới bắt đầu tìm hiểu về địa lý và phong thủy.',
-                            chapterCount: book.totalChapters,
-                            initial: _getBookInitial(book.title),
-                            gradientColors: _getIconGradient(index),
-                            coverImage: book.coverImage,
-                            onPress: () => context.go('/books/${book.id}'),
-                            index: index,
+                          
+                          return FutureBuilder<String?>(
+                            future: book.coverImage != null
+                                ? MediaUrlHelper.getAuthenticatedMediaUrl(book.coverImage!)
+                                : Future.value(null),
+                            builder: (context, snapshot) {
+                              final coverImageUrl = snapshot.data;
+                              
+                              return BookCard(
+                                title: book.title,
+                                author: book.author ?? 'VÔ DANH',
+                                description: book.description ??
+                                    'Cuốn sách cơ bản nhất cho người mới bắt đầu tìm hiểu về địa lý và phong thủy.',
+                                chapterCount: book.totalChapters,
+                                initial: _getBookInitial(book.title),
+                                gradientColors: _getIconGradient(index),
+                                coverImage: coverImageUrl,
+                                onPress: () => context.go('/books/${book.id}'),
+                                index: index,
+                              );
+                            },
                           );
                         },
                       ),

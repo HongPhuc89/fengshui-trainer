@@ -46,6 +46,7 @@ export class BooksService {
     const books = await this.bookRepository.find({
       where: { status: BookStatus.PUBLISHED },
       relations: ['cover_file'],
+      order: { updated_at: 'DESC' },
     });
 
     // Batch process signed URLs for better performance
@@ -75,6 +76,7 @@ export class BooksService {
   async findAllAdmin(baseUrl?: string): Promise<Book[]> {
     const books = await this.bookRepository.find({
       relations: ['cover_file'],
+      order: { updated_at: 'DESC' },
     });
 
     // Attach signed URLs and compute chapter count

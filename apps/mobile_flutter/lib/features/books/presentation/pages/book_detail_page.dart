@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/books_provider.dart';
+import '../../../../core/utils/media_url_helper.dart';
 
 class BookDetailPage extends ConsumerWidget {
   const BookDetailPage({required this.bookId, super.key});
@@ -53,16 +54,25 @@ class BookDetailPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: book.coverImage != null
-                          ? Image.network(
-                              book.coverImage!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildPlaceholderCover(book.title),
-                            )
-                          : _buildPlaceholderCover(book.title),
+                    child: FutureBuilder<String?>(
+                      future: book.coverImage != null
+                          ? MediaUrlHelper.getAuthenticatedMediaUrl(book.coverImage!)
+                          : Future.value(null),
+                      builder: (context, snapshot) {
+                        final coverImageUrl = snapshot.data;
+                        
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: coverImageUrl != null
+                              ? Image.network(
+                                  coverImageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildPlaceholderCover(book.title),
+                                )
+                              : _buildPlaceholderCover(book.title),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),
