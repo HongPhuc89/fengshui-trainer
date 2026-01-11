@@ -48,7 +48,8 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
         ),
       )
       ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
-        debugPrint('🗺️ [Mindmap Console] ${message.level.name}: ${message.message}');
+        // Disabled to prevent OutOfMemoryError
+        // debugPrint('🗺️ [Mindmap Console] ${message.level.name}: ${message.message}');
       });
   }
 
@@ -72,8 +73,8 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
       box-sizing: border-box;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: #f0f0f0;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
@@ -85,21 +86,47 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
     svg {
       width: 100%;
       height: 100%;
-      background: transparent;
+      background: #f0f0f0;
     }
     .markmap-node circle {
       fill: #fff;
-      stroke-width: 2;
+      stroke-width: 2.5;
+      transition: all 0.3s ease;
+    }
+    .markmap-node:hover circle {
+      stroke-width: 3;
+      filter: brightness(1.1);
     }
     .markmap-node text {
-      fill: #fff;
+      fill: #333;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
     }
     .markmap-link {
-      stroke: rgba(255, 255, 255, 0.6);
+      stroke: #999;
+      stroke-width: 1.5;
+      fill: none;
+    }
+    /* Style for expand/collapse buttons */
+    .markmap-fold circle {
+      fill: rgb(186, 211, 238);
+      stroke: rgb(150, 180, 210);
       stroke-width: 2;
     }
+    .markmap-fold:hover circle {
+      fill: rgb(150, 180, 210);
+      stroke: rgb(120, 150, 180);
+    }
+    .markmap-fold text {
+      fill: #333;
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+      dominant-baseline: central;
+      font-family: Arial, sans-serif;
+    }
+
+    
   </style>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18"></script>
@@ -148,6 +175,28 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
         }, root);
 
         window.markmapInstance = mm;
+
+        // Function to recursively fold nodes deeper than level 1
+        function foldDeepNodes(node, currentDepth) {
+          if (currentDepth > 1 && node.children && node.children.length > 0) {
+            // Fold this node (hide its children)
+            node.payload = node.payload || {};
+            node.payload.fold = 1;
+          }
+          
+          // Recursively process children
+          if (node.children) {
+            node.children.forEach(child => {
+              foldDeepNodes(child, currentDepth + 1);
+            });
+          }
+        }
+
+        // Fold all nodes deeper than level 1 (root is depth 0, level 1 is depth 1)
+        foldDeepNodes(root, 0);
+        
+        // Render with folded state
+        mm.setData(root);
 
         setTimeout(() => {
           mm.fit();
@@ -203,11 +252,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          ),
+          color: Color(0xFFf0f0f0),
         ),
         child: SafeArea(
           child: Column(
@@ -218,7 +263,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back, color: Color(0xFF333333)),
                       onPressed: () => context.go('/books/${widget.bookId}/chapters/${widget.chapterId}'),
                     ),
                     Expanded(
@@ -227,13 +272,13 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Color(0xFF333333),
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white),
+                      icon: const Icon(Icons.refresh, color: Color(0xFF333333)),
                       onPressed: () {
                         ref.read(mindmapProvider.notifier).loadMindmap(
                               bookId: widget.bookId,
@@ -253,9 +298,16 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
               // Info Footer
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
@@ -263,7 +315,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Chạm và kéo để xem toàn bộ mindmap • Nhấn vào node để mở rộng',
+                        'Chạm và kéo để xem toàn bộ mindmap • Nhấn vào nút tròn để mở rộng',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ),
