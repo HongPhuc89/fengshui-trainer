@@ -85,10 +85,12 @@ class MyApp extends ConsumerWidget {
       routes: [
         GoRoute(
           path: '/login',
+          name: 'login',
           builder: (context, state) => const LoginPage(),
         ),
         GoRoute(
           path: '/register',
+          name: 'register',
           builder: (context, state) => const RegisterPage(),
         ),
         StatefulShellRoute.indexedStack(
@@ -100,6 +102,7 @@ class MyApp extends ConsumerWidget {
               routes: [
                 GoRoute(
                   path: '/books',
+                  name: 'books_list',
                   builder: (context, state) => const BooksListPage(),
                 ),
               ],
@@ -108,6 +111,7 @@ class MyApp extends ConsumerWidget {
               routes: [
                 GoRoute(
                   path: '/leaderboard',
+                  name: 'leaderboard',
                   builder: (context, state) => const LeaderboardPage(),
                 ),
               ],
@@ -116,6 +120,7 @@ class MyApp extends ConsumerWidget {
               routes: [
                 GoRoute(
                   path: '/profile',
+                  name: 'profile',
                   builder: (context, state) => const ProfilePage(),
                 ),
               ],
@@ -124,6 +129,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:id',
+          name: 'book_detail',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
             return BookDetailPage(bookId: id);
@@ -131,6 +137,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId',
+          name: 'chapter_detail',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
@@ -139,6 +146,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId/read',
+          name: 'chapter_reading',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
@@ -147,6 +155,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId/flashcards',
+          name: 'flashcards',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
@@ -155,6 +164,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId/quiz',
+          name: 'quiz',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
@@ -163,6 +173,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId/quiz/results',
+          name: 'quiz_results',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
@@ -176,6 +187,7 @@ class MyApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/books/:bookId/chapters/:chapterId/mindmap',
+          name: 'mindmap',
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
