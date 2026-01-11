@@ -53,6 +53,11 @@ flutter-clean: ## Clean Flutter build artifacts
 	cd apps/mobile_flutter && flutter clean
 	@echo "$(GREEN)✓ Flutter cleaned$(NC)"
 
+flutter-build-apk: ## Build Flutter release APK
+	@echo "$(CYAN)Building Flutter release APK...$(NC)"
+	cd apps/mobile_flutter && flutter build apk --release --dart-define=API_BASE_URL=https://book-api.hongphuc.top/api/
+	@echo "$(GREEN)✓ Build complete: apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk$(NC)"
+
 flutter-pub-get: ## Install Flutter dependencies
 	@echo "$(CYAN)Installing Flutter dependencies...$(NC)"
 	cd apps/mobile_flutter && flutter pub get
