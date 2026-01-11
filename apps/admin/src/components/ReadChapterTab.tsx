@@ -1,6 +1,7 @@
-import { Box, Typography, Button, Alert } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import DownloadIcon from '@mui/icons-material/Download';
+import { AuthenticatedFileViewer, useAuthenticatedFileDownload } from './AuthenticatedFileViewer';
 
 interface UploadedFile {
   id: number;
@@ -15,6 +16,8 @@ interface ReadChapterTabProps {
 }
 
 export const ReadChapterTab: React.FC<ReadChapterTabProps> = ({ file }) => {
+  const { download, loading } = useAuthenticatedFileDownload(file || null);
+
   if (!file) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -29,9 +32,6 @@ export const ReadChapterTab: React.FC<ReadChapterTabProps> = ({ file }) => {
     );
   }
 
-  const isPDF = file.mimetype === 'application/pdf';
-  const isViewable = isPDF; // Can extend to support more types
-
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -43,34 +43,14 @@ export const ReadChapterTab: React.FC<ReadChapterTabProps> = ({ file }) => {
             {file.mimetype}
           </Typography>
         </Box>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => window.open(file.path, '_blank')}>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={download} disabled={loading}>
           Download
         </Button>
       </Box>
 
       {/* Content */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        {isViewable ? (
-          <Box sx={{ width: '100%', height: '800px' }}>
-            <iframe
-              src={file.path}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                borderRadius: '4px',
-              }}
-              title={file.original_name}
-            />
-          </Box>
-        ) : (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              This file type cannot be previewed in the browser.
-            </Typography>
-            <Typography variant="body2">Click the "Download" button above to view the file.</Typography>
-          </Alert>
-        )}
+        <AuthenticatedFileViewer file={file} />
       </Box>
     </Box>
   );

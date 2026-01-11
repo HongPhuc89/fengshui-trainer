@@ -7,6 +7,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import axios from 'axios';
 import { useNotify } from 'react-admin';
 import { useNavigate } from 'react-router-dom';
+import { useAuthenticatedFileDownload } from './AuthenticatedFileViewer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -41,6 +42,8 @@ export const ChapterInfoTab: React.FC<ChapterInfoTabProps> = ({ chapter }) => {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(chapter.file || null);
+
+  const { download, loading: downloadLoading } = useAuthenticatedFileDownload(currentFile);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -198,7 +201,8 @@ export const ChapterInfoTab: React.FC<ChapterInfoTabProps> = ({ chapter }) => {
             <IconButton
               size="small"
               color="primary"
-              onClick={() => window.open(currentFile.path, '_blank')}
+              onClick={download}
+              disabled={downloadLoading}
               title="Download file"
             >
               <DownloadIcon />

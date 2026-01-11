@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loading, useNotify } from 'react-admin';
 import axios from 'axios';
-import { Box, Card, CardContent, Typography, Button, IconButton, Alert } from '@mui/material';
+import { Box, Card, CardContent, Typography, Button, IconButton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { getAuthenticatedMediaUrl } from '../utils/mediaUrl';
+import { AuthenticatedFileViewer, useAuthenticatedFileDownload } from '../components/AuthenticatedFileViewer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -35,6 +35,8 @@ export const ReadChapterPage = () => {
   const [loading, setLoading] = useState(true);
   const [chapter, setChapter] = useState<Chapter | null>(null);
 
+  const { download, loading: downloadLoading } = useAuthenticatedFileDownload(chapter?.file || null);
+
   useEffect(() => {
     fetchChapter();
   }, [bookId, chapterId]);
@@ -58,9 +60,6 @@ export const ReadChapterPage = () => {
   if (!chapter) return <div>Chapter not found</div>;
 
   const file = chapter.file;
-  const isPDF = file?.mimetype === 'application/pdf';
-  const isViewable = isPDF;
-  const authenticatedFileUrl = file ? getAuthenticatedMediaUrl(file.path) : '';
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -80,11 +79,7 @@ export const ReadChapterPage = () => {
               )}
             </Box>
             {file && (
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={() => window.open(authenticatedFileUrl, '_blank')}
-              >
+              <Button variant="outlined" startIcon={<DownloadIcon />} onClick={download} disabled={downloadLoading}>
                 Download
               </Button>
             )}
@@ -95,30 +90,9 @@ export const ReadChapterPage = () => {
       {/* Content */}
       <Box sx={{ flex: 1, overflow: 'auto', bgcolor: '#f5f5f5' }}>
         {file ? (
-          isViewable ? (
-            <Box sx={{ width: '100%', height: '100%', p: 2 }}>
-              <iframe
-                src={authenticatedFileUrl}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: 'white',
-                }}
-                title={file.original_name}
-              />
-            </Box>
-          ) : (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Alert severity="info" sx={{ mb: 2, maxWidth: 600, mx: 'auto' }}>
-                <Typography variant="body2" gutterBottom>
-                  This file type cannot be previewed in the browser.
-                </Typography>
-                <Typography variant="body2">Click the "Download" button above to view the file.</Typography>
-              </Alert>
-            </Box>
-          )
+          <Box sx={{ width: '100%', height: '100%', p: 2 }}>
+            <AuthenticatedFileViewer file={file} height="100%" />
+          </Box>
         ) : (
           <Box sx={{ p: 4, textAlign: 'center', maxWidth: 600, mx: 'auto', mt: 8 }}>
             <MenuBookIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
