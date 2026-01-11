@@ -176,9 +176,9 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
 
         window.markmapInstance = mm;
 
-        // Function to recursively fold nodes deeper than level 1
+        // Function to recursively fold nodes deeper than root (depth > 0)
         function foldDeepNodes(node, currentDepth) {
-          if (currentDepth > 1 && node.children && node.children.length > 0) {
+          if (currentDepth > 0 && node.children && node.children.length > 0) {
             // Fold this node (hide its children)
             node.payload = node.payload || {};
             node.payload.fold = 1;
@@ -192,7 +192,7 @@ class _MindmapPageState extends ConsumerState<MindmapPage> {
           }
         }
 
-        // Fold all nodes deeper than level 1 (root is depth 0, level 1 is depth 1)
+        // Fold all nodes except root (depth 0)
         foldDeepNodes(root, 0);
         
         // Render with folded state
