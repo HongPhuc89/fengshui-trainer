@@ -354,9 +354,8 @@ const ChaptersTab = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #ddd' }}>
-              <th style={{ padding: 8, textAlign: 'left' }}>ID</th>
-              <th style={{ padding: 8, textAlign: 'left' }}>Title</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Order</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Title</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Points</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Created</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Actions</th>
@@ -374,9 +373,8 @@ const ChaptersTab = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <td style={{ padding: 8 }}>{chapter.id}</td>
-                <td style={{ padding: 8 }}>{chapter.title}</td>
                 <td style={{ padding: 8 }}>{chapter.order}</td>
+                <td style={{ padding: 8 }}>{chapter.title}</td>
                 <td style={{ padding: 8 }}>{chapter.points}</td>
                 <td style={{ padding: 8 }}>{new Date(chapter.created_at).toLocaleDateString()}</td>
                 <td style={{ padding: 8, display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
