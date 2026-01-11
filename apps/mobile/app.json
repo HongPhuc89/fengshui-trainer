@@ -23,7 +23,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.quizgame.app"
+      "package": "com.quizgame.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -36,7 +37,7 @@
         "userScalable": false
       }
     },
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", "@react-native-firebase/app", "@react-native-firebase/analytics"],
     "scheme": "quizgame",
     "extra": {
       "router": {},
