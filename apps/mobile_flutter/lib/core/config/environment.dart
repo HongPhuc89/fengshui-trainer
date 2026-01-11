@@ -1,7 +1,7 @@
 class Environment {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://book-api.hongphuc.top/api',
+    defaultValue: 'https://book-api.hongphuc.top/api/',
   );
 
   static const String appName = 'Fengshui Trainer';
