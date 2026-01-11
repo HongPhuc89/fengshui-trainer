@@ -165,8 +165,11 @@ export class QuizSessionService {
       const questionPoints = question.points || 1;
       totalPoints += questionPoints;
 
+      const pointsEarned = isCorrect ? questionPoints : 0;
+
       console.log(`Question ${question.id}:`, {
         points: questionPoints,
+        pointsEarned,
         isCorrect,
         userAnswer,
       });
@@ -180,7 +183,9 @@ export class QuizSessionService {
         question_text: question.question_text,
         is_correct: isCorrect,
         points: questionPoints,
+        points_earned: pointsEarned,
         user_answer: userAnswer,
+        correct_answer: this.getCorrectAnswer(question),
       });
     }
 
@@ -246,13 +251,27 @@ export class QuizSessionService {
     if (session.status === QuizSessionStatus.COMPLETED) {
       const answers = session.answers || {};
       let correctCount = 0;
+      const results = [];
 
       for (const question of session.questions) {
         const userAnswer = answers[question.id];
         const isCorrect = userAnswer ? this.checkAnswer(question, userAnswer) : false;
+        const questionPoints = question.points || 1;
+        const pointsEarned = isCorrect ? questionPoints : 0;
+
         if (isCorrect) {
           correctCount++;
         }
+
+        results.push({
+          question_id: question.id,
+          question_text: question.question_text,
+          is_correct: isCorrect,
+          points: questionPoints,
+          points_earned: pointsEarned,
+          user_answer: userAnswer,
+          correct_answer: this.getCorrectAnswer(question),
+        });
       }
 
       const config = await this.configService.findByChapterId(session.chapter_id);
@@ -263,6 +282,7 @@ export class QuizSessionService {
         incorrect_count: session.questions.length - correctCount,
         total_questions: session.questions.length,
         passing_score_percentage: config.passing_score_percentage,
+        results,
       };
     }
 
@@ -279,6 +299,23 @@ export class QuizSessionService {
       where,
       order: { created_at: 'DESC' },
     });
+  }
+
+  private getCorrectAnswer(question: any): any {
+    switch (question.question_type) {
+      case 'TRUE_FALSE':
+        return question.options.correct_answer;
+      case 'MULTIPLE_CHOICE':
+        return question.options.correct_answer;
+      case 'MULTIPLE_ANSWER':
+        return question.options.correct_answers || [];
+      case 'MATCHING':
+        return question.options.pairs || [];
+      case 'ORDERING':
+        return (question.options.items || []).map((item: any) => item.id);
+      default:
+        return null;
+    }
   }
 
   private checkAnswer(question: any, userAnswer: any): boolean {

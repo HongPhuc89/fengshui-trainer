@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,10 +65,19 @@ class BookDetailPage extends ConsumerWidget {
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: coverImageUrl != null
-                              ? Image.network(
-                                  coverImageUrl,
+                              ? CachedNetworkImage(
+                                  imageUrl: coverImageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.black.withOpacity(0.3),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
                                       _buildPlaceholderCover(book.title),
                                 )
                               : _buildPlaceholderCover(book.title),
