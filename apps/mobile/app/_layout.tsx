@@ -2,8 +2,14 @@ import React, { useEffect } from 'react';
 import { Stack, usePathname, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import analytics from '@react-native-firebase/analytics';
+import * as amplitude from '@amplitude/analytics-react-native';
 import { AuthProvider } from '@/modules/shared/services/contexts/AuthContext';
+
+// Initialize Amplitude
+const AMPLITUDE_API_KEY = process.env.EXPO_PUBLIC_AMPLITUDE_API_KEY;
+if (AMPLITUDE_API_KEY) {
+  amplitude.init(AMPLITUDE_API_KEY);
+}
 
 // Create a client
 const queryClient = new QueryClient({
@@ -26,18 +32,20 @@ export default function RootLayout() {
         // e.g., (tabs)/books -> books
         const screenName = segments.join('/') || 'index';
 
-        console.log(`📊 [Analytics] Logging screen view: ${screenName} (${pathname})`);
+        console.log(`📊 [Amplitude] Logging screen view: ${screenName} (${pathname})`);
 
-        await analytics().logScreenView({
+        amplitude.track('screen_view', {
           screen_name: screenName,
-          screen_class: screenName,
+          path: pathname,
         });
       } catch (error) {
-        console.error('❌ [Analytics] Failed to log screen view:', error);
+        console.error('❌ [Amplitude] Failed to log screen view:', error);
       }
     };
 
-    logScreenView();
+    if (AMPLITUDE_API_KEY) {
+      logScreenView();
+    }
   }, [pathname, segments]);
 
   return (
