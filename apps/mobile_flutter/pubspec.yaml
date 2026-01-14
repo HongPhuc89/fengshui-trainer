@@ -12,6 +12,12 @@ dependencies:
   firebase_core: ^3.10.1
   firebase_analytics: ^11.4.1
 
+  # Analytics
+  amplitude_flutter: ^3.16.2
+
+  # Environment
+  flutter_dotenv: ^5.2.1
+
   # State Management
   flutter_riverpod: ^2.6.1
 
@@ -58,6 +64,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - .env
 
 flutter_launcher_icons:
   android: 'launcher_icon'

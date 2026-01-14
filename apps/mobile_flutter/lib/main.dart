@@ -3,9 +3,12 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/config/environment.dart';
 import 'core/config/theme.dart';
+import 'core/services/analytics_service.dart';
+import 'core/services/amplitude_observer.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
@@ -24,12 +27,29 @@ import 'features/home/presentation/pages/main_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Load environment variables from .env file
+  try {
+    await dotenv.load(fileName: '.env');
+    print('✅ Environment variables loaded from .env');
+  } catch (e) {
+    print('⚠️ Failed to load .env file: $e');
+    print('⚠️ Using default values');
+  }
+  
   try {
     await Firebase.initializeApp();
     await FirebaseAnalytics.instance.logEvent(name: 'app_start');
     print('🔥 Firebase initialized successfully and logged app_start');
   } catch (e) {
     print('⚠️ Firebase initialization failed: $e');
+  }
+
+  // Initialize Analytics
+  try {
+    await AnalyticsService().initialize();
+    print('📊 Analytics initialized successfully');
+  } catch (e) {
+    print('⚠️ Analytics initialization failed: $e');
   }
 
   // Log environment configuration
@@ -57,6 +77,7 @@ class MyApp extends ConsumerWidget {
       initialLocation: '/books',
       observers: [
         FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+        AmplitudeObserver(),
       ],
       redirect: (context, state) {
         final isAuthenticated = authState.isAuthenticated;

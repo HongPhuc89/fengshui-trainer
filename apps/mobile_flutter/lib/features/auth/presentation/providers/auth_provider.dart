@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/services/analytics_service.dart';
 import '../../data/models/auth_models.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -62,6 +63,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkAuthStatus();
   }
   final AuthRepository _repository;
+  final AnalyticsService _analytics = AnalyticsService();
 
   Future<void> _checkAuthStatus() async {
     if (kDebugMode) {
@@ -90,6 +92,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           isAuthenticated: true,
         );
+        
+        // Track session restoration
+        await _analytics.logSessionRestored();
+        await _analytics.setUserId(user.id.toString());
+        await _analytics.setUserProperties({
+          'email': user.email,
+          'name': user.name,
+        });
         
         if (kDebugMode) {
           print('✅ Auth state updated: isAuthenticated=true, user=${user.email}');
@@ -127,6 +137,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
       );
       
+      // Track successful login
+      await _analytics.logLogin(method: 'email');
+      await _analytics.setUserId(response.user.id.toString());
+      await _analytics.setUserProperties({
+        'email': response.user.email,
+        'name': response.user.name,
+      });
+      
       if (kDebugMode) {
         print('✅ Login successful: ${response.user.email}');
       }
@@ -152,6 +170,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         error: errorMessage,
       );
+      
+      // Track login failure
+      await _analytics.logLoginFailure(reason: errorMessage);
+      
       throw Exception(errorMessage);
     } catch (e) {
       state = state.copyWith(
@@ -178,6 +200,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         isLoading: false,
       );
+      
+      // Track successful registration
+      await _analytics.logRegister(method: 'email');
+      await _analytics.setUserId(response.user.id.toString());
+      await _analytics.setUserProperties({
+        'email': response.user.email,
+        'name': response.user.name,
+      });
     } on DioException catch (e) {
       String errorMessage = 'Đăng ký thất bại';
 
@@ -194,6 +224,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         error: errorMessage,
       );
+      
+      // Track registration failure
+      await _analytics.logRegisterFailure(reason: errorMessage);
+      
       throw Exception(errorMessage);
     } catch (e) {
       state = state.copyWith(
@@ -205,6 +239,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Track logout before clearing data
+    await _analytics.logLogout();
+    await _analytics.clearUser();
+    
     await _repository.logout();
     state = AuthState();
   }
