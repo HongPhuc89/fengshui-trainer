@@ -1,10 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import 'analytics_service.dart';
 
 /// Custom GoRouter listener that tracks screen views in Amplitude
-class AmplitudeRouterObserver extends NavigatorObserver {
+class AmplitudeObserver extends NavigatorObserver {
   final AnalyticsService _analytics = AnalyticsService();
 
   @override
