@@ -64,6 +64,14 @@ class MainScreen extends StatelessWidget {
       index,
       initialLocation: index == navigationShell.currentIndex,
     );
+    
+    // Track tab navigation
+    final tabNames = ['books', 'leaderboard', 'profile'];
+    if (index >= 0 && index < tabNames.length) {
+      // Import analytics service at the top of the file
+      // This will be tracked by the observer, but we can add extra context
+      print('📊 [MainScreen] Navigated to tab: ${tabNames[index]}');
+    }
   }
 }
 

@@ -1,4 +1,7 @@
-import 'package:amplitude_flutter/amplitude_flutter.dart';
+import 'package:amplitude_flutter/amplitude.dart';
+import 'package:amplitude_flutter/configuration.dart';
+import 'package:amplitude_flutter/events/identify.dart';
+import 'package:amplitude_flutter/events/base_event.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 
@@ -27,8 +30,7 @@ class AnalyticsService {
       // Initialize Amplitude
       final apiKey = Environment.amplitudeApiKey;
       if (apiKey.isNotEmpty) {
-        _amplitude = Amplitude.getInstance();
-        await _amplitude!.init(apiKey);
+        _amplitude = Amplitude(Configuration(apiKey: apiKey));
         
         if (kDebugMode) {
           print('📊 [Analytics] Amplitude initialized successfully');
@@ -104,15 +106,20 @@ class AnalyticsService {
   /// Log an event with optional properties
   Future<void> logEvent(String eventName, [Map<String, dynamic>? properties]) async {
     try {
+      // Convert Map<String, dynamic> to Map<String, Object> for Amplitude & Firebase
+      final Map<String, Object>? processedProperties = properties?.map(
+        (key, value) => MapEntry(key, value as Object),
+      );
+
       // Log to Amplitude
       if (_amplitude != null) {
-        await _amplitude!.logEvent(eventName, eventProperties: properties);
+        await _amplitude!.track(BaseEvent(eventName, eventProperties: processedProperties));
       }
 
       // Log to Firebase
       await _firebaseAnalytics.logEvent(
         name: eventName,
-        parameters: properties,
+        parameters: processedProperties,
       );
 
       if (kDebugMode) {
@@ -131,7 +138,7 @@ class AnalyticsService {
       // Clear Amplitude user
       if (_amplitude != null) {
         await _amplitude!.setUserId(null);
-        await _amplitude!.regenerateDeviceId();
+        // Note: regenerateDeviceId is not directly exposed in the same way in v4
       }
 
       // Clear Firebase user
