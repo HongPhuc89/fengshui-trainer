@@ -66,11 +66,16 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
         _isLoadingChapter = false;
       });
 
-      // Load saved progress if not infographic
-      if (!widget.isInfographic) {
-        final progress = ref
-            .read(readingProgressProvider(widget.chapterId).notifier)
-            .state;
+      // Load saved progress for both chapter and infographic
+      if (widget.isInfographic) {
+        final progress = ref.read(infographicProgressProvider(widget.chapterId).notifier).state;
+        if (progress.currentPage > 0) {
+          setState(() {
+            _savedPage = progress.currentPage;
+          });
+        }
+      } else {
+        final progress = ref.read(readingProgressProvider(widget.chapterId).notifier).state;
         if (progress.currentPage > 0) {
           setState(() {
             _savedPage = progress.currentPage;
@@ -173,8 +178,13 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
       _totalPages = totalPages;
     });
 
-    // Save progress only for chapter reading (not infographic)
-    if (!widget.isInfographic) {
+    // Save progress to appropriate provider (chapter or infographic)
+    if (widget.isInfographic) {
+      ref.read(infographicProgressProvider(widget.chapterId).notifier).updateProgress(
+            currentPage,
+            totalPages,
+          );
+    } else {
       ref.read(readingProgressProvider(widget.chapterId).notifier).updateProgress(
             currentPage,
             totalPages,

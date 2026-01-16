@@ -97,3 +97,65 @@ final readingProgressProvider = StateNotifierProvider.family<
     ReadingProgressNotifier, ReadingProgressState, int>((ref, chapterId) {
   return ReadingProgressNotifier(chapterId);
 });
+
+// Infographic Progress Notifier - Separate from Chapter Progress
+class InfographicProgressNotifier extends StateNotifier<ReadingProgressState> {
+
+  InfographicProgressNotifier(this.chapterId) : super(ReadingProgressState()) {
+    _loadProgress();
+  }
+  final int chapterId;
+
+  Future<void> _loadProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'infographic_progress_$chapterId'; // Different key!
+      final jsonString = prefs.getString(key);
+      
+      if (jsonString != null) {
+        final json = jsonDecode(jsonString) as Map<String, dynamic>;
+        state = ReadingProgressState(
+          currentPage: json['currentPage'] as int? ?? 1,
+          totalPages: json['totalPages'] as int? ?? 0,
+          lastReadAt: json['lastReadAt'] != null 
+              ? DateTime.parse(json['lastReadAt'] as String)
+              : null,
+        );
+        print('[InfographicProgress] Loaded: page ${state.currentPage}/${state.totalPages}');
+      }
+    } catch (e) {
+      print('[InfographicProgress] Failed to load: $e');
+      state = ReadingProgressState(currentPage: 1, totalPages: 0);
+    }
+  }
+
+  Future<void> updateProgress(int currentPage, int totalPages) async {
+    state = state.copyWith(
+      currentPage: currentPage,
+      totalPages: totalPages,
+      lastReadAt: DateTime.now(),
+    );
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'infographic_progress_$chapterId'; // Different key!
+      
+      final json = {
+        'currentPage': currentPage,
+        'totalPages': totalPages,
+        'lastReadAt': DateTime.now().toIso8601String(),
+      };
+      
+      await prefs.setString(key, jsonEncode(json));
+      print('[InfographicProgress] Saved: page $currentPage/$totalPages');
+    } catch (e) {
+      print('[InfographicProgress] Failed to save: $e');
+    }
+  }
+}
+
+// Infographic Progress Provider Family
+final infographicProgressProvider = StateNotifierProvider.family<
+    InfographicProgressNotifier, ReadingProgressState, int>((ref, chapterId) {
+  return InfographicProgressNotifier(chapterId);
+});
