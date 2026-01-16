@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/services/pdf_cache_service.dart';
 import '../../../../core/storage/secure_storage.dart';
@@ -14,7 +13,7 @@ import '../../../books/data/models/book_models.dart';
 import '../../../books/presentation/providers/books_provider.dart';
 import '../providers/reading_progress_provider.dart';
 import '../widgets/bottom_menu_bar.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
+import '../widgets/base_pdf_viewer.dart';
 
 class ChapterReadingPage extends ConsumerStatefulWidget {
   const ChapterReadingPage({
@@ -29,16 +28,13 @@ class ChapterReadingPage extends ConsumerStatefulWidget {
   final bool isInfographic;
 
   @override
-  ConsumerState<ChapterReadingPage> createState() => _ChapterReadingPageState();
+  ConsumerState<ChapterReadingPage> createState() =>
+      _ChapterReadingPageState();
 }
 
 class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
-  final PdfViewerController _pdfController = PdfViewerController();
   late final PdfCacheService _cacheService;
 
-  int _currentPage = 1;
-  int _totalPages = 0;
-  bool _hasJumpedToSavedPage = false;
   Chapter? _chapter;
   bool _isLoadingChapter = true;
   String? _error;
@@ -46,6 +42,11 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
   String? _pdfPath;
   bool _isDownloading = false;
   double _downloadProgress = 0;
+
+  // For reading progress tracking
+  int _currentPage = 1;
+  int _totalPages = 0;
+  int? _savedPage;
 
   @override
   void initState() {
@@ -57,14 +58,31 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
   Future<void> _loadChapter() async {
     try {
       final repository = ref.read(booksRepositoryProvider);
-      final chapter = await repository.getChapterDetail(widget.bookId, widget.chapterId);
+      final chapter =
+          await repository.getChapterDetail(widget.bookId, widget.chapterId);
+
       setState(() {
         _chapter = chapter;
         _isLoadingChapter = false;
       });
 
-      // Load PDF (with caching)
-      await _loadPdf();
+      // Load saved progress if not infographic
+      if (!widget.isInfographic) {
+        final progress = await ref
+            .read(readingProgressProvider.notifier)
+            .getProgress(widget.chapterId);
+        if (progress != null && progress.currentPage > 0) {
+          setState(() {
+            _savedPage = progress.currentPage;
+          });
+        }
+      }
+
+      // Load PDF
+      final pdfUrl = _getPdfUrl();
+      if (pdfUrl != null) {
+        await _loadPdf(pdfUrl);
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -73,10 +91,7 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
     }
   }
 
-  Future<void> _loadPdf() async {
-    final rawPdfUrl = _getPdfUrl();
-    if (rawPdfUrl == null) return;
-
+  Future<void> _loadPdf(String rawPdfUrl) async {
     // Get authenticated URL (with token)
     final pdfUrl = await MediaUrlHelper.getAuthenticatedMediaUrl(rawPdfUrl);
     print('[ChapterReading] Authenticated PDF URL: $pdfUrl');
@@ -116,7 +131,7 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
 
         setState(() {
           _isDownloading = false;
-          _pdfPath = downloadedPath ?? pdfUrl;
+          _pdfPath = downloadedPath;
         });
       }
     } catch (e) {
@@ -128,38 +143,6 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _pdfController.dispose();
-    super.dispose();
-  }
-
-  void _onPageChanged(PdfPageChangedDetails details) {
-    setState(() {
-      _currentPage = details.newPageNumber;
-    });
-
-    if (_totalPages > 0) {
-      ref
-          .read(readingProgressProvider(widget.chapterId).notifier)
-          .updateProgress(_currentPage, _totalPages);
-    }
-  }
-
-  void _onDocumentLoaded(PdfDocumentLoadedDetails details) {
-    setState(() {
-      _totalPages = details.document.pages.count;
-    });
-
-    if (!_hasJumpedToSavedPage) {
-      final progressState = ref.read(readingProgressProvider(widget.chapterId));
-      if (progressState.currentPage > 1) {
-        _pdfController.jumpToPage(progressState.currentPage);
-      }
-      _hasJumpedToSavedPage = true;
-    }
-  }
-
   String? _getPdfUrl() {
     if (_chapter == null) return null;
 
@@ -168,7 +151,8 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
         print('[ChapterReading] No Infographic file found in chapter');
         return null;
       }
-      print('[ChapterReading] Found Infographic file: ${_chapter!.infographicFile!.fileName}');
+      print(
+          '[ChapterReading] Found Infographic file: ${_chapter!.infographicFile!.fileName}');
       return _chapter!.infographicFile!.fileUrl;
     }
 
@@ -183,136 +167,141 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
     return pdfFile.fileUrl;
   }
 
-  Widget _buildPdfViewer() {
-    if (_pdfPath == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(widget.isInfographic ? 'Chương này chưa có file Đồ họa' : 'Chương này chưa có file PDF'),
-          ],
-        ),
-      );
-    }
+  void _handlePageChanged(int currentPage, int totalPages) {
+    setState(() {
+      _currentPage = currentPage;
+      _totalPages = totalPages;
+    });
 
-    // Use appropriate viewer based on platform and path
-    if (kIsWeb || _pdfPath!.startsWith('http')) {
-      return SfPdfViewer.network(
-        _pdfPath!,
-        controller: _pdfController,
-        onPageChanged: _onPageChanged,
-        onDocumentLoaded: _onDocumentLoaded,
-      );
-    } else {
-      return SfPdfViewer.file(
-        File(_pdfPath!),
-        controller: _pdfController,
-        onPageChanged: _onPageChanged,
-        onDocumentLoaded: _onDocumentLoaded,
-      );
+    // Save progress only for chapter reading (not infographic)
+    if (!widget.isInfographic) {
+      ref.read(readingProgressProvider.notifier).updateProgress(
+            widget.chapterId,
+            currentPage,
+            totalPages,
+          );
     }
+  }
+
+  String _getTitle() {
+    if (widget.isInfographic) {
+      return 'Đồ họa - ${_chapter?.title ?? ""}';
+    }
+    return _chapter?.title ?? 'Đọc sách';
+  }
+
+  Color _getThemeColor() {
+    return widget.isInfographic
+        ? const Color(0xFF5D4037)
+        : const Color(0xFF2D7061);
   }
 
   @override
   Widget build(BuildContext context) {
     // Log screen view to Firebase
     FirebaseAnalytics.instance.logScreenView(
-      screenName: widget.isInfographic ? 'ChapterInfographicPage' : 'ChapterReadingPage',
+      screenName: widget.isInfographic
+          ? 'ChapterInfographicPage'
+          : 'ChapterReadingPage',
       parameters: {
         'bookId': widget.bookId.toString(),
         'chapterId': widget.chapterId.toString(),
       },
     );
 
-    final progressState = ref.watch(readingProgressProvider(widget.chapterId));
+    if (_isLoadingChapter) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Đang tải...'),
+          backgroundColor: _getThemeColor(),
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/books/${widget.bookId}/chapters/${widget.chapterId}'),
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Lỗi'),
+          backgroundColor: _getThemeColor(),
+          foregroundColor: Colors.white,
         ),
-        title: Text(
-          widget.isInfographic ? 'Đồ họa - ${_chapter?.title ?? ""}' : (_chapter?.title ?? 'Đọc sách'),
-          style: const TextStyle(fontSize: 16),
-        ),
-        backgroundColor: widget.isInfographic ? const Color(0xFF5D4037) : const Color(0xFF2D7061),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (_totalPages > 0)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text(
-                  '$_currentPage/$_totalPages',
-                  style: const TextStyle(fontSize: 14),
-                ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Lỗi: $_error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => context.pop(),
+                child: const Text('Quay lại'),
               ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_pdfPath == null) {
+      if (_isDownloading) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Đang tải PDF...'),
+            backgroundColor: _getThemeColor(),
+            foregroundColor: Colors.white,
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: _downloadProgress > 0 ? _downloadProgress : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _downloadProgress > 0
+                      ? '${(_downloadProgress * 100).toStringAsFixed(0)}%'
+                      : 'Đang tải...',
+                ),
+              ],
             ),
-        ],
-      ),
-      body: _isLoadingChapter
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFFFD700)),
-            )
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Không thể tải PDF',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : _isDownloading
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(color: Color(0xFFFFD700)),
-                          const SizedBox(height: 24),
-                          Text(
-                            'Đang tải PDF... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            width: 200,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: _downloadProgress,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFD700),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _buildPdfViewer(),
+          ),
+        );
+      }
+
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(_getTitle()),
+          backgroundColor: _getThemeColor(),
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.picture_as_pdf,
+                  size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(widget.isInfographic
+                  ? 'Chương này chưa có file Đồ họa'
+                  : 'Chương này chưa có file PDF'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Use BasePdfViewer for actual PDF display
+    return BasePdfViewer(
+      pdfUrl: _pdfPath!,
+      title: _getTitle(),
+      themeColor: _getThemeColor(),
+      initialPage: _savedPage ?? 1,
+      onPageChanged: _handlePageChanged,
+      showRotationHint: true,
     );
   }
 }
