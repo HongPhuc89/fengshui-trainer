@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
+import '../../../../core/services/experience_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
@@ -47,6 +48,13 @@ class BooksListPage extends ConsumerWidget {
 
     final booksState = ref.watch(booksProvider);
     final authState = ref.watch(authProvider);
+
+    // Perform daily check-in when books page loads (like React Native home screen)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (authState.user != null) {
+        ExperienceService().dailyCheckIn(authState.user!.id);
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFF1a1a2e), // Dark background

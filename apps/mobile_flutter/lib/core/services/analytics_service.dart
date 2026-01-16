@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../config/environment.dart';
 
 /// Centralized analytics service that handles both Amplitude and Firebase Analytics
+/// NOTE: Amplitude is temporarily disabled due to network issues
 class AnalyticsService {
   static final AnalyticsService _instance = AnalyticsService._internal();
   factory AnalyticsService() => _instance;
@@ -27,18 +28,18 @@ class AnalyticsService {
     }
 
     try {
-      // Initialize Amplitude
-      final apiKey = Environment.amplitudeApiKey;
-      if (apiKey.isNotEmpty) {
-        _amplitude = Amplitude(Configuration(apiKey: apiKey));
-        
-        if (kDebugMode) {
-          print('📊 [Analytics] Amplitude initialized successfully');
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ [Analytics] Amplitude API key not configured');
-        }
+      // TEMPORARILY DISABLED: Amplitude initialization
+      // final apiKey = Environment.amplitudeApiKey;
+      // if (apiKey.isNotEmpty) {
+      //   _amplitude = Amplitude(Configuration(apiKey: apiKey));
+      //   await _amplitude!.isBuilt;
+      //   if (kDebugMode) {
+      //     print('📊 [Analytics] Amplitude initialized successfully');
+      //   }
+      // }
+
+      if (kDebugMode) {
+        print('📊 [Analytics] Firebase Analytics initialized (Amplitude disabled)');
       }
 
       _isInitialized = true;
@@ -55,10 +56,10 @@ class AnalyticsService {
   /// Set user ID for analytics
   Future<void> setUserId(String userId) async {
     try {
-      // Set user ID in Amplitude
-      if (_amplitude != null) {
-        await _amplitude!.setUserId(userId);
-      }
+      // TEMPORARILY DISABLED: Amplitude setUserId
+      // if (_amplitude != null) {
+      //   await _amplitude!.setUserId(userId);
+      // }
 
       // Set user ID in Firebase
       await _firebaseAnalytics.setUserId(id: userId);
@@ -76,14 +77,14 @@ class AnalyticsService {
   /// Set user properties
   Future<void> setUserProperties(Map<String, dynamic> properties) async {
     try {
-      // Set properties in Amplitude
-      if (_amplitude != null) {
-        final identify = Identify();
-        properties.forEach((key, value) {
-          identify.set(key, value);
-        });
-        await _amplitude!.identify(identify);
-      }
+      // TEMPORARILY DISABLED: Amplitude setUserProperties
+      // if (_amplitude != null) {
+      //   final identify = Identify();
+      //   properties.forEach((key, value) {
+      //     identify.set(key, value);
+      //   });
+      //   await _amplitude!.identify(identify);
+      // }
 
       // Set properties in Firebase (one at a time)
       for (final entry in properties.entries) {
@@ -106,15 +107,15 @@ class AnalyticsService {
   /// Log an event with optional properties
   Future<void> logEvent(String eventName, [Map<String, dynamic>? properties]) async {
     try {
-      // Convert Map<String, dynamic> to Map<String, Object> for Amplitude & Firebase
+      // Convert Map<String, dynamic> to Map<String, Object> for Firebase
       final Map<String, Object>? processedProperties = properties?.map(
         (key, value) => MapEntry(key, value as Object),
       );
 
-      // Log to Amplitude
-      if (_amplitude != null) {
-        await _amplitude!.track(BaseEvent(eventName, eventProperties: processedProperties));
-      }
+      // TEMPORARILY DISABLED: Amplitude tracking
+      // if (_amplitude != null) {
+      //   await _amplitude!.track(BaseEvent(eventName, eventProperties: processedProperties));
+      // }
 
       // Log to Firebase
       await _firebaseAnalytics.logEvent(
@@ -135,10 +136,10 @@ class AnalyticsService {
   /// Clear user data (on logout)
   Future<void> clearUser() async {
     try {
-      // Clear Amplitude user
-      if (_amplitude != null) {
-        await _amplitude!.setUserId(null);
-      }
+      // TEMPORARILY DISABLED: Amplitude clearUser
+      // if (_amplitude != null) {
+      //   await _amplitude!.setUserId(null);
+      // }
 
       // Clear Firebase user
       await _firebaseAnalytics.setUserId(id: null);

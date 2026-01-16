@@ -184,9 +184,9 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
 
   String _getTitle() {
     if (widget.isInfographic) {
-      return 'Đồ họa - ${_chapter?.title ?? ""}';
+      return 'Họa đồ - ${_chapter?.title ?? ""}';
     }
-    return _chapter?.title ?? 'Đọc sách';
+    return 'Đọc sách';
   }
 
   Color _getThemeColor() {
@@ -211,6 +211,10 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
     if (_isLoadingChapter) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
           title: const Text('Đang tải...'),
           backgroundColor: _getThemeColor(),
           foregroundColor: Colors.white,
@@ -222,6 +226,10 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
           title: const Text('Lỗi'),
           backgroundColor: _getThemeColor(),
           foregroundColor: Colors.white,
@@ -248,6 +256,10 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
       if (_isDownloading) {
         return Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            ),
             title: const Text('Đang tải PDF...'),
             backgroundColor: _getThemeColor(),
             foregroundColor: Colors.white,
@@ -273,6 +285,10 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
 
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
           title: Text(_getTitle()),
           backgroundColor: _getThemeColor(),
           foregroundColor: Colors.white,
@@ -285,7 +301,7 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
                   size: 64, color: Colors.grey),
               const SizedBox(height: 16),
               Text(widget.isInfographic
-                  ? 'Chương này chưa có file Đồ họa'
+                  ? 'Chương này chưa có file Họa đồ'
                   : 'Chương này chưa có file PDF'),
             ],
           ),
@@ -298,6 +314,8 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
       pdfUrl: _pdfPath!,
       title: _getTitle(),
       themeColor: _getThemeColor(),
+      bookId: widget.bookId,
+      chapterId: widget.chapterId,
       initialPage: _savedPage ?? 1,
       onPageChanged: _handlePageChanged,
     );

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class BasePdfViewer extends StatefulWidget {
@@ -9,6 +10,8 @@ class BasePdfViewer extends StatefulWidget {
     required this.pdfUrl,
     required this.title,
     required this.onPageChanged,
+    required this.bookId,
+    required this.chapterId,
     this.initialPage = 1,
     this.themeColor = const Color(0xFF2D7061),
     super.key,
@@ -17,6 +20,8 @@ class BasePdfViewer extends StatefulWidget {
   final String pdfUrl;
   final String title;
   final Function(int currentPage, int totalPages) onPageChanged;
+  final int bookId;
+  final int chapterId;
   final int initialPage;
   final Color themeColor;
 
@@ -92,6 +97,10 @@ class _BasePdfViewerState extends State<BasePdfViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/books/${widget.bookId}/chapters/${widget.chapterId}'),
+        ),
         title: Text(
           widget.title,
           style: const TextStyle(fontSize: 16),
