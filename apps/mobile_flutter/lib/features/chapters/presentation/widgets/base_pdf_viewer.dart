@@ -1,8 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import '../../../../core/storage/secure_storage.dart';
-import '../widgets/rotation_hint_overlay.dart';
 
 class BasePdfViewer extends StatefulWidget {
   const BasePdfViewer({
@@ -11,7 +11,6 @@ class BasePdfViewer extends StatefulWidget {
     required this.onPageChanged,
     this.initialPage = 1,
     this.themeColor = const Color(0xFF2D7061),
-    this.showRotationHint = true,
     super.key,
   });
 
@@ -20,7 +19,6 @@ class BasePdfViewer extends StatefulWidget {
   final Function(int currentPage, int totalPages) onPageChanged;
   final int initialPage;
   final Color themeColor;
-  final bool showRotationHint;
 
   @override
   State<BasePdfViewer> createState() => _BasePdfViewerState();
@@ -28,33 +26,14 @@ class BasePdfViewer extends StatefulWidget {
 
 class _BasePdfViewerState extends State<BasePdfViewer> {
   final PdfViewerController _pdfController = PdfViewerController();
-  final _storage = SecureStorage();
   
   int _currentPage = 1;
   int _totalPages = 0;
   bool _hasJumpedToInitialPage = false;
-  bool _showRotationHint = false;
 
   @override
   void initState() {
     super.initState();
-    _checkRotationHint();
-  }
-
-  Future<void> _checkRotationHint() async {
-    if (!widget.showRotationHint) return;
-
-    final hideHint = await _storage.read('hide_rotation_hint');
-    final orientation = MediaQuery.of(context).orientation;
-
-    // Show hint if:
-    // 1. User hasn't disabled it
-    // 2. Device is in portrait mode
-    if (hideHint != 'true' && orientation == Orientation.portrait) {
-      setState(() {
-        _showRotationHint = true;
-      });
-    }
   }
 
   void _onDocumentLoaded(PdfDocumentLoadedDetails details) {
@@ -82,9 +61,29 @@ class _BasePdfViewerState extends State<BasePdfViewer> {
     });
     widget.onPageChanged(page, _totalPages);
   }
+  
+  void _toggleOrientation() {
+    final currentOrientation = MediaQuery.of(context).orientation;
+    if (currentOrientation == Orientation.portrait) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+  }
 
   @override
   void dispose() {
+    // Reset orientation when leaving
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _pdfController.dispose();
     super.dispose();
   }
@@ -101,6 +100,12 @@ class _BasePdfViewerState extends State<BasePdfViewer> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Rotation toggle button
+          IconButton(
+            icon: const Icon(Icons.screen_rotation),
+            tooltip: 'Xoay màn hình',
+            onPressed: _toggleOrientation,
+          ),
           // Page indicator
           if (_totalPages > 0)
             Center(
@@ -114,31 +119,27 @@ class _BasePdfViewerState extends State<BasePdfViewer> {
             ),
         ],
       ),
-      body: Stack(
-        children: [
-          // PDF Viewer
-          SfPdfViewer.network(
-            widget.pdfUrl,
-            controller: _pdfController,
-            onDocumentLoaded: _onDocumentLoaded,
-            onPageChanged: (details) => _onPageChanged(details.newPageNumber),
-            enableDoubleTapZooming: true,
-            canShowScrollHead: true,
-            canShowScrollStatus: true,
-            pageLayoutMode: PdfPageLayoutMode.continuous,
-          ),
-          
-          // Rotation Hint Overlay
-          if (_showRotationHint)
-            RotationHintOverlay(
-              onDismiss: () {
-                setState(() {
-                  _showRotationHint = false;
-                });
-              },
+      body: widget.pdfUrl.startsWith('http')
+          ? SfPdfViewer.network(
+              widget.pdfUrl,
+              controller: _pdfController,
+              onDocumentLoaded: _onDocumentLoaded,
+              onPageChanged: (details) => _onPageChanged(details.newPageNumber),
+              enableDoubleTapZooming: true,
+              canShowScrollHead: true,
+              canShowScrollStatus: true,
+              pageLayoutMode: PdfPageLayoutMode.continuous,
+            )
+          : SfPdfViewer.file(
+              File(widget.pdfUrl),
+              controller: _pdfController,
+              onDocumentLoaded: _onDocumentLoaded,
+              onPageChanged: (details) => _onPageChanged(details.newPageNumber),
+              enableDoubleTapZooming: true,
+              canShowScrollHead: true,
+              canShowScrollStatus: true,
+              pageLayoutMode: PdfPageLayoutMode.continuous,
             ),
-        ],
-      ),
     );
   }
 }

@@ -38,12 +38,9 @@ class _RotationHintOverlayState extends State<RotationHintOverlay>
     ));
 
     _fadeAnimation = Tween<double>(
-      begin: 0.0,
+      begin: 1.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.3),
-    ));
+    ).animate(_controller);
 
     // Auto dismiss after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
