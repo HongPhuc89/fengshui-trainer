@@ -137,12 +137,20 @@ export class QuizAttemptsService {
     // Award XP with first-time pass bonus logic
     const xpInfo = await this.awardQuizXP(userId, attempt.chapter_id, percentage, passed, attemptId);
 
+    // Count correct answers
+    const correctAnswers = results.filter((r) => r.is_correct).length;
+
     return {
+      attempt_id: attemptId,
       score: totalScore,
-      max_score: attempt.max_score,
+      total_points: attempt.max_score,
+      earned_points: totalScore,
       percentage: percentage.toFixed(2),
       passed,
+      correct_answers: correctAnswers,
+      total_questions: results.length,
       results,
+      completed_at: attempt.completed_at,
       experience: xpInfo,
     };
   }
@@ -270,7 +278,8 @@ export class QuizAttemptsService {
       case QuestionType.TRUE_FALSE:
         return options.correct_answer;
       case QuestionType.MULTIPLE_CHOICE:
-        return options.correct_answer;
+        // Handle both formats: correct_answer and correct_option_id
+        return options.correct_answer || options.correct_option_id;
       case QuestionType.MULTIPLE_ANSWER:
         return options.correct_answers;
       case QuestionType.MATCHING:
@@ -292,11 +301,13 @@ export class QuizAttemptsService {
           pointsEarned: userAnswer === options.correct_answer ? points : 0,
         };
 
-      case QuestionType.MULTIPLE_CHOICE:
+      case QuestionType.MULTIPLE_CHOICE: {
+        const correctAnswer = options.correct_answer || options.correct_option_id;
         return {
-          isCorrect: userAnswer === options.correct_answer,
-          pointsEarned: userAnswer === options.correct_answer ? points : 0,
+          isCorrect: userAnswer === correctAnswer,
+          pointsEarned: userAnswer === correctAnswer ? points : 0,
         };
+      }
 
       case QuestionType.MULTIPLE_ANSWER: {
         const correctAnswers = new Set(options.correct_answers);

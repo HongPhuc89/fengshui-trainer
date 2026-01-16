@@ -280,12 +280,17 @@ class QuizQuestionResult extends Equatable {
       return 0;
     }
 
+    final correctAnswer = json['correct_answer'] ?? json['correctAnswer'];
+    
+    // Debug log
+    print('[QuizResult] Parsing question ${json['question_id']}: correctAnswer = $correctAnswer');
+
     return QuizQuestionResult(
       questionId: toInt(json['question_id'] ?? json['questionId']),
       isCorrect: json['is_correct'] as bool? ?? json['isCorrect'] as bool? ?? false,
       pointsEarned: toInt(json['points_earned'] ?? json['pointsEarned']),
       userAnswer: json['user_answer'] ?? json['userAnswer'],
-      correctAnswer: json['correct_answer'] ?? json['correctAnswer'],
+      correctAnswer: correctAnswer,
     );
   }
   final int questionId;
@@ -336,6 +341,15 @@ class SubmitQuizResponse extends Equatable {
     final earnedPoints = toInt(json['earned_points'] ?? json['earnedPoints'] ?? json['score']);
     final totalPoints = toInt(json['total_points'] ?? json['totalPoints']);
     
+    // Parse results first
+    final results = (json['results'] as List?)
+            ?.map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
+            .toList() ??
+        [];
+    
+    // Calculate correct answers from results (don't trust backend value)
+    final correctAnswers = results.where((r) => r.isCorrect).length;
+    
     // Use percentage from JSON or calculate it
     double percentage = todouble(json['percentage'] ?? json['percentage_score']);
     if (percentage == 0 && totalPoints > 0) {
@@ -349,12 +363,9 @@ class SubmitQuizResponse extends Equatable {
       passed: json['passed'] as bool? ?? false,
       totalPoints: totalPoints,
       earnedPoints: earnedPoints,
-      correctAnswers: toInt(json['correct_answers'] ?? json['correctAnswers']),
+      correctAnswers: correctAnswers, // Use calculated value
       totalQuestions: toInt(json['total_questions'] ?? json['totalQuestions']),
-      results: (json['results'] as List?)
-              ?.map((r) => QuizQuestionResult.fromJson(r as Map<String, dynamic>))
-              .toList() ??
-          [],
+      results: results,
       completedAt: DateTime.tryParse(
             (json['completed_at'] ?? json['completedAt'] ?? '').toString(),
           ) ??

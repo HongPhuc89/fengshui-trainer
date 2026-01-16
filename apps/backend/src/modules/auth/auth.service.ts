@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { UserCredentialService } from '../user-credential/user-credential.service';
 import { UsersService } from '../users/users.service';
+import { UserExperienceService } from '../experience/services/user-experience.service';
 import { AuthCommonService } from './auth.common.service';
 import { RegisterRequestDto } from './dtos/register-request.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
@@ -17,6 +18,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly userCredentialService: UserCredentialService,
+    private readonly userExperienceService: UserExperienceService,
     private readonly authCommonService: AuthCommonService,
     private readonly configService: ConfigService,
     @InjectDataSource()
@@ -77,7 +79,17 @@ export class AuthService {
 
   async me(userId: number): Promise<UserResponseDto> {
     const user = await this.usersService.aboutMe(userId);
-    return plainToInstance(UserResponseDto, user);
+
+    // Get user XP summary
+    const xpSummary = await this.userExperienceService.getUserXPSummary(userId);
+
+    return plainToInstance(UserResponseDto, {
+      ...user,
+      total_xp: xpSummary.total_xp,
+      current_level: xpSummary.current_level?.level || 1,
+      next_level: xpSummary.next_level?.level || 2,
+      xp_for_next_level: xpSummary.next_level?.xp_remaining || 0,
+    });
   }
 
   async refreshToken(data: RefreshTokenRequestDto) {

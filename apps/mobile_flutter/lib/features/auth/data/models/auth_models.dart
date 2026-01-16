@@ -11,6 +11,10 @@ class User extends Equatable {
     this.experience = 0,
     this.experiencePoints = 0,
     this.points = 0,
+    this.totalXp,
+    this.currentLevel,
+    this.nextLevel,
+    this.xpForNextLevel,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,11 @@ class User extends Equatable {
       experience: int.tryParse(json['experience']?.toString() ?? '') ?? 0,
       experiencePoints: int.tryParse(json['experience_points']?.toString() ?? '') ?? 0,
       points: int.tryParse(json['points']?.toString() ?? '') ?? 0,
+      // New XP fields from /auth/me
+      totalXp: int.tryParse(json['total_xp']?.toString() ?? ''),
+      currentLevel: int.tryParse(json['current_level']?.toString() ?? ''),
+      nextLevel: int.tryParse(json['next_level']?.toString() ?? ''),
+      xpForNextLevel: int.tryParse(json['xp_for_next_level']?.toString() ?? ''),
     );
   }
   final int id;
@@ -36,6 +45,12 @@ class User extends Equatable {
   final int experience;
   final int experiencePoints;
   final int points;
+  
+  // New XP fields
+  final int? totalXp;
+  final int? currentLevel;
+  final int? nextLevel;
+  final int? xpForNextLevel;
 
   Map<String, dynamic> toJson() {
     return {
@@ -47,12 +62,16 @@ class User extends Equatable {
       'experience': experience,
       'experience_points': experiencePoints,
       'points': points,
+      'total_xp': totalXp,
+      'current_level': currentLevel,
+      'next_level': nextLevel,
+      'xp_for_next_level': xpForNextLevel,
     };
   }
 
   @override
   List<Object?> get props =>
-      [id, email, name, avatar, level, experience, experiencePoints, points];
+      [id, email, name, avatar, level, experience, experiencePoints, points, totalXp, currentLevel, nextLevel, xpForNextLevel];
 }
 
 class LoginRequest {

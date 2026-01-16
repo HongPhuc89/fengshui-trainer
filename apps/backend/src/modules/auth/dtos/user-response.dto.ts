@@ -22,4 +22,17 @@ export class UserResponseDto {
 
   @ApiProperty()
   updated_at: Date;
+
+  // Experience fields
+  @ApiProperty({ required: false })
+  total_xp?: number;
+
+  @ApiProperty({ required: false })
+  current_level?: number;
+
+  @ApiProperty({ required: false })
+  next_level?: number;
+
+  @ApiProperty({ required: false })
+  xp_for_next_level?: number;
 }
