@@ -138,7 +138,6 @@ class AnalyticsService {
       // Clear Amplitude user
       if (_amplitude != null) {
         await _amplitude!.setUserId(null);
-        // Note: regenerateDeviceId is not directly exposed in the same way in v4
       }
 
       // Clear Firebase user

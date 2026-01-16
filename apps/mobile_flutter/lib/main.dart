@@ -8,7 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/config/environment.dart';
 import 'core/config/theme.dart';
 import 'core/services/analytics_service.dart';
-import 'core/services/amplitude_observer.dart';
+import 'core/services/router_analytics_service.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
@@ -48,6 +48,7 @@ Future<void> main() async {
   try {
     await AnalyticsService().initialize();
     print('📊 Analytics initialized successfully');
+    print('🔑 Amplitude API Key: ${Environment.amplitudeApiKey.isNotEmpty ? "${Environment.amplitudeApiKey.substring(0, 8)}..." : "EMPTY"}');
   } catch (e) {
     print('⚠️ Analytics initialization failed: $e');
   }
@@ -65,11 +66,19 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  final _routerAnalytics = RouterAnalyticsService();
+
+
+  @override
+  Widget build(BuildContext context) {
     // Watch auth provider to ensure it's initialized
     final authState = ref.watch(authProvider);
     
@@ -77,7 +86,6 @@ class MyApp extends ConsumerWidget {
       initialLocation: '/books',
       observers: [
         FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
-        AmplitudeObserver(),
       ],
       redirect: (context, state) {
         final isAuthenticated = authState.isAuthenticated;
@@ -226,6 +234,9 @@ class MyApp extends ConsumerWidget {
         ),
       ],
     );
+
+    // Attach analytics tracking to router
+    _routerAnalytics.attachToRouter(router);
 
     return MaterialApp.router(
       title: 'Feng Shui Trainer',
