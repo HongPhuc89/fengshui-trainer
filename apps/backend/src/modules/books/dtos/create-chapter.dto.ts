@@ -27,4 +27,10 @@ export class CreateChapterDto {
   @IsOptional()
   @Min(1)
   file_id?: number;
+
+  @ApiProperty({ description: 'File ID for chapter infographic (optional)', required: false })
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  infographic_file_id?: number;
 }

@@ -1,4 +1,4 @@
-.PHONY: dev backend admin mobile install clean help
+.PHONY: dev dev-admin backend admin mobile install clean help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -29,6 +29,12 @@ dev: ## Run mobile app (React Native)
 backend: ## Run backend only
 	@echo "$(CYAN)Starting backend...$(NC)"
 	npm run backend:dev
+
+dev-admin: ## Run backend and admin dashboard simultaneously
+	@echo "$(CYAN)Starting backend...$(NC)"
+	npm run backend:dev
+	@echo "$(CYAN)Starting admin dashboard...$(NC)"
+	cd apps/admin && npm run dev
 
 admin: ## Run admin dashboard only
 	@echo "$(CYAN)Starting admin dashboard...$(NC)"

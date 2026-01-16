@@ -25,6 +25,8 @@ interface Chapter {
   title: string;
   file_id?: number | null;
   file?: UploadedFile | null;
+  infographic_file_id?: number | null;
+  infographic_file?: UploadedFile | null;
 }
 
 export const ReadChapterPage = () => {
@@ -35,7 +37,12 @@ export const ReadChapterPage = () => {
   const [loading, setLoading] = useState(true);
   const [chapter, setChapter] = useState<Chapter | null>(null);
 
-  const { download, loading: downloadLoading } = useAuthenticatedFileDownload(chapter?.file || null);
+  const queryParams = new URLSearchParams(window.location.search);
+  const isInfographic = queryParams.get('type') === 'infographic';
+
+  const file = isInfographic ? chapter?.infographic_file : chapter?.file;
+
+  const { download, loading: downloadLoading } = useAuthenticatedFileDownload(file || null);
 
   useEffect(() => {
     fetchChapter();
@@ -59,8 +66,6 @@ export const ReadChapterPage = () => {
   if (loading) return <Loading />;
   if (!chapter) return <div>Chapter not found</div>;
 
-  const file = chapter.file;
-
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -71,7 +76,9 @@ export const ReadChapterPage = () => {
               <ArrowBackIcon />
             </IconButton>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h5">{chapter.title}</Typography>
+              <Typography variant="h5">
+                {chapter.title} {isInfographic ? '(Infographic)' : ''}
+              </Typography>
               {file && (
                 <Typography variant="caption" color="text.secondary">
                   {file.original_name}

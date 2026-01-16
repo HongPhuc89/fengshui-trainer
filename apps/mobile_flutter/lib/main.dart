@@ -171,7 +171,16 @@ class MyApp extends ConsumerWidget {
           builder: (context, state) {
             final bookId = int.parse(state.pathParameters['bookId']!);
             final chapterId = int.parse(state.pathParameters['chapterId']!);
-            return ChapterReadingPage(bookId: bookId, chapterId: chapterId);
+            return ChapterReadingPage(bookId: bookId, chapterId: chapterId, isInfographic: false);
+          },
+        ),
+        GoRoute(
+          path: '/books/:bookId/chapters/:chapterId/infographic',
+          name: 'infographic',
+          builder: (context, state) {
+            final bookId = int.parse(state.pathParameters['bookId']!);
+            final chapterId = int.parse(state.pathParameters['chapterId']!);
+            return ChapterReadingPage(bookId: bookId, chapterId: chapterId, isInfographic: true);
           },
         ),
         GoRoute(

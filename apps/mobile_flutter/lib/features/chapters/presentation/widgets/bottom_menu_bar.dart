@@ -84,14 +84,14 @@ class BottomMenuBar extends StatelessWidget {
                   ),
                   Expanded(
                     child: ActionButton(
-                      label: 'Sơ Đồ',
-                      icon: Icons.account_tree,
+                      label: 'Đồ Họa',
+                      icon: Icons.auto_awesome_mosaic,
                       gradient: const [
                         Color(0xFF10B981),
                         Color(0xFF059669),
                       ],
                       onTap: () => context.go(
-                        '/books/$bookId/chapters/$chapterId/mindmap',
+                        '/books/$bookId/chapters/$chapterId/infographic',
                       ),
                     ),
                   ),

@@ -75,6 +75,7 @@ class Chapter extends Equatable {
     required this.createdAt, required this.updatedAt, this.content,
     this.description,
     this.files,
+    this.infographicFile,
   });
 
   factory Chapter.fromJson(Map<String, dynamic> json) {
@@ -92,6 +93,12 @@ class Chapter extends Equatable {
       filesList = [ChapterFile.fromJson(json['file'] as Map<String, dynamic>)];
     }
 
+    // Handle 'infographic_file'
+    ChapterFile? infoFile;
+    if (json['infographic_file'] != null && json['infographic_file'] is Map) {
+      infoFile = ChapterFile.fromJson(json['infographic_file'] as Map<String, dynamic>);
+    }
+
     return Chapter(
       id: json['id'] as int,
       bookId: json['book_id'] as int,
@@ -100,6 +107,7 @@ class Chapter extends Equatable {
       content: json['content'] as String?,
       description: json['description'] as String?,
       files: filesList,
+      infographicFile: infoFile,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -111,11 +119,12 @@ class Chapter extends Equatable {
   final String? content;
   final String? description;
   final List<ChapterFile>? files;
+  final ChapterFile? infographicFile;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   @override
-  List<Object?> get props => [id, bookId, title, orderIndex];
+  List<Object?> get props => [id, bookId, title, orderIndex, infographicFile];
 }
 
 class ChapterFile extends Equatable {

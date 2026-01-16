@@ -29,7 +29,12 @@ export class ChaptersService {
 
     // Validate file_id if provided
     if (createChapterDto.file_id) {
-      await this.validateFileId(createChapterDto.file_id);
+      await this.validateFileId(createChapterDto.file_id, FileType.CHAPTER);
+    }
+
+    // Validate infographic_file_id if provided
+    if (createChapterDto.infographic_file_id) {
+      await this.validateFileId(createChapterDto.infographic_file_id, FileType.INFOGRAPHIC);
     }
 
     // Auto-assign order if not provided
@@ -67,7 +72,7 @@ export class ChaptersService {
   async findAllByBook(bookId: number, baseUrl?: string): Promise<Chapter[]> {
     const chapters = await this.chapterRepository.find({
       where: { book_id: bookId },
-      relations: ['file'],
+      relations: ['file', 'infographic_file'],
       order: { order: 'ASC' },
     });
 
@@ -76,6 +81,9 @@ export class ChaptersService {
       chapters.map(async (chapter) => {
         if (chapter.file) {
           chapter.file.path = await this.uploadService.getFileUrl(chapter.file, baseUrl);
+        }
+        if (chapter.infographic_file) {
+          chapter.infographic_file.path = await this.uploadService.getFileUrl(chapter.infographic_file, baseUrl);
         }
         return chapter;
       }),
@@ -92,7 +100,7 @@ export class ChaptersService {
   async findOne(bookId: number, chapterId: number, baseUrl?: string): Promise<Chapter> {
     const chapter = await this.chapterRepository.findOne({
       where: { id: chapterId, book_id: bookId },
-      relations: ['file'],
+      relations: ['file', 'infographic_file'],
     });
 
     if (!chapter) {
@@ -104,6 +112,13 @@ export class ChaptersService {
       const freshUrl = await this.uploadService.getFileUrl(chapter.file, baseUrl);
       if (freshUrl) {
         chapter.file.path = freshUrl;
+      }
+    }
+
+    if (chapter.infographic_file) {
+      const freshUrl = await this.uploadService.getFileUrl(chapter.infographic_file, baseUrl);
+      if (freshUrl) {
+        chapter.infographic_file.path = freshUrl;
       }
     }
 
@@ -121,7 +136,12 @@ export class ChaptersService {
 
     // Validate new file_id if provided
     if (updateChapterDto.file_id !== undefined && updateChapterDto.file_id !== null) {
-      await this.validateFileId(updateChapterDto.file_id);
+      await this.validateFileId(updateChapterDto.file_id, FileType.CHAPTER);
+    }
+
+    // Validate new infographic_file_id if provided
+    if (updateChapterDto.infographic_file_id !== undefined && updateChapterDto.infographic_file_id !== null) {
+      await this.validateFileId(updateChapterDto.infographic_file_id, FileType.INFOGRAPHIC);
     }
 
     // If file_id is being changed, delete the old file
@@ -134,6 +154,20 @@ export class ChaptersService {
       await this.deleteChapterFile(chapter.file_id);
     }
 
+    // If infographic_file_id is being changed, delete the old file
+    if (
+      updateChapterDto.infographic_file_id !== undefined &&
+      chapter.infographic_file_id &&
+      chapter.infographic_file_id !== updateChapterDto.infographic_file_id
+    ) {
+      await this.deleteChapterFile(chapter.infographic_file_id);
+    }
+
+    // If infographic_file_id is being set to null, delete the old file
+    if (updateChapterDto.infographic_file_id === null && chapter.infographic_file_id) {
+      await this.deleteChapterFile(chapter.infographic_file_id);
+    }
+
     Object.assign(chapter, updateChapterDto);
 
     return this.chapterRepository.save(chapter);
@@ -142,9 +176,12 @@ export class ChaptersService {
   async delete(bookId: number, chapterId: number): Promise<void> {
     const chapter = await this.findOne(bookId, chapterId);
 
-    // Delete associated file if exists
+    // Delete associated files if they exist
     if (chapter.file_id) {
       await this.deleteChapterFile(chapter.file_id);
+    }
+    if (chapter.infographic_file_id) {
+      await this.deleteChapterFile(chapter.infographic_file_id);
     }
 
     await this.chapterRepository.remove(chapter);
@@ -154,9 +191,9 @@ export class ChaptersService {
   }
 
   /**
-   * Validate that file_id exists and has type 'chapter'
+   * Validate that file_id exists and has specified type
    */
-  private async validateFileId(fileId: number): Promise<void> {
+  private async validateFileId(fileId: number, expectedType: FileType): Promise<void> {
     const file = await this.uploadedFileRepository.findOne({
       where: { id: fileId },
     });
@@ -165,8 +202,8 @@ export class ChaptersService {
       throw new BadRequestException(`File with ID ${fileId} not found`);
     }
 
-    if (file.type !== FileType.CHAPTER) {
-      throw new BadRequestException(`File with ID ${fileId} is not a chapter file (type: ${file.type})`);
+    if (file.type !== expectedType) {
+      throw new BadRequestException(`File with ID ${fileId} is not a ${expectedType} file (type: ${file.type})`);
     }
   }
 

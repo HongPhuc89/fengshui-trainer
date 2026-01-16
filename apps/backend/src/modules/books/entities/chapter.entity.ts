@@ -33,4 +33,11 @@ export class Chapter extends BaseEntity {
   @ManyToOne(() => UploadedFile, { nullable: true })
   @JoinColumn({ name: 'file_id' })
   file: UploadedFile | null;
+
+  @Column({ name: 'infographic_file_id', nullable: true })
+  infographic_file_id: number | null;
+
+  @ManyToOne(() => UploadedFile, { nullable: true })
+  @JoinColumn({ name: 'infographic_file_id' })
+  infographic_file: UploadedFile | null;
 }

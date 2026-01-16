@@ -20,11 +20,13 @@ class ChapterReadingPage extends ConsumerStatefulWidget {
   const ChapterReadingPage({
     required this.bookId,
     required this.chapterId,
+    this.isInfographic = false,
     super.key,
   });
 
   final int bookId;
   final int chapterId;
+  final bool isInfographic;
 
   @override
   ConsumerState<ChapterReadingPage> createState() => _ChapterReadingPageState();
@@ -159,7 +161,18 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
   }
 
   String? _getPdfUrl() {
-    if (_chapter == null || _chapter!.files == null || _chapter!.files!.isEmpty) {
+    if (_chapter == null) return null;
+
+    if (widget.isInfographic) {
+      if (_chapter!.infographicFile == null) {
+        print('[ChapterReading] No Infographic file found in chapter');
+        return null;
+      }
+      print('[ChapterReading] Found Infographic file: ${_chapter!.infographicFile!.fileName}');
+      return _chapter!.infographicFile!.fileUrl;
+    }
+
+    if (_chapter!.files == null || _chapter!.files!.isEmpty) {
       print('[ChapterReading] No PDF file found in chapter');
       return null;
     }
@@ -172,13 +185,13 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
 
   Widget _buildPdfViewer() {
     if (_pdfPath == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Chương này chưa có file PDF'),
+            Text(widget.isInfographic ? 'Chương này chưa có file Đồ họa' : 'Chương này chưa có file PDF'),
           ],
         ),
       );
@@ -206,7 +219,7 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
   Widget build(BuildContext context) {
     // Log screen view to Firebase
     FirebaseAnalytics.instance.logScreenView(
-      screenName: 'ChapterReadingPage',
+      screenName: widget.isInfographic ? 'ChapterInfographicPage' : 'ChapterReadingPage',
       parameters: {
         'bookId': widget.bookId.toString(),
         'chapterId': widget.chapterId.toString(),
@@ -223,10 +236,10 @@ class _ChapterReadingPageState extends ConsumerState<ChapterReadingPage> {
           onPressed: () => context.go('/books/${widget.bookId}/chapters/${widget.chapterId}'),
         ),
         title: Text(
-          _chapter?.title ?? 'Đọc sách',
+          widget.isInfographic ? 'Đồ họa - ${_chapter?.title ?? ""}' : (_chapter?.title ?? 'Đọc sách'),
           style: const TextStyle(fontSize: 16),
         ),
-        backgroundColor: const Color(0xFF2D7061),
+        backgroundColor: widget.isInfographic ? const Color(0xFF5D4037) : const Color(0xFF2D7061),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [

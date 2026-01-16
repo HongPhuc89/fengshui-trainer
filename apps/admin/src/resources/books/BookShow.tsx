@@ -37,6 +37,10 @@ interface Chapter {
   content: string;
   created_at: string;
   book_id: number;
+  file_id?: number | null;
+  file?: any | null;
+  infographic_file_id?: number | null;
+  infographic_file?: any | null;
 }
 
 interface ChapterFormData {
