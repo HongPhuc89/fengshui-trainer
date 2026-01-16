@@ -103,6 +103,19 @@ export class ChaptersService {
       relations: ['file', 'infographic_file'],
     });
 
+    console.log(`[ChaptersService] findOne(${chapterId}):`, {
+      hasFile: !!chapter?.file,
+      hasInfographic: !!chapter?.infographic_file,
+      infographicFileId: chapter?.infographic_file_id,
+      infographicFile: chapter?.infographic_file
+        ? {
+            id: chapter.infographic_file.id,
+            original_name: chapter.infographic_file.original_name,
+            path: chapter.infographic_file.path,
+          }
+        : null,
+    });
+
     if (!chapter) {
       throw new NotFoundException(`Chapter with ID ${chapterId} not found in book ${bookId}`);
     }

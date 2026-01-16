@@ -37,7 +37,7 @@ export class UploadService {
     }
 
     // Validate file type
-    if (type === FileType.BOOK || type === FileType.CHAPTER) {
+    if (type === FileType.BOOK || type === FileType.CHAPTER || type === FileType.INFOGRAPHIC) {
       const allowedMimes = [
         'application/pdf',
         'text/plain',
