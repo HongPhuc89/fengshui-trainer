@@ -13,7 +13,6 @@ import {
   FormGroup,
   Button,
   Card,
-  CardMedia,
   CardActions,
 } from '@mui/material';
 import { CloudUpload, Delete } from '@mui/icons-material';

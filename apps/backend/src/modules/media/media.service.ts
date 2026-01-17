@@ -81,7 +81,10 @@ export class MediaService {
 
   private getCachedFilePath(supabasePath: string): string {
     const hash = createHash('md5').update(supabasePath).digest('hex');
-    const ext = supabasePath.split('.').pop() || 'bin';
+    // Extract extension from the last part of the path (after last /)
+    const filename = supabasePath.split('/').pop() || '';
+    const parts = filename.split('.');
+    const ext = parts.length > 1 ? parts.pop() : 'bin';
     return join(this.cacheDir, `${hash}.${ext}`);
   }
 
