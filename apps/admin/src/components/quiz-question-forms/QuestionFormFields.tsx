@@ -22,6 +22,8 @@ import imageCompression from 'browser-image-compression';
 import { MatchingForm } from '../quiz-forms/MatchingForm';
 import { OrderingForm } from '../quiz-forms/OrderingForm';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 interface QuestionFormFieldsProps {
   formData: any;
   setFormData: (data: any) => void;
@@ -59,7 +61,14 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
       formDataUpload.append('type', 'QUESTION_ILLUSTRATION');
 
       const token = localStorage.getItem('token');
-      const response = await fetch('https://book-api.hongphuc.top/api/admin/upload', {
+      console.log('Upload token:', token ? 'exists' : 'missing');
+
+      if (!token) {
+        setUploadError('Authentication token not found. Please login again.');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/admin/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -68,7 +77,9 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Upload error:', response.status, errorData);
+        throw new Error(errorData.message || `Upload failed with status ${response.status}`);
       }
 
       const data = await response.json();
