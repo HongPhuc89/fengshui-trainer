@@ -6,6 +6,7 @@ export const initialFormData = {
   question_text: '',
   points: 2,
   explanation: '',
+  illustration_file_id: null as number | null,
   options: [
     { id: 'a', text: '' },
     { id: 'b', text: '' },
@@ -41,6 +42,7 @@ export const useQuestionForm = () => {
       question_text: question.question_text,
       points: question.points,
       explanation: question.explanation || '',
+      illustration_file_id: question.illustration_file_id || null,
       options: options.options || initialFormData.options,
       correctAnswer: options.correct_answer || 'a',
       correctAnswers: options.correct_answers || [],

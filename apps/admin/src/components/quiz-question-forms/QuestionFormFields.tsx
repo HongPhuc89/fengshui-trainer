@@ -11,7 +11,14 @@ import {
   FormControlLabel,
   Checkbox,
   FormGroup,
+  Button,
+  Card,
+  CardMedia,
+  CardActions,
 } from '@mui/material';
+import { CloudUpload, Delete } from '@mui/icons-material';
+import { useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import { MatchingForm } from '../quiz-forms/MatchingForm';
 import { OrderingForm } from '../quiz-forms/OrderingForm';
 
@@ -21,6 +28,63 @@ interface QuestionFormFieldsProps {
 }
 
 export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFieldsProps) => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      // Compress image before upload
+      const options = {
+        maxSizeMB: 1, // Max size 1MB
+        maxWidthOrHeight: 1920, // Max dimension
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', compressedFile);
+      formDataUpload.append('type', 'QUESTION_ILLUSTRATION');
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://book-api.hongphuc.top/api/admin/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataUpload,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setFormData({ ...formData, illustration_file_id: data.id });
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveIllustration = () => {
+    setFormData({ ...formData, illustration_file_id: null });
+    setUploadError(null);
+  };
   const updateOption = (index: number, text: string) => {
     const newOptions = [...formData.options];
     newOptions[index].text = text;
@@ -100,6 +164,44 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         }}
         helperText="Choose from 1 to 5 points"
       />
+
+      {/* Illustration Upload */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          Illustration (Optional)
+        </Typography>
+        {formData.illustration_file_id ? (
+          <Card sx={{ maxWidth: 400 }}>
+            <CardMedia
+              component="img"
+              height="200"
+              image={`https://book-api.hongphuc.top/api/media/${formData.illustration_file_id}`}
+              alt="Question illustration"
+              sx={{ objectFit: 'contain', bgcolor: 'grey.100' }}
+            />
+            <CardActions>
+              <Button size="small" color="error" startIcon={<Delete />} onClick={handleRemoveIllustration}>
+                Remove Illustration
+              </Button>
+            </CardActions>
+          </Card>
+        ) : (
+          <Box>
+            <Button component="label" variant="outlined" startIcon={<CloudUpload />} disabled={uploading}>
+              {uploading ? 'Uploading...' : 'Upload Illustration'}
+              <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
+            </Button>
+            {uploadError && (
+              <Typography color="error" variant="caption" display="block" sx={{ mt: 1 }}>
+                {uploadError}
+              </Typography>
+            )}
+            <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+              Supported formats: JPG, PNG, WebP (max 5MB)
+            </Typography>
+          </Box>
+        )}
+      </Box>
 
       {/* TRUE_FALSE Options */}
       {formData.question_type === 'TRUE_FALSE' && (

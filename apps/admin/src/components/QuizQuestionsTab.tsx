@@ -168,6 +168,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
           points: formData.points,
           options,
           explanation: formData.explanation || undefined,
+          illustration_file_id: formData.illustration_file_id || undefined,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -205,6 +206,7 @@ export const QuizQuestionsTab = ({ chapterId }: QuizQuestionsTabProps) => {
           points: formData.points,
           options,
           explanation: formData.explanation || undefined,
+          illustration_file_id: formData.illustration_file_id || undefined,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
