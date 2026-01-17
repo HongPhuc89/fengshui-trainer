@@ -17,7 +17,7 @@ import {
   CardActions,
 } from '@mui/material';
 import { CloudUpload, Delete } from '@mui/icons-material';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import { MatchingForm } from '../quiz-forms/MatchingForm';
 import { OrderingForm } from '../quiz-forms/OrderingForm';
@@ -32,6 +32,7 @@ interface QuestionFormFieldsProps {
 export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFieldsProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -95,7 +96,46 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
   const handleRemoveIllustration = () => {
     setFormData({ ...formData, illustration_file_id: null });
     setUploadError(null);
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+    }
   };
+
+  // Load image preview when illustration_file_id changes
+  React.useEffect(() => {
+    if (formData.illustration_file_id) {
+      const loadImage = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${API_URL}/media/${formData.illustration_file_id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            setImagePreviewUrl(url);
+          }
+        } catch (error) {
+          console.error('Failed to load image preview:', error);
+        }
+      };
+      loadImage();
+    } else {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+        setImagePreviewUrl(null);
+      }
+    }
+
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [formData.illustration_file_id]);
   const updateOption = (index: number, text: string) => {
     const newOptions = [...formData.options];
     newOptions[index].text = text;
@@ -183,13 +223,31 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
         </Typography>
         {formData.illustration_file_id ? (
           <Card sx={{ maxWidth: 400 }}>
-            <CardMedia
-              component="img"
-              height="200"
-              image={`https://book-api.hongphuc.top/api/media/${formData.illustration_file_id}`}
-              alt="Question illustration"
-              sx={{ objectFit: 'contain', bgcolor: 'grey.100' }}
-            />
+            {imagePreviewUrl ? (
+              <img
+                src={imagePreviewUrl}
+                alt="Question illustration"
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  objectFit: 'contain',
+                  backgroundColor: '#f5f5f5',
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'grey.100',
+                }}
+              >
+                <Typography variant="caption">Loading...</Typography>
+              </Box>
+            )}
             <CardActions>
               <Button size="small" color="error" startIcon={<Delete />} onClick={handleRemoveIllustration}>
                 Remove Illustration
