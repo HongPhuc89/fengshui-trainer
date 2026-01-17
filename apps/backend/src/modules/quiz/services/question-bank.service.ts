@@ -1,17 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Question } from '../entities/question.entity';
 import { CreateQuestionDto } from '../dtos/create-question.dto';
+import { UploadedFile } from '../../upload/entities/uploaded-file.entity';
 
 @Injectable()
 export class QuestionBankService {
   constructor(
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
+    @InjectRepository(UploadedFile)
+    private readonly uploadedFileRepository: Repository<UploadedFile>,
   ) {}
 
   async create(chapterId: number, createDto: CreateQuestionDto): Promise<Question> {
+    // Validate illustration_file_id if provided
+    if (createDto.illustration_file_id) {
+      const file = await this.uploadedFileRepository.findOne({
+        where: { id: createDto.illustration_file_id },
+      });
+      if (!file) {
+        throw new BadRequestException(`Illustration file with ID ${createDto.illustration_file_id} not found`);
+      }
+    }
+
     const question = this.questionRepository.create({
       chapter_id: chapterId,
       ...createDto,
@@ -23,6 +36,7 @@ export class QuestionBankService {
   async findAllByChapter(chapterId: number): Promise<Question[]> {
     return this.questionRepository.find({
       where: { chapter_id: chapterId },
+      relations: ['illustration'],
       order: { difficulty: 'ASC', created_at: 'DESC' },
     });
   }
@@ -41,6 +55,7 @@ export class QuestionBankService {
     // Build query
     const queryBuilder = this.questionRepository
       .createQueryBuilder('question')
+      .leftJoinAndSelect('question.illustration', 'illustration')
       .where('question.chapter_id = :chapterId', { chapterId });
 
     // Apply search filter
@@ -76,12 +91,16 @@ export class QuestionBankService {
   async findActiveByChapter(chapterId: number): Promise<Question[]> {
     return this.questionRepository.find({
       where: { chapter_id: chapterId, is_active: true },
+      relations: ['illustration'],
       order: { created_at: 'DESC' },
     });
   }
 
   async findById(questionId: number): Promise<Question> {
-    const question = await this.questionRepository.findOne({ where: { id: questionId } });
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId },
+      relations: ['illustration'],
+    });
     if (!question) {
       throw new NotFoundException(`Question ${questionId} not found`);
     }
@@ -89,6 +108,18 @@ export class QuestionBankService {
   }
 
   async update(questionId: number, updateDto: Partial<CreateQuestionDto>): Promise<Question> {
+    // Validate illustration_file_id if provided
+    if (updateDto.illustration_file_id !== undefined) {
+      if (updateDto.illustration_file_id !== null) {
+        const file = await this.uploadedFileRepository.findOne({
+          where: { id: updateDto.illustration_file_id },
+        });
+        if (!file) {
+          throw new BadRequestException(`Illustration file with ID ${updateDto.illustration_file_id} not found`);
+        }
+      }
+    }
+
     const question = await this.findById(questionId);
     Object.assign(question, updateDto);
     return this.questionRepository.save(question);

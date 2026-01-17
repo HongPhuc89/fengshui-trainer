@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../providers/quiz_provider.dart';
 import '../widgets/quiz_header.dart';
@@ -11,6 +12,7 @@ import '../widgets/quiz_feedback.dart';
 import '../widgets/quiz_actions.dart';
 import '../widgets/locked_banner.dart';
 import '../widgets/question_renderer.dart';
+import '../../../../core/providers/auth_provider.dart';
 import 'quiz_results_page.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
@@ -243,7 +245,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // Illustration image (if present)
+                  if (question.hasIllustration) ..[
+                    _buildIllustration(question),
+                    const SizedBox(height: 24),
+                  ],
 
                   // Question renderer
                   QuestionRenderer(
@@ -392,6 +400,63 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             child: const Text('Nộp bài'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIllustration(QuizQuestion question) {
+    final token = ref.watch(authProvider).token;
+    if (token == null || question.illustrationId == null) {
+      return const SizedBox.shrink();
+    }
+
+    final imageUrl = 'https://book-api.hongphuc.top/api/media/${question.illustrationId}';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        httpHeaders: {
+          'Authorization': 'Bearer $token',
+        },
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.broken_image,
+                size: 48,
+                color: Colors.white.withOpacity(0.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Không thể tải hình ảnh',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

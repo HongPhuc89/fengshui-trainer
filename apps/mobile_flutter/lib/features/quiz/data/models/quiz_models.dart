@@ -82,9 +82,16 @@ class QuizQuestion extends Equatable {
     required this.options,
     required this.difficulty,
     required this.points,
+    this.illustration,
   });
 
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
+    // Parse illustration if present
+    Map<String, dynamic>? illustration;
+    if (json['illustration'] != null) {
+      illustration = json['illustration'] as Map<String, dynamic>;
+    }
+
     return QuizQuestion(
       id: json['id'] as int? ?? 0,
       question: (json['question_text'] ?? json['question']) as String? ?? '',
@@ -92,6 +99,7 @@ class QuizQuestion extends Equatable {
       options: json['options'], // Keep as dynamic
       difficulty: json['difficulty'] as String? ?? 'medium',
       points: json['points'] as int? ?? 1,
+      illustration: illustration,
     );
   }
   final int id;
@@ -100,6 +108,7 @@ class QuizQuestion extends Equatable {
   final dynamic options; // Can be List or Map depending on question type
   final String difficulty; // 'easy', 'medium', 'hard'
   final int points;
+  final Map<String, dynamic>? illustration; // Optional illustration file data
 
   Map<String, dynamic> toJson() {
     return {
@@ -109,8 +118,15 @@ class QuizQuestion extends Equatable {
       'options': options,
       'difficulty': difficulty,
       'points': points,
+      if (illustration != null) 'illustration': illustration,
     };
   }
+
+  /// Get illustration file ID if available
+  int? get illustrationId => illustration?['id'] as int?;
+
+  /// Check if question has an illustration
+  bool get hasIllustration => illustration != null && illustrationId != null;
 
   /// Get options as raw objects
   List<dynamic> get rawOptions {
