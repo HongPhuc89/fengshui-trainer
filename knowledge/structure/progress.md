@@ -56,23 +56,31 @@
 - 🔄 Mind Map Node and Edge Structure
 - ⏸ Mind Map Visualization API
 
-### Quiz/Exam System 🔄
+### Quiz/Exam System ✅
 
-- 🔄 Question Bank Entity Design
-- 🔄 Quiz Entity and Question Types
-- ⏸ Quiz Generation from Content
-- ⏸ Answer Validation and Grading
-- ⏸ Quiz Results Storage
+- [x] Question Bank Entity Design
+- [x] Quiz Entity and Question Types
+- [x] Quiz Generation from Content
+- [x] Answer Validation and Grading
+- [x] Quiz Results Storage
+- [x] Improved Quiz Results Display (Correct answers, total points)
+- [x] XP and Leveling System Integration
 
 ## 📋 Planned Features (Phase 3)
 
-### User Learning Experience ⏸
+### User Learning Experience 🔄
 
-- ⏸ Learning Progress Tracking Entity
+- [x] User XP and Leveling System
+- [x] Reading Progress Tracking (Backend)
 - ⏸ Study Session Management
-- ⏸ Progress Analytics per Book/Chapter
 - ⏸ Flashcard Study Statistics
 - ⏸ Spaced Repetition Algorithm
+
+### Infrastructure & Operations ✅
+
+- [x] GitHub Actions for Backend Deployment (VPS)
+- [x] Media Proxy with Local Caching Strategy
+- [x] Secure Media Access (Authenticated URLs)
 
 ### Admin Dashboard UI ⏸
 
@@ -83,7 +91,17 @@
 - ⏸ User Management UI
 - ⏸ Analytics Dashboard
 
-### Mobile Application ⏸
+### Mobile Application 🔄
+
+- [x] Flutter App Setup (`apps/mobile_flutter/`)
+- [x] Flutter Authentication Flow
+- [x] Flutter Book & Chapter Browsing
+- [x] Flutter PDF Viewer with auto-scroll & rotation hints
+- [x] Flutter Quiz & Flashcard Interface
+- [x] React Native App maintenance (`apps/mobile/`)
+- [x] Amplitude Analytics Integration
+- 🔄 Native Mind Map Zoom Controls (Flutter)
+- ⏸ Progress Tracking Dashboard
 
 - ⏸ React Native App Setup (`apps/mobile/`)
 - ⏸ User Authentication Flow
@@ -134,6 +152,16 @@
 - **Relationships**: Properly configured with foreign keys
 
 ## 🚀 Recent Achievements
+
+### January 2026
+
+- ✅ Implemented **Media Proxy Service** with local disk caching and authenticated access.
+- ✅ Integrated **User XP & Leveling** system in both Backend and Flutter.
+- ✅ Improved **Quiz Results** display with correct answer mapping.
+- ✅ Developed **Flutter PDF Viewer** with auto-scroll to last position and rotation hints.
+- ✅ Set up **GitHub Actions CI/CD** for automated Backend deployment.
+- ✅ Integrated **Amplitude Analytics** for mobile user tracking.
+- ✅ Refactored Flutter architecture for better maintainability.
 
 ### December 2024
 

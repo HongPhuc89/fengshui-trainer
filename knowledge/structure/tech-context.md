@@ -11,6 +11,8 @@
 | Auth          | Passport + JWT     | Authentication and Authorization |
 | Validation    | class-validator    | DTO validation                   |
 | Documentation | Swagger (OpenAPI)  | API Documentation                |
+| Mobile (New)  | Flutter / Dart     | Modern mobile learning app       |
+| Analytics     | Amplitude          | User behavior tracking           |
 
 ## ⚙️ Development Environment
 
@@ -57,7 +59,9 @@
 
 - **Supabase Storage**: Cloud storage for book files and uploaded content.
 - **LangChain**: Text processing, chunking, and AI integration for flashcard generation.
-- **AI Service**: (Planned) Integration with LLMs for advanced content generation.
+- **Media Proxy**: Local disk caching for Supabase storage assets (images, PDFs).
+- **Amplitude**: Mobile analytics integration.
+- **CI/CD**: GitHub Actions for automated deployment to VPS.
 
 ## 📌 Configuration Notes
 
@@ -98,8 +102,9 @@ quiz-game/
 │   │   ├── config/         # Configuration files
 │   │   ├── scripts/        # Utility scripts
 │   │   └── package.json
-│   ├── admin/              # Admin Dashboard (Placeholder)
-│   └── mobile/             # Mobile App (Placeholder)
+│   ├── admin/              # Admin Dashboard
+│   ├── mobile/             # React Native Mobile App
+│   └── mobile_flutter/     # Flutter Mobile App (Primary)
 ├── packages/
 │   ├── ui/                 # Shared UI Components
 │   ├── shared/             # Shared DTOs, Types, Interfaces
