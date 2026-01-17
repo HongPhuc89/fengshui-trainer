@@ -58,7 +58,7 @@ export const QuestionFormFields = ({ formData, setFormData }: QuestionFormFields
 
       const formDataUpload = new FormData();
       formDataUpload.append('file', compressedFile);
-      formDataUpload.append('type', 'QUESTION_ILLUSTRATION');
+      formDataUpload.append('type', 'question_illustration');
 
       const token = localStorage.getItem('token');
       console.log('Upload token:', token ? 'exists' : 'missing');

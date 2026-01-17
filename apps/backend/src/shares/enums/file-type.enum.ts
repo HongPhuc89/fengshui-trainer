@@ -4,4 +4,5 @@ export enum FileType {
   AVATAR = 'avatar',
   CHAPTER = 'chapter',
   INFOGRAPHIC = 'infographic',
+  QUESTION_ILLUSTRATION = 'question_illustration',
 }
