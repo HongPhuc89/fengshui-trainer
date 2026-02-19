@@ -61,8 +61,8 @@ gantt
   - [ ] POST `/api/auth/logout/` - Logout and session cleanup
   - [ ] Hybrid monetization logic (FREE, VIP, Paid USER)
   - [ ] **Hard Device Locking logic (Persistent Binding)**
-  - [ ] **365-day (1 year) device reset cooldown implementation**
-  - [ ] **Admin un-link capability in Django Admin**
+  - [ ] **Login-integrated Reset Flow** (Cooldown check + Confirmation flag)
+  - [ ] **Admin un-link override capability** (Subject to Audit Log)
   - [ ] **AdminAuditLog system implementation (Currency & VIP tracking)**
   - [ ] **Middleware/Signals for sensitive action logging**
   - [ ] **UserDevice management table (Historical & Active tracking)**
@@ -74,7 +74,7 @@ gantt
 - [ ] **1.3 User Profile API**
   - [ ] GET `/api/users/me/` - Get current user profile
   - [ ] PUT `/api/users/me/` - Update profile
-  - [ ] **POST `/api/users/me/reset-device/`** - Request device reset (with 1-year check)
+  - [ ] **POST `/api/auth/login/` (reset_device=true)** - Confirmation logic
   - [ ] GET `/api/users/me/device-status/` - Show bound device and next reset date
   - [ ] Admin interface for viewing and revoking individual devices
   - [ ] **Admin Audit Log dashboard (For SuperAdmins only)**
