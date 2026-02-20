@@ -1,0 +1,32 @@
+[project]
+name = "fengshui-backend"
+version = "0.1.0"
+description = "Feng Shui Trainer Django backend"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "Django~=5.2",
+    "djangorestframework",
+    "djangorestframework-simplejwt",
+    "django-environ",
+    "django-jazzmin",
+    "psycopg2-binary",
+    "redis",
+    "celery",
+    "Pillow",
+    "PyPDF2",
+    "reportlab",
+    "ruff",
+    "django-cors-headers",
+    "pyjwt",
+    "drf-spectacular",
+    "gunicorn",
+    "sentry-sdk",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

@@ -1,6 +1,7 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock
 
 COMPOSE_FILE = docker/docker-compose.yml
+BACKEND = src/backend
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -40,3 +41,16 @@ shell: ## Open a Django shell
 
 bash: ## Open a bash terminal inside the web container
 	docker-compose -f $(COMPOSE_FILE) exec web /bin/bash
+
+# --- Backend deps (uv lock) ---
+lock: ## Lock backend deps: uv lock (writes uv.lock)
+	cd $(BACKEND) && uv lock
+
+lock-upgrade: ## Upgrade all backend deps and re-lock
+	cd $(BACKEND) && uv lock --upgrade
+
+sync: ## Install backend deps from lock: uv sync (use after lock)
+	cd $(BACKEND) && uv sync
+
+export-lock: ## Export uv.lock to requirements-lock.txt (pip-compatible)
+	cd $(BACKEND) && uv export --no-emit-package fengshui-backend --no-dev -o requirements-lock.txt

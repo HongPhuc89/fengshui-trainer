@@ -36,6 +36,8 @@ URL mặc định: `redis://localhost:6379/0`
 
 ## 3. Python & Virtual environment
 
+### Cách 1: pip + requirements.txt
+
 ```bash
 # Python 3.10+ (thường đã có sẵn)
 python3 --version
@@ -45,6 +47,24 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r src/backend/requirements.txt
 ```
+
+### Cách 2 (khuyến nghị): uv + lock file
+
+Dùng [uv](https://docs.astral.sh/uv/) để lock chính xác version thư viện (có `pyproject.toml` và `uv.lock`):
+
+```bash
+# Cài uv (một lần): https://docs.astral.sh/uv/getting-started/installation/
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+cd /path/to/fengshui-trainer/src/backend
+uv sync                    # cài đúng version trong uv.lock (reproducible)
+# Hoặc từ repo root:
+make sync                  # chạy uv sync trong src/backend
+```
+
+- **Thêm/sửa dependency**: sửa `pyproject.toml` rồi chạy `uv lock` (hoặc `make lock`). Commit cả `uv.lock`.
+- **Nâng version tất cả**: `make lock-upgrade` rồi commit `uv.lock`.
+- **CI/Docker dùng pip**: có thể dùng `requirements-lock.txt` (sinh từ lock): `make export-lock` rồi `pip install -r requirements-lock.txt`.
 
 ---
 

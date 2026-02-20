@@ -41,6 +41,7 @@ if APP_ENV in ("production", "staging") and SENTRY_DSN:
         integrations=[DjangoIntegration(), CeleryIntegration()],
         traces_sample_rate=0.1,
         send_default_pii=False,
+        enable_logs=True,
     )
 
 
