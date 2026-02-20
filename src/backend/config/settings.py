@@ -23,7 +23,25 @@ SECRET_KEY = env("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = ["*"] # Adjust for production
+# App environment: development | staging | production (Sentry only sends when staging/production)
+APP_ENV = env("APP_ENV", default="development")
+
+ALLOWED_HOSTS = ["*"]  # Adjust for production
+
+# Sentry – only enable when APP_ENV is production or staging and SENTRY_DSN is set
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if APP_ENV in ("production", "staging") and SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=APP_ENV,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
 
 
 # Application definition
@@ -187,15 +205,15 @@ SIMPLE_JWT = {
 
 # Jazzmin Configuration (Simplified)
 JAZZMIN_SETTINGS = {
-    "site_title": "Thiên Thư Admin",
-    "site_header": "Thiên Thư",
-    "site_brand": "Thiên Thư Platform",
-    "welcome_sign": "Chào mừng bạn đến với hệ thống quản trị Thiên Thư",
-    "copyright": "Thiên Thư Ltd",
+    "site_title": "Thien Thu Admin",
+    "site_header": "Thien Thu",
+    "site_brand": "Thien Thu Platform",
+    "welcome_sign": "Welcome to Thien Thu Admin",
+    "copyright": "Thien Thu Ltd",
     "search_model": ["users.User"],
     "user_avatar": None,
     "topmenu_links": [
-        {"name": "Trang chủ", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
     ],
     "show_sidebar": True,
     "navigation_expanded": True,

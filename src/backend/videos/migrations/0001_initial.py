@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('title', models.CharField(max_length=255)),
-                ('price_lt', models.PositiveIntegerField(default=0, help_text='Price in Linh Thạch (LT)')),
+                ('price_lt', models.PositiveIntegerField(default=0, help_text='Price in LT (in-app currency)')),
             ],
             options={
                 'verbose_name': 'Video Course',

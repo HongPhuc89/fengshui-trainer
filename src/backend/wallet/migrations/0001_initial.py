@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('public_id', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('balance', models.PositiveIntegerField(default=0, help_text='Current Linh Thạch balance')),
+                ('balance', models.PositiveIntegerField(default=0, help_text='Current LT balance')),
                 ('total_recharged', models.PositiveIntegerField(default=0, help_text='Lifetime recharged amount')),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='wallet', to=settings.AUTH_USER_MODEL)),
             ],

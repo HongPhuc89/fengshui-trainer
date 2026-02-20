@@ -19,7 +19,7 @@ class VideoCategory(BaseModel):
 
 
 class VideoCourse(BaseModel):
-    """Video course - purchasable with Linh Thạch."""
+    """Video course - purchasable with LT (in-app currency)."""
     LEVEL_CHOICES = [
         ('BEGINNER', 'Beginner'),
         ('INTERMEDIATE', 'Intermediate'),
@@ -42,7 +42,7 @@ class VideoCourse(BaseModel):
     is_free = models.BooleanField(default=False)
     price_lt = models.PositiveIntegerField(
         default=0,
-        help_text="Price in Linh Thạch (LT)",
+        help_text="Price in LT (in-app currency)",
     )
     total_duration_seconds = models.PositiveIntegerField(default=0)
     total_lessons = models.PositiveIntegerField(default=0)

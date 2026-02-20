@@ -5,7 +5,7 @@ from users.models import BaseModel
 
 
 class BookCategory(BaseModel):
-    """Category for books (e.g. Kỳ Môn, Trạch Nhật)."""
+    """Category for books (e.g. Qi Men, Ze Ri)."""
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=255)
 
@@ -19,7 +19,7 @@ class BookCategory(BaseModel):
 
 
 class Book(BaseModel):
-    """Book - purchasable with Linh Thạch."""
+    """Book - purchasable with LT (in-app currency)."""
     category = models.ForeignKey(
         BookCategory,
         on_delete=models.SET_NULL,
@@ -36,7 +36,7 @@ class Book(BaseModel):
     is_new_release = models.BooleanField(default=False)
     price_lt = models.PositiveIntegerField(
         default=0,
-        help_text="Price in Linh Thạch (LT)",
+        help_text="Price in LT (in-app currency)",
     )
     demo_content = models.TextField(blank=True)
     table_of_contents = models.JSONField(blank=True, null=True)

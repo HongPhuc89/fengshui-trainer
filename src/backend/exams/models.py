@@ -5,7 +5,7 @@ from users.models import BaseModel
 
 
 class PracticeModule(BaseModel):
-    """Tower / Kỳ Môn focus - groups exams."""
+    """Tower / practice focus - groups exams."""
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=255)
     description = models.TextField(blank=True)

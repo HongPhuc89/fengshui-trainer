@@ -6,7 +6,7 @@ from users.models import BaseModel
 
 class Wallet(BaseModel):
     """
-    Tracks the "Linh Thạch" (LT) balance for each user.
+    Tracks the LT (in-app currency) balance for each user.
     """
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -15,7 +15,7 @@ class Wallet(BaseModel):
     )
     balance = models.PositiveIntegerField(
         default=0,
-        help_text="Current Linh Thạch balance",
+        help_text="Current LT balance",
     )
     total_recharged = models.PositiveIntegerField(
         default=0,

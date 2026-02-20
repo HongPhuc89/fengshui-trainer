@@ -14,3 +14,4 @@ django-cors-headers
 pyjwt
 drf-spectacular
 gunicorn
+sentry-sdk

@@ -74,8 +74,8 @@ class RedeemView(views.APIView):
                 from notifications.models import Notification
                 Notification.objects.create(
                     user=request.user,
-                    title='Nạp Linh Thạch thành công',
-                    body=f'Bạn đã nạp {voucher.value} LT từ mã voucher.',
+                    title='Recharge successful',
+                    body=f'You recharged {voucher.value} LT from voucher code.',
                     notification_type='RECHARGE',
                     related_object_type='wallet',
                 )

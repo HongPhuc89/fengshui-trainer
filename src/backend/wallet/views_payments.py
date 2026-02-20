@@ -65,8 +65,8 @@ class PurchaseBookView(views.APIView):
                 from notifications.models import Notification
                 Notification.objects.create(
                     user=user,
-                    title='Mua sách thành công',
-                    body=f'Bạn đã mua sách: {book.title}.',
+                    title='Book purchased successfully',
+                    body=f'You purchased: {book.title}.',
                     notification_type='PURCHASE',
                     related_object_type='book',
                     related_object_id=str(book.public_id),
@@ -131,8 +131,8 @@ class PurchaseVideoView(views.APIView):
                 from notifications.models import Notification
                 Notification.objects.create(
                     user=user,
-                    title='Mua khóa học thành công',
-                    body=f'Bạn đã mua khóa: {video.title}.',
+                    title='Course purchased successfully',
+                    body=f'You purchased course: {video.title}.',
                     notification_type='PURCHASE',
                     related_object_type='video_course',
                     related_object_id=str(video.public_id),
@@ -193,8 +193,8 @@ class SubscribeVipView(views.APIView):
                 from notifications.models import Notification
                 Notification.objects.create(
                     user=user,
-                    title='Gia hạn VIP thành công',
-                    body=f'Bạn đã gia hạn VIP {months} tháng. Hết hạn: {new_end.strftime("%d/%m/%Y")}.',
+                    title='VIP renewed successfully',
+                    body=f'You renewed VIP for {months} month(s). Expires: {new_end.strftime("%Y-%m-%d")}.',
                     notification_type='VIP_EXPIRY',
                     related_object_type='vip',
                 )
