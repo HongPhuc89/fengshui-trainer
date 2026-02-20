@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="post" action="">
+  {% csrf_token %}
+  <p>
+    <label for="id_count">Number of vouchers (N):</label>
+    <input type="number" name="count" id="id_count" min="1" max="1000" value="10" required />
+  </p>
+  <p>
+    <label for="id_value">Value per voucher (LT):</label>
+    <input type="number" name="value" id="id_value" min="1" value="100" required />
+  </p>
+  <p>
+    <input type="submit" value="Generate and download CSV" />
+  </p>
+</form>
+<p><a href="{% url 'admin:wallet_voucher_changelist' %}">{% trans 'Back to Vouchers' %}</a></p>
+{% endblock %}

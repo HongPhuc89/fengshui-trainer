@@ -96,4 +96,24 @@ Admin action to generate `N` vouchers of `V` value:
 | `/api/payments/subscribe-vip/` | POST | Yes | `{ "months": 1 }` -> Deducts LT, extends VIP status. |
 
 ---
+
+## 5. Implementation Status
+
+| # | Task | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| 1.1 | Wallet Model | ✅ Done | `wallet/models/wallet.py` |
+| 1.2 | Voucher Model | ✅ Done | `wallet/models/voucher.py` |
+| 1.3 | WalletTransaction Model | ✅ Done | `wallet/models/transaction.py` |
+| 2.1 | Voucher Redemption Flow | ✅ Done | `wallet/views.py` (RedeemView) |
+| 2.2 | Content Purchase Flow (Book/Video) | ✅ Done | `wallet/views_payments.py` |
+| 2.3 | VIP Subscription Flow | ✅ Done | `wallet/views_payments.py` (SubscribeVipView) |
+| 3.1 | Admin Wallet Editing (intercept + AuditLog) | ✅ Done | `wallet/admin.py` (WalletAdmin.save_model) |
+| 3.2 | Bulk Voucher Generation (CSV) | ✅ Done | `wallet/admin.py` + template `wallet/templates/admin/wallet/voucher/` |
+| 4 | API Endpoints (wallet/me, redeem, history, purchase-book, purchase-video, subscribe-vip) | ✅ Done | `wallet/urls.py`, `wallet/urls_payments.py`, `config/urls.py` |
+
+**Models tách file:** `wallet/models/` gồm `wallet.py`, `voucher.py`, `transaction.py`, `__init__.py`.
+
+**Phụ thuộc thêm:** Book, VideoCourse, UserBookPurchase, UserVideoPurchase tại `books/models.py`, `videos/models.py`.
+
+---
 *Last updated: 2026-02-20*
