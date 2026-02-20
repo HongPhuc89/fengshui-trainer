@@ -13,3 +13,4 @@ ruff
 django-cors-headers
 pyjwt
 drf-spectacular
+gunicorn

@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
     volumes:
       - ../src/backend:/app/src/backend
     ports:
@@ -12,6 +12,32 @@ services:
       - .env
     depends_on:
       - db
+      - redis
+
+  celery_worker:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    command: celery -A config worker -l info
+    volumes:
+      - ../src/backend:/app/src/backend
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+
+  celery_beat:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    command: celery -A config beat -l info
+    volumes:
+      - ../src/backend:/app/src/backend
+    env_file:
+      - .env
+    depends_on:
+      - web
       - redis
 
   db:

@@ -14,6 +14,9 @@ env = environ.Env(
 # Reading .env file from the backend root (src/backend/)
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
+# Redis (sessions, Celery broker)
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
@@ -206,3 +209,13 @@ JAZZMIN_SETTINGS = {
         "videos.VideoCourse": "fas fa-video",
     },
 }
+
+# Celery
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Ho_Chi_Minh"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
