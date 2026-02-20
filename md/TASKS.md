@@ -3,8 +3,19 @@
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
 - **Version**: 1.0
-- **Last Updated**: 2026-02-17
+- **Last Updated**: 2026-02-20
 - **Status**: Planning Complete → Ready for Implementation
+
+## Backend Detail Designs (md/design/)
+| Feature | Doc | Description |
+| :--- | :--- | :--- |
+| 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication |
+| 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module |
+| 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module |
+| 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice |
+| 5 | [feature-5-detail-design.md](design/feature-5-detail-design.md) | Comments & Interactions |
+| 6 | [feature-6-detail-design.md](design/feature-6-detail-design.md) | Notifications |
+| 7 | [feature-7-detail-design.md](design/feature-7-detail-design.md) | Wallet & Payment Bridge ✅ |
 
 ---
 
@@ -84,23 +95,26 @@ gantt
 ---
 
 ### Feature 7: Wallet & Payment Bridge (Externalized)
-**Priority**: Critical | **Estimated**: 1 week
+**Priority**: Critical | **Estimated**: 1 week  
+**Detail design**: [feature-7-detail-design.md](design/feature-7-detail-design.md) | **Status**: ✅ Implemented
 
-- [ ] **7.1 Models & Logic**
-  - [ ] Wallet model (balance tracking)
-  - [ ] Voucher model (codes, values, status)
-  - [ ] Transaction model (audit log for all LT movements)
-  - [ ] Admin Audit Log integration for manual LT edits
+- [x] **7.1 Models & Logic**
+  - [x] Wallet model (balance tracking)
+  - [x] Voucher model (codes, values, status)
+  - [x] Transaction model (audit log for all LT movements)
+  - [x] Admin Audit Log integration for manual LT edits
 
-- [ ] **7.2 API Development**
-  - [ ] POST `/api/wallet/redeem/` - Redeem voucher code
-  - [ ] GET `/api/wallet/history/` - Transaction history
-  - [ ] POST `/api/payments/purchase-content/` - Buy content using LT
-  - [ ] POST `/api/payments/subscribe-vip/` - Sub VIP using LT
+- [x] **7.2 API Development**
+  - [x] GET `/api/wallet/me/` - Current balance
+  - [x] POST `/api/wallet/redeem/` - Redeem voucher code
+  - [x] GET `/api/wallet/history/` - Transaction history
+  - [x] POST `/api/payments/purchase-book/` - Buy book using LT
+  - [x] POST `/api/payments/purchase-video/` - Buy video using LT
+  - [x] POST `/api/payments/subscribe-vip/` - Sub VIP using LT
 
-- [ ] **7.3 Admin Voucher Tool**
-  - [ ] Function to generate bulk vouchers
-  - [ ] Export vouchers to Excel/CSV for external sale
+- [x] **7.3 Admin Voucher Tool**
+  - [x] Function to generate bulk vouchers
+  - [x] Export vouchers to CSV for external sale
   - [ ] Revenue estimation dashboard (based on redeemed vouchers)
 
 - [ ] **7.4 Integration**
@@ -117,7 +131,8 @@ gantt
 ---
 
 ### Feature 2: Books Module
-**Priority**: Critical | **Estimated**: 2 weeks
+**Priority**: Critical | **Estimated**: 2 weeks  
+**Detail design**: [feature-2-detail-design.md](design/feature-2-detail-design.md)
 
 - [ ] **2.1 Models & Database**
   - [ ] BookCategory model
@@ -159,7 +174,8 @@ gantt
 ---
 
 ### Feature 3: Videos Module
-**Priority**: Critical | **Estimated**: 2 weeks
+**Priority**: Critical | **Estimated**: 2 weeks  
+**Detail design**: [feature-3-detail-design.md](design/feature-3-detail-design.md)
 
 - [ ] **3.1 Models & Database**
   - [ ] VideoCourse model with cover image support
@@ -201,7 +217,8 @@ gantt
 ---
 
 ### Feature 4: Exams & Practice Module
-**Priority**: High | **Estimated**: 2.5 weeks
+**Priority**: High | **Estimated**: 2.5 weeks  
+**Detail design**: [feature-4-detail-design.md](design/feature-4-detail-design.md)
 
 - [ ] **4.1 Standalone Exams (Critical)**
   - [ ] Exam model (Final exams, practice tests)
@@ -239,7 +256,8 @@ gantt
 ---
 
 ### Feature 5: Comments & Interactions
-**Priority**: Medium | **Estimated**: 1 week
+**Priority**: Medium | **Estimated**: 1 week  
+**Detail design**: [feature-5-detail-design.md](design/feature-5-detail-design.md)
 
 - [ ] **5.1 Models & API**
   - [ ] Comment model with GenericForeignKey
@@ -254,7 +272,8 @@ gantt
 ---
 
 ### Feature 6: Notifications
-**Priority**: Medium | **Estimated**: 1 week
+**Priority**: Medium | **Estimated**: 1 week  
+**Detail design**: [feature-6-detail-design.md](design/feature-6-detail-design.md)
 
 - [ ] **6.1 Notification System & Email Quota**
   - [ ] **EmailLog model (Full audit trail for all outgoing emails)**
@@ -271,20 +290,10 @@ gantt
 
 ---
 
-### Feature 7: Wallet & Payment Bridge
-**Priority**: Critical | **Estimated**: 1 week
-
-- [ ] **7.1 In-App Content Purchase**
-  - [ ] POST `/api/payments/purchase-content/` - Deduct Linh Thạch
-  - [ ] Atomic transaction handling (Wallet balance check + content unlock)
-  - **Assignee**: Backend Dev
-  - **Due**: Week 10
-
-- [ ] **7.2 External Recharge Handling**
-  - [ ] Integration with external payment bridge (Web)
-  - [ ] Voucher generation and matching service
-  - **Assignee**: Backend Dev
-  - **Due**: Week 10
+### Feature 7: Wallet & Payment Bridge (duplicate ref – see Feature 7 above)
+- In-app purchase & voucher logic implemented (see [feature-7-detail-design.md](design/feature-7-detail-design.md)).
+  - [x] POST `/api/payments/purchase-book/`, `purchase-video/`, `subscribe-vip/`
+  - [x] Voucher generation (Admin) and redeem API
 
 ---
 
