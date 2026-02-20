@@ -3,19 +3,19 @@
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
 - **Version**: 1.0
-- **Last Updated**: 2026-02-20
+- **Last Updated**: 2026-02-21
 - **Status**: Planning Complete → Ready for Implementation
 
 ## Backend Detail Designs (md/design/)
-| Feature | Doc | Description |
-| :--- | :--- | :--- |
-| 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication |
-| 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module |
-| 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module |
-| 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice |
-| 5 | [feature-5-detail-design.md](design/feature-5-detail-design.md) | Comments & Interactions |
-| 6 | [feature-6-detail-design.md](design/feature-6-detail-design.md) | Notifications |
-| 7 | [feature-7-detail-design.md](design/feature-7-detail-design.md) | Wallet & Payment Bridge ✅ |
+| Feature | Doc | Description | Status |
+| :--- | :--- | :--- | :--- |
+| 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication | ✅ |
+| 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module | ✅ |
+| 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module | ✅ |
+| 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice | ✅ |
+| 5 | [feature-5-detail-design.md](design/feature-5-detail-design.md) | Comments & Interactions | ✅ |
+| 6 | [feature-6-detail-design.md](design/feature-6-detail-design.md) | Notifications | ✅ |
+| 7 | [feature-7-detail-design.md](design/feature-7-detail-design.md) | Wallet & Payment Bridge | ✅ |
 
 ---
 
@@ -61,7 +61,7 @@ gantt
   - [x] Database migrations
   - [x] **BaseModel implementation (Private ID + Public UUID)**
   - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)**
-  - [ ] Admin interface configuration (with Jazzmin theme)
+  - [x] Admin interface configuration (with Jazzmin theme)
   - **Assignee**: Backend Dev
   - **Due**: Week 1
 
@@ -73,7 +73,7 @@ gantt
   - [ ] Hybrid monetization logic (FREE, VIP, Paid USER)
   - [x] **Hard Device Locking logic (Persistent Binding)**
   - [x] **Login-integrated Reset Flow** (Cooldown check + Confirmation flag)
-  - [ ] **Admin un-link override capability** (Subject to Audit Log)
+  - [x] **Admin un-link override capability** (Subject to Audit Log)
   - [x] **AdminAuditLog system implementation (Currency & VIP tracking)**
   - [x] **Middleware/Signals for sensitive action logging**
   - [x] **UserDevice management table (Historical & Active tracking)**
@@ -82,13 +82,13 @@ gantt
   - **Assignee**: Backend Dev
   - **Due**: Week 1
 
-- [ ] **1.3 User Profile API**
-  - [ ] GET `/api/users/me/` - Get current user profile
-  - [ ] PUT `/api/users/me/` - Update profile
-  - [ ] **POST `/api/auth/login/` (reset_device=true)** - Confirmation logic
-  - [ ] GET `/api/users/me/device-status/` - Show bound device and next reset date
-  - [ ] Admin interface for viewing and revoking individual devices
-  - [ ] **Admin Audit Log dashboard (For SuperAdmins only)**
+- [x] **1.3 User Profile API**
+  - [x] GET `/api/users/me/` - Get current user profile
+  - [x] PUT `/api/users/me/` - Update profile
+  - [x] **POST `/api/auth/login/` (reset_device=true)** - Confirmation logic
+  - [x] GET `/api/users/me/device-status/` - Show bound device and next reset date
+  - [x] Admin interface for viewing and revoking individual devices
+  - [x] **Admin Audit Log dashboard (For SuperAdmins only)**
   - **Assignee**: Backend Dev
   - **Due**: Week 2
 
@@ -120,7 +120,7 @@ gantt
 - [ ] **7.4 Integration**
   - [ ] Update Book/Course detail pages with "Buy with Linh Thạch" button
   - [ ] Real-time balance update in profile header
-  - [ ] Notification on successful recharge/purchase
+  - [x] Notification on successful recharge/purchase
 
 - [ ] **7.5 Testing**
   - [ ] Unit tests for wallet & voucher logic
@@ -132,34 +132,34 @@ gantt
 
 ### Feature 2: Books Module
 **Priority**: Critical | **Estimated**: 2 weeks  
-**Detail design**: [feature-2-detail-design.md](design/feature-2-detail-design.md)
+**Detail design**: [feature-2-detail-design.md](design/feature-2-detail-design.md) | **Status**: ✅ Backend implemented
 
-- [ ] **2.1 Models & Database**
-  - [ ] BookCategory model
-  - [ ] Book model with cover image support
-  - [ ] BookChapter model with PDF file support
-  - [ ] Configure local storage for media (Images/PDFs)
-  - [ ] UserBookPurchase model
-  - [ ] Database migrations and indexes
+- [x] **2.1 Models & Database**
+  - [x] BookCategory model
+  - [x] Book model with cover image support
+  - [x] BookChapter model with PDF file support
+  - [x] Configure local storage for media (Images/PDFs)
+  - [x] UserBookPurchase model
+  - [x] Database migrations and indexes
   - **Assignee**: Backend Dev
   - **Due**: Week 3
 
-- [ ] **2.2 Books API**
-  - [ ] GET `/api/books/categories/` - List categories
-  - [ ] GET `/api/books/` - List books with filters
-  - [ ] GET `/api/books/{slug}/` - Book detail with chapters
-  - [ ] GET `/api/books/{slug}/chapters/{order}/` - Chapter content
-    - [ ] Permission checks (VIP, purchased, demo)
-  - [ ] Link to optional Final Exam (exams.Exam)
-  - [ ] Watermark configuration generation
+- [x] **2.2 Books API**
+  - [x] GET `/api/books/categories/` - List categories
+  - [x] GET `/api/books/` - List books with filters
+  - [x] GET `/api/books/{slug}/` - Book detail with chapters
+  - [x] GET `/api/books/{slug}/chapters/{order}/` - Chapter content
+    - [x] Permission checks (VIP, purchased, demo)
+  - [x] Link to optional Final Exam (final_exam_id)
+  - [x] Watermark configuration generation
   - **Assignee**: Backend Dev
   - **Due**: Week 3
 
-- [ ] **2.3 Admin Interface**
-  - [ ] Book management interface
-  - [ ] Chapter inline editor
+- [x] **2.3 Admin Interface**
+  - [x] Book management interface
+  - [x] Chapter inline editor
   - [ ] Bulk import functionality
-  - [ ] Category management
+  - [x] Category management
   - **Assignee**: Backend Dev
   - **Due**: Week 4
 
@@ -175,26 +175,26 @@ gantt
 
 ### Feature 3: Videos Module
 **Priority**: Critical | **Estimated**: 2 weeks  
-**Detail design**: [feature-3-detail-design.md](design/feature-3-detail-design.md)
+**Detail design**: [feature-3-detail-design.md](design/feature-3-detail-design.md) | **Status**: ✅ Backend implemented
 
-- [ ] **3.1 Models & Database**
-  - [ ] VideoCourse model with cover image support
-  - [ ] VideoLesson model with thumbnail support
-  - [ ] Configure local storage for thumbnails and covers
-  - [ ] UserVideoPurchase model
-  - [ ] UserVideoProgress model
-  - [ ] Database migrations
+- [x] **3.1 Models & Database**
+  - [x] VideoCourse model with cover image support
+  - [x] VideoLesson model with thumbnail support
+  - [x] Configure local storage for thumbnails and covers
+  - [x] UserVideoPurchase model
+  - [x] UserLessonProgress model
+  - [x] Database migrations
   - **Assignee**: Backend Dev
   - **Due**: Week 5
 
-- [ ] **3.2 Video Platform (Bunny Stream & Local Fallback)**
-  - [ ] GET `/api/videos/` - List videos
-  - [ ] GET `/api/videos/{slug}/` - Video detail with dynamic URL (local or signed)
-  - [ ] POST `/api/videos/{slug}/progress/` - Update watch progress
-  - [ ] Bunny Stream integration service
-    - [ ] Signed URL generation
-    - [ ] **Development Fallback**: Local file serving when `DEBUG=True`
-  - [ ] Watermark configuration for videos
+- [x] **3.2 Video Platform (Bunny Stream & Local Fallback)**
+  - [x] GET `/api/videos/` - List videos
+  - [x] GET `/api/videos/{slug}/` - Video detail with dynamic URL (local or signed)
+  - [x] GET `/api/videos/{slug}/lessons/{lesson_slug}/` - Lesson with video URL
+  - [x] POST `/api/videos/{slug}/lessons/{lesson_slug}/progress/` - Update watch progress
+  - [x] GET `/api/videos/{slug}/progress/` - Course progress
+  - [ ] Bunny Stream integration service (Signed URL generation)
+  - [x] **Development Fallback**: Local file serving when `DEBUG=True`
   - **Assignee**: Backend Dev
   - **Due**: Week 5
 
@@ -218,30 +218,31 @@ gantt
 
 ### Feature 4: Exams & Practice Module
 **Priority**: High | **Estimated**: 2.5 weeks  
-**Detail design**: [feature-4-detail-design.md](design/feature-4-detail-design.md)
+**Detail design**: [feature-4-detail-design.md](design/feature-4-detail-design.md) | **Status**: ✅ Backend implemented
 
-- [ ] **4.1 Standalone Exams (Critical)**
-  - [ ] Exam model (Final exams, practice tests)
-  - [ ] PracticeQuestion model
-  - [ ] UserExamProgress model
-  - [ ] GET `/api/exams/{slug}/` - Get exam details
-  - [ ] POST `/api/exams/{slug}/submit/` - Submit exam
+- [x] **4.1 Standalone Exams (Critical)**
+  - [x] Exam model (Final exams, practice tests)
+  - [x] PracticeQuestion model
+  - [x] UserExamProgress model
+  - [x] GET `/api/exams/` - List exams
+  - [x] GET `/api/exams/{slug}/` - Get exam details
+  - [x] POST `/api/exams/{slug}/submit/` - Submit exam
   - **Assignee**: Backend Dev
   - **Due**: Week 7
 
-- [ ] **4.2 Practice Tower (Kỳ Môn Focus)**
-  - [ ] PracticeModule model (Tower structure)
-  - [ ] Link Tower stages to specific Exams
-  - [ ] Flashcard model
-  - [ ] UserPracticeProgress model
-  - [ ] Database migrations
+- [x] **4.2 Practice Tower (Kỳ Môn Focus)**
+  - [x] PracticeModule model (Tower structure)
+  - [x] Link Tower stages to specific Exams
+  - [x] Flashcard model
+  - [x] FlashcardReview model (SM-2 state)
+  - [x] Database migrations
   - **Assignee**: Backend Dev
   - **Due**: Week 7-8
 
-- [ ] **4.3 Spaced Repetition (SM-2 Algorithm)**
-  - [ ] Implement SM-2 algorithm for flashcards
-  - [ ] GET `/api/practice/chapters/{id}/flashcards/`
-  - [ ] POST `/api/practice/flashcards/{id}/review/`
+- [x] **4.3 Spaced Repetition (SM-2 Algorithm)**
+  - [x] Implement SM-2 algorithm for flashcards
+  - [x] GET `/api/practice/modules/{slug}/flashcards/`
+  - [x] POST `/api/practice/flashcards/{id}/review/`
   - **Assignee**: Backend Dev
   - **Due**: Week 8
 
@@ -257,15 +258,16 @@ gantt
 
 ### Feature 5: Comments & Interactions
 **Priority**: Medium | **Estimated**: 1 week  
-**Detail design**: [feature-5-detail-design.md](design/feature-5-detail-design.md)
+**Detail design**: [feature-5-detail-design.md](design/feature-5-detail-design.md) | **Status**: ✅ Backend implemented
 
-- [ ] **5.1 Models & API**
-  - [ ] Comment model with GenericForeignKey
-  - [ ] CommentReply model
-  - [ ] GET `/api/comments/` - List comments
-  - [ ] POST `/api/comments/` - Create comment (with purchase check)
-  - [ ] POST `/api/comments/{id}/reply/` - Reply to comment
-  - [ ] Permission: only purchased users can comment
+- [x] **5.1 Models & API**
+  - [x] Comment model with GenericForeignKey
+  - [x] CommentReply model
+  - [x] GET `/api/comments/` - List comments (query: content_type, object_id)
+  - [x] POST `/api/comments/create/` - Create comment (with purchase check)
+  - [x] POST `/api/comments/{id}/reply/` - Reply to comment
+  - [x] DELETE `/api/comments/{id}/` - Delete own comment
+  - [x] Permission: only purchased users (or VIP) can comment
   - **Assignee**: Backend Dev
   - **Due**: Week 9
 
@@ -273,17 +275,19 @@ gantt
 
 ### Feature 6: Notifications
 **Priority**: Medium | **Estimated**: 1 week  
-**Detail design**: [feature-6-detail-design.md](design/feature-6-detail-design.md)
+**Detail design**: [feature-6-detail-design.md](design/feature-6-detail-design.md) | **Status**: ✅ Backend implemented (in-app + models)
 
-- [ ] **6.1 Notification System & Email Quota**
-  - [ ] **EmailLog model (Full audit trail for all outgoing emails)**
-  - [ ] **EmailQuota model (Daily 300-email limit enforcement)**
-  - [ ] Notification model (In-app alerts)
-  - [ ] GET `/api/notifications/` - List notifications
-  - [ ] POST `/api/notifications/{id}/mark-read/` - Mark as read
+- [x] **6.1 Notification System & Email Quota**
+  - [x] **EmailLog model (Full audit trail for all outgoing emails)**
+  - [x] **EmailQuota model (Daily 300-email limit enforcement)**
+  - [x] Notification model (In-app alerts)
+  - [x] GET `/api/notifications/` - List notifications
+  - [x] POST `/api/notifications/{id}/mark-read/` - Mark as read
+  - [x] POST `/api/notifications/mark-all-read/` - Mark all read
+  - [x] In-app notification on recharge/purchase/VIP (from wallet)
   - [ ] Celery task for sending emails with quota check
   - [ ] Email notification service (Gmail SMTP integration)
-  - [ ] **Admin Email Dashboard (View logs & current daily quota)**
+  - [x] **Admin Email Dashboard (View logs & current daily quota)**
   - [ ] Push notification integration (FCM/APNs)
   - **Assignee**: Backend Dev
   - **Due**: Week 9
