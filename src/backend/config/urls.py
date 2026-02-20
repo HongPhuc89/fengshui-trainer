@@ -18,6 +18,12 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/wallet/', include('wallet.urls')),
     path('api/payments/', include('wallet.urls_payments')),
+    path('api/exams/', include('exams.urls')),
+    path('api/practice/', include('exams.urls_practice')),
+    path('api/books/', include('books.urls')),
+    path('api/videos/', include('videos.urls')),
+    path('api/comments/', include('comments.urls')),
+    path('api/notifications/', include('notifications.urls')),
 ]
 
 if settings.DEBUG:

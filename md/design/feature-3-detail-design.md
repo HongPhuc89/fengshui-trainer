@@ -28,7 +28,7 @@
 | `cover_image` | ImageField/CharField(255, blank=True) | Ảnh bìa. |
 | `trailer_url` | CharField(500, blank=True) | Link trailer (free). |
 | `is_free` | BooleanField(default=False) | Khóa miễn phí. |
-| `price_lt` | PositiveIntegerField | Giá Linh Thạch. |
+| `price` | PositiveIntegerField | Giá Linh Thạch. |
 | `total_duration_seconds` | PositiveIntegerField(default=0) | Tổng thời lượng. |
 | `total_lessons` | PositiveIntegerField(default=0) | Số bài học. |
 | `level` | CharField(20) | BEGINNER, INTERMEDIATE, ADVANCED. |

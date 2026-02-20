@@ -61,6 +61,18 @@ class PurchaseBookView(views.APIView):
                 balance_after=balance_after,
             )
             UserBookPurchase.objects.create(user=user, book=book)
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title='Mua sách thành công',
+                    body=f'Bạn đã mua sách: {book.title}.',
+                    notification_type='PURCHASE',
+                    related_object_type='book',
+                    related_object_id=str(book.public_id),
+                )
+            except Exception:
+                pass
 
         return Response({
             'balance': balance_after,
@@ -115,6 +127,18 @@ class PurchaseVideoView(views.APIView):
                 balance_after=balance_after,
             )
             UserVideoPurchase.objects.create(user=user, video=video)
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title='Mua khóa học thành công',
+                    body=f'Bạn đã mua khóa: {video.title}.',
+                    notification_type='PURCHASE',
+                    related_object_type='video_course',
+                    related_object_id=str(video.public_id),
+                )
+            except Exception:
+                pass
 
         return Response({
             'balance': balance_after,
@@ -165,6 +189,17 @@ class SubscribeVipView(views.APIView):
             user.subscription_end_date = new_end
             user.user_type = User.USER_TYPE_CHOICES[1][0]  # 'VIP'
             user.save(update_fields=['subscription_end_date', 'user_type', 'updated_at'])
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title='Gia hạn VIP thành công',
+                    body=f'Bạn đã gia hạn VIP {months} tháng. Hết hạn: {new_end.strftime("%d/%m/%Y")}.',
+                    notification_type='VIP_EXPIRY',
+                    related_object_type='vip',
+                )
+            except Exception:
+                pass
 
         return Response({
             'balance': balance_after,

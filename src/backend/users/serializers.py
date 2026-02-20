@@ -9,11 +9,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'public_id', 'username', 'phone_number', 'first_name', 'last_name', 
-            'email', 'user_type', 'subscription_end_date', 'is_device_locked', 
-            'last_device_reset', 'created_at'
+            'public_id', 'username', 'phone_number', 'first_name', 'last_name',
+            'email', 'user_type', 'subscription_end_date', 'is_device_locked',
+            'last_device_reset', 'created_at',
         )
-        read_only_fields = fields
+        read_only_fields = (
+            'public_id', 'username', 'phone_number', 'user_type',
+            'subscription_end_date', 'is_device_locked', 'last_device_reset', 'created_at',
+        )
 
 
 class RegisterSerializer(serializers.ModelSerializer):

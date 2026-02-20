@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "wallet",
     "books",
     "videos",
+    "exams",
+    "comments",
     "notifications",
 ]
 

@@ -70,6 +70,17 @@ class RedeemView(views.APIView):
                 description=f'Redeemed voucher {voucher.code}',
                 balance_after=balance_after,
             )
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=request.user,
+                    title='Nạp Linh Thạch thành công',
+                    body=f'Bạn đã nạp {voucher.value} LT từ mã voucher.',
+                    notification_type='RECHARGE',
+                    related_object_type='wallet',
+                )
+            except Exception:
+                pass
         return Response({'balance': balance_after, 'total_recharged': wallet.total_recharged})
 
 

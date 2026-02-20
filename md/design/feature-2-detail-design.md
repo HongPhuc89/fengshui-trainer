@@ -28,7 +28,7 @@
 | `description` | TextField(blank=True) | Mô tả. |
 | `is_free` | BooleanField(default=False) | Sách miễn phí. |
 | `is_new_release` | BooleanField(default=False) | Sách mới. |
-| `price_lt` | PositiveIntegerField | Giá Linh Thạch (đã có). |
+| `price` | PositiveIntegerField | Giá Linh Thạch (đã có). |
 | `demo_content` | TextField(blank=True) | Nội dung đọc thử. |
 | `table_of_contents` | JSONField(blank=True, null=True) | Mục lục (structure). |
 | `final_exam` | FK(Exam, null=True) | Bài thi cuối (optional). |
