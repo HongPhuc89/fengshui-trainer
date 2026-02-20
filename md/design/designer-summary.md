@@ -69,6 +69,12 @@ Designer có thể dựa vào danh sách sau để lên sitemap và wireframe:
 ---
 
 ## 4. Lưu Ý Quan Trọng Cho Designer
-- **Chống Capture**: Trên Mobile sẽ chặn chụp ảnh màn hình. UI nên thể hiện cảnh báo ở các nội dung bản quyền.
-- **Chế độ hiển thị (Dark/Light mode)**: Nên có thiết kế hỗ trợ đọc giả vào ban đêm (rất quan trọng cho app đọc sách/học tập).
+- **Chống Capture & Bảo Mật Bản Quyền**: 
+  - Trên Mobile (Native App): Chặn tính năng chụp ảnh màn hình từ OS.
+  - Trên Web App: Cần có lưới Watermark động (bay ngẫu nhiên), vô hiệu hoá chuột phải (Context menu) và làm mờ/ẩn nội dung khi người dùng chuyển sang Tab khác hoặc thu nhỏ cửa sổ trình duyệt (Blur on blur event). UI phải thể hiện rõ cảnh báo bản quyền trước khi vào bài giảng/đọc sách.
+- **Chế độ hiển thị (Dark/Light mode)**: Nên có thiết kế hỗ trợ độc giả vào ban đêm (rất quan trọng cho app đọc sách/học tập).
 - **Hệ thống phân cấp nội dung**: Có các nhãn dán (tags/badges) rõ ràng cho nội dung `FREE`, `VIP`, `PREMIUM` trên thẻ sách/video.
+- **Responsive Design & Trải Nghiệm Desktop (Dành riêng cho Web App)**:
+  - **Layout & Navigation**: Trên Mobile có thể dùng Bottom Navigation, nhưng trên Tablet/Desktop Web cần tận dụng Sidebar (Menu bên trái) hoặc Top Navigation Bar mở rộng để dễ điều hướng. Cần có thiết kế Responsive (thích ứng) cho mọi kích thước màn hình.
+  - **Tối ưu không gian**: Tận dụng không gian lớn của Desktop cho màn hình đọc sách (có thể chia 2 trang/màn hình giống sách thật) và Video Player (có sidebar hiển thị danh sách bài học bên phải lúc đang xem video).
+  - **PWA (Progressive Web App)**: Cân nhắc thiết kế UI/UX theo hướng app-like trên trình duyệt mobile để khuyến khích người dùng "Add to Home Screen".
