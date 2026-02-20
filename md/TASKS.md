@@ -44,18 +44,18 @@ gantt
 ### Feature 1: User Management & Authentication
 **Priority**: Critical | **Estimated**: 2 weeks
 
-- [ ] **1.1 User Model & Database**
-  - [ ] Create User model with custom fields (phone_number, user_type, device_id)
-  - [ ] Create UserDevice model for device tracking
-  - [ ] Database migrations
-  - [ ] **BaseModel implementation (Private ID + Public UUID)**
+- [x] **1.1 User Model & Database**
+  - [x] Create User model with custom fields (phone_number, user_type, device_id)
+  - [x] Create UserDevice model for device tracking
+  - [x] Database migrations
+  - [x] **BaseModel implementation (Private ID + Public UUID)**
   - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)**
   - [ ] Admin interface configuration (with Jazzmin theme)
   - **Assignee**: Backend Dev
   - **Due**: Week 1
 
-- [ ] **1.2 Authentication API**
-  - [ ] POST `/api/auth/register/` - User registration with device registration
+- [/] **1.2 Authentication API**
+  - [/] POST `/api/auth/register/` - User registration with device registration
   - [ ] POST `/api/auth/login/` - Login with device verification
   - [ ] POST `/api/auth/refresh/` - JWT token refresh
   - [ ] POST `/api/auth/logout/` - Logout and session cleanup
