@@ -54,20 +54,20 @@ gantt
   - **Assignee**: Backend Dev
   - **Due**: Week 1
 
-- [/] **1.2 Authentication API**
-  - [/] POST `/api/auth/register/` - User registration with device registration
-  - [ ] POST `/api/auth/login/` - Login with device verification
-  - [ ] POST `/api/auth/refresh/` - JWT token refresh
-  - [ ] POST `/api/auth/logout/` - Logout and session cleanup
+- [x] **1.2 Authentication API**
+  - [x] POST `/api/auth/register/` - User registration with device registration
+  - [x] POST `/api/auth/login/` - Login with device verification
+  - [x] POST `/api/auth/refresh/` - JWT token refresh
+  - [x] POST `/api/auth/logout/` - Logout and session cleanup
   - [ ] Hybrid monetization logic (FREE, VIP, Paid USER)
-  - [ ] **Hard Device Locking logic (Persistent Binding)**
-  - [ ] **Login-integrated Reset Flow** (Cooldown check + Confirmation flag)
+  - [x] **Hard Device Locking logic (Persistent Binding)**
+  - [x] **Login-integrated Reset Flow** (Cooldown check + Confirmation flag)
   - [ ] **Admin un-link override capability** (Subject to Audit Log)
-  - [ ] **AdminAuditLog system implementation (Currency & VIP tracking)**
-  - [ ] **Middleware/Signals for sensitive action logging**
-  - [ ] **UserDevice management table (Historical & Active tracking)**
-  - [ ] **Audit logging for device un-link actions**
-  - [ ] **Audit logging (IP, User Agent, Last Active)**
+  - [x] **AdminAuditLog system implementation (Currency & VIP tracking)**
+  - [x] **Middleware/Signals for sensitive action logging**
+  - [x] **UserDevice management table (Historical & Active tracking)**
+  - [x] **Audit logging for device un-link actions**
+  - [x] **Audit logging (IP, User Agent, Last Active)**
   - **Assignee**: Backend Dev
   - **Due**: Week 1
 
