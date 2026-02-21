@@ -10,6 +10,7 @@
 | Feature | Doc | Description | Status |
 | :--- | :--- | :--- | :--- |
 | 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication | ✅ |
+| **Frontend (Phase 2)** | **[frontend-detail-design.md](design/frontend-detail-design.md)** | **Design system, Auth (Login/Register), Profile, Books/Videos/Practice outlines** | ✅ |
 | 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module | ✅ |
 | 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module | ✅ |
 | 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice | ✅ |
@@ -325,7 +326,8 @@ gantt
 ---
 
 ### Feature 9: Authentication & Profile (Web)
-**Priority**: Critical | **Estimated**: 1 week
+**Priority**: Critical | **Estimated**: 1 week  
+**Detail design**: [frontend-detail-design.md](design/frontend-detail-design.md) (§2 Login/Register, §3 Home Trang Chủ, §4 Profile)
 
 - [ ] **9.1 Auth Pages**
   - [ ] Login page

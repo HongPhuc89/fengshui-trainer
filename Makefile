@@ -1,7 +1,8 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock frontend-install frontend-dev frontend-build
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
+FRONTEND = src/frontend
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -54,3 +55,13 @@ sync: ## Install backend deps from lock: uv sync (use after lock)
 
 export-lock: ## Export uv.lock to requirements-lock.txt (pip-compatible)
 	cd $(BACKEND) && uv export --no-emit-package fengshui-backend --no-dev -o requirements-lock.txt
+
+# --- Frontend (Vue) ---
+frontend-install: ## Install frontend npm dependencies
+	cd $(FRONTEND) && npm install
+
+frontend-dev: ## Run frontend dev server (Vite, proxy /api to backend)
+	cd $(FRONTEND) && npm run dev
+
+frontend-build: ## Build frontend for production
+	cd $(FRONTEND) && npm run build

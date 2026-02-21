@@ -5,7 +5,7 @@ description = "Feng Shui Trainer Django backend"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "Django~=5.2",
+    "django~=5.2",
     "djangorestframework",
     "djangorestframework-simplejwt",
     "django-environ",
