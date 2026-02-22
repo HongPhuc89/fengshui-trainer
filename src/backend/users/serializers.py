@@ -14,12 +14,14 @@ class UserSerializer(serializers.ModelSerializer):
             'last_device_reset', 'created_at',
         )
         read_only_fields = (
-            'public_id', 'username', 'phone_number', 'user_type',
+            'public_id', 'username', 'email', 'user_type',
             'subscription_end_date', 'is_device_locked', 'last_device_reset', 'created_at',
         )
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    """Register with email (identifier), password, and device info. Other fields via profile update."""
+    email = serializers.EmailField(required=True, write_only=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     device_id = serializers.CharField(write_only=True, required=True, max_length=255)
     device_type = serializers.ChoiceField(write_only=True, required=True, choices=UserDevice.DEVICE_TYPE_CHOICES)
@@ -27,48 +29,40 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('phone_number', 'password', 'first_name', 'last_name', 'device_id', 'device_type', 'device_name')
-        extra_kwargs = {
-            'phone_number': {'required': True}
-        }
+        fields = ('email', 'password', 'device_id', 'device_type', 'device_name')
 
-    def validate_phone_number(self, value):
-        if User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("A user with this phone number already exists.")
-        return value
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
 
     def create(self, validated_data):
         device_id = validated_data.pop('device_id')
         device_type = validated_data.pop('device_type')
         device_name = validated_data.pop('device_name', '')
+        email = validated_data['email']
+        password = validated_data['password']
 
-        # Use phone_number as username for simplicity, or generate one
-        username = validated_data.get('phone_number')
-        
         user = User.objects.create_user(
-            username=username,
-            phone_number=validated_data['phone_number'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            is_device_locked=False # Not locked until first login/binding
+            username=email,
+            email=email,
+            password=password,
+            is_device_locked=False,
         )
 
-        # Auto-bind primary device
         UserDevice.objects.create(
             user=user,
             device_id=device_id,
             device_type=device_type,
             device_name=device_name,
             is_primary_bound=True,
-            status='ACTIVE'
+            status='ACTIVE',
         )
-
         return user
 
 
 class CustomLoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
     device_id = serializers.CharField(required=True, write_only=True)
     device_name = serializers.CharField(required=False, write_only=True, allow_blank=True)
@@ -76,19 +70,16 @@ class CustomLoginSerializer(serializers.Serializer):
     reset_device = serializers.BooleanField(required=False, default=False, write_only=True)
 
     def validate(self, attrs):
-        phone_number = attrs.get('phone_number')
+        email = attrs.get('email', '').lower()
         password = attrs.get('password')
         current_device_id = attrs.get('device_id')
         reset_device = attrs.get('reset_device')
         device_name = attrs.get('device_name', '')
         device_type = attrs.get('device_type')
 
-        user = authenticate(request=self.context.get('request'), username=phone_number, password=password)
+        user = authenticate(request=self.context.get('request'), username=email, password=password)
         if not user:
-            # Maybe they signed up with username instead of phone_number for superusers, fallback check
-            user = authenticate(request=self.context.get('request'), phone_number=phone_number, password=password)
-            if not user:
-                raise serializers.ValidationError({"detail": "Invalid phone number or password."})
+            raise serializers.ValidationError({"detail": "Invalid email or password."})
 
         if not user.is_active:
             raise serializers.ValidationError({"detail": "User account is disabled."})

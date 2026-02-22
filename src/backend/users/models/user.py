@@ -5,7 +5,7 @@ from .base import BaseModel
 
 class User(AbstractUser, BaseModel):
     """
-    Custom User model supporting phone-based authentication and device locking.
+    Custom User model: identified by email, optional phone; device locking supported.
     """
     USER_TYPE_CHOICES = [
         ('FREE', 'Free User'),
@@ -13,7 +13,8 @@ class User(AbstractUser, BaseModel):
         ('USER', 'Paid/Return User'),
     ]
 
-    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, blank=True)  # main identifier for login/register
+    phone_number = models.CharField(max_length=15, null=True, blank=True)  # optional, no unique
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='FREE')
     subscription_end_date = models.DateTimeField(null=True, blank=True)
     
@@ -25,7 +26,7 @@ class User(AbstractUser, BaseModel):
     # but keep standard Django id (BaseModel.id) for internal performance
     
     def __str__(self):
-        return self.username or self.phone_number or f"User {self.public_id}"
+        return self.username or self.email or self.phone_number or f"User {self.public_id}"
 
     class Meta:
         verbose_name = "User"
