@@ -6,6 +6,9 @@ from django.db import transaction
 
 from ..models import User
 from ..serializers import UserSerializer, RegisterSerializer, CustomLoginSerializer
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -43,13 +46,18 @@ class LoginView(generics.GenericAPIView):
 
 
 class LogoutView(views.APIView):
+    """
+    Logout: client nên gửi { "refresh": "<refresh_token>" } để server blacklist token.
+    Nếu không gửi, vẫn 205 (client xóa token ở local) nhưng refresh token vẫn dùng được đến hết hạn.
+    """
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
-        try:
-            refresh_token = request.data["refresh"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response(status=status.HTTP_205_RESET_CONTENT)
-        except Exception:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        refresh_raw = request.data.get("refresh")
+        if refresh_raw:
+            try:
+                token = RefreshToken(refresh_raw)
+                token.blacklist()
+            except Exception:
+                logger.exception("Blacklist refresh token failed")
+        return Response(status=status.HTTP_205_RESET_CONTENT)
