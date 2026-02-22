@@ -7,10 +7,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'public_id', 'username', 'phone_number', 'first_name', 'last_name',
-            'email', 'user_type', 'subscription_end_date', 'is_device_locked',
+            'email', 'user_type', 'subscription_end_date',
             'last_device_reset', 'created_at',
         )
         read_only_fields = (
             'public_id', 'username', 'email', 'user_type',
-            'subscription_end_date', 'is_device_locked', 'last_device_reset', 'created_at',
+            'subscription_end_date', 'last_device_reset', 'created_at',
         )

@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload
     volumes:
       - ../src/backend:/app/src/backend
     ports:
