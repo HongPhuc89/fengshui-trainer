@@ -3,21 +3,7 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, UserDevice
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = (
-            'public_id', 'username', 'phone_number', 'first_name', 'last_name',
-            'email', 'user_type', 'subscription_end_date', 'is_device_locked',
-            'last_device_reset', 'created_at',
-        )
-        read_only_fields = (
-            'public_id', 'username', 'email', 'user_type',
-            'subscription_end_date', 'is_device_locked', 'last_device_reset', 'created_at',
-        )
+from ..models import User, UserDevice
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -91,64 +77,52 @@ class CustomLoginSerializer(serializers.Serializer):
 
         # Device locking logic
         bound_device = user.devices.filter(is_primary_bound=True, status='ACTIVE').first()
-        
+
         if user.is_device_locked and bound_device:
             if bound_device.device_id != current_device_id:
                 if not reset_device:
-                    # Challenge
                     raise serializers.ValidationError({
-                        "error": "DEVICE_LOCKED", 
+                        "error": "DEVICE_LOCKED",
                         "can_reset": timezone.now() >= (user.last_device_reset + timedelta(days=365)),
                         "last_reset_date": user.last_device_reset.isoformat(),
                         "detail": "This account is locked to another device."
                     })
                 else:
-                    # Proceed with reset if cooldown passed
                     if timezone.now() < (user.last_device_reset + timedelta(days=365)):
                         raise serializers.ValidationError({"detail": "Cannot reset device yet. 365-day cooldown active."})
-                    
-                    # Reset logic
+
                     bound_device.status = 'REVOKED'
                     bound_device.is_primary_bound = False
                     bound_device.save()
-                    
+
                     user.last_device_reset = timezone.now()
                     user.save()
-                    
-                    # Create new bound device below
                     bound_device = None
 
-        # Create or update current device
         device, created = UserDevice.objects.get_or_create(
             user=user,
             device_id=current_device_id,
             defaults={
                 'device_type': device_type,
                 'device_name': device_name,
-                'is_primary_bound': user.devices.filter(is_primary_bound=True).count() == 0, # If no primary, make this primary
+                'is_primary_bound': user.devices.filter(is_primary_bound=True).count() == 0,
                 'status': 'ACTIVE'
             }
         )
-        
+
         if not created:
             device.status = 'ACTIVE'
             device.device_name = device_name if device_name else device.device_name
             device.last_active = timezone.now()
-            
-            # If user has no primary bound device (e.g. after reset or if none exists)
             if user.devices.filter(is_primary_bound=True, status='ACTIVE').count() == 0:
                 device.is_primary_bound = True
-                
             device.save()
 
-        # If it's their first time logging in and getting a primary device, lock it.
         if device.is_primary_bound and not user.is_device_locked:
             user.is_device_locked = True
             user.save()
 
-        # Generate tokens
         refresh = RefreshToken.for_user(user)
-
         return {
             'user': user,
             'refresh': str(refresh),
