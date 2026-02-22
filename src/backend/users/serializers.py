@@ -5,6 +5,7 @@ from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, UserDevice
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -21,7 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     """Register with email (identifier), password, and device info. Other fields via profile update."""
-    email = serializers.EmailField(required=True, write_only=True)
+    email = serializers.EmailField(required=True, write_only=True, allow_blank=False)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     device_id = serializers.CharField(write_only=True, required=True, max_length=255)
     device_type = serializers.ChoiceField(write_only=True, required=True, choices=UserDevice.DEVICE_TYPE_CHOICES)
@@ -32,9 +33,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('email', 'password', 'device_id', 'device_type', 'device_name')
 
     def validate_email(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Email is required and cannot be blank.")
+        value = value.lower()
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return value.lower()
+        return value
 
     def create(self, validated_data):
         device_id = validated_data.pop('device_id')
