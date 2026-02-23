@@ -19,3 +19,15 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
             'public_id', 'amount', 'transaction_type',
             'reference_id', 'description', 'balance_after', 'created_at',
         )
+
+
+class PurchaseBookSerializer(serializers.Serializer):
+    book_id = serializers.UUIDField()
+
+
+class PurchaseVideoSerializer(serializers.Serializer):
+    video_id = serializers.UUIDField()
+
+
+class SubscribeVipSerializer(serializers.Serializer):
+    months = serializers.IntegerField(min_value=1, default=1)

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, views
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +18,16 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+@extend_schema(responses={200: {
+    'type': 'object',
+    'properties': {
+        'is_device_locked': {'type': 'boolean'},
+        'bound_device': {'type': 'object', 'nullable': True},
+        'last_device_reset': {'type': 'string', 'format': 'date-time', 'nullable': True},
+        'next_reset_available_at': {'type': 'string', 'format': 'date-time', 'nullable': True},
+        'can_reset_now': {'type': 'boolean'},
+    },
+}})
 class DeviceStatusView(views.APIView):
     """GET /api/users/me/device-status/ - Show bound device and next reset date."""
     permission_classes = (IsAuthenticated,)

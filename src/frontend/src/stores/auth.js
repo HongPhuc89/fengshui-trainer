@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import api from '../api/client'
+import { authService } from '../services/auth.service'
 
 const ACCESS_KEY = 'access'
 const REFRESH_KEY = 'refresh'
@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchMe() {
-    const { data } = await api.get('/users/me/')
+    const { data } = await authService.getMe()
     setUser(data)
     return data
   }

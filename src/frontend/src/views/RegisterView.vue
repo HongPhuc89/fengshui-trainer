@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useDeviceId } from '../composables/useDeviceId'
-import api from '../api/client'
+import { authService } from '../services/auth.service'
 import AppLogo from '../components/auth/AppLogo.vue'
 import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
@@ -15,8 +15,6 @@ const router = useRouter()
 const auth = useAuthStore()
 const { deviceId } = useDeviceId()
 
-const fullName = ref('')
-const phoneNumber = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -27,16 +25,9 @@ const loading = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
 
-const displayName = computed(() => {
-  const n = fullName.value.trim()
-  if (!n) return t('home.greeting.scholar')
-  const parts = n.split(/\s+/)
-  return parts[parts.length - 1] || parts[0] || t('home.greeting.scholar')
-})
-
 const canSubmit = computed(() => {
   if (!termsAccepted.value) return false
-  if (!fullName.value.trim() || !phoneNumber.value.trim() || !password.value || !confirmPassword.value) return false
+  if (!email.value.trim() || !password.value || !confirmPassword.value) return false
   if (password.value !== confirmPassword.value) return false
   if (password.value.length < 8) return false
   return true
@@ -44,8 +35,6 @@ const canSubmit = computed(() => {
 
 function validate() {
   fieldErrors.value = {}
-  if (!fullName.value.trim()) fieldErrors.value.fullName = t('auth.register.validation.fullNameRequired')
-  if (!phoneNumber.value.trim()) fieldErrors.value.phoneNumber = t('auth.register.validation.phoneRequired')
   if (!email.value.trim()) fieldErrors.value.email = t('auth.register.validation.emailRequired')
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) fieldErrors.value.email = t('auth.register.validation.emailInvalid')
   if (!password.value) fieldErrors.value.password = t('auth.register.validation.passwordRequired')
@@ -60,15 +49,10 @@ async function submit() {
   if (!validate()) return
   loading.value = true
   try {
-    const [first, ...rest] = fullName.value.trim().split(/\s+/)
-    const last = rest.length ? rest.join(' ') : ''
-    const { data } = await api.post('auth/register/', {
-      phone_number: phoneNumber.value.trim(),
+    const { data } = await authService.register({
+      email: email.value.trim(),
       password: password.value,
-      first_name: first || '',
-      last_name: last,
-      device_id: deviceId.value || 'web_unknown',
-      device_type: 'WEB',
+      deviceId: deviceId.value || 'web_unknown',
     })
     auth.setTokens({ access: data.access, refresh: data.refresh })
     auth.setUser(data.user)
@@ -76,7 +60,7 @@ async function submit() {
   } catch (e) {
     const res = e.response
     const d = res?.data
-    if (d?.phone_number) fieldErrors.value.phoneNumber = Array.isArray(d.phone_number) ? d.phone_number[0] : d.phone_number
+    if (d?.email) fieldErrors.value.email = Array.isArray(d.email) ? d.email[0] : d.email
     else error.value = d?.detail || (typeof d === 'string' ? d : t('auth.register.error'))
   } finally {
     loading.value = false
@@ -88,8 +72,6 @@ async function submit() {
   <div class="register-view">
     <AppLogo variant="register" :subtitle="t('auth.register.subtitle')" />
     <form class="register-view__form" @submit.prevent="submit">
-      <FormInput v-model="fullName" :label="t('auth.register.fullNameLabel')" :placeholder="t('auth.register.fullNamePlaceholder')" icon="person" :error="fieldErrors.fullName" />
-      <FormInput v-model="phoneNumber" :label="t('auth.register.phoneLabel')" :placeholder="t('auth.register.phonePlaceholder')" icon="phone" :error="fieldErrors.phoneNumber" />
       <FormInput v-model="email" :label="t('auth.register.emailLabel')" :placeholder="t('auth.register.emailPlaceholder')" icon="envelope" :error="fieldErrors.email" type="email" />
       <FormInput v-model="password" v-model:visible="passwordVisible" :label="t('auth.register.passwordLabel')" type="password" :placeholder="t('auth.register.passwordPlaceholder')" icon="lock" :show-password-toggle="true" :error="fieldErrors.password" />
       <FormInput v-model="confirmPassword" v-model:visible="confirmVisible" :label="t('auth.register.confirmPasswordLabel')" type="password" :placeholder="t('auth.register.confirmPasswordPlaceholder')" icon="shield" :show-password-toggle="true" :error="fieldErrors.confirmPassword" />

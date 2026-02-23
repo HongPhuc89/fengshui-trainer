@@ -10,7 +10,7 @@ from .models import (
 from .serializers import (
     VideoCategorySerializer, VideoCourseListSerializer, VideoCourseDetailSerializer,
     VideoCourseDetailWithPurchaseSerializer, VideoLessonDetailSerializer,
-    LessonProgressSerializer,
+    LessonProgressSerializer, CourseProgressSerializer,
 )
 
 
@@ -67,6 +67,7 @@ class VideoCourseDetailView(generics.RetrieveAPIView):
 class VideoLessonDetailView(views.APIView):
     """GET /api/videos/{slug}/lessons/{lesson_slug}/ - Lesson detail with video URL."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = VideoLessonDetailSerializer
 
     def get(self, request, slug, lesson_slug):
         try:
@@ -95,6 +96,7 @@ class VideoLessonDetailView(views.APIView):
 class LessonProgressView(views.APIView):
     """POST /api/videos/{slug}/lessons/{lesson_slug}/progress/ - Update watch progress."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = LessonProgressSerializer
 
     def post(self, request, slug, lesson_slug):
         try:
@@ -129,6 +131,7 @@ class LessonProgressView(views.APIView):
 class CourseProgressView(views.APIView):
     """GET /api/videos/{slug}/progress/ - Overall course progress (%)."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = CourseProgressSerializer
 
     def get(self, request, slug):
         try:

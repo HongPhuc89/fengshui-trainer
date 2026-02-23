@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock frontend-install frontend-dev frontend-build
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -55,6 +55,10 @@ sync: ## Install backend deps from lock: uv sync (use after lock)
 
 export-lock: ## Export uv.lock to requirements-lock.txt (pip-compatible)
 	cd $(BACKEND) && uv export --no-emit-package fengshui-backend --no-dev -o requirements-lock.txt
+
+swagger-export: ## Export OpenAPI schema to postman/api_schema.json
+	docker-compose -f $(COMPOSE_FILE) exec -T web python manage.py spectacular --format openapi-json > postman/api_schema.json
+	@echo "Schema exported to postman/api_schema.json"
 
 # --- Frontend (Vue) ---
 frontend-install: ## Install frontend npm dependencies

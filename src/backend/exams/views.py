@@ -45,6 +45,7 @@ class ExamDetailView(generics.RetrieveAPIView):
 class ExamSubmitView(views.APIView):
     """POST /api/exams/{slug}/submit/ - Submit answers, return score."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = ExamSubmitSerializer
 
     def post(self, request, slug):
         try:
@@ -134,6 +135,7 @@ def sm2(quality, interval, ease_factor, repetitions):
 class FlashcardReviewView(views.APIView):
     """POST /api/practice/flashcards/{id}/review/ - Submit SM-2 quality."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = FlashcardReviewSerializer
 
     def post(self, request, id):
         try:

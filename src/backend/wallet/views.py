@@ -17,6 +17,7 @@ def get_or_create_wallet(user):
 class WalletMeView(views.APIView):
     """GET /api/wallet/me/ - Get current balance and total recharged."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = WalletMeSerializer
 
     def get(self, request):
         wallet = get_or_create_wallet(request.user)
@@ -27,6 +28,7 @@ class WalletMeView(views.APIView):
 class RedeemView(views.APIView):
     """POST /api/wallet/redeem/ - Redeem voucher code."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = RedeemInputSerializer
 
     def post(self, request):
         serializer = RedeemInputSerializer(data=request.data)

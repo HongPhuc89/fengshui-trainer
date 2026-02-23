@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -26,6 +27,7 @@ class NotificationListView(generics.ListAPIView):
 class NotificationMarkReadView(views.APIView):
     """POST /api/notifications/{id}/mark-read/ - Mark one as read."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = NotificationSerializer
 
     def post(self, request, id):
         try:
@@ -39,6 +41,7 @@ class NotificationMarkReadView(views.APIView):
         return Response(NotificationSerializer(notification).data)
 
 
+@extend_schema(request=None, responses={200: {'type': 'object', 'properties': {'updated_count': {'type': 'integer'}}}})
 class NotificationMarkAllReadView(views.APIView):
     """POST /api/notifications/mark-all-read/ - Mark all as read."""
     permission_classes = (IsAuthenticated,)

@@ -8,7 +8,7 @@ from .models import BookCategory, Book, BookChapter, UserBookPurchase
 from .serializers import (
     BookCategorySerializer, BookListSerializer, BookDetailSerializer,
     BookDetailWithPurchaseSerializer, BookChapterListSerializer,
-    WatermarkConfigSerializer,
+    WatermarkConfigSerializer, BookChapterContentSerializer,
 )
 
 
@@ -67,6 +67,7 @@ class BookDetailView(generics.RetrieveAPIView):
 class BookChapterDetailView(views.APIView):
     """GET /api/books/{slug}/chapters/{order}/ - Chapter content (URL or 403)."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = BookChapterContentSerializer
 
     def get(self, request, slug, order):
         try:
@@ -101,6 +102,7 @@ class BookChapterDetailView(views.APIView):
 class BookChapterWatermarkConfigView(views.APIView):
     """GET /api/books/{slug}/chapters/{order}/watermark-config/ - Watermark for client overlay."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = WatermarkConfigSerializer
 
     def get(self, request, slug, order):
         try:

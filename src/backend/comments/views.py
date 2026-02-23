@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -29,6 +30,7 @@ class CommentListView(generics.ListAPIView):
 class CommentCreateView(views.APIView):
     """POST /api/comments/ - Create comment (purchase/VIP check)."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = CommentCreateSerializer
 
     def post(self, request):
         serializer = CommentCreateSerializer(data=request.data)
@@ -59,6 +61,7 @@ class CommentCreateView(views.APIView):
 class CommentReplyView(views.APIView):
     """POST /api/comments/{id}/reply/ - Reply to comment."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = CommentReplyCreateSerializer
 
     def post(self, request, id):
         try:
@@ -83,6 +86,7 @@ class CommentReplyView(views.APIView):
         return Response(CommentReplySerializer(reply).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(request=None, responses={204: None})
 class CommentDeleteView(views.APIView):
     """DELETE /api/comments/{id}/ - Delete own comment (or staff)."""
     permission_classes = (IsAuthenticated,)

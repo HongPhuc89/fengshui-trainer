@@ -3,7 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
-import api from '../api/client'
+import { walletService } from '../services/wallet.service'
+import { booksService } from '../services/books.service'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -28,8 +29,8 @@ onMounted(async () => {
   try {
     user.value = auth.user || (await auth.fetchMe())
     const [walletRes, booksRes] = await Promise.all([
-      api.get('wallet/me/').catch(() => ({ data: { balance: 0 } })),
-      api.get('books/').catch(() => ({ data: { results: [] } })),
+      walletService.getBalance().catch(() => ({ data: { balance: 0 } })),
+      booksService.getBooks().catch(() => ({ data: { results: [] } })),
     ])
     wallet.value = walletRes.data?.balance ?? 0
     const list = booksRes.data?.results ?? booksRes.data ?? []

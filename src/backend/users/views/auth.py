@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -45,6 +46,7 @@ class LoginView(generics.GenericAPIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(request=None, responses={205: None})
 class LogoutView(views.APIView):
     """
     Logout: client nên gửi { "refresh": "<refresh_token>" } để server blacklist token.

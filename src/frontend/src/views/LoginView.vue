@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useDeviceId } from '../composables/useDeviceId'
-import api from '../api/client'
+import { authService } from '../services/auth.service'
 import AppLogo from '../components/auth/AppLogo.vue'
 import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
@@ -33,12 +33,11 @@ async function submit() {
   }
   loading.value = true
   try {
-    const { data } = await api.post('auth/login/', {
-      email: email.value.trim(),
-      password: password.value,
-      device_id: deviceId.value || 'web_unknown',
-      device_type: 'WEB',
-    })
+    const { data } = await authService.login(
+      email.value.trim(),
+      password.value,
+      deviceId.value || 'web_unknown',
+    )
     auth.setTokens({ access: data.access, refresh: data.refresh })
     auth.setUser(data.user)
     const redirect = route.query.redirect || '/'
@@ -64,13 +63,11 @@ async function confirmDeviceReset() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await api.post('auth/login/', {
-      email: email.value.trim(),
-      password: password.value,
-      device_id: deviceId.value || 'web_unknown',
-      device_type: 'WEB',
-      reset_device: true,
-    })
+    const { data } = await authService.loginWithDeviceReset(
+      email.value.trim(),
+      password.value,
+      deviceId.value || 'web_unknown',
+    )
     auth.setTokens({ access: data.access, refresh: data.refresh })
     auth.setUser(data.user)
     deviceLock.value = null

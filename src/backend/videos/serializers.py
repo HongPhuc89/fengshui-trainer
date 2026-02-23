@@ -75,3 +75,9 @@ class VideoLessonDetailSerializer(serializers.ModelSerializer):
 
 class LessonProgressSerializer(serializers.Serializer):
     progress_seconds = serializers.IntegerField(min_value=0)
+
+
+class CourseProgressSerializer(serializers.Serializer):
+    progress_percent = serializers.IntegerField()
+    completed_lessons = serializers.IntegerField()
+    total_lessons = serializers.IntegerField()

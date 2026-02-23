@@ -55,6 +55,7 @@
         "/api/auth/logout/": {
             "post": {
                 "operationId": "auth_logout_create",
+                "description": "Logout: client nên gửi { \"refresh\": \"<refresh_token>\" } để server blacklist token.\nNếu không gửi, vẫn 205 (client xóa token ở local) nhưng refresh token vẫn dùng được đến hết hạn.",
                 "tags": [
                     "auth"
                 ],
@@ -64,7 +65,7 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "205": {
                         "description": "No response body"
                     }
                 }
@@ -97,6 +98,9 @@
                     },
                     "required": true
                 },
+                "security": [
+                    {}
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -145,14 +149,7 @@
                 ],
                 "responses": {
                     "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Register"
-                                }
-                            }
-                        },
-                        "description": ""
+                        "description": "No response body"
                     }
                 }
             }
@@ -256,7 +253,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookChapterContent"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -293,7 +297,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WatermarkConfig"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -405,6 +416,26 @@
                 "tags": [
                     "comments"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentReplyCreateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentReplyCreateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentReplyCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -412,7 +443,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentReplyCreate"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -424,6 +462,26 @@
                 "tags": [
                     "comments"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentCreateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentCreateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -431,7 +489,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentCreate"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -518,6 +583,26 @@
                 "tags": [
                     "exams"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExamSubmitRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExamSubmitRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExamSubmitRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -525,7 +610,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExamSubmit"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -594,6 +686,26 @@
                 "tags": [
                     "notifications"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -601,7 +713,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -620,7 +739,19 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "updated_count": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -632,6 +763,26 @@
                 "tags": [
                     "payments"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseBookRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseBookRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseBookRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -639,7 +790,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PurchaseBook"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -651,6 +809,26 @@
                 "tags": [
                     "payments"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseVideoRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseVideoRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PurchaseVideoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -658,7 +836,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PurchaseVideo"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -670,6 +855,25 @@
                 "tags": [
                     "payments"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubscribeVipRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubscribeVipRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubscribeVipRequest"
+                            }
+                        }
+                    }
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -677,7 +881,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SubscribeVip"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -700,6 +911,26 @@
                 "tags": [
                     "practice"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlashcardReviewRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlashcardReviewRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlashcardReviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -707,7 +938,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlashcardReview"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -945,7 +1183,36 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "is_device_locked": {
+                                            "type": "boolean"
+                                        },
+                                        "bound_device": {
+                                            "type": "object",
+                                            "nullable": true
+                                        },
+                                        "last_device_reset": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "nullable": true
+                                        },
+                                        "next_reset_available_at": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "nullable": true
+                                        },
+                                        "can_reset_now": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1049,7 +1316,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VideoLessonDetail"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1079,6 +1353,26 @@
                 "tags": [
                     "videos"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LessonProgressRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LessonProgressRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LessonProgressRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -1086,7 +1380,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LessonProgress"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1115,7 +1416,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CourseProgress"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1210,7 +1518,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WalletMe"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1222,6 +1537,26 @@
                 "tags": [
                     "wallet"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RedeemInputRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RedeemInputRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RedeemInputRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "security": [
                     {
                         "jwtAuth": []
@@ -1229,7 +1564,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "No response body"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RedeemInput"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -1263,6 +1605,40 @@
                 "required": [
                     "public_id",
                     "slug",
+                    "title"
+                ]
+            },
+            "BookChapterContent": {
+                "type": "object",
+                "properties": {
+                    "public_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "order": {
+                        "type": "integer"
+                    },
+                    "file_url": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "page_count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "file_path",
+                    "file_url",
+                    "order",
+                    "page_count",
+                    "public_id",
                     "title"
                 ]
             },
@@ -1501,6 +1877,49 @@
                     "user_name"
                 ]
             },
+            "CommentCreate": {
+                "type": "object",
+                "properties": {
+                    "content_type": {
+                        "$ref": "#/components/schemas/ContentTypeEnum"
+                    },
+                    "object_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "body": {
+                        "type": "string",
+                        "maxLength": 5000
+                    }
+                },
+                "required": [
+                    "body",
+                    "content_type",
+                    "object_id"
+                ]
+            },
+            "CommentCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "content_type": {
+                        "$ref": "#/components/schemas/ContentTypeEnum"
+                    },
+                    "object_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                    }
+                },
+                "required": [
+                    "body",
+                    "content_type",
+                    "object_id"
+                ]
+            },
             "CommentReply": {
                 "type": "object",
                 "properties": {
@@ -1534,22 +1953,76 @@
                     "user_name"
                 ]
             },
-            "CustomLogin": {
+            "CommentReplyCreate": {
                 "type": "object",
                 "properties": {
-                    "phone_number": {
-                        "type": "string"
+                    "body": {
+                        "type": "string",
+                        "maxLength": 5000
                     }
                 },
                 "required": [
-                    "phone_number"
+                    "body"
+                ]
+            },
+            "CommentReplyCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                    }
+                },
+                "required": [
+                    "body"
+                ]
+            },
+            "ContentTypeEnum": {
+                "enum": [
+                    "book",
+                    "video_course"
+                ],
+                "type": "string",
+                "description": "* `book` - book\n* `video_course` - video_course"
+            },
+            "CourseProgress": {
+                "type": "object",
+                "properties": {
+                    "progress_percent": {
+                        "type": "integer"
+                    },
+                    "completed_lessons": {
+                        "type": "integer"
+                    },
+                    "total_lessons": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "completed_lessons",
+                    "progress_percent",
+                    "total_lessons"
+                ]
+            },
+            "CustomLogin": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    }
+                },
+                "required": [
+                    "email"
                 ]
             },
             "CustomLoginRequest": {
                 "type": "object",
                 "properties": {
-                    "phone_number": {
+                    "email": {
                         "type": "string",
+                        "format": "email",
                         "minLength": 1
                     },
                     "password": {
@@ -1583,8 +2056,8 @@
                 "required": [
                     "device_id",
                     "device_type",
-                    "password",
-                    "phone_number"
+                    "email",
+                    "password"
                 ]
             },
             "DeviceTypeEnum": {
@@ -1688,6 +2161,38 @@
                     "title"
                 ]
             },
+            "ExamSubmit": {
+                "type": "object",
+                "properties": {
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        },
+                        "description": "[{\"question_id\": \"uuid\", \"answer\": \"a\"}, ...]"
+                    }
+                },
+                "required": [
+                    "answers"
+                ]
+            },
+            "ExamSubmitRequest": {
+                "type": "object",
+                "properties": {
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        },
+                        "description": "[{\"question_id\": \"uuid\", \"answer\": \"a\"}, ...]"
+                    }
+                },
+                "required": [
+                    "answers"
+                ]
+            },
             "ExamTypeEnum": {
                 "enum": [
                     "FINAL_EXAM",
@@ -1729,6 +2234,58 @@
                     "back",
                     "front",
                     "public_id"
+                ]
+            },
+            "FlashcardReview": {
+                "type": "object",
+                "properties": {
+                    "quality": {
+                        "type": "integer",
+                        "maximum": 5,
+                        "minimum": 0,
+                        "description": "SM-2 quality 0-5"
+                    }
+                },
+                "required": [
+                    "quality"
+                ]
+            },
+            "FlashcardReviewRequest": {
+                "type": "object",
+                "properties": {
+                    "quality": {
+                        "type": "integer",
+                        "maximum": 5,
+                        "minimum": 0,
+                        "description": "SM-2 quality 0-5"
+                    }
+                },
+                "required": [
+                    "quality"
+                ]
+            },
+            "LessonProgress": {
+                "type": "object",
+                "properties": {
+                    "progress_seconds": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "progress_seconds"
+                ]
+            },
+            "LessonProgressRequest": {
+                "type": "object",
+                "properties": {
+                    "progress_seconds": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "progress_seconds"
                 ]
             },
             "LevelEnum": {
@@ -1779,6 +2336,37 @@
                     "created_at",
                     "notification_type",
                     "public_id",
+                    "title"
+                ]
+            },
+            "NotificationRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "notification_type": {
+                        "$ref": "#/components/schemas/NotificationTypeEnum"
+                    },
+                    "is_read": {
+                        "type": "boolean"
+                    },
+                    "related_object_type": {
+                        "type": "string",
+                        "maxLength": 50
+                    },
+                    "related_object_id": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "notification_type",
                     "title"
                 ]
             },
@@ -1857,6 +2445,11 @@
             "PatchedUserRequest": {
                 "type": "object",
                 "properties": {
+                    "phone_number": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 15
+                    },
                     "first_name": {
                         "type": "string",
                         "title": "Tên",
@@ -1866,12 +2459,6 @@
                         "type": "string",
                         "title": "Họ",
                         "maxLength": 150
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "title": "Địa chỉ email",
-                        "maxLength": 254
                     }
                 }
             },
@@ -1940,51 +2527,93 @@
                     "question_text"
                 ]
             },
-            "Register": {
+            "PurchaseBook": {
                 "type": "object",
                 "properties": {
-                    "phone_number": {
+                    "book_id": {
                         "type": "string",
-                        "nullable": true,
-                        "maxLength": 15
-                    },
-                    "first_name": {
-                        "type": "string",
-                        "title": "Tên",
-                        "maxLength": 150
-                    },
-                    "last_name": {
-                        "type": "string",
-                        "title": "Họ",
-                        "maxLength": 150
+                        "format": "uuid"
                     }
                 },
                 "required": [
-                    "phone_number"
+                    "book_id"
+                ]
+            },
+            "PurchaseBookRequest": {
+                "type": "object",
+                "properties": {
+                    "book_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "book_id"
+                ]
+            },
+            "PurchaseVideo": {
+                "type": "object",
+                "properties": {
+                    "video_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "video_id"
+                ]
+            },
+            "PurchaseVideoRequest": {
+                "type": "object",
+                "properties": {
+                    "video_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "video_id"
+                ]
+            },
+            "RedeemInput": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "maxLength": 20
+                    }
+                },
+                "required": [
+                    "code"
+                ]
+            },
+            "RedeemInputRequest": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20
+                    }
+                },
+                "required": [
+                    "code"
                 ]
             },
             "RegisterRequest": {
                 "type": "object",
+                "description": "Register with email (identifier), password, and device info. Other fields via profile update.",
                 "properties": {
-                    "phone_number": {
+                    "email": {
                         "type": "string",
-                        "nullable": true,
-                        "maxLength": 15
+                        "format": "email",
+                        "writeOnly": true,
+                        "minLength": 1
                     },
                     "password": {
                         "type": "string",
                         "writeOnly": true,
                         "minLength": 1
-                    },
-                    "first_name": {
-                        "type": "string",
-                        "title": "Tên",
-                        "maxLength": 150
-                    },
-                    "last_name": {
-                        "type": "string",
-                        "title": "Họ",
-                        "maxLength": 150
                     },
                     "device_id": {
                         "type": "string",
@@ -2009,9 +2638,29 @@
                 "required": [
                     "device_id",
                     "device_type",
-                    "password",
-                    "phone_number"
+                    "email",
+                    "password"
                 ]
+            },
+            "SubscribeVip": {
+                "type": "object",
+                "properties": {
+                    "months": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1
+                    }
+                }
+            },
+            "SubscribeVipRequest": {
+                "type": "object",
+                "properties": {
+                    "months": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1
+                    }
+                }
             },
             "TokenRefresh": {
                 "type": "object",
@@ -2068,8 +2717,8 @@
                     },
                     "phone_number": {
                         "type": "string",
-                        "readOnly": true,
-                        "nullable": true
+                        "nullable": true,
+                        "maxLength": 15
                     },
                     "first_name": {
                         "type": "string",
@@ -2084,8 +2733,7 @@
                     "email": {
                         "type": "string",
                         "format": "email",
-                        "title": "Địa chỉ email",
-                        "maxLength": 254
+                        "readOnly": true
                     },
                     "user_type": {
                         "allOf": [
@@ -2101,10 +2749,6 @@
                         "readOnly": true,
                         "nullable": true
                     },
-                    "is_device_locked": {
-                        "type": "boolean",
-                        "readOnly": true
-                    },
                     "last_device_reset": {
                         "type": "string",
                         "format": "date-time",
@@ -2118,9 +2762,8 @@
                 },
                 "required": [
                     "created_at",
-                    "is_device_locked",
+                    "email",
                     "last_device_reset",
-                    "phone_number",
                     "public_id",
                     "subscription_end_date",
                     "user_type",
@@ -2130,6 +2773,11 @@
             "UserRequest": {
                 "type": "object",
                 "properties": {
+                    "phone_number": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 15
+                    },
                     "first_name": {
                         "type": "string",
                         "title": "Tên",
@@ -2139,12 +2787,6 @@
                         "type": "string",
                         "title": "Họ",
                         "maxLength": 150
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "title": "Địa chỉ email",
-                        "maxLength": 254
                     }
                 }
             },
@@ -2354,6 +2996,66 @@
                     "title"
                 ]
             },
+            "VideoLessonDetail": {
+                "type": "object",
+                "properties": {
+                    "public_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "slug": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "order": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "video_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "video_id": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "duration_seconds": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "nullable": true
+                    },
+                    "transcript": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "is_free": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "order",
+                    "public_id",
+                    "slug",
+                    "title",
+                    "video_url"
+                ]
+            },
             "VideoLessonList": {
                 "type": "object",
                 "properties": {
@@ -2395,6 +3097,23 @@
                     "slug",
                     "title"
                 ]
+            },
+            "WalletMe": {
+                "type": "object",
+                "properties": {
+                    "balance": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Current LT balance"
+                    },
+                    "total_recharged": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lifetime recharged amount"
+                    }
+                }
             },
             "WalletTransaction": {
                 "type": "object",
@@ -2442,6 +3161,21 @@
                     "public_id",
                     "reference_id",
                     "transaction_type"
+                ]
+            },
+            "WatermarkConfig": {
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "phone_number": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "display_name",
+                    "phone_number"
                 ]
             }
         },

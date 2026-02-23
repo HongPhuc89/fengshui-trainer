@@ -58,3 +58,12 @@ class BookDetailWithPurchaseSerializer(BookDetailSerializer):
 class WatermarkConfigSerializer(serializers.Serializer):
     display_name = serializers.CharField()
     phone_number = serializers.CharField()
+
+
+class BookChapterContentSerializer(serializers.Serializer):
+    public_id = serializers.UUIDField()
+    title = serializers.CharField()
+    order = serializers.IntegerField()
+    file_url = serializers.CharField(allow_null=True)
+    file_path = serializers.CharField(allow_null=True)
+    page_count = serializers.IntegerField()

@@ -9,6 +9,7 @@ from users.models import User
 from books.models import Book, UserBookPurchase
 from videos.models import VideoCourse, UserVideoPurchase
 from .models import Wallet, WalletTransaction
+from .serializers import PurchaseBookSerializer, PurchaseVideoSerializer, SubscribeVipSerializer
 from .views import get_or_create_wallet
 
 # VIP subscription: LT per month (configurable)
@@ -18,6 +19,7 @@ VIP_PRICE_PER_MONTH = 500
 class PurchaseBookView(views.APIView):
     """POST /api/payments/purchase-book/ - Deduct LT, grant book access."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = PurchaseBookSerializer
 
     def post(self, request):
         book_id = request.data.get('book_id')
@@ -84,6 +86,7 @@ class PurchaseBookView(views.APIView):
 class PurchaseVideoView(views.APIView):
     """POST /api/payments/purchase-video/ - Deduct LT, grant video access."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = PurchaseVideoSerializer
 
     def post(self, request):
         video_id = request.data.get('video_id')
@@ -150,6 +153,7 @@ class PurchaseVideoView(views.APIView):
 class SubscribeVipView(views.APIView):
     """POST /api/payments/subscribe-vip/ - Deduct LT, extend VIP status."""
     permission_classes = (IsAuthenticated,)
+    serializer_class = SubscribeVipSerializer
 
     def post(self, request):
         try:
