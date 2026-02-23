@@ -3,8 +3,8 @@
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
 - **Version**: 1.0
-- **Last Updated**: 2026-02-21
-- **Status**: Planning Complete → Ready for Implementation
+- **Last Updated**: 2026-02-23
+- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web In Progress 🚧
 
 ## Backend Detail Designs (md/design/)
 | Feature | Doc | Description | Status |
@@ -64,7 +64,7 @@ gantt
   - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)**
   - [x] Admin interface configuration (with Jazzmin theme)
   - **Assignee**: Backend Dev
-  - **Due**: Week 1
+  - **Due**: Week 1 ✅
 
 - [x] **1.2 Authentication API**
   - [x] POST `/api/auth/register/` - User registration with device registration
@@ -307,18 +307,18 @@ gantt
 ### Feature 8: Vue.js Project Setup
 **Priority**: Critical | **Estimated**: 1 week
 
-- [ ] **8.1 Project Initialization**
-  - [ ] Create Vite + Vue.js project
-  - [ ] Configure dependencies (Pinia, Axios, Vuetify)
-  - [ ] Set up project structure
-  - [ ] Configure router
+- [x] **8.1 Project Initialization**
+  - [x] Create Vite + Vue.js project
+  - [x] Configure dependencies (Pinia, Axios, Vuetify)
+  - [x] Set up project structure (`src/views`, `src/components`, `src/layouts`, `src/stores`, `src/api`, `src/composables`, `src/style`)
+  - [x] Configure router (`router/index.js`)
   - **Assignee**: Frontend Dev
-  - **Due**: Week 11
+  - **Due**: Week 11 ✅
 
-- [ ] **8.2 Core Services**
-  - [ ] API client with Axios
-  - [ ] Auth interceptor
-  - [ ] Device fingerprinting service
+- [x] **8.2 Core Services**
+  - [x] API client with Axios (`api/client.js` - with interceptor)
+  - [x] Auth interceptor (integrated in `client.js`)
+  - [x] Device fingerprinting service (`composables/useDeviceId.js`)
   - [ ] Watermark composable
   - **Assignee**: Frontend Dev
   - **Due**: Week 11
@@ -329,18 +329,18 @@ gantt
 **Priority**: Critical | **Estimated**: 1 week  
 **Detail design**: [frontend-detail-design.md](design/frontend-detail-design.md) (§2 Login/Register, §3 Home Trang Chủ, §4 Profile)
 
-- [ ] **9.1 Auth Pages**
-  - [ ] Login page
-  - [ ] Registration page
-  - [ ] Device limit error handling
-  - [ ] Auth store (Pinia)
+- [x] **9.1 Auth Pages**
+  - [x] Login page (`LoginView.vue`)
+  - [x] Registration page (`RegisterView.vue`)
+  - [ ] Device limit error handling (UI flow)
+  - [x] Auth store (Pinia - `stores/auth.js`)
   - **Assignee**: Frontend Dev
   - **Due**: Week 12
 
-- [ ] **9.2 Profile & Settings**
-  - [ ] Profile page
-  - [ ] Edit profile
-  - [ ] Device management
+- [/] **9.2 Profile & Settings**
+  - [x] Profile page (`ProfileView.vue` - skeleton)
+  - [ ] Edit profile (form)
+  - [ ] Device management UI
   - [ ] VIP banner
   - **Assignee**: Frontend Dev
   - **Due**: Week 12
@@ -350,8 +350,9 @@ gantt
 ### Feature 10: Books Module (Web)
 **Priority**: Critical | **Estimated**: 1.5 weeks
 
-- [ ] **10.1 Books List & Detail**
-  - [ ] Books list page with filters
+- [/] **10.1 Books List & Detail**
+  - [x] Books list page skeleton (`BooksView.vue`)
+  - [ ] Books list with filters (API integration)
   - [ ] Book detail page
   - [ ] Purchase flow
   - **Assignee**: Frontend Dev
@@ -647,4 +648,26 @@ graph TD
 
 ---
 
-*Last updated: 2026-02-17*
+*Last updated: 2026-02-23*
+
+## Phase 1 Completion Summary
+
+| Feature | Backend | Status |
+|---------|---------|--------|
+| 1. User Management & Auth | Fully implemented | ✅ |
+| 2. Books Module | Fully implemented | ✅ |
+| 3. Videos Module | Fully implemented (Bunny Stream pending) | ✅ |
+| 4. Exams & Practice | Fully implemented | ✅ |
+| 5. Comments & Interactions | Fully implemented | ✅ |
+| 6. Notifications | In-app done, email/push pending | 🚧 |
+| 7. Wallet & Payment | Core done, dashboard & tests pending | 🚧 |
+
+## Phase 2 Progress Summary
+
+| Feature | Web Frontend | Status |
+|---------|-------------|--------|
+| 8. Vue.js Setup | Vite + Pinia + Axios + Router done | ✅ |
+| 9. Auth & Profile | Login + Register + auth store done | 🚧 |
+| 10. Books (Web) | Skeleton only | 🟡 |
+| 11. Videos (Web) | Not started | ❌ |
+| 12. Practice (Web) | Not started | ❌ |

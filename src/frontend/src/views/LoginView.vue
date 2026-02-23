@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useDeviceId } from '../composables/useDeviceId'
 import api from '../api/client'
@@ -11,6 +12,7 @@ import PolicyBox from '../components/auth/PolicyBox.vue'
 import AuthLink from '../components/auth/AuthLink.vue'
 import DeviceLockModal from '../components/auth/DeviceLockModal.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -26,7 +28,7 @@ const deviceLock = ref(null) // { can_reset, last_reset_date }
 async function submit() {
   error.value = ''
   if (!phoneNumber.value.trim() || !password.value) {
-    error.value = 'Please enter phone number and password.'
+    error.value = t('auth.login.errorEmpty')
     return
   }
   loading.value = true
@@ -51,7 +53,7 @@ async function submit() {
       error.value = ''
       return
     }
-    error.value = res?.data?.detail || res?.data?.phone_number?.[0] || 'Invalid phone number or password.'
+    error.value = res?.data?.detail || res?.data?.phone_number?.[0] || t('auth.login.errorInvalid')
   } finally {
     loading.value = false
   }
@@ -74,7 +76,7 @@ async function confirmDeviceReset() {
     deviceLock.value = null
     router.push(route.query.redirect || '/')
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Failed to switch device.'
+    error.value = e.response?.data?.detail || t('auth.login.errorInvalid')
   } finally {
     loading.value = false
   }
@@ -82,40 +84,40 @@ async function confirmDeviceReset() {
 
 function closeDeviceLockModal() {
   deviceLock.value = null
-  error.value = 'This account is locked to another device.'
+  error.value = t('auth.login.errorDeviceLocked')
 }
 </script>
 
 <template>
   <div class="login-view">
     <AppLogo variant="login" />
-    <h2 class="login-view__heading">Access the Archives</h2>
+    <h2 class="login-view__heading">{{ t('auth.login.heading') }}</h2>
     <form class="login-view__form" @submit.prevent="submit">
       <FormInput
         v-model="phoneNumber"
-        label="Username / Phone"
-        placeholder="Enter your scholar ID"
+        :label="t('auth.login.usernameLabel')"
+        :placeholder="t('auth.login.usernamePlaceholder')"
         icon="person"
         :error="error"
       />
       <FormInput
         v-model="password"
         v-model:visible="passwordVisible"
-        label="Password"
+        :label="t('auth.login.passwordLabel')"
         type="password"
-        placeholder="Enter your secure key"
+        :placeholder="t('auth.login.passwordPlaceholder')"
         icon="lock"
         :show-password-toggle="true"
       />
       <div class="login-view__forgot">
-        <a href="#" class="login-view__forgot-link" @click.prevent="">Forgot Password?</a>
+        <a href="#" class="login-view__forgot-link" @click.prevent="">{{ t('auth.login.forgotPassword') }}</a>
       </div>
-      <PrimaryButton type="submit" :loading="loading">Enter Library</PrimaryButton>
+      <PrimaryButton type="submit" :loading="loading">{{ t('auth.login.submitButton') }}</PrimaryButton>
     </form>
-    <PolicyBox title="One Device Policy">
-      For security, your account can only be active on one device at a time. Logging in here will disconnect other sessions.
+    <PolicyBox :title="t('auth.policy.title')">
+      {{ t('auth.policy.body') }}
     </PolicyBox>
-    <AuthLink to="/auth/register" prefix="New Scholar?">Register for Access</AuthLink>
+    <AuthLink to="/auth/register" :prefix="t('auth.login.noAccount')">{{ t('auth.login.registerLink') }}</AuthLink>
 
     <DeviceLockModal
       v-if="deviceLock"
@@ -133,3 +135,4 @@ function closeDeviceLockModal() {
 .login-view__forgot { text-align: right; margin-top: -8px; margin-bottom: var(--space-md); }
 .login-view__forgot-link { color: var(--accent-gold); font-size: 0.85rem; }
 </style>
+

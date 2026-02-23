@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 
@@ -15,11 +17,11 @@ const loading = ref(true)
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
-  let period = 'sáng'
-  if (hour >= 12 && hour < 18) period = 'trưa'
-  else if (hour >= 18) period = 'tối'
-  const name = user.value?.first_name || user.value?.phone_number || 'Học giả'
-  return `Chào buổi ${period}, Học giả ${name}.`
+  let period = t('home.greeting.morning')
+  if (hour >= 12 && hour < 18) period = t('home.greeting.afternoon')
+  else if (hour >= 18) period = t('home.greeting.evening')
+  const name = user.value?.first_name || user.value?.phone_number || t('home.greeting.scholar')
+  return `${period}, ${t('home.greeting.scholar')} ${name}.`
 })
 
 onMounted(async () => {
@@ -45,31 +47,38 @@ function badgeType(book) {
   return 'premium'
 }
 
+function badgeLabel(book) {
+  if (book?.is_free) return t('home.badge.free')
+  if (book?.is_vip) return t('home.badge.vip')
+  return t('home.badge.premium')
+}
+
 function goBook(slug) {
   if (slug) router.push(`/books/${slug}`)
 }
 </script>
 
+
 <template>
   <div class="home-view">
     <p class="home-view__greeting">{{ greeting }}</p>
-    <p class="home-view__motto">Tinh tú hội tụ, thời khắc học tập.</p>
+    <p class="home-view__motto">{{ t('home.motto') }}</p>
 
     <section class="home-card home-card--profile">
       <div class="home-card__profile-left">
         <div class="home-card__avatar"></div>
-        <span class="home-card__role">Học Giả</span>
+        <span class="home-card__role">{{ t('home.profile.role') }}</span>
         <span class="home-card__level">Cấp 4</span>
       </div>
       <div class="home-card__profile-right">
-        <span class="home-card__balance-label">SỐ DƯ LINH THẠCH</span>
+        <span class="home-card__balance-label">{{ t('home.profile.balanceLabel') }}</span>
         <span class="home-card__balance">
           <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" class="home-card__diamond"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
           {{ (wallet ?? 0).toLocaleString() }}
         </span>
       </div>
       <div class="home-card__progress-wrap">
-        <span class="home-card__progress-label">Tiến độ cấp bậc</span>
+        <span class="home-card__progress-label">{{ t('home.profile.progressLabel') }}</span>
         <div class="home-card__progress-bar">
           <div class="home-card__progress-fill" style="width: 65%"></div>
         </div>
@@ -80,7 +89,7 @@ function goBook(slug) {
     <section class="home-section">
       <h2 class="home-section__title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        Tiếp Tục Học
+        {{ t('home.continueStudy.title') }}
       </h2>
       <div v-if="continueItem" class="home-card home-card--continue" @click="goBook(continueItem.slug)">
         <div class="home-card__cover"></div>
@@ -98,14 +107,14 @@ function goBook(slug) {
         </button>
       </div>
       <div v-else class="home-card home-card--continue home-card--empty">
-        <p class="home-card__empty-text">Bắt đầu học</p>
+        <p class="home-card__empty-text">{{ t('home.continueStudy.empty') }}</p>
       </div>
     </section>
 
     <section class="home-section">
       <div class="home-section__head">
-        <h2 class="home-section__title">Sách Mới</h2>
-        <RouterLink to="/books" class="home-section__link">Xem Tất Cả</RouterLink>
+        <h2 class="home-section__title">{{ t('home.newBooks.title') }}</h2>
+        <RouterLink to="/books" class="home-section__link">{{ t('home.newBooks.viewAll') }}</RouterLink>
       </div>
       <div class="home-books">
         <div
@@ -118,14 +127,14 @@ function goBook(slug) {
             <img v-if="b.cover_image" :src="b.cover_image" :alt="b.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
             <span class="home-book-card__badge" :class="`home-book-card__badge--${badgeType(b)}`">
-              {{ b.is_free ? 'MIỄN PHÍ' : (b.is_vip ? 'VIP' : 'PREMIUM') }}
+              {{ badgeLabel(b) }}
             </span>
             <span v-if="!b.is_free && !b.is_vip" class="home-book-card__lock" aria-hidden="true">🔒</span>
           </div>
           <span class="home-book-card__title">{{ b.title }}</span>
         </div>
         <div v-if="!books.length && !loading" class="home-book-card home-book-card--empty">
-          <span>Chưa có sách</span>
+          <span>{{ t('home.newBooks.empty') }}</span>
         </div>
       </div>
     </section>

@@ -1,7 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import LangSwitcher from './LangSwitcher.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const drawerOpen = ref(false)
 const hasUnread = ref(false) // TODO: from notifications API
@@ -13,17 +16,20 @@ function goHome() {
 
 <template>
   <header class="app-header">
-    <button type="button" class="app-header__btn" aria-label="Menu" @click="drawerOpen = true">
+    <button type="button" class="app-header__btn" :aria-label="t('header.menuAriaLabel')" @click="drawerOpen = true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <div class="app-header__brand" @click="goHome">
       <span class="app-header__title">THIÊN THƯ</span>
-      <span class="app-header__subtitle">MINH TRIẾT CỔ ĐIỂN</span>
+      <span class="app-header__subtitle">{{ t('header.subtitle') }}</span>
     </div>
-    <button type="button" class="app-header__btn app-header__btn--bell" aria-label="Notifications" @click="() => {}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span v-if="hasUnread" class="app-header__dot" aria-hidden="true"></span>
-    </button>
+    <div class="app-header__right">
+      <LangSwitcher />
+      <button type="button" class="app-header__btn app-header__btn--bell" :aria-label="t('header.notificationsAriaLabel')" @click="() => {}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span v-if="hasUnread" class="app-header__dot" aria-hidden="true"></span>
+      </button>
+    </div>
   </header>
   <!-- TODO: Side drawer for menu (drawerOpen) -->
 </template>
@@ -51,6 +57,11 @@ function goHome() {
   align-items: center;
   justify-content: center;
 }
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
 .app-header__btn--bell { position: relative; }
 .app-header__dot {
   position: absolute;
@@ -65,3 +76,5 @@ function goHome() {
 .app-header__title { display: block; font-size: 1.15rem; font-weight: 700; color: var(--header-title); letter-spacing: 0.02em; }
 .app-header__subtitle { display: block; font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
 </style>
+
+

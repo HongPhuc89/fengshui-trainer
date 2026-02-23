@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useDeviceId } from '../composables/useDeviceId'
 import api from '../api/client'
@@ -9,6 +10,7 @@ import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
 import AuthLink from '../components/auth/AuthLink.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 const { deviceId } = useDeviceId()
@@ -27,9 +29,9 @@ const fieldErrors = ref({})
 
 const displayName = computed(() => {
   const n = fullName.value.trim()
-  if (!n) return 'Scholar'
+  if (!n) return t('home.greeting.scholar')
   const parts = n.split(/\s+/)
-  return parts[parts.length - 1] || parts[0] || 'Scholar'
+  return parts[parts.length - 1] || parts[0] || t('home.greeting.scholar')
 })
 
 const canSubmit = computed(() => {
@@ -42,14 +44,14 @@ const canSubmit = computed(() => {
 
 function validate() {
   fieldErrors.value = {}
-  if (!fullName.value.trim()) fieldErrors.value.fullName = 'Full name is required.'
-  if (!phoneNumber.value.trim()) fieldErrors.value.phoneNumber = 'Phone number is required.'
-  if (!email.value.trim()) fieldErrors.value.email = 'Email is required.'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) fieldErrors.value.email = 'Invalid email format.'
-  if (!password.value) fieldErrors.value.password = 'Password is required.'
-  else if (password.value.length < 8) fieldErrors.value.password = 'Password must be at least 8 characters.'
-  if (password.value !== confirmPassword.value) fieldErrors.value.confirmPassword = 'Passwords do not match.'
-  if (!termsAccepted.value) fieldErrors.value.terms = 'You must accept the terms.'
+  if (!fullName.value.trim()) fieldErrors.value.fullName = t('auth.register.validation.fullNameRequired')
+  if (!phoneNumber.value.trim()) fieldErrors.value.phoneNumber = t('auth.register.validation.phoneRequired')
+  if (!email.value.trim()) fieldErrors.value.email = t('auth.register.validation.emailRequired')
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) fieldErrors.value.email = t('auth.register.validation.emailInvalid')
+  if (!password.value) fieldErrors.value.password = t('auth.register.validation.passwordRequired')
+  else if (password.value.length < 8) fieldErrors.value.password = t('auth.register.validation.passwordMin')
+  if (password.value !== confirmPassword.value) fieldErrors.value.confirmPassword = t('auth.register.validation.passwordMismatch')
+  if (!termsAccepted.value) fieldErrors.value.terms = t('auth.register.validation.termsRequired')
   return Object.keys(fieldErrors.value).length === 0
 }
 
@@ -75,7 +77,7 @@ async function submit() {
     const res = e.response
     const d = res?.data
     if (d?.phone_number) fieldErrors.value.phoneNumber = Array.isArray(d.phone_number) ? d.phone_number[0] : d.phone_number
-    else error.value = d?.detail || (typeof d === 'string' ? d : 'Registration failed.')
+    else error.value = d?.detail || (typeof d === 'string' ? d : t('auth.register.error'))
   } finally {
     loading.value = false
   }
@@ -84,28 +86,28 @@ async function submit() {
 
 <template>
   <div class="register-view">
-    <AppLogo variant="register" subtitle="SCHOLAR REGISTRATION" />
+    <AppLogo variant="register" :subtitle="t('auth.register.subtitle')" />
     <form class="register-view__form" @submit.prevent="submit">
-      <FormInput v-model="fullName" label="Full Name" placeholder="Nguyen Van A" icon="person" :error="fieldErrors.fullName" />
-      <FormInput v-model="phoneNumber" label="Phone Number" placeholder="+84..." icon="phone" :error="fieldErrors.phoneNumber" />
-      <FormInput v-model="email" label="Email Address" placeholder="scholar@thienthu.vn" icon="envelope" :error="fieldErrors.email" type="email" />
-      <FormInput v-model="password" v-model:visible="passwordVisible" label="Password" type="password" placeholder="••••••••" icon="lock" :show-password-toggle="true" :error="fieldErrors.password" />
-      <FormInput v-model="confirmPassword" v-model:visible="confirmVisible" label="Confirm Password" type="password" placeholder="••••••••" icon="shield" :show-password-toggle="true" :error="fieldErrors.confirmPassword" />
+      <FormInput v-model="fullName" :label="t('auth.register.fullNameLabel')" :placeholder="t('auth.register.fullNamePlaceholder')" icon="person" :error="fieldErrors.fullName" />
+      <FormInput v-model="phoneNumber" :label="t('auth.register.phoneLabel')" :placeholder="t('auth.register.phonePlaceholder')" icon="phone" :error="fieldErrors.phoneNumber" />
+      <FormInput v-model="email" :label="t('auth.register.emailLabel')" :placeholder="t('auth.register.emailPlaceholder')" icon="envelope" :error="fieldErrors.email" type="email" />
+      <FormInput v-model="password" v-model:visible="passwordVisible" :label="t('auth.register.passwordLabel')" type="password" :placeholder="t('auth.register.passwordPlaceholder')" icon="lock" :show-password-toggle="true" :error="fieldErrors.password" />
+      <FormInput v-model="confirmPassword" v-model:visible="confirmVisible" :label="t('auth.register.confirmPasswordLabel')" type="password" :placeholder="t('auth.register.confirmPasswordPlaceholder')" icon="shield" :show-password-toggle="true" :error="fieldErrors.confirmPassword" />
       <div class="register-view__terms">
         <label class="register-view__checkbox">
           <input v-model="termsAccepted" type="checkbox" />
-          <span>I agree to the <a href="#" class="register-view__link">Terms of Service</a> and <a href="#" class="register-view__link">Copyright Protection Policy</a>.</span>
+          <span>{{ t('auth.register.termsText') }} <a href="#" class="register-view__link">{{ t('auth.register.termsLink') }}</a> {{ t('auth.register.andText') }} <a href="#" class="register-view__link">{{ t('auth.register.privacyLink') }}</a>.</span>
         </label>
         <p v-if="fieldErrors.terms" class="form-input__error">{{ fieldErrors.terms }}</p>
       </div>
       <p v-if="error" class="register-view__error">{{ error }}</p>
-      <PrimaryButton type="submit" :loading="loading" :disabled="!canSubmit">Create Account</PrimaryButton>
+      <PrimaryButton type="submit" :loading="loading" :disabled="!canSubmit">{{ t('auth.register.submitButton') }}</PrimaryButton>
     </form>
     <p class="register-view__encrypted">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      END-TO-END ENCRYPTED
+      {{ t('auth.register.encrypted') }}
     </p>
-    <AuthLink to="/auth/login" prefix="Already a scholar?">Log In</AuthLink>
+    <AuthLink to="/auth/login" :prefix="t('auth.register.alreadyAccount')">{{ t('auth.register.loginLink') }}</AuthLink>
   </div>
 </template>
 
@@ -118,3 +120,4 @@ async function submit() {
 .register-view__error { font-size: 0.85rem; color: #e57373; margin-bottom: var(--space-md); }
 .register-view__encrypted { font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-md); display: flex; align-items: center; }
 </style>
+

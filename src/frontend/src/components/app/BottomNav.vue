@@ -1,16 +1,18 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
+const { t } = useI18n()
 
-const tabs = [
-  { name: 'Home', path: '/', label: 'Trang Chủ', icon: 'home' },
-  { name: 'Books', path: '/books', label: 'Thư Viện', icon: 'book' },
-  { name: 'Store', path: '/store', label: 'Cửa Hàng', icon: 'cart' },
-  { name: 'Community', path: '/community', label: 'Cộng Đồng', icon: 'people' },
-  { name: 'Profile', path: '/profile', label: 'Hồ Sơ', icon: 'person' },
-]
+const tabs = computed(() => [
+  { name: 'Home', path: '/', label: t('nav.home'), icon: 'home' },
+  { name: 'Books', path: '/books', label: t('nav.books'), icon: 'book' },
+  { name: 'Store', path: '/store', label: t('nav.store'), icon: 'cart' },
+  { name: 'Community', path: '/community', label: t('nav.community'), icon: 'people' },
+  { name: 'Profile', path: '/profile', label: t('nav.profile'), icon: 'person' },
+])
 
 const isActive = (path) => {
   if (path === '/') return route.path === '/'

@@ -1,0 +1,133 @@
+export default {
+  nav: {
+    home: 'Trang Chủ',
+    books: 'Thư Viện',
+    store: 'Cửa Hàng',
+    community: 'Cộng Đồng',
+    profile: 'Hồ Sơ',
+  },
+
+  header: {
+    subtitle: 'MINH TRIẾT CỔ ĐIỂN',
+    menuAriaLabel: 'Menu',
+    notificationsAriaLabel: 'Thông báo',
+  },
+
+  auth: {
+    login: {
+      heading: 'Truy Cập Thư Viện',
+      usernamePlaceholder: 'Nhập số điện thoại hoặc danh hiệu',
+      usernameLabel: 'Số điện thoại / Tên đăng nhập',
+      passwordLabel: 'Mật khẩu',
+      passwordPlaceholder: 'Nhập mật khẩu bảo mật',
+      forgotPassword: 'Quên mật khẩu?',
+      submitButton: 'Vào Thư Viện',
+      noAccount: 'Học giả mới?',
+      registerLink: 'Đăng Ký',
+      errorEmpty: 'Vui lòng nhập số điện thoại và mật khẩu.',
+      errorInvalid: 'Số điện thoại hoặc mật khẩu không đúng.',
+      errorDeviceLocked: 'Tài khoản này đã bị khóa với thiết bị khác.',
+    },
+    register: {
+      subtitle: 'ĐĂNG KÝ HỌC GIẢ',
+      fullNameLabel: 'Họ và Tên',
+      fullNamePlaceholder: 'Nguyễn Văn A',
+      phoneLabel: 'Số Điện Thoại',
+      phonePlaceholder: '+84...',
+      emailLabel: 'Địa Chỉ Email',
+      emailPlaceholder: 'scholar@thienthu.vn',
+      passwordLabel: 'Mật khẩu',
+      passwordPlaceholder: '••••••••',
+      confirmPasswordLabel: 'Xác Nhận Mật Khẩu',
+      confirmPasswordPlaceholder: '••••••••',
+      termsText: 'Tôi đồng ý với',
+      termsLink: 'Điều Khoản Dịch Vụ',
+      andText: 'và',
+      privacyLink: 'Chính Sách Bản Quyền',
+      submitButton: 'Tạo Tài Khoản',
+      alreadyAccount: 'Đã là học giả?',
+      loginLink: 'Đăng Nhập',
+      encrypted: 'MÃ HÓA ĐẦU-CUỐI',
+      validation: {
+        fullNameRequired: 'Vui lòng nhập họ và tên.',
+        phoneRequired: 'Vui lòng nhập số điện thoại.',
+        emailRequired: 'Vui lòng nhập địa chỉ email.',
+        emailInvalid: 'Định dạng email không hợp lệ.',
+        passwordRequired: 'Vui lòng nhập mật khẩu.',
+        passwordMin: 'Mật khẩu phải có ít nhất 8 ký tự.',
+        passwordMismatch: 'Mật khẩu xác nhận không khớp.',
+        termsRequired: 'Bạn phải đồng ý với điều khoản.',
+      },
+      error: 'Đăng ký thất bại. Vui lòng thử lại.',
+    },
+    policy: {
+      title: 'Chính Sách Một Thiết Bị',
+      body: 'Vì lý do bảo mật, tài khoản của bạn chỉ có thể hoạt động trên một thiết bị mà bạn đã đăng ký.',
+    },
+    deviceLock: {
+      title: 'Phát Hiện Thiết Bị Mới',
+      body: 'Tài khoản của bạn đã được liên kết với một thiết bị khác. Bạn có muốn chuyển sang thiết bị này không?',
+      canReset: 'Bạn có thể chuyển thiết bị ngay bây giờ.',
+      cannotReset: 'Bạn đã chuyển thiết bị gần đây. Lần chuyển tiếp theo có thể thực hiện sau ngày {date}.',
+      confirmButton: 'Chuyển Sang Thiết Bị Này',
+      cancelButton: 'Hủy',
+    },
+  },
+
+  home: {
+    greeting: {
+      morning: 'Chào buổi sáng',
+      afternoon: 'Chào buổi trưa',
+      evening: 'Chào buổi tối',
+      scholar: 'Học giả',
+    },
+    motto: 'Tinh tú hội tụ, thời khắc học tập.',
+    profile: {
+      role: 'Học Giả',
+      balanceLabel: 'SỐ DƯ LINH THẠCH',
+      progressLabel: 'Tiến độ cấp bậc',
+    },
+    continueStudy: {
+      title: 'Tiếp Tục Học',
+      empty: 'Bắt đầu học',
+      chapter: 'CHƯƠNG',
+      playAriaLabel: 'Phát',
+    },
+    newBooks: {
+      title: 'Sách Mới',
+      viewAll: 'Xem Tất Cả',
+      empty: 'Chưa có sách',
+    },
+    badge: {
+      free: 'MIỄN PHÍ',
+      vip: 'VIP',
+      premium: 'CAO CẤP',
+    },
+  },
+
+  books: {
+    title: 'Thư Viện Sách',
+  },
+
+  store: {
+    title: 'Cửa Hàng',
+  },
+
+  community: {
+    title: 'Cộng Đồng',
+  },
+
+  profile: {
+    title: 'Hồ Sơ',
+  },
+
+  common: {
+    loading: 'Đang tải...',
+    error: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    retry: 'Thử lại',
+  },
+
+  lang: {
+    switchLabel: 'Chuyển ngôn ngữ',
+  },
+}
