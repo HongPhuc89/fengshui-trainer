@@ -18,7 +18,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const { deviceId } = useDeviceId()
 
-const phoneNumber = ref('')
+const email = ref('')
 const password = ref('')
 const passwordVisible = ref(false)
 const loading = ref(false)
@@ -27,14 +27,14 @@ const deviceLock = ref(null) // { can_reset, last_reset_date }
 
 async function submit() {
   error.value = ''
-  if (!phoneNumber.value.trim() || !password.value) {
+  if (!email.value.trim() || !password.value) {
     error.value = t('auth.login.errorEmpty')
     return
   }
   loading.value = true
   try {
     const { data } = await api.post('auth/login/', {
-      phone_number: phoneNumber.value.trim(),
+      email: email.value.trim(),
       password: password.value,
       device_id: deviceId.value || 'web_unknown',
       device_type: 'WEB',
@@ -53,7 +53,7 @@ async function submit() {
       error.value = ''
       return
     }
-    error.value = res?.data?.detail || res?.data?.phone_number?.[0] || t('auth.login.errorInvalid')
+    error.value = res?.data?.detail || res?.data?.email?.[0] || t('auth.login.errorInvalid')
   } finally {
     loading.value = false
   }
@@ -65,7 +65,7 @@ async function confirmDeviceReset() {
   error.value = ''
   try {
     const { data } = await api.post('auth/login/', {
-      phone_number: phoneNumber.value.trim(),
+      email: email.value.trim(),
       password: password.value,
       device_id: deviceId.value || 'web_unknown',
       device_type: 'WEB',
@@ -94,7 +94,7 @@ function closeDeviceLockModal() {
     <h2 class="login-view__heading">{{ t('auth.login.heading') }}</h2>
     <form class="login-view__form" @submit.prevent="submit">
       <FormInput
-        v-model="phoneNumber"
+        v-model="email"
         :label="t('auth.login.usernameLabel')"
         :placeholder="t('auth.login.usernamePlaceholder')"
         icon="person"
