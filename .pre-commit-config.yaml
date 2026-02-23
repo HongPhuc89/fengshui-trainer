@@ -1,0 +1,21 @@
+repos:
+  # Ruff: lint + format Python code
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^src/backend/
+      - id: ruff-format
+        files: ^src/backend/
+
+  # Prettier: format frontend code
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier
+        files: ^src/frontend/
+        exclude: ^src/frontend/node_modules/
+        types_or: [javascript, vue, css, scss, json, yaml, markdown]
+        additional_dependencies:
+          - prettier@3.3.3

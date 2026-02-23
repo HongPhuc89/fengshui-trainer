@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build pre-commit-install pre-commit-run
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -59,6 +59,13 @@ export-lock: ## Export uv.lock to requirements-lock.txt (pip-compatible)
 swagger-export: ## Export OpenAPI schema to postman/api_schema.json
 	docker-compose -f $(COMPOSE_FILE) exec -T web python manage.py spectacular --format openapi-json > postman/api_schema.json
 	@echo "Schema exported to postman/api_schema.json"
+
+# --- Pre-commit hooks ---
+pre-commit-install: ## Install pre-commit hooks (run once after cloning)
+	cd $(BACKEND) && uv run pre-commit install
+
+pre-commit-run: ## Run pre-commit hooks on all files
+	cd $(BACKEND) && uv run pre-commit run --all-files
 
 # --- Frontend (Vue) ---
 frontend-install: ## Install frontend npm dependencies
