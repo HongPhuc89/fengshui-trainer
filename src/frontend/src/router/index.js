@@ -17,6 +17,12 @@ const routes = [
     ],
   },
   {
+    path: '/books/:slug/read',
+    name: 'BookReader',
+    component: () => import('../views/BookReaderView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/auth',
     component: AuthLayout,
     meta: { guest: true },

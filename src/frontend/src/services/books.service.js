@@ -16,4 +16,16 @@ export const booksService = {
   getChapter(bookSlug, order) {
     return api.get(`books/${bookSlug}/chapters/${order}/`)
   },
+
+  getBookProgress(slug) {
+    return api.get(`books/${slug}/progress/`)
+  },
+
+  saveChapterProgress(bookSlug, order, data) {
+    return api.post(`books/${bookSlug}/chapters/${order}/progress/`, data)
+  },
+
+  getWatermarkConfig(bookSlug, order) {
+    return api.get(`books/${bookSlug}/chapters/${order}/watermark-config/`)
+  },
 }

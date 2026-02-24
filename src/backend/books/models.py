@@ -151,6 +151,7 @@ class UserChapterProgress(BaseModel):
         on_delete=models.CASCADE,
         related_name='user_progresses',
     )
+    current_page = models.PositiveIntegerField(default=1)
     completed = models.BooleanField(default=False)
     last_read = models.DateTimeField(auto_now=True)
 

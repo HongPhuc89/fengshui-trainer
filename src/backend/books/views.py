@@ -3,7 +3,7 @@ from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from .models import BookCategory, Book, BookChapter, UserBookPurchase
+from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapterProgress
 from .serializers import (
     BookCategorySerializer, BookListSerializer, BookDetailSerializer,
     BookDetailWithPurchaseSerializer, BookChapterListSerializer,
@@ -12,7 +12,9 @@ from .serializers import (
 
 
 def _can_access_chapter(user, book, chapter):
-    """VIP or purchased or demo chapter -> True."""
+    """VIP, free book, purchased, or demo chapter -> True."""
+    if book.is_free:
+        return True
     if not user or not user.is_authenticated:
         return chapter.is_demo
     if user.user_type == 'VIP':
@@ -90,6 +92,63 @@ class BookChapterDetailView(views.APIView):
             'file_url': file_url,
             'file_path': chapter.file_path.name if chapter.file_path else None,
             'page_count': chapter.page_count,
+        })
+
+
+class BookReadingProgressView(views.APIView):
+    """GET /api/books/{slug}/progress/ - Get last reading position for a book."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, slug):
+        try:
+            book = Book.objects.get(slug=slug)
+        except Book.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        progress = (
+            UserChapterProgress.objects
+            .filter(user=request.user, chapter__book=book)
+            .select_related('chapter')
+            .order_by('-last_read')
+            .first()
+        )
+
+        if progress:
+            return Response({
+                'chapter_order': progress.chapter.order,
+                'current_page': progress.current_page,
+            })
+
+        return Response({'chapter_order': 1, 'current_page': 1})
+
+
+class BookChapterProgressUpdateView(views.APIView):
+    """POST /api/books/{slug}/chapters/{order}/progress/ - Save reading progress."""
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, slug, order):
+        try:
+            book = Book.objects.get(slug=slug)
+            chapter = BookChapter.objects.get(book=book, order=order)
+        except (Book.DoesNotExist, BookChapter.DoesNotExist):
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not _can_access_chapter(request.user, book, chapter):
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        current_page = max(1, int(request.data.get('current_page', 1)))
+        completed = bool(request.data.get('completed', False))
+
+        progress, _ = UserChapterProgress.objects.update_or_create(
+            user=request.user,
+            chapter=chapter,
+            defaults={'current_page': current_page, 'completed': completed},
+        )
+
+        return Response({
+            'chapter_order': chapter.order,
+            'current_page': progress.current_page,
+            'completed': progress.completed,
         })
 
 

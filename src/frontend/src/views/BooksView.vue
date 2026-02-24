@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { booksService } from '../services/books.service'
+
+const router = useRouter()
 
 // ── State ────────────────────────────────────────────────────
 const books = ref([])
@@ -196,6 +199,8 @@ function coverGradient(book) {
         class="books__card"
         role="button"
         tabindex="0"
+        @click="router.push({ name: 'BookReader', params: { slug: book.slug } })"
+        @keydown.enter="router.push({ name: 'BookReader', params: { slug: book.slug } })"
       >
         <!-- Cover -->
         <div
