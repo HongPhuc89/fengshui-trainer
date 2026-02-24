@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
@@ -19,16 +19,21 @@ const book = ref(null)
 const chapters = ref([])
 const currentChapterOrder = ref(1)
 const currentPage = ref(1)
-const pdfDoc = ref(null)
+const pdfDoc = shallowRef(null)
 const chapterPageCount = ref(0)
 const loading = ref(true)
 const chapterLoading = ref(false)
 const error = ref(null)
 const watermark = ref({ display_name: '', phone_number: '' })
 const showToc = ref(false)
+const showZoom = ref(false)
+const zoomLevel = ref(1.0)
+const ZOOM_STEPS = [0.75, 1.0, 1.25, 1.5, 2.0]
 const canvasRef = ref(null)
 const saveTimer = ref(null)
-const renderingTask = ref(null)
+const renderingTask = shallowRef(null)
+const touchStartX = ref(0)
+const touchStartY = ref(0)
 
 // ── Computed ──────────────────────────────────────────────
 const currentChapter = computed(() =>
@@ -95,10 +100,12 @@ onMounted(async () => {
     }
 
     currentChapterOrder.value = startChapter
+    loading.value = false   // reveal canvas BEFORE loading PDF
+    await nextTick()
     await loadChapter(startChapter, startPage)
-  } catch {
-    error.value = 'Đã xảy ra lỗi khi mở sách.'
-  } finally {
+  } catch (e) {
+    console.error('[BookReader] load error:', e)
+    error.value = e?.message || 'Đã xảy ra lỗi khi mở sách.'
     loading.value = false
   }
 })
@@ -130,8 +137,12 @@ async function loadChapter(order, page = 1) {
 
     const { file_url, page_count } = chapterRes.value.data
     chapterPageCount.value = page_count ?? 0
+    chapterLoading.value = false  // reveal canvas BEFORE rendering PDF
+    await nextTick()
     await loadPdf(file_url, page)
-  } finally {
+  } catch (e) {
+    console.error('[BookReader] chapter error:', e)
+    error.value = e?.message || 'Không thể tải chương.'
     chapterLoading.value = false
   }
 }
@@ -141,10 +152,17 @@ async function loadPdf(url, targetPage = 1) {
     renderingTask.value.cancel()
     renderingTask.value = null
   }
-  pdfDoc.value = await pdfjsLib.getDocument({ url, withCredentials: false }).promise
+  // Convert absolute URL → relative path so it goes through the Vite /media proxy
+  let fetchUrl = url
+  try {
+    const parsed = new URL(url)
+    fetchUrl = parsed.pathname + parsed.search
+  } catch {
+    // already relative, keep as-is
+  }
+  pdfDoc.value = await pdfjsLib.getDocument({ url: fetchUrl }).promise
   chapterPageCount.value = pdfDoc.value.numPages
   currentPage.value = Math.min(Math.max(1, targetPage), pdfDoc.value.numPages)
-  await nextTick()
   await renderPage(currentPage.value)
 }
 
@@ -160,7 +178,7 @@ async function renderPage(num) {
   const containerWidth = container ? container.clientWidth : window.innerWidth
   const defaultViewport = page.getViewport({ scale: 1 })
   const dpr = window.devicePixelRatio || 1
-  const scale = (containerWidth / defaultViewport.width) * dpr
+  const scale = (containerWidth / defaultViewport.width) * dpr * zoomLevel.value
   const viewport = page.getViewport({ scale })
 
   const canvas = canvasRef.value
@@ -214,6 +232,38 @@ async function goToChapter(order) {
   scheduleSave()
 }
 
+// ── Zoom ──────────────────────────────────────────────────
+function zoomIn() {
+  const idx = ZOOM_STEPS.indexOf(zoomLevel.value)
+  if (idx < ZOOM_STEPS.length - 1) {
+    zoomLevel.value = ZOOM_STEPS[idx + 1]
+    renderPage(currentPage.value)
+  }
+}
+
+function zoomOut() {
+  const idx = ZOOM_STEPS.indexOf(zoomLevel.value)
+  if (idx > 0) {
+    zoomLevel.value = ZOOM_STEPS[idx - 1]
+    renderPage(currentPage.value)
+  }
+}
+
+// ── Touch / swipe ─────────────────────────────────────────
+function onTouchStart(e) {
+  touchStartX.value = e.touches[0].clientX
+  touchStartY.value = e.touches[0].clientY
+}
+
+function onTouchEnd(e) {
+  const dx = e.changedTouches[0].clientX - touchStartX.value
+  const dy = e.changedTouches[0].clientY - touchStartY.value
+  if (Math.abs(dx) > 50 && Math.abs(dy) < 80) {
+    if (dx < 0) nextPage()
+    else prevPage()
+  }
+}
+
 // ── Progress saving ───────────────────────────────────────
 function scheduleSave() {
   if (saveTimer.value) clearTimeout(saveTimer.value)
@@ -243,9 +293,39 @@ function scheduleSave() {
         <span class="reader__chapter-title">{{ currentChapter?.title ?? '' }}</span>
       </div>
 
+      <!-- Zoom button + popup -->
+      <div class="reader__zoom-wrap">
+        <button
+          class="reader__icon-btn reader__zoom-btn"
+          :class="{ 'reader__icon-btn--active': showZoom }"
+          @click="showZoom = !showZoom"
+          aria-label="Cỡ chữ"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
+            <line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/>
+          </svg>
+        </button>
+        <Transition name="zoom-pop">
+          <div v-if="showZoom" class="reader__zoom-panel" @click.stop>
+            <button class="reader__zoom-step" :disabled="zoomLevel <= ZOOM_STEPS[0]" @click="zoomOut">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <span class="reader__zoom-value">{{ Math.round(zoomLevel * 100) }}%</span>
+            <button class="reader__zoom-step" :disabled="zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length-1]" @click="zoomIn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </Transition>
+      </div>
+
       <button
         class="reader__icon-btn"
-        @click="showToc = !showToc"
+        @click="showToc = !showToc; showZoom = false"
         aria-label="Mục lục"
         :class="{ 'reader__icon-btn--active': showToc }"
       >
@@ -287,7 +367,12 @@ function scheduleSave() {
     </Transition>
 
     <!-- ── Main content ───────────────────────────────── -->
-    <div class="reader__content">
+    <div
+      class="reader__content"
+      @touchstart.passive="onTouchStart"
+      @touchend.passive="onTouchEnd"
+      @click="showZoom && (showZoom = false)"
+    >
       <!-- Loading state -->
       <div v-if="loading || chapterLoading" class="reader__loading">
         <div class="reader__spinner"></div>
@@ -705,6 +790,69 @@ function scheduleSave() {
 
 .reader__page-sep {
   color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Zoom ─────────────────────────────────────────────────── */
+.reader__zoom-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.reader__zoom-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #1e2540;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.reader__zoom-step {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.8);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+
+.reader__zoom-step:hover:not(:disabled) {
+  background: rgba(197, 165, 81, 0.2);
+  color: var(--accent-gold);
+}
+
+.reader__zoom-step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.reader__zoom-value {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+/* zoom popup animation */
+.zoom-pop-enter-active,
+.zoom-pop-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.zoom-pop-enter-from,
+.zoom-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.95);
 }
 
 /* ── TOC slide transition ─────────────────────────────────── */

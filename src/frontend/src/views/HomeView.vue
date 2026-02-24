@@ -55,7 +55,7 @@ function badgeLabel(book) {
 }
 
 function goBook(slug) {
-  if (slug) router.push(`/books/${slug}`)
+  if (slug) router.push({ name: 'BookReader', params: { slug } })
 }
 </script>
 
