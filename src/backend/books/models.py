@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from PyPDF2 import PdfReader
 
 from users.models import BaseModel
 
@@ -72,6 +73,44 @@ class BookChapter(BaseModel):
         verbose_name_plural = "Book Chapters"
         ordering = ['book', 'order']
         unique_together = [['book', 'order'], ['book', 'slug']]
+
+    def save(self, *args, **kwargs):
+        # Track old file to detect changes
+        old_file_name = None
+        if self.pk:
+            try:
+                old_file_name = BookChapter.objects.get(pk=self.pk).file_path.name
+            except BookChapter.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        if not self.file_path:
+            return
+
+        file_changed = self.file_path.name != old_file_name
+        if not file_changed and self.file_size and self.page_count:
+            return
+
+        updates = {}
+        if file_changed or not self.file_size:
+            try:
+                self.file_size = self.file_path.size
+                updates['file_size'] = self.file_size
+            except Exception:
+                pass
+
+        if file_changed or not self.page_count:
+            try:
+                with self.file_path.open('rb') as f:
+                    reader = PdfReader(f)
+                    self.page_count = len(reader.pages)
+                updates['page_count'] = self.page_count
+            except Exception:
+                pass
+
+        if updates:
+            BookChapter.objects.filter(pk=self.pk).update(**updates)
 
     def __str__(self):
         return f"{self.book.title} - {self.title}"

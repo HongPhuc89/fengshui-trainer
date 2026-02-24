@@ -12,7 +12,9 @@ export const userService = {
   uploadAvatar(blob) {
     const form = new FormData()
     form.append('avatar', blob, 'avatar.jpg')
-    return client.post('/users/me/avatar/', form)
+    return client.post('/users/me/avatar/', form, {
+      headers: { 'Content-Type': undefined },
+    })
   },
 
   getDeviceStatus() {
