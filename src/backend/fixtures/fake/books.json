@@ -1,0 +1,88 @@
+{
+  "categories": [
+    { "title": "Phong Thủy Cơ Bản",  "slug": "phong-thuy-co-ban"  },
+    { "title": "Kỳ Môn Độn Giáp",    "slug": "ky-mon-don-giap"    },
+    { "title": "Tử Bình Tứ Trụ",     "slug": "tu-binh-tu-tru"     },
+    { "title": "Phong Thủy Nhà Ở",   "slug": "phong-thuy-nha-o"   }
+  ],
+  "books": [
+    {
+      "category_slug": "phong-thuy-co-ban",
+      "title": "Nhập Môn Phong Thủy Học",
+      "slug": "nhap-mon-phong-thuy-hoc",
+      "author": "Thầy Nguyễn Văn Minh",
+      "description": "Cuốn sách giới thiệu toàn diện về Phong Thủy học từ những khái niệm cơ bản nhất như Âm Dương, Ngũ Hành, cho đến cách ứng dụng vào thực tế cuộc sống. Phù hợp cho người mới bắt đầu tìm hiểu về môn học này.",
+      "is_free": false,
+      "is_new_release": true,
+      "price_lt": 150,
+      "chapters": [
+        { "title": "Chương 1: Khái niệm Âm Dương",            "slug": "chuong-1-am-duong",    "order": 1, "is_demo": true  },
+        { "title": "Chương 2: Ngũ Hành và tương sinh tương khắc", "slug": "chuong-2-ngu-hanh", "order": 2, "is_demo": false },
+        { "title": "Chương 3: Bát Quái cơ bản",               "slug": "chuong-3-bat-quai",    "order": 3, "is_demo": false },
+        { "title": "Chương 4: Địa chi và Can chi",             "slug": "chuong-4-dia-chi",     "order": 4, "is_demo": false }
+      ]
+    },
+    {
+      "category_slug": "phong-thuy-co-ban",
+      "title": "Bát Quái Trong Phong Thủy",
+      "slug": "bat-quai-trong-phong-thuy",
+      "author": "Lý Thị Hoa",
+      "description": "Nghiên cứu chuyên sâu về Bát Quái và ứng dụng trong Phong Thủy. Từ Hậu Thiên Bát Quái đến Tiên Thiên Bát Quái, cách phối hợp với Lạc Thư và Hà Đồ trong thực hành phong thủy hiện đại.",
+      "is_free": false,
+      "is_new_release": false,
+      "price_lt": 200,
+      "chapters": [
+        { "title": "Chương 1: Tiên Thiên Bát Quái", "slug": "chuong-1-tien-thien",    "order": 1, "is_demo": true  },
+        { "title": "Chương 2: Hậu Thiên Bát Quái",  "slug": "chuong-2-hau-thien",     "order": 2, "is_demo": false },
+        { "title": "Chương 3: Hà Đồ và Lạc Thư",    "slug": "chuong-3-ha-do-lac-thu", "order": 3, "is_demo": false }
+      ]
+    },
+    {
+      "category_slug": "ky-mon-don-giap",
+      "title": "Kỳ Môn Độn Giáp Toàn Thư",
+      "slug": "ky-mon-don-giap-toan-thu",
+      "author": "Đạo Nhân Tiên Sinh",
+      "description": "Bộ sách toàn thư về Kỳ Môn Độn Giáp — môn học được mệnh danh là 'Đế Vương Chi Học'. Từ cách lập cục, phân tích cục đến ứng dụng trong dự đoán, chọn ngày giờ và chiến lược kinh doanh.",
+      "is_free": false,
+      "is_new_release": true,
+      "price_lt": 350,
+      "chapters": [
+        { "title": "Chương 1: Lịch sử và nguồn gốc Kỳ Môn", "slug": "chuong-1-lich-su-ky-mon", "order": 1, "is_demo": true  },
+        { "title": "Chương 2: Cửu Cung và Bát Môn",          "slug": "chuong-2-cuu-cung-bat-mon","order": 2, "is_demo": false },
+        { "title": "Chương 3: Cửu Tinh và Bát Thần",         "slug": "chuong-3-cuu-tinh-bat-than","order": 3, "is_demo": false },
+        { "title": "Chương 4: Cách lập Dương Độn",           "slug": "chuong-4-lap-duong-don",   "order": 4, "is_demo": false },
+        { "title": "Chương 5: Cách lập Âm Độn",              "slug": "chuong-5-lap-am-don",      "order": 5, "is_demo": false }
+      ]
+    },
+    {
+      "category_slug": "phong-thuy-nha-o",
+      "title": "Phong Thủy Nhà Ở Hiện Đại",
+      "slug": "phong-thuy-nha-o-hien-dai",
+      "author": "KTS. Trần Quốc Hùng",
+      "description": "Hướng dẫn ứng dụng Phong Thủy trong thiết kế và bố trí nhà ở hiện đại. Cách chọn hướng nhà, bố trí phòng ngủ, phòng khách, bếp theo nguyên lý Phong Thủy để mang lại may mắn và thịnh vượng.",
+      "is_free": true,
+      "is_new_release": false,
+      "price_lt": 0,
+      "chapters": [
+        { "title": "Chương 1: Nguyên tắc cơ bản chọn hướng nhà",      "slug": "chuong-1-chon-huong-nha",      "order": 1, "is_demo": true },
+        { "title": "Chương 2: Bố trí phòng khách theo Phong Thủy",     "slug": "chuong-2-phong-khach",         "order": 2, "is_demo": true },
+        { "title": "Chương 3: Phong Thủy phòng bếp và phòng ngủ",      "slug": "chuong-3-phong-bep-phong-ngu", "order": 3, "is_demo": true }
+      ]
+    },
+    {
+      "category_slug": "tu-binh-tu-tru",
+      "title": "Tử Bình Tứ Trụ Nhập Môn",
+      "slug": "tu-binh-tu-tru-nhap-mon",
+      "author": "Thầy Phạm Đức Nghĩa",
+      "description": "Giới thiệu môn Tử Bình — phương pháp đoán mệnh dựa trên Tứ Trụ (năm, tháng, ngày, giờ sinh). Học cách lập lá số Tứ Trụ, phân tích Ngũ Hành vượng suy, cách tìm dụng thần và đoán vận.",
+      "is_free": false,
+      "is_new_release": false,
+      "price_lt": 250,
+      "chapters": [
+        { "title": "Chương 1: Thiên Can và Địa Chi", "slug": "chuong-1-thien-can-dia-chi", "order": 1, "is_demo": true  },
+        { "title": "Chương 2: Cách lập Tứ Trụ",     "slug": "chuong-2-lap-tu-tru",       "order": 2, "is_demo": false },
+        { "title": "Chương 3: Ngũ Hành vượng suy và Dụng Thần", "slug": "chuong-3-dung-than", "order": 3, "is_demo": false }
+      ]
+    }
+  ]
+}

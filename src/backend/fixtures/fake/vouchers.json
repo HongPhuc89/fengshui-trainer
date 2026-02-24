@@ -1,0 +1,12 @@
+[
+  { "code": "WELCOME-2026",  "value": 100, "expires_days": 365 },
+  { "code": "KHAI-XUAN-01", "value": 200, "expires_days": 365 },
+  { "code": "KHAI-XUAN-02", "value": 200, "expires_days": 365 },
+  { "code": "VIP-TRIAL-01", "value": 500, "expires_days": 365 },
+  { "code": "VIP-TRIAL-02", "value": 500, "expires_days": 365 },
+  { "code": "GIFT-THIEN-01","value": 150, "expires_days": 180 },
+  { "code": "GIFT-THIEN-02","value": 150, "expires_days": 180 },
+  { "code": "GIFT-THIEN-03","value": 150, "expires_days": 180 },
+  { "code": "PROMO-MAR26-A","value": 300, "expires_days": 90  },
+  { "code": "PROMO-MAR26-B","value": 300, "expires_days": 90  }
+]

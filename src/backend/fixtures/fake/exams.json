@@ -1,0 +1,350 @@
+{
+  "modules": [
+    {
+      "title": "Nền Tảng Âm Dương Ngũ Hành",
+      "slug": "nen-tang-am-duong-ngu-hanh",
+      "description": "Module 1: Nắm vững Âm Dương và Ngũ Hành — nền tảng của mọi môn học Đông Phương.",
+      "order": 1
+    },
+    {
+      "title": "Bát Quái và Cung Số",
+      "slug": "bat-quai-va-cung-so",
+      "description": "Module 2: Hiểu sâu về Bát Quái Tiên Thiên, Hậu Thiên và hệ thống cung số.",
+      "order": 2
+    },
+    {
+      "title": "Kỳ Môn Độn Giáp Nhập Môn",
+      "slug": "ky-mon-don-giap-nhap-mon",
+      "description": "Module 3: Làm quen với Cửu Cung, Bát Môn, Cửu Tinh và Bát Thần.",
+      "order": 3
+    }
+  ],
+  "exams": [
+    {
+      "module_slug": "nen-tang-am-duong-ngu-hanh",
+      "title": "Bài Kiểm Tra: Âm Dương Ngũ Hành",
+      "slug": "kiem-tra-am-duong-ngu-hanh",
+      "description": "Kiểm tra kiến thức về Âm Dương và Ngũ Hành cơ bản.",
+      "passing_score": 70,
+      "exam_type": "PRACTICE",
+      "time_limit_minutes": 20,
+      "questions": [
+        {
+          "order": 1,
+          "question_text": "Trong Ngũ Hành, yếu tố nào sinh ra Hỏa?",
+          "options": [
+            { "id": "a", "text": "Kim"  },
+            { "id": "b", "text": "Mộc"  },
+            { "id": "c", "text": "Thủy" },
+            { "id": "d", "text": "Thổ"  }
+          ],
+          "correct_answer": "b",
+          "explanation": "Mộc sinh Hỏa — cây cối là nhiên liệu cho lửa. Đây là quy tắc tương sinh trong Ngũ Hành.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 2,
+          "question_text": "Kim khắc yếu tố nào trong Ngũ Hành?",
+          "options": [
+            { "id": "a", "text": "Thủy" },
+            { "id": "b", "text": "Hỏa"  },
+            { "id": "c", "text": "Mộc"  },
+            { "id": "d", "text": "Thổ"  }
+          ],
+          "correct_answer": "c",
+          "explanation": "Kim khắc Mộc — kim loại có thể chặt cây. Đây là quy tắc tương khắc trong Ngũ Hành.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 3,
+          "question_text": "Trong Thái Cực đồ, phần màu trắng (Dương) chứa một điểm màu gì?",
+          "options": [
+            { "id": "a", "text": "Màu trắng" },
+            { "id": "b", "text": "Màu đen"   },
+            { "id": "c", "text": "Màu đỏ"    },
+            { "id": "d", "text": "Màu vàng"  }
+          ],
+          "correct_answer": "b",
+          "explanation": "Trong Dương có Âm, trong Âm có Dương — biểu thị bởi điểm đen trong phần trắng và điểm trắng trong phần đen.",
+          "difficulty": "MEDIUM",
+          "points": 15
+        },
+        {
+          "order": 4,
+          "question_text": "Màu sắc đại diện cho hành Thủy trong Ngũ Hành là?",
+          "options": [
+            { "id": "a", "text": "Xanh lá"       },
+            { "id": "b", "text": "Đỏ"             },
+            { "id": "c", "text": "Đen / Xanh đậm" },
+            { "id": "d", "text": "Vàng"           }
+          ],
+          "correct_answer": "c",
+          "explanation": "Hành Thủy tương ứng với màu đen hoặc xanh đậm (navy). Đây là màu của nước sâu.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 5,
+          "question_text": "Hành nào trong Ngũ Hành liên quan đến mùa xuân và phương Đông?",
+          "options": [
+            { "id": "a", "text": "Hỏa" },
+            { "id": "b", "text": "Mộc" },
+            { "id": "c", "text": "Kim" },
+            { "id": "d", "text": "Thổ" }
+          ],
+          "correct_answer": "b",
+          "explanation": "Mộc tương ứng với mùa Xuân, phương Đông, màu xanh lá, và tạng Gan.",
+          "difficulty": "MEDIUM",
+          "points": 15
+        }
+      ]
+    },
+    {
+      "module_slug": "bat-quai-va-cung-so",
+      "title": "Bài Kiểm Tra: Bát Quái",
+      "slug": "kiem-tra-bat-quai",
+      "description": "Kiểm tra kiến thức về 8 quẻ trong Bát Quái.",
+      "passing_score": 70,
+      "exam_type": "PRACTICE",
+      "time_limit_minutes": 15,
+      "questions": [
+        {
+          "order": 1,
+          "question_text": "Quẻ Càn trong Bát Quái đại diện cho yếu tố nào?",
+          "options": [
+            { "id": "a", "text": "Đất"  },
+            { "id": "b", "text": "Trời" },
+            { "id": "c", "text": "Nước" },
+            { "id": "d", "text": "Lửa"  }
+          ],
+          "correct_answer": "b",
+          "explanation": "Quẻ Càn (☰) đại diện cho Trời, Cha, Kim, phương Tây Bắc.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 2,
+          "question_text": "Quẻ nào trong Hậu Thiên Bát Quái nằm ở phương Nam?",
+          "options": [
+            { "id": "a", "text": "Quẻ Khảm" },
+            { "id": "b", "text": "Quẻ Ly"   },
+            { "id": "c", "text": "Quẻ Chấn" },
+            { "id": "d", "text": "Quẻ Đoài" }
+          ],
+          "correct_answer": "b",
+          "explanation": "Trong Hậu Thiên Bát Quái (Văn Vương), quẻ Ly (☲) ở phương Nam, đại diện cho Lửa.",
+          "difficulty": "MEDIUM",
+          "points": 15
+        },
+        {
+          "order": 3,
+          "question_text": "Số nào trong Hà Đồ ứng với phương Bắc?",
+          "options": [
+            { "id": "a", "text": "1 và 6" },
+            { "id": "b", "text": "2 và 7" },
+            { "id": "c", "text": "3 và 8" },
+            { "id": "d", "text": "4 và 9" }
+          ],
+          "correct_answer": "a",
+          "explanation": "Trong Hà Đồ: 1-6 Thủy ở Bắc, 2-7 Hỏa ở Nam, 3-8 Mộc ở Đông, 4-9 Kim ở Tây, 5-10 Thổ ở Trung.",
+          "difficulty": "HARD",
+          "points": 20
+        }
+      ]
+    },
+    {
+      "module_slug": "ky-mon-don-giap-nhap-mon",
+      "title": "Bài Thi Cuối Khóa: Kỳ Môn Độn Giáp",
+      "slug": "thi-cuoi-khoa-ky-mon",
+      "description": "Bài thi tổng hợp kiến thức Kỳ Môn Độn Giáp nhập môn.",
+      "passing_score": 80,
+      "exam_type": "FINAL_EXAM",
+      "time_limit_minutes": 30,
+      "questions": [
+        {
+          "order": 1,
+          "question_text": "Kỳ Môn Độn Giáp sử dụng bao nhiêu cung trong hệ thống Cửu Cung?",
+          "options": [
+            { "id": "a", "text": "8 cung"  },
+            { "id": "b", "text": "9 cung"  },
+            { "id": "c", "text": "12 cung" },
+            { "id": "d", "text": "24 cung" }
+          ],
+          "correct_answer": "b",
+          "explanation": "Cửu Cung gồm 9 cung sắp xếp theo hình vuông 3x3, lấy từ Lạc Thư.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 2,
+          "question_text": "Cửa nào trong Bát Môn được gọi là 'Khai Môn' — cửa tốt nhất?",
+          "options": [
+            { "id": "a", "text": "Sinh Môn"  },
+            { "id": "b", "text": "Thương Môn"},
+            { "id": "c", "text": "Khai Môn"  },
+            { "id": "d", "text": "Hưu Môn"   }
+          ],
+          "correct_answer": "c",
+          "explanation": "Khai Môn là cửa tốt nhất trong Bát Môn, tiếp theo là Sinh Môn và Hưu Môn.",
+          "difficulty": "EASY",
+          "points": 10
+        },
+        {
+          "order": 3,
+          "question_text": "Trong Kỳ Môn, 'Giáp' đại diện cho điều gì?",
+          "options": [
+            { "id": "a", "text": "Người lãnh đạo, chủ tướng" },
+            { "id": "b", "text": "Thiên thời"                 },
+            { "id": "c", "text": "Địa lợi"                    },
+            { "id": "d", "text": "Thần linh"                  }
+          ],
+          "correct_answer": "a",
+          "explanation": "Giáp (甲) là Thiên Can đứng đầu, trong Kỳ Môn đại diện cho người lãnh đạo hoặc đối tượng chính của quẻ.",
+          "difficulty": "MEDIUM",
+          "points": 15
+        },
+        {
+          "order": 4,
+          "question_text": "Dương Độn áp dụng trong khoảng thời gian nào trong năm?",
+          "options": [
+            { "id": "a", "text": "Từ Đông Chí đến Hạ Chí" },
+            { "id": "b", "text": "Từ Hạ Chí đến Đông Chí" },
+            { "id": "c", "text": "Toàn bộ mùa hè"         },
+            { "id": "d", "text": "Toàn bộ mùa đông"       }
+          ],
+          "correct_answer": "a",
+          "explanation": "Dương Độn dùng từ Đông Chí đến Hạ Chí (nửa năm Dương). Âm Độn dùng từ Hạ Chí đến Đông Chí.",
+          "difficulty": "HARD",
+          "points": 20
+        }
+      ]
+    }
+  ],
+  "flashcards": [
+    {
+      "module_slug": "nen-tang-am-duong-ngu-hanh",
+      "cards": [
+        {
+          "order": 1,
+          "front": "Ngũ Hành tương sinh: Mộc sinh __?",
+          "back": "Hỏa\n\nMộc sinh Hỏa (cây cối là nhiên liệu cho lửa)",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 2,
+          "front": "Ngũ Hành tương sinh: Hỏa sinh __?",
+          "back": "Thổ\n\nHỏa sinh Thổ (lửa đốt thành tro, tro thành đất)",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 3,
+          "front": "Ngũ Hành tương sinh: Thổ sinh __?",
+          "back": "Kim\n\nThổ sinh Kim (đất chứa quặng kim loại)",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 4,
+          "front": "Ngũ Hành tương sinh: Kim sinh __?",
+          "back": "Thủy\n\nKim sinh Thủy (kim loại lạnh tạo ra hơi nước / chứa nước)",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 5,
+          "front": "Ngũ Hành tương sinh: Thủy sinh __?",
+          "back": "Mộc\n\nThủy sinh Mộc (nước nuôi dưỡng cây cối)",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 6,
+          "front": "Màu sắc của hành Hỏa là gì?",
+          "back": "Đỏ, cam, hồng\n\nHành Hỏa: Đỏ | Phương Nam | Mùa Hạ | Tạng Tim",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 7,
+          "front": "Hành Kim tương ứng với tạng phủ nào?",
+          "back": "Phổi (tạng) và Đại tràng (phủ)\n\nHành Kim: Phổi, Đại tràng, Da, Lông",
+          "difficulty": "MEDIUM"
+        },
+        {
+          "order": 8,
+          "front": "Nguyên tắc 'Cực Dương sinh Âm' có nghĩa là gì?",
+          "back": "Khi Dương đạt đến cực điểm thì sinh ra Âm.\n\nVí dụ: Hạ Chí (Dương cực đại) → bắt đầu chuyển sang Âm",
+          "difficulty": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "module_slug": "bat-quai-va-cung-so",
+      "cards": [
+        {
+          "order": 1,
+          "front": "Quẻ Càn (☰) đại diện cho gì?",
+          "back": "Trời, Cha, Kim, Phương Tây Bắc\n\nSố Lạc Thư: 6\nKý hiệu: Ba hào dương liên tục",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 2,
+          "front": "Quẻ Khôn (☷) đại diện cho gì?",
+          "back": "Đất, Mẹ, Thổ, Phương Tây Nam\n\nSố Lạc Thư: 2\nKý hiệu: Ba hào âm liên tục",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 3,
+          "front": "Quẻ Khảm (☵) đại diện cho gì?",
+          "back": "Nước, Con trai giữa, Thủy, Phương Bắc\n\nSố Lạc Thư: 1\nKý hiệu: Hào dương kẹp giữa hai hào âm",
+          "difficulty": "MEDIUM"
+        },
+        {
+          "order": 4,
+          "front": "Quẻ Ly (☲) đại diện cho gì?",
+          "back": "Lửa, Con gái giữa, Hỏa, Phương Nam\n\nSố Lạc Thư: 9\nKý hiệu: Hào âm kẹp giữa hai hào dương",
+          "difficulty": "MEDIUM"
+        },
+        {
+          "order": 5,
+          "front": "Số Lạc Thư ở trung tâm (trung cung) là bao nhiêu?",
+          "back": "5\n\nLạc Thư: 5 ở trung tâm, các số 1-9 phân bố quanh theo quy luật.\nTổng mỗi hàng = 15",
+          "difficulty": "EASY"
+        },
+        {
+          "order": 6,
+          "front": "Trong Hậu Thiên Bát Quái, quẻ nào ở phương Đông?",
+          "back": "Quẻ Chấn (☳) — Sấm\n\nChấn: Mộc, Con trai trưởng, Mùa Xuân, Phương Đông",
+          "difficulty": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "module_slug": "ky-mon-don-giap-nhap-mon",
+      "cards": [
+        {
+          "order": 1,
+          "front": "Bát Môn trong Kỳ Môn gồm những cửa nào?",
+          "back": "Hưu, Sinh, Thương, Đỗ, Cảnh, Tử, Kinh, Khai\n\nCửa tốt: Khai, Sinh, Hưu\nCửa xấu: Tử, Kinh, Thương",
+          "difficulty": "MEDIUM"
+        },
+        {
+          "order": 2,
+          "front": "Cửu Tinh trong Kỳ Môn là gì?",
+          "back": "9 ngôi sao: Thiên Bồng, Thiên Nhuế, Thiên Xung, Thiên Phụ, Thiên Cầm, Thiên Tâm, Thiên Trụ, Thiên Nhâm, Thiên Anh\n\nMỗi tinh cư trú tại một cung trong Cửu Cung",
+          "difficulty": "HARD"
+        },
+        {
+          "order": 3,
+          "front": "Bát Thần trong Kỳ Môn là gì?",
+          "back": "8 vị thần: Trực Phù, Đằng Xà, Thái Âm, Lục Hợp, Câu Trận (Bạch Hổ), Chu Tước, Cửu Địa, Cửu Thiên\n\nTrực Phù và Đằng Xà là 2 thần quan trọng nhất",
+          "difficulty": "HARD"
+        },
+        {
+          "order": 4,
+          "front": "Kỳ Môn có bao nhiêu loại cục và bao nhiêu cục tổng cộng?",
+          "back": "2 loại: Dương Độn và Âm Độn\nMỗi loại có 9 cục → Tổng cộng 18 cục\n\nDương Độn: Cục 1-9 | Âm Độn: Cục 1-9",
+          "difficulty": "MEDIUM"
+        }
+      ]
+    }
+  ]
+}

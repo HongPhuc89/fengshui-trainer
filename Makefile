@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build pre-commit-install pre-commit-run
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build pre-commit-install pre-commit-run
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -30,6 +30,12 @@ makemigrations: ## Create new Django migrations
 
 createsuperuser: ## Create a Django superuser
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py createsuperuser
+
+fake-data: ## Import fake data for development (idempotent)
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py import_fake_data
+
+fake-data-clear: ## Clear and re-import fake data
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py import_fake_data --clear
 
 format: ## Format code using Ruff
 	docker-compose -f $(COMPOSE_FILE) exec web ruff format .

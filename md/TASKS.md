@@ -2,9 +2,9 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.0
-- **Last Updated**: 2026-02-23
-- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web In Progress 🚧
+- **Version**: 1.1
+- **Last Updated**: 2026-02-24
+- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress
 
 ## Backend Detail Designs (md/design/)
 | Feature | Doc | Description | Status |
@@ -20,6 +20,32 @@
 
 ---
 
+## MVP Definition (Web App)
+
+> **Mục tiêu MVP**: Ra mắt web app đầy đủ chức năng cho phép người dùng đăng ký, mua và học nội dung Phong Thủy (sách + video + luyện tập).
+
+### MVP Scope (Web Only)
+| Module | Minimum Required | Priority |
+|--------|-----------------|----------|
+| Auth | Login + Register + Device lock flow | P0 |
+| Profile | Xem profile + cập nhật tên | P0 |
+| Trang chủ | Hiển thị nội dung nổi bật + điều hướng | P0 |
+| Sách | List + Detail + PDF Reader (watermark) | P0 |
+| Video | List + Detail + Player (tiến trình) | P0 |
+| Luyện tập | Flashcard + Bài thi | P1 |
+| Ví / Cửa hàng | Xem số dư + Nạp voucher + Mua nội dung | P0 |
+| Thông báo | Danh sách + Đánh dấu đã đọc | P2 |
+
+### Out of Scope cho MVP
+- Mobile App (Flutter) — Phase 3
+- Push notification (FCM/APNs)
+- Bunny Stream production setup
+- Admin revenue dashboard
+- Comment system (UI)
+- Full E2E test suite
+
+---
+
 ## Project Phases Overview
 
 ```mermaid
@@ -27,565 +53,380 @@ gantt
     title Project Timeline
     dateFormat YYYY-MM-DD
     section Phase 1 - Backend
-    User Management       :2026-02-17, 14d
-    Wallet & Voucher      :7d
-    Books Module         :14d
-    Videos Module        :14d
-    Practice Module      :14d
-    section Phase 2 - Web
-    Vue.js Setup         :2026-04-14, 7d
-    Auth & Profile       :7d
-    Books Reader         :10d
-    Video Player         :10d
-    Practice UI          :10d
+    User Management       :done, 2026-02-17, 14d
+    Wallet & Voucher      :done, 7d
+    Books Module         :done, 14d
+    Videos Module        :done, 14d
+    Practice Module      :done, 14d
+    section Phase 2 - Web MVP
+    Vue.js Setup & Auth   :done, 2026-02-17, 7d
+    Store / Wallet Page   :done, 7d
+    Profile Page          :active, 2026-02-24, 3d
+    Home Page             :2026-02-27, 3d
+    Books Module Web      :2026-03-02, 7d
+    Videos Module Web     :2026-03-09, 7d
+    Practice Module Web   :2026-03-16, 7d
+    Polish & Deploy       :2026-03-23, 7d
     section Phase 3 - Mobile
-    Flutter Setup        :2026-05-19, 7d
+    Flutter Setup        :2026-04-01, 7d
     Auth & Profile       :7d
     Books Reader         :14d
     Video Player         :14d
     Practice UI          :14d
-    section Phase 4 - Deploy
-    Testing              :2026-06-30, 14d
+    section Phase 4 - Deploy & Test
+    Testing              :2026-05-15, 14d
     Production Deploy    :7d
 ```
 
 ---
 
-## Phase 1: Backend API Development (6 weeks)
+## Phase 1: Backend API Development ✅ COMPLETE
 
-### Feature 1: User Management & Authentication
-**Priority**: Critical | **Estimated**: 2 weeks
+### Feature 1: User Management & Authentication ✅
+**Priority**: Critical | **Status**: ✅ Implemented
 
 - [x] **1.1 User Model & Database**
-  - [x] Create User model with custom fields (phone_number, user_type, device_id)
+  - [x] Create User model với custom fields (phone_number, user_type, device_id)
   - [x] Create UserDevice model for device tracking
   - [x] Database migrations
-  - [x] **BaseModel implementation (Private ID + Public UUID)**
-  - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)**
+  - [x] BaseModel implementation (Private ID + Public UUID)
+  - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)** ← còn lại
   - [x] Admin interface configuration (with Jazzmin theme)
-  - **Assignee**: Backend Dev
-  - **Due**: Week 1 ✅
 
 - [x] **1.2 Authentication API**
-  - [x] POST `/api/auth/register/` - User registration with device registration
-  - [x] POST `/api/auth/login/` - Login with device verification
-  - [x] POST `/api/auth/refresh/` - JWT token refresh
-  - [x] POST `/api/auth/logout/` - Logout and session cleanup
-  - [ ] Hybrid monetization logic (FREE, VIP, Paid USER)
-  - [x] **Hard Device Locking logic (Persistent Binding)**
-  - [x] **Login-integrated Reset Flow** (Cooldown check + Confirmation flag)
-  - [x] **Admin un-link override capability** (Subject to Audit Log)
-  - [x] **AdminAuditLog system implementation (Currency & VIP tracking)**
-  - [x] **Middleware/Signals for sensitive action logging**
-  - [x] **UserDevice management table (Historical & Active tracking)**
-  - [x] **Audit logging for device un-link actions**
-  - [x] **Audit logging (IP, User Agent, Last Active)**
-  - **Assignee**: Backend Dev
-  - **Due**: Week 1
+  - [x] POST `/api/auth/register/`
+  - [x] POST `/api/auth/login/`
+  - [x] POST `/api/auth/refresh/`
+  - [x] POST `/api/auth/logout/`
+  - [x] Hard Device Locking logic
+  - [x] Login-integrated Reset Flow (Cooldown check + Confirmation flag)
+  - [x] Admin un-link override capability
+  - [x] AdminAuditLog system
+  - [ ] Hybrid monetization logic (FREE → VIP → Paid) ← chưa hoàn chỉnh
 
 - [x] **1.3 User Profile API**
-  - [x] GET `/api/users/me/` - Get current user profile
-  - [x] PUT `/api/users/me/` - Update profile
-  - [x] **POST `/api/auth/login/` (reset_device=true)** - Confirmation logic
-  - [x] GET `/api/users/me/device-status/` - Show bound device and next reset date
-  - [x] Admin interface for viewing and revoking individual devices
-  - [x] **Admin Audit Log dashboard (For SuperAdmins only)**
-  - **Assignee**: Backend Dev
-  - **Due**: Week 2
+  - [x] GET `/api/users/me/`
+  - [x] PUT `/api/users/me/`
+  - [x] GET `/api/users/me/device-status/`
+  - [x] Admin interface + Audit Log dashboard
 
 ---
 
-### Feature 7: Wallet & Payment Bridge (Externalized)
-**Priority**: Critical | **Estimated**: 1 week  
-**Detail design**: [feature-7-detail-design.md](design/feature-7-detail-design.md) | **Status**: ✅ Implemented
+### Feature 7: Wallet & Payment Bridge ✅ (core done)
+**Priority**: Critical | **Status**: ✅ Core | 🚧 Dashboard & Tests pending
 
 - [x] **7.1 Models & Logic**
   - [x] Wallet model (balance tracking)
   - [x] Voucher model (codes, values, status)
   - [x] Transaction model (audit log for all LT movements)
-  - [x] Admin Audit Log integration for manual LT edits
+  - [x] Admin Audit Log integration
 
 - [x] **7.2 API Development**
-  - [x] GET `/api/wallet/me/` - Current balance
-  - [x] POST `/api/wallet/redeem/` - Redeem voucher code
-  - [x] GET `/api/wallet/history/` - Transaction history
-  - [x] POST `/api/payments/purchase-book/` - Buy book using LT
-  - [x] POST `/api/payments/purchase-video/` - Buy video using LT
-  - [x] POST `/api/payments/subscribe-vip/` - Sub VIP using LT
+  - [x] GET `/api/wallet/me/`
+  - [x] POST `/api/wallet/redeem/`
+  - [x] GET `/api/wallet/history/`
+  - [x] POST `/api/payments/purchase-book/`
+  - [x] POST `/api/payments/purchase-video/`
+  - [x] POST `/api/payments/subscribe-vip/`
 
 - [x] **7.3 Admin Voucher Tool**
-  - [x] Function to generate bulk vouchers
-  - [x] Export vouchers to CSV for external sale
-  - [ ] Revenue estimation dashboard (based on redeemed vouchers)
+  - [x] Generate bulk vouchers
+  - [x] Export vouchers to CSV
+  - [ ] Revenue estimation dashboard
 
 - [ ] **7.4 Integration**
-  - [ ] Update Book/Course detail pages with "Buy with Linh Thạch" button
+  - [ ] Update Book/Course detail pages với nút "Mua bằng Linh Thạch"
   - [ ] Real-time balance update in profile header
-  - [x] Notification on successful recharge/purchase
 
-- [ ] **7.5 Testing**
+- [ ] **7.5 Testing** (post-MVP)
   - [ ] Unit tests for wallet & voucher logic
-  - [ ] API endpoint tests for redemption and purchases
-  - **Assignee**: Backend Dev
-  - **Due**: Week 2
-
----
-
-### Feature 2: Books Module
-**Priority**: Critical | **Estimated**: 2 weeks  
-**Detail design**: [feature-2-detail-design.md](design/feature-2-detail-design.md) | **Status**: ✅ Backend implemented
-
-- [x] **2.1 Models & Database**
-  - [x] BookCategory model
-  - [x] Book model with cover image support
-  - [x] BookChapter model with PDF file support
-  - [x] Configure local storage for media (Images/PDFs)
-  - [x] UserBookPurchase model
-  - [x] Database migrations and indexes
-  - **Assignee**: Backend Dev
-  - **Due**: Week 3
-
-- [x] **2.2 Books API**
-  - [x] GET `/api/books/categories/` - List categories
-  - [x] GET `/api/books/` - List books with filters
-  - [x] GET `/api/books/{slug}/` - Book detail with chapters
-  - [x] GET `/api/books/{slug}/chapters/{order}/` - Chapter content
-    - [x] Permission checks (VIP, purchased, demo)
-  - [x] Link to optional Final Exam (final_exam_id)
-  - [x] Watermark configuration generation
-  - **Assignee**: Backend Dev
-  - **Due**: Week 3
-
-- [x] **2.3 Admin Interface**
-  - [x] Book management interface
-  - [x] Chapter inline editor
-  - [ ] Bulk import functionality
-  - [x] Category management
-  - **Assignee**: Backend Dev
-  - **Due**: Week 4
-
-- [ ] **2.4 Testing & Data Import**
-  - [ ] Unit tests for book services
   - [ ] API endpoint tests
-  - [ ] Import existing book data
-  - [ ] Seed demo data
-  - **Assignee**: Backend Dev
-  - **Due**: Week 4
 
 ---
 
-### Feature 3: Videos Module
-**Priority**: Critical | **Estimated**: 2 weeks  
-**Detail design**: [feature-3-detail-design.md](design/feature-3-detail-design.md) | **Status**: ✅ Backend implemented
+### Feature 2: Books Module ✅
+**Priority**: Critical | **Status**: ✅ Implemented
 
-- [x] **3.1 Models & Database**
-  - [x] VideoCourse model with cover image support
-  - [x] VideoLesson model with thumbnail support
-  - [x] Configure local storage for thumbnails and covers
-  - [x] UserVideoPurchase model
-  - [x] UserLessonProgress model
-  - [x] Database migrations
-  - **Assignee**: Backend Dev
-  - **Due**: Week 5
-
-- [x] **3.2 Video Platform (Bunny Stream & Local Fallback)**
-  - [x] GET `/api/videos/` - List videos
-  - [x] GET `/api/videos/{slug}/` - Video detail with dynamic URL (local or signed)
-  - [x] GET `/api/videos/{slug}/lessons/{lesson_slug}/` - Lesson with video URL
-  - [x] POST `/api/videos/{slug}/lessons/{lesson_slug}/progress/` - Update watch progress
-  - [x] GET `/api/videos/{slug}/progress/` - Course progress
-  - [ ] Bunny Stream integration service (Signed URL generation)
-  - [x] **Development Fallback**: Local file serving when `DEBUG=True`
-  - **Assignee**: Backend Dev
-  - **Due**: Week 5
-
-- [ ] **3.3 Bunny Stream Setup**
-  - [ ] Configure Bunny Stream library
-  - [ ] Set up video upload workflow
-  - [ ] Configure security settings (token auth, geo-blocking)
-  - [ ] Test video streaming
-  - **Assignee**: Backend Dev + DevOps
-  - **Due**: Week 6
-
-- [ ] **3.4 Testing**
-  - [ ] Unit tests for video services
-  - [ ] API endpoint tests
-  - [ ] Video streaming tests
-  - [ ] Progress tracking tests
-  - **Assignee**: Backend Dev
-  - **Due**: Week 6
+- [x] **2.1 Models & Database** — BookCategory, Book, BookChapter, UserBookPurchase ✅
+- [x] **2.2 Books API** — CRUD + Permission + Watermark config ✅
+- [x] **2.3 Admin Interface** — Book management + Chapter inline editor ✅
+  - [ ] Bulk import functionality (post-MVP)
+- [ ] **2.4 Testing & Data Import** (post-MVP)
 
 ---
 
-### Feature 4: Exams & Practice Module
-**Priority**: High | **Estimated**: 2.5 weeks  
-**Detail design**: [feature-4-detail-design.md](design/feature-4-detail-design.md) | **Status**: ✅ Backend implemented
+### Feature 3: Videos Module ✅ (Bunny Stream pending)
+**Priority**: Critical | **Status**: ✅ Core | 🚧 Bunny Stream pending
 
-- [x] **4.1 Standalone Exams (Critical)**
-  - [x] Exam model (Final exams, practice tests)
-  - [x] PracticeQuestion model
-  - [x] UserExamProgress model
-  - [x] GET `/api/exams/` - List exams
-  - [x] GET `/api/exams/{slug}/` - Get exam details
-  - [x] POST `/api/exams/{slug}/submit/` - Submit exam
-  - **Assignee**: Backend Dev
-  - **Due**: Week 7
-
-- [x] **4.2 Practice Tower (Kỳ Môn Focus)**
-  - [x] PracticeModule model (Tower structure)
-  - [x] Link Tower stages to specific Exams
-  - [x] Flashcard model
-  - [x] FlashcardReview model (SM-2 state)
-  - [x] Database migrations
-  - **Assignee**: Backend Dev
-  - **Due**: Week 7-8
-
-- [x] **4.3 Spaced Repetition (SM-2 Algorithm)**
-  - [x] Implement SM-2 algorithm for flashcards
-  - [x] GET `/api/practice/modules/{slug}/flashcards/`
-  - [x] POST `/api/practice/flashcards/{id}/review/`
-  - **Assignee**: Backend Dev
-  - **Due**: Week 8
-
-- [ ] **4.4 Testing & Content**
-  - [ ] Unit tests for exam/practice logic
-  - [ ] API endpoint tests
-  - [ ] Create sample practice content
-  - [ ] Test progressive unlocking
-  - **Assignee**: Backend Dev
-  - **Due**: Week 8
+- [x] **3.1 Models & Database** — VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress ✅
+- [x] **3.2 Video API** — List, Detail, Progress tracking, Local fallback ✅
+- [ ] **3.3 Bunny Stream Setup** (production only, not MVP blocker)
+- [ ] **3.4 Testing** (post-MVP)
 
 ---
 
-### Feature 5: Comments & Interactions
-**Priority**: Medium | **Estimated**: 1 week  
-**Detail design**: [feature-5-detail-design.md](design/feature-5-detail-design.md) | **Status**: ✅ Backend implemented
+### Feature 4: Exams & Practice Module ✅
+**Priority**: High | **Status**: ✅ Implemented
 
-- [x] **5.1 Models & API**
-  - [x] Comment model with GenericForeignKey
-  - [x] CommentReply model
-  - [x] GET `/api/comments/` - List comments (query: content_type, object_id)
-  - [x] POST `/api/comments/create/` - Create comment (with purchase check)
-  - [x] POST `/api/comments/{id}/reply/` - Reply to comment
-  - [x] DELETE `/api/comments/{id}/` - Delete own comment
-  - [x] Permission: only purchased users (or VIP) can comment
-  - **Assignee**: Backend Dev
-  - **Due**: Week 9
+- [x] **4.1 Standalone Exams** — Exam, PracticeQuestion, UserExamProgress, Submit API ✅
+- [x] **4.2 Practice Tower** — PracticeModule, Flashcard models ✅
+- [x] **4.3 Spaced Repetition (SM-2)** — FlashcardReview, SM-2 algorithm ✅
+- [ ] **4.4 Testing & Content** (post-MVP)
 
 ---
 
-### Feature 6: Notifications
-**Priority**: Medium | **Estimated**: 1 week  
-**Detail design**: [feature-6-detail-design.md](design/feature-6-detail-design.md) | **Status**: ✅ Backend implemented (in-app + models)
+### Feature 5: Comments & Interactions ✅
+**Priority**: Medium | **Status**: ✅ Implemented
 
-- [x] **6.1 Notification System & Email Quota**
-  - [x] **EmailLog model (Full audit trail for all outgoing emails)**
-  - [x] **EmailQuota model (Daily 300-email limit enforcement)**
-  - [x] Notification model (In-app alerts)
-  - [x] GET `/api/notifications/` - List notifications
-  - [x] POST `/api/notifications/{id}/mark-read/` - Mark as read
-  - [x] POST `/api/notifications/mark-all-read/` - Mark all read
-  - [x] In-app notification on recharge/purchase/VIP (from wallet)
-  - [ ] Celery task for sending emails with quota check
-  - [ ] Email notification service (Gmail SMTP integration)
-  - [x] **Admin Email Dashboard (View logs & current daily quota)**
-  - [ ] Push notification integration (FCM/APNs)
-  - **Assignee**: Backend Dev
-  - **Due**: Week 9
+- [x] Comment model với GenericForeignKey ✅
+- [x] CommentReply model ✅
+- [x] CRUD APIs với purchase verification ✅
 
 ---
 
-### Feature 7: Wallet & Payment Bridge (duplicate ref – see Feature 7 above)
-- In-app purchase & voucher logic implemented (see [feature-7-detail-design.md](design/feature-7-detail-design.md)).
-  - [x] POST `/api/payments/purchase-book/`, `purchase-video/`, `subscribe-vip/`
-  - [x] Voucher generation (Admin) and redeem API
+### Feature 6: Notifications 🚧
+**Priority**: Medium | **Status**: ✅ In-app done | 🚧 Email/Push pending
+
+- [x] **6.1 In-app Notification** — Model + Mark read API ✅
+- [x] EmailLog + EmailQuota model ✅
+- [ ] Celery task for email với quota check (không cần cho MVP)
+- [ ] Push notification (FCM/APNs) (post-MVP)
 
 ---
 
-## Phase 2: Vue.js Web App (5 weeks)
+## Phase 2: Vue.js Web App MVP 🚧 IN PROGRESS
 
-### Feature 8: Vue.js Project Setup
-**Priority**: Critical | **Estimated**: 1 week
+### Feature 8: Vue.js Project Setup ✅ COMPLETE
+**Status**: ✅ Done (2026-02-17)
 
 - [x] **8.1 Project Initialization**
-  - [x] Create Vite + Vue.js project
-  - [x] Configure dependencies (Pinia, Axios, Vuetify)
-  - [x] Set up project structure (`src/views`, `src/components`, `src/layouts`, `src/stores`, `src/api`, `src/composables`, `src/style`)
-  - [x] Configure router (`router/index.js`)
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 11 ✅
+  - [x] Vite + Vue.js project
+  - [x] Pinia + Axios + Vue Router + vue-i18n
+  - [x] Project structure (`src/api`, `src/components`, `src/layouts`, `src/stores`, `src/router`, `src/style`, `src/services`, `src/composables`)
+  - [x] Pre-commit hooks (Prettier)
 
 - [x] **8.2 Core Services**
-  - [x] API client with Axios (`api/client.js` - with interceptor)
-  - [x] Auth interceptor (integrated in `client.js`)
-  - [x] Device fingerprinting service (`composables/useDeviceId.js`)
-  - [ ] Watermark composable
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 11
+  - [x] API client với Axios interceptor (`api/client.js`)
+  - [x] Auth interceptor (JWT auto-refresh)
+  - [x] Device fingerprinting (`composables/useDeviceId.js`)
+  - [x] Language support (Tiếng Việt + English)
+  - [x] Auth store (Pinia - `stores/auth.js`)
+  - [x] Wallet service (`services/wallet.service.js`)
+  - [ ] Watermark composable (`composables/useWatermark.js`) ← cần làm
 
 ---
 
-### Feature 9: Authentication & Profile (Web)
-**Priority**: Critical | **Estimated**: 1 week  
-**Detail design**: [frontend-detail-design.md](design/frontend-detail-design.md) (§2 Login/Register, §3 Home Trang Chủ, §4 Profile)
+### Feature 9: Authentication & Profile 🚧
+**Priority**: P0 | **Status**: 🚧 Auth done, Profile cần hoàn thiện
 
 - [x] **9.1 Auth Pages**
-  - [x] Login page (`LoginView.vue`)
-  - [x] Registration page (`RegisterView.vue`)
-  - [ ] Device limit error handling (UI flow)
-  - [x] Auth store (Pinia - `stores/auth.js`)
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 12
+  - [x] Login page (`LoginView.vue`) — phone/email + password + device lock handling ✅
+  - [x] Registration page (`RegisterView.vue`) — form đầy đủ + device registration ✅
+  - [x] DeviceLockModal component ✅
+  - [x] Auth store with JWT management ✅
 
-- [/] **9.2 Profile & Settings**
-  - [x] Profile page (`ProfileView.vue` - skeleton)
-  - [ ] Edit profile (form)
-  - [ ] Device management UI
-  - [ ] VIP banner
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 12
+- [/] **9.2 Profile Page** ← ĐANG LÀM
+  - [x] ProfileView.vue skeleton
+  - [ ] Hiển thị thông tin user (tên, phone/email, loại tài khoản, VIP badge)
+  - [ ] Form chỉnh sửa tên (gọi PUT `/api/users/me/`)
+  - [ ] Hiển thị số dư Linh Thạch trong header/profile
+  - [ ] Nút đăng xuất (gọi POST `/api/auth/logout/`)
+  - [ ] Device management UI (xem device hiện tại, thời gian reset tiếp theo)
 
 ---
 
-### Feature 10: Books Module (Web)
-**Priority**: Critical | **Estimated**: 1.5 weeks
+### Feature 10: Home Page ← MỚI
+**Priority**: P0 | **Status**: ❌ Chỉ có skeleton
 
-- [/] **10.1 Books List & Detail**
-  - [x] Books list page skeleton (`BooksView.vue`)
-  - [ ] Books list with filters (API integration)
-  - [ ] Book detail page
-  - [ ] Purchase flow
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 13
-
-- [ ] **10.2 Book Reader**
-  - [ ] Book reader page
-  - [ ] HTML content rendering
-  - [ ] Watermark overlay component
-  - [ ] Chapter navigation
-  - [ ] CSS-based screenshot prevention
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 13-14
+- [ ] **10.0 HomeView.vue** ← CẦN LÀM
+  - [ ] Header với greeting + số dư Linh Thạch
+  - [ ] Section "Sách nổi bật" (top 4 books từ API)
+  - [ ] Section "Video khóa học" (top 4 video courses từ API)
+  - [ ] Section "Luyện tập hôm nay" (flashcards due hoặc prompt luyện thi)
+  - [ ] Navigation bottom bar hoàn chỉnh
+  - [ ] Loading skeletons
+  - [ ] Xử lý lỗi khi API fail
 
 ---
 
-### Feature 11: Videos Module (Web)
-**Priority**: Critical | **Estimated**: 1.5 weeks
+### Feature 11: Books Module (Web) ← ĐỔI SỐ từ 10
+**Priority**: P0 | **Status**: 🟡 Skeleton only
 
-- [ ] **11.1 Videos List & Detail**
-  - [ ] Videos list page
-  - [ ] Video detail page
-  - [ ] Purchase flow
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 14
+- [/] **11.1 Books List & Detail**
+  - [x] BooksView.vue skeleton
+  - [ ] Gọi API GET `/api/books/categories/` → hiển thị filter tabs
+  - [ ] Gọi API GET `/api/books/` → hiển thị danh sách sách với ảnh bìa, tên, giá
+  - [ ] Filter theo category
+  - [ ] BookDetailView.vue — Ảnh bìa + mô tả + danh sách chương + giá
+  - [ ] Nút "Mua" → gọi POST `/api/payments/purchase-book/`
+  - [ ] Hiển thị trạng thái: Demo / VIP / Đã mua / Cần mua
 
-- [ ] **11.2 Video Player**
-  - [ ] Video player page (Video.js)
-  - [ ] Video watermark overlay
-  - [ ] Progress tracking
-  - [ ] Transcript/Summary tabs
-  - [ ] Quiz section
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 15
-
----
-
-### Feature 12: Practice Module (Web)
-**Priority**: High | **Estimated**: 1.5 weeks
-
-- [ ] **12.1 Practice Interface**
-  - [ ] Practice modules page
-  - [ ] Chapters list with unlock status
-  - [ ] Flashcard viewer
-  - [ ] Test interface
-  - [ ] Case study viewer
-  - [ ] Results display
-  - **Assignee**: Frontend Dev
-  - **Due**: Week 15-16
+- [ ] **11.2 Book Reader**
+  - [ ] BookReaderView.vue — hiển thị nội dung chương
+  - [ ] Gọi API GET `/api/books/{slug}/chapters/{order}/` để lấy PDF URL
+  - [ ] Nhúng PDF viewer (iframe hoặc pdf.js)
+  - [ ] Watermark overlay component (hiển thị tên user + timestamp)
+  - [ ] Chapter navigation (Prev / Next)
+  - [ ] Lưu reading progress khi chuyển chương
 
 ---
 
-## Phase 3: Flutter Mobile App (6 weeks)
+### Feature 12: Videos Module (Web) ← ĐỔI SỐ từ 11
+**Priority**: P0 | **Status**: ❌ Chưa bắt đầu
 
-### Feature 13: Flutter Project Setup
-**Priority**: Critical | **Estimated**: 1 week
+- [ ] **12.1 Videos List & Detail**
+  - [ ] VideosView.vue — danh sách khóa học với ảnh thumbnail, tên, giảng viên, giá
+  - [ ] Gọi API GET `/api/videos/` + filter theo category
+  - [ ] VideoDetailView.vue — danh sách bài học, mô tả khóa học
+  - [ ] Hiển thị tiến độ học nếu đã mua (% hoàn thành)
+  - [ ] Nút "Mua" → gọi POST `/api/payments/purchase-video/`
+  - [ ] Hiển thị trạng thái từng bài: Preview / Locked / Completed
 
-- [ ] **13.1 Project Initialization**
-  - [ ] Create Flutter project
-  - [ ] Configure dependencies (Riverpod, Dio, etc.)
-  - [ ] Set up project structure
-  - [ ] Configure build settings (Android/iOS)
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 17
-
-- [ ] **13.2 Core Services**
-  - [ ] API client with Dio
-  - [ ] Auth interceptor
-  - [ ] Secure storage service
-  - [ ] Device service (fingerprinting)
-  - [ ] Watermark service
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 17
+- [ ] **12.2 Video Player**
+  - [ ] VideoPlayerView.vue
+  - [ ] Gọi API GET `/api/videos/{slug}/lessons/{lesson_slug}/` lấy video URL
+  - [ ] Nhúng HTML5 video player (hoặc Video.js)
+  - [ ] Watermark overlay (hiển thị username + timestamp ở góc ngẫu nhiên)
+  - [ ] Tự động gọi POST `/api/videos/{slug}/lessons/{lesson_slug}/progress/` mỗi 10 giây
+  - [ ] Tabs: Nội dung / Transcript / Tóm tắt
+  - [ ] Nút bài tiếp theo / bài trước
 
 ---
 
-### Feature 14: Authentication & Profile (Mobile)
-**Priority**: Critical | **Estimated**: 1 week
+### Feature 13: Practice Module (Web) ← ĐỔI SỐ từ 12
+**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
 
-- [ ] **14.1 Auth Screens**
-  - [ ] Login screen
-  - [ ] Registration screen
-  - [ ] Device limit error handling
-  - [ ] Auth state management (Riverpod)
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 18
+- [ ] **13.1 Practice Navigation**
+  - [ ] PracticeView.vue — danh sách các module luyện tập
+  - [ ] Gọi API GET `/api/practice/modules/` → hiển thị Tower structure
+  - [ ] Hiển thị unlock status của từng stage
+  - [ ] PracticeModuleDetailView.vue — nội dung module (flashcards + bài thi)
 
-- [ ] **14.2 Profile & Settings**
-  - [ ] Profile screen
-  - [ ] Edit profile
-  - [ ] Device management
-  - [ ] VIP badge display
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 18
+- [ ] **13.2 Flashcard Viewer**
+  - [ ] FlashcardView.vue — hiển thị từng flashcard
+  - [ ] Gọi API GET `/api/practice/modules/{slug}/flashcards/` (lấy cards cần ôn hôm nay)
+  - [ ] Flip animation (câu hỏi → đáp án)
+  - [ ] Nút đánh giá: Dễ / Trung bình / Khó → POST `/api/practice/flashcards/{id}/review/`
+  - [ ] Progress bar (đã ôn / tổng)
 
----
-
-### Feature 15: Books Module (Mobile)
-**Priority**: Critical | **Estimated**: 2 weeks
-
-- [ ] **15.1 Books List & Detail**
-  - [ ] Books list screen with categories
-  - [ ] Book detail screen
-  - [ ] Table of contents
-  - [ ] Purchase flow
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 19
-
-- [ ] **15.2 Book Reader**
-  - [ ] Book reader screen
-  - [ ] HTML content rendering
-  - [ ] Watermark overlay widget
-  - [ ] Chapter navigation
-  - [ ] Reading progress tracking
-  - [ ] Screenshot prevention (FLAG_SECURE)
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 20
+- [ ] **13.3 Exam Interface**
+  - [ ] ExamView.vue — giao diện làm bài thi
+  - [ ] Gọi API GET `/api/exams/{slug}/` → hiển thị câu hỏi
+  - [ ] Multiple choice + True/False question rendering
+  - [ ] Timer (nếu có thời gian)
+  - [ ] Submit → POST `/api/exams/{slug}/submit/` → hiển thị kết quả
 
 ---
 
-### Feature 16: Videos Module (Mobile)
-**Priority**: Critical | **Estimated**: 2 weeks
+### Feature 14: Store / Wallet Page ✅ COMPLETE
+**Priority**: P0 | **Status**: ✅ Done (2026-02-24)
 
-- [ ] **16.1 Videos List & Detail**
-  - [ ] Videos list screen
-  - [ ] Video detail screen
-  - [ ] Purchase flow
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 21
-
-- [ ] **16.2 Video Player**
-  - [ ] Video player screen
-  - [ ] Video controls
-  - [ ] Video watermark overlay (periodic)
-  - [ ] Progress tracking
-  - [ ] Transcript/Summary tabs
-  - [ ] Quiz section
-  - [ ] Screenshot prevention
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 22
+- [x] StoreView.vue
+  - [x] Hiển thị số dư Linh Thạch
+  - [x] Hiển thị trạng thái VIP
+  - [x] Form nhập voucher + nút đổi
+  - [x] Danh sách gói VIP (tháng / năm) + nút đăng ký
+  - [x] Lịch sử giao dịch
+  - [x] Loading states + error handling
 
 ---
 
-### Feature 17: Practice Module (Mobile)
-**Priority**: High | **Estimated**: 2 weeks
+### Feature 15: Notifications (Web) ← MỚI
+**Priority**: P2 | **Status**: ❌ Chưa bắt đầu
 
-- [ ] **17.1 Practice Navigation**
-  - [ ] Practice modules list
-  - [ ] Chapters list with unlock status
-  - [ ] Progress visualization
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 23
-
-- [ ] **17.2 Flashcards**
-  - [ ] Flashcard viewer with flip animation
-  - [ ] Review quality input
-  - [ ] Progress tracking
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 23
-
-- [ ] **17.3 Tests & Case Studies**
-  - [ ] Question display (multiple choice, true/false)
-  - [ ] Test submission
-  - [ ] Results screen
-  - [ ] Case study viewer
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 24
+- [ ] **15.1 Notification Center**
+  - [ ] NotificationsView.vue
+  - [ ] Gọi API GET `/api/notifications/`
+  - [ ] Danh sách thông báo (icon + nội dung + thời gian)
+  - [ ] Nút "Đánh dấu tất cả đã đọc" → POST `/api/notifications/mark-all-read/`
+  - [ ] Badge số thông báo chưa đọc trên bottom nav
 
 ---
 
-## Phase 4: Testing & Deployment (3 weeks)
+### Feature 16: UX & Polish ← MỚI
+**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
 
-### Feature 18: Integration Testing
-**Priority**: Critical | **Estimated**: 2 weeks
+- [ ] **16.1 Global UX**
+  - [ ] Global error handler (toast notifications)
+  - [ ] Loading skeleton components (tái sử dụng)
+  - [ ] Empty state components (khi không có dữ liệu)
+  - [ ] Pull-to-refresh (cho mobile browser)
 
-- [ ] **18.1 Backend Testing**
-  - [ ] API integration tests
-  - [ ] Load testing
-  - [ ] Security testing
-  - **Assignee**: QA + Backend Dev
-  - **Due**: Week 25
+- [ ] **16.2 Purchase Flow UX**
+  - [ ] Confirmation modal khi mua sách/video
+  - [ ] Success state sau khi mua thành công
+  - [ ] Insufficient balance — redirect đến Store
 
-- [ ] **18.2 Mobile Testing**
-  - [ ] Flutter integration tests
-  - [ ] iOS device testing
-  - [ ] Android device testing
-  - [ ] Payment flow testing
-  - **Assignee**: QA + Mobile Dev
-  - **Due**: Week 25
+- [ ] **16.3 Responsive Design**
+  - [ ] Kiểm tra layout trên mobile browser (375px - 428px)
+  - [ ] Kiểm tra layout trên tablet (768px)
+  - [ ] Kiểm tra layout trên desktop (>1024px)
 
-- [ ] **18.3 Web Testing**
-  - [ ] E2E tests (Cypress)
-  - [ ] Cross-browser testing
-  - [ ] Responsive design testing
-  - **Assignee**: QA + Frontend Dev
-  - **Due**: Week 26
+- [ ] **16.4 Security**
+  - [ ] CSS-based screenshot prevention trên book reader
+  - [ ] Disable right-click trên video player + book reader
+  - [ ] Watermark composable tái sử dụng cho cả sách và video
 
 ---
 
-### Feature 19: Production Deployment
-**Priority**: Critical | **Estimated**: 1 week
+### Feature 17: Frontend API Integration Layer ← MỚI
+**Priority**: P0 | **Status**: 🚧 Một số services đã có
 
-- [ ] **19.1 Infrastructure Setup**
-  - [ ] VPS provisioning
-  - [ ] Docker setup
+- [x] `auth.service.js` — login, register, refresh token ✅
+- [x] `wallet.service.js` — balance, transactions, voucher redeem ✅
+- [ ] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook
+- [ ] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo
+- [ ] `practice.service.js` — getModules, getFlashcards, reviewFlashcard
+- [ ] `exams.service.js` — getExam, submitExam
+- [ ] `notifications.service.js` — getNotifications, markRead, markAllRead
+- [ ] `user.service.js` — getProfile, updateProfile, getDeviceStatus
+
+---
+
+## Phase 3: Flutter Mobile App (Post-MVP)
+
+### Feature 18-22: Mobile App
+**Status**: ❌ Not started — sau khi web MVP hoàn thành
+
+- [ ] Flutter project setup
+- [ ] Auth screens
+- [ ] Books reader (PDF + watermark)
+- [ ] Video player (+ screenshot prevention FLAG_SECURE)
+- [ ] Practice module
+- [ ] Wallet & store
+
+---
+
+## Phase 4: Testing & Production Deployment
+
+### Feature 23: Integration Testing (Post-MVP)
+- [ ] Backend API tests
+- [ ] E2E tests (Cypress) for web
+- [ ] Cross-browser testing
+- [ ] Load testing
+
+### Feature 24: Production Deployment
+- [ ] **24.1 Infrastructure**
+  - [ ] VPS provisioning (Hetzner CPX21)
+  - [ ] Docker + Nginx setup
   - [ ] SSL certificates
   - [ ] Domain configuration
-  - **Assignee**: DevOps
-  - **Due**: Week 27
 
-- [ ] **19.2 Backend Deployment**
-  - [ ] Deploy Django API
-  - [ ] Configure Nginx
-  - [ ] Set up Celery workers
-  - [ ] Database migration
-  - [ ] Monitoring setup (Sentry)
-  - **Assignee**: DevOps
-  - **Due**: Week 27
+- [ ] **24.2 Backend Deploy**
+  - [ ] Deploy Django API + Gunicorn
+  - [ ] Configure Celery workers
+  - [ ] Database migration (PostgreSQL)
+  - [ ] Sentry monitoring setup
 
-- [ ] **19.3 Frontend Deployment**
-  - [ ] Build Vue.js app
-  - [ ] Deploy to CDN/hosting
+- [ ] **24.3 Frontend Deploy**
+  - [ ] Build Vue.js (`npm run build`)
+  - [ ] Deploy static files via Nginx
   - [ ] Configure environment variables
-  - **Assignee**: DevOps + Frontend Dev
-  - **Due**: Week 27
 
-- [ ] **19.4 Mobile App Submission**
+- [ ] **24.4 Post-MVP: Mobile**
   - [ ] Build release APK/AAB
   - [ ] Build release IPA
-  - [ ] Submit to Google Play
-  - [ ] Submit to App Store
-  - **Assignee**: Mobile Dev
-  - **Due**: Week 27
+  - [ ] Submit to Google Play + App Store
 
 ---
 
@@ -598,57 +439,61 @@ gantt
 
 ---
 
-## Risk Management
+## Current Sprint (2026-02-24)
 
-### High Risk Items
-1. **Device Locking** - Complex logic, needs thorough testing
-2. **Payment Integration** - Requires sandbox testing and compliance
-3. **Bunny Stream** - Video streaming performance and security
-4. **App Store Approval** - May face rejection, need buffer time
+**Branch**: `feature/enable-video-trainer`
 
-### Mitigation Strategies
-- Early prototyping of high-risk features
-- Parallel development where possible
-- Regular stakeholder demos
-- Buffer time in timeline
+### Đã hoàn thành
+- [x] Vue.js project setup + Vite + Pinia + Axios
+- [x] Auth flows (Login + Register + Device lock handling)
+- [x] Wallet/Store page (StoreView.vue)
+- [x] Auth store + JWT interceptor
+- [x] Device fingerprinting composable
+- [x] Language support (VI + EN)
 
----
+### Đang làm
+- [/] Profile page (ProfileView.vue) — cần hoàn thiện form + device info
+- [/] Videos module (VideosView.vue) — đây là focus của branch hiện tại
 
-## Dependencies
-
-```mermaid
-graph TD
-    A[Backend API] --> B[Mobile App]
-    A --> C[Web App]
-    D[Bunny Stream Setup] --> E[Video Features]
-    F[Payment Gateway] --> G[Purchase Flow]
-    A --> F
-```
-
----
-
-## Team Allocation
-
-| Role | Allocation | Phases |
-|------|-----------|--------|
-| Backend Developer | Full-time | Phase 1 (6 weeks) |
-| Frontend Developer | Full-time | Phase 2 (5 weeks) |
-| Mobile Developer | Full-time | Phase 3 (6 weeks) |
-| DevOps Engineer | Part-time | All phases |
-| QA Engineer | Full-time | Phase 4 (3 weeks) |
+### Tiếp theo (theo thứ tự ưu tiên)
+1. Hoàn thiện Profile page
+2. Home page với content nổi bật
+3. API services layer (books, videos, practice, exams)
+4. Books list + detail + reader
+5. Videos list + player
+6. Practice module (flashcards + exam)
+7. Notifications badge
+8. UX polish + responsive
 
 ---
 
-## Milestones
+## MVP Completion Checklist
 
-- **Week 6**: Backend API MVP complete
-- **Week 16**: Web app full features complete
-- **Week 24**: Mobile app full features complete
-- **Week 27**: Production deployment & app store submission
+### Backend (Ready ✅)
+- [x] Auth APIs
+- [x] Books APIs
+- [x] Videos APIs
+- [x] Exams & Practice APIs
+- [x] Wallet APIs
+- [x] Notifications APIs
+
+### Web Frontend (In Progress 🚧)
+- [x] Project setup
+- [x] Auth (Login + Register)
+- [x] Wallet / Store page
+- [ ] Profile page
+- [ ] Home page
+- [ ] Books list + detail + reader
+- [ ] Videos list + player
+- [ ] Practice + Flashcards + Exam
+- [ ] Notification center
+- [ ] API services layer
+- [ ] Purchase flows end-to-end
+- [ ] Watermark composable
+- [ ] UX polish (errors, loading, empty states)
+- [ ] Responsive design check
 
 ---
-
-*Last updated: 2026-02-23*
 
 ## Phase 1 Completion Summary
 
@@ -656,18 +501,43 @@ graph TD
 |---------|---------|--------|
 | 1. User Management & Auth | Fully implemented | ✅ |
 | 2. Books Module | Fully implemented | ✅ |
-| 3. Videos Module | Fully implemented (Bunny Stream pending) | ✅ |
+| 3. Videos Module | Implemented (Bunny Stream pending) | ✅ |
 | 4. Exams & Practice | Fully implemented | ✅ |
 | 5. Comments & Interactions | Fully implemented | ✅ |
 | 6. Notifications | In-app done, email/push pending | 🚧 |
-| 7. Wallet & Payment | Core done, dashboard & tests pending | 🚧 |
+| 7. Wallet & Payment | Core done, dashboard pending | 🚧 |
 
 ## Phase 2 Progress Summary
 
 | Feature | Web Frontend | Status |
 |---------|-------------|--------|
-| 8. Vue.js Setup | Vite + Pinia + Axios + Router done | ✅ |
-| 9. Auth & Profile | Login + Register + auth store done | 🚧 |
-| 10. Books (Web) | Skeleton only | 🟡 |
-| 11. Videos (Web) | Not started | ❌ |
-| 12. Practice (Web) | Not started | ❌ |
+| 8. Vue.js Setup | Vite + Pinia + Axios + Router + i18n done | ✅ |
+| 9. Auth & Profile | Login + Register done; Profile skeleton | 🚧 |
+| 10. Home Page | Skeleton only | ❌ |
+| 11. Books (Web) | Skeleton only | ❌ |
+| 12. Videos (Web) | Not started | ❌ |
+| 13. Practice (Web) | Not started | ❌ |
+| 14. Store / Wallet (Web) | Fully implemented | ✅ |
+| 15. Notifications (Web) | Not started | ❌ |
+| 16. UX & Polish | Not started | ❌ |
+| 17. API Services Layer | Auth + Wallet done; rest pending | 🚧 |
+
+---
+
+## Risk Management
+
+### High Risk Items
+1. **Video Player** — Cần kiểm tra với local dev server trước khi kết nối Bunny Stream
+2. **PDF Viewer** — pdf.js có thể nặng; cân nhắc iframe fallback
+3. **Watermark implementation** — CSS không đủ ngăn screenshot, cần kết hợp server-side
+4. **Device Locking UX** — Người dùng dễ bị kẹt nếu flow không rõ ràng
+
+### Mitigation
+- Test video player với file local trước
+- Dùng iframe cho PDF nếu pdf.js quá phức tạp cho MVP
+- Ưu tiên UX rõ ràng hơn security hoàn hảo cho MVP
+- Thêm contact support link khi device bị lock
+
+---
+
+*Last updated: 2026-02-24*

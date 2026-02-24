@@ -1,0 +1,54 @@
+[
+  {
+    "username": "demo_free_01",
+    "email": "demo.free01@thienthu.vn",
+    "first_name": "Văn",
+    "last_name": "Nguyễn",
+    "phone_number": "0901234567",
+    "user_type": "FREE",
+    "password": "demo@123456",
+    "wallet_balance": 0
+  },
+  {
+    "username": "demo_free_02",
+    "email": "demo.free02@thienthu.vn",
+    "first_name": "Thị Lan",
+    "last_name": "Trần",
+    "phone_number": "0912345678",
+    "user_type": "FREE",
+    "password": "demo@123456",
+    "wallet_balance": 0
+  },
+  {
+    "username": "demo_vip_01",
+    "email": "demo.vip01@thienthu.vn",
+    "first_name": "Minh Tuấn",
+    "last_name": "Lê",
+    "phone_number": "0923456789",
+    "user_type": "VIP",
+    "password": "demo@123456",
+    "wallet_balance": 500,
+    "vip_days": 30
+  },
+  {
+    "username": "demo_vip_02",
+    "email": "demo.vip02@thienthu.vn",
+    "first_name": "Thu Hương",
+    "last_name": "Phạm",
+    "phone_number": "0934567890",
+    "user_type": "VIP",
+    "password": "demo@123456",
+    "wallet_balance": 1000,
+    "vip_days": 30
+  },
+  {
+    "username": "demo_paid_01",
+    "email": "demo.paid01@thienthu.vn",
+    "first_name": "Đức Nghĩa",
+    "last_name": "Hoàng",
+    "phone_number": "0945678901",
+    "user_type": "USER",
+    "password": "demo@123456",
+    "wallet_balance": 200
+  }
+]

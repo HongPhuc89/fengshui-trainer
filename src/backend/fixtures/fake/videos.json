@@ -1,0 +1,135 @@
+{
+  "categories": [
+    { "title": "Phong Thủy Ứng Dụng", "slug": "phong-thuy-ung-dung" },
+    { "title": "Kỳ Môn Thực Hành",    "slug": "ky-mon-thuc-hanh"    },
+    { "title": "Tử Vi Đẩu Số",        "slug": "tu-vi-dau-so"        }
+  ],
+  "courses": [
+    {
+      "category_slug": "phong-thuy-ung-dung",
+      "title": "Phong Thủy Nhà Ở Từ A đến Z",
+      "slug": "phong-thuy-nha-o-tu-a-den-z",
+      "description": "Khóa học toàn diện về Phong Thủy nhà ở. Từ việc chọn đất, hướng nhà đến bài trí nội thất theo đúng nguyên lý Phong Thủy. Phù hợp cho người mới bắt đầu lẫn những ai muốn hệ thống hóa kiến thức.",
+      "instructor": "Thầy Nguyễn Minh Tuấn",
+      "is_free": false,
+      "price_lt": 300,
+      "level": "BEGINNER",
+      "lessons": [
+        {
+          "title": "Bài 1: Giới thiệu Phong Thủy Học",
+          "slug": "bai-1-gioi-thieu",
+          "order": 1,
+          "duration_seconds": 1245,
+          "is_free": true,
+          "summary": "Tổng quan về lịch sử Phong Thủy và các trường phái chính.",
+          "transcript": "Xin chào các bạn, hôm nay chúng ta sẽ tìm hiểu về lịch sử Phong Thủy..."
+        },
+        {
+          "title": "Bài 2: Âm Dương trong Phong Thủy",
+          "slug": "bai-2-am-duong",
+          "order": 2,
+          "duration_seconds": 1830,
+          "is_free": false,
+          "summary": "Hiểu về nguyên lý Âm Dương và cách áp dụng vào bố trí không gian sống.",
+          "transcript": "Âm Dương là nền tảng của Phong Thủy học..."
+        },
+        {
+          "title": "Bài 3: Ngũ Hành và không gian",
+          "slug": "bai-3-ngu-hanh",
+          "order": 3,
+          "duration_seconds": 2100,
+          "is_free": false,
+          "summary": "Cách bố trí màu sắc và vật liệu theo Ngũ Hành trong từng không gian.",
+          "transcript": "Ngũ Hành bao gồm Kim, Mộc, Thủy, Hỏa, Thổ..."
+        },
+        {
+          "title": "Bài 4: Phòng khách theo Phong Thủy",
+          "slug": "bai-4-phong-khach",
+          "order": 4,
+          "duration_seconds": 2580,
+          "is_free": false,
+          "summary": "Hướng dẫn chi tiết bài trí phòng khách: vị trí sofa, TV, cửa sổ.",
+          "transcript": "Phòng khách là trung tâm năng lượng của ngôi nhà..."
+        },
+        {
+          "title": "Bài 5: Phong Thủy phòng ngủ và sức khỏe",
+          "slug": "bai-5-phong-ngu",
+          "order": 5,
+          "duration_seconds": 1980,
+          "is_free": false,
+          "summary": "Vị trí giường ngủ, màu sắc phòng ngủ ảnh hưởng đến sức khỏe và tình duyên.",
+          "transcript": "Phòng ngủ chiếm một phần ba cuộc đời của chúng ta..."
+        }
+      ]
+    },
+    {
+      "category_slug": "ky-mon-thuc-hanh",
+      "title": "Kỳ Môn Độn Giáp Thực Hành",
+      "slug": "ky-mon-don-giap-thuc-hanh",
+      "description": "Khóa học thực hành Kỳ Môn Độn Giáp từ cơ bản đến nâng cao. Học viên sẽ thực hành lập cục, phân tích và ứng dụng Kỳ Môn trong các tình huống thực tế: kinh doanh, chọn ngày, di chuyển.",
+      "instructor": "Đạo Nhân Tiên Sinh",
+      "is_free": false,
+      "price_lt": 500,
+      "level": "INTERMEDIATE",
+      "lessons": [
+        {
+          "title": "Bài 1: Ôn lại nền tảng Kỳ Môn",
+          "slug": "bai-1-on-lai-nen-tang",
+          "order": 1,
+          "duration_seconds": 2700,
+          "is_free": true,
+          "summary": "Tổng ôn các khái niệm nền tảng: Cửu Cung, Bát Môn, Cửu Tinh, Bát Thần.",
+          "transcript": "Trước khi đi vào thực hành, chúng ta cần ôn lại các khái niệm cơ bản..."
+        },
+        {
+          "title": "Bài 2: Lập cục thời gian",
+          "slug": "bai-2-lap-cuc-thoi-gian",
+          "order": 2,
+          "duration_seconds": 3600,
+          "is_free": false,
+          "summary": "Hướng dẫn lập cục Kỳ Môn theo thời gian thực tế, từng bước chi tiết.",
+          "transcript": "Để lập cục thời gian, trước tiên ta xác định tiết khí..."
+        },
+        {
+          "title": "Bài 3: Phân tích cục kinh doanh",
+          "slug": "bai-3-phan-tich-kinh-doanh",
+          "order": 3,
+          "duration_seconds": 4200,
+          "is_free": false,
+          "summary": "Ứng dụng Kỳ Môn để phân tích thời cơ kinh doanh, hợp đồng, đàm phán.",
+          "transcript": "Kỳ Môn Độn Giáp được gọi là đế vương chi học vì..."
+        }
+      ]
+    },
+    {
+      "category_slug": "tu-vi-dau-so",
+      "title": "Tử Vi Đẩu Số Cơ Bản",
+      "slug": "tu-vi-dau-so-co-ban",
+      "description": "Khóa học nhập môn Tử Vi Đẩu Số — phương pháp chiêm tinh học phương Đông. Học cách lập lá số Tử Vi, đọc hiểu các cung và sao, phân tích vận mệnh qua từng thời kỳ.",
+      "instructor": "Thầy Lê Quang Bình",
+      "is_free": false,
+      "price_lt": 280,
+      "level": "BEGINNER",
+      "lessons": [
+        {
+          "title": "Bài 1: Giới thiệu Tử Vi Đẩu Số",
+          "slug": "bai-1-gioi-thieu-tu-vi",
+          "order": 1,
+          "duration_seconds": 1500,
+          "is_free": true,
+          "summary": "Lịch sử, nguồn gốc và các trường phái Tử Vi Đẩu Số.",
+          "transcript": "Tử Vi Đẩu Số là một trong những môn chiêm tinh học nổi tiếng nhất..."
+        },
+        {
+          "title": "Bài 2: 12 Cung và ý nghĩa",
+          "slug": "bai-2-12-cung",
+          "order": 2,
+          "duration_seconds": 2400,
+          "is_free": false,
+          "summary": "Ý nghĩa của 12 cung trong lá số Tử Vi: Mệnh, Phụ Mẫu, Phúc Đức...",
+          "transcript": "Lá số Tử Vi có 12 cung, mỗi cung đại diện cho một lĩnh vực của cuộc sống..."
+        }
+      ]
+    }
+  ]
+}
