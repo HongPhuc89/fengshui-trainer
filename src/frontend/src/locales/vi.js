@@ -2,7 +2,7 @@ export default {
   nav: {
     home: 'Trang Chủ',
     books: 'Thư Viện',
-    store: 'Cửa Hàng',
+    store: 'Ví',
     community: 'Cộng Đồng',
     profile: 'Hồ Sơ',
   },

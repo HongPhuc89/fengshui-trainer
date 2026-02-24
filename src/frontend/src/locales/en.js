@@ -2,7 +2,7 @@ export default {
     nav: {
         home: 'Home',
         books: 'Library',
-        store: 'Store',
+        store: 'Wallet',
         community: 'Community',
         profile: 'Profile',
     },
