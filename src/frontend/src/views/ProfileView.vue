@@ -110,31 +110,6 @@ async function saveName() {
   }
 }
 
-// ─── Device Info ──────────────────────────────────────────────────────────────
-const deviceInfo = ref(null)
-const deviceLoading = ref(false)
-
-async function loadDeviceStatus() {
-  deviceLoading.value = true
-  try {
-    const { data } = await userService.getDeviceStatus()
-    deviceInfo.value = data
-  } catch {
-    // non-critical, fail silently
-  } finally {
-    deviceLoading.value = false
-  }
-}
-
-function formatDate(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 // ─── Wallet balance ───────────────────────────────────────────────────────────
 const walletBalance = ref(null)
 
@@ -173,7 +148,6 @@ const badgeClass = computed(() => {
 })
 
 onMounted(() => {
-  loadDeviceStatus()
   loadWallet()
 })
 </script>
@@ -316,36 +290,6 @@ onMounted(() => {
           </span>
         </div>
       </div>
-    </div>
-
-    <!-- ── Device Info ────────────────────────────────────── -->
-    <div class="card device-card">
-      <p class="card-label">Thiết bị liên kết</p>
-      <div v-if="deviceLoading" class="text-muted">Đang tải...</div>
-      <template v-else-if="deviceInfo">
-        <div class="info-rows">
-          <div class="info-row">
-            <span class="info-label">Tên thiết bị</span>
-            <span class="info-value">{{ deviceInfo.bound_device?.device_name || '—' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Loại</span>
-            <span class="info-value">{{ deviceInfo.bound_device?.device_type || '—' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Lần reset cuối</span>
-            <span class="info-value">{{ formatDate(deviceInfo.last_device_reset) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Reset tiếp theo</span>
-            <span class="info-value">
-              <span v-if="deviceInfo.can_reset_now" class="text-green">Có thể reset ngay</span>
-              <span v-else>{{ formatDate(deviceInfo.next_reset_available_at) }}</span>
-            </span>
-          </div>
-        </div>
-      </template>
-      <div v-else class="text-muted">Không có thông tin thiết bị.</div>
     </div>
 
     <!-- ── Logout ─────────────────────────────────────────── -->
