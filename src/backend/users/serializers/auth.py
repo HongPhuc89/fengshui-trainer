@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from ..models import User, UserDevice
+from ..utils import get_client_ip, parse_device_name
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -30,9 +31,14 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         device_id = validated_data.pop('device_id')
         device_type = validated_data.pop('device_type')
-        device_name = validated_data.pop('device_name', '')
+        validated_data.pop('device_name', '')
         email = validated_data['email']
         password = validated_data['password']
+
+        request = self.context.get('request')
+        ua_string = request.META.get('HTTP_USER_AGENT', '') if request else ''
+        device_name = parse_device_name(ua_string)
+        client_ip = get_client_ip(request) if request else None
 
         user = User.objects.create_user(
             username=email,
@@ -46,6 +52,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             device_id=device_id,
             device_type=device_type,
             device_name=device_name,
+            user_agent=ua_string,
+            last_ip=client_ip,
             is_primary_bound=True,
             status='ACTIVE',
         )
@@ -65,8 +73,12 @@ class CustomLoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         current_device_id = attrs.get('device_id')
         reset_device = attrs.get('reset_device')
-        device_name = attrs.get('device_name', '')
         device_type = attrs.get('device_type')
+
+        request = self.context.get('request')
+        ua_string = request.META.get('HTTP_USER_AGENT', '') if request else ''
+        device_name = parse_device_name(ua_string)
+        client_ip = get_client_ip(request) if request else None
 
         user = authenticate(request=self.context.get('request'), username=email, password=password)
         if not user:
@@ -105,6 +117,8 @@ class CustomLoginSerializer(serializers.Serializer):
             defaults={
                 'device_type': device_type,
                 'device_name': device_name,
+                'user_agent': ua_string,
+                'last_ip': client_ip,
                 'is_primary_bound': user.devices.filter(is_primary_bound=True).count() == 0,
                 'status': 'ACTIVE'
             }
@@ -112,7 +126,9 @@ class CustomLoginSerializer(serializers.Serializer):
 
         if not created:
             device.status = 'ACTIVE'
-            device.device_name = device_name if device_name else device.device_name
+            device.device_name = device_name
+            device.user_agent = ua_string
+            device.last_ip = client_ip
             device.last_active = timezone.now()
             if user.devices.filter(is_primary_bound=True, status='ACTIVE').count() == 0:
                 device.is_primary_bound = True
