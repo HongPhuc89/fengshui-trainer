@@ -2,9 +2,9 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.1
+- **Version**: 1.2
 - **Last Updated**: 2026-02-24
-- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress
+- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel 🆕 Planned
 
 ## Backend Detail Designs (md/design/)
 | Feature | Doc | Description | Status |
@@ -272,11 +272,13 @@ gantt
 ---
 
 ### Feature 12: Videos Module (Web) ← ĐỔI SỐ từ 11
-**Priority**: P0 | **Status**: ❌ Chưa bắt đầu
+**Priority**: P0 | **Status**: 🟡 Skeleton / List đang làm
 
-- [ ] **12.1 Videos List & Detail**
-  - [ ] VideosView.vue — danh sách khóa học với ảnh thumbnail, tên, giảng viên, giá
-  - [ ] Gọi API GET `/api/videos/` + filter theo category
+- [/] **12.1 Videos List & Detail**
+  - [x] VideosView.vue — danh sách khóa học với ảnh thumbnail, tên, giảng viên, giá ✅ (2026-02-24)
+  - [x] Search + filter UI trong VideosView.vue ✅
+  - [ ] Gọi API GET `/api/videos/` thật (hiện dùng dữ liệu tĩnh/fake)
+  - [ ] Filter theo category từ API
   - [ ] VideoDetailView.vue — danh sách bài học, mô tả khóa học
   - [ ] Hiển thị tiến độ học nếu đã mua (% hoàn thành)
   - [ ] Nút "Mua" → gọi POST `/api/payments/purchase-video/`
@@ -374,12 +376,74 @@ gantt
 
 - [x] `auth.service.js` — login, register, refresh token ✅
 - [x] `wallet.service.js` — balance, transactions, voucher redeem ✅
-- [ ] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook
-- [ ] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo
+- [x] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook ✅ (2026-02-24)
+- [x] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo ✅ (2026-02-24)
 - [ ] `practice.service.js` — getModules, getFlashcards, reviewFlashcard
 - [ ] `exams.service.js` — getExam, submitExam
 - [ ] `notifications.service.js` — getNotifications, markRead, markAllRead
 - [ ] `user.service.js` — getProfile, updateProfile, getDeviceStatus
+
+---
+
+### Feature 18: Admin Panel (Vue.js) — `src/admin` 🆕
+**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
+**Mô tả**: Giao diện quản trị riêng biệt, xây dựng bằng Vue.js, code lưu tại `src/admin/` (tách biệt với `src/frontend/`). Giao tiếp với Django Admin API / Django REST Framework.
+
+- [ ] **18.1 Admin Project Setup** (`src/admin/`)
+  - [ ] Vite + Vue.js project mới tại `src/admin/`
+  - [ ] Pinia + Axios + Vue Router
+  - [ ] UI library: Element Plus hoặc Naive UI (phù hợp dashboard)
+  - [ ] Admin auth store (JWT, chỉ cho staff/superuser)
+  - [ ] Admin layout: Sidebar + Header + Content area
+  - [ ] Route guard: chỉ cho phép `is_staff = true`
+
+- [ ] **18.2 Dashboard Overview**
+  - [ ] Tổng số user, sách, video, doanh thu
+  - [ ] Biểu đồ giao dịch / doanh thu theo ngày (Chart.js hoặc ECharts)
+  - [ ] Thống kê voucher (đã dùng / còn lại)
+  - [ ] Recent signups + recent purchases
+
+- [ ] **18.3 User Management**
+  - [ ] Danh sách users (phân trang, search theo tên/phone/email)
+  - [ ] Xem chi tiết user: thông tin, loại tài khoản, số dư, device
+  - [ ] Admin unlink device (gọi API admin override)
+  - [ ] Thay đổi user_type (FREE → VIP)
+  - [ ] Xem lịch sử giao dịch của user
+
+- [ ] **18.4 Books Management**
+  - [ ] Danh sách sách (CRUD: thêm, sửa, xóa)
+  - [ ] Quản lý danh mục sách (BookCategory)
+  - [ ] Thêm/sửa/xóa chương sách (BookChapter inline)
+  - [ ] Upload ảnh bìa + file PDF
+
+- [ ] **18.5 Videos Management**
+  - [ ] Danh sách khóa học (CRUD)
+  - [ ] Quản lý bài học trong khóa (VideoLesson inline)
+  - [ ] Upload thumbnail + video URL (Bunny Stream ID)
+  - [ ] Cập nhật tiến trình học của user (nếu cần)
+
+- [ ] **18.6 Voucher & Revenue Management**
+  - [ ] Tạo voucher hàng loạt (nhập số lượng + giá trị)
+  - [ ] Danh sách voucher (filter: chưa dùng / đã dùng / hết hạn)
+  - [ ] Export voucher ra CSV
+  - [ ] Bảng doanh thu ước tính (số LT đã nạp × tỷ giá)
+
+- [ ] **18.7 Practice & Exams Management**
+  - [ ] Quản lý PracticeModule (thêm/sửa/xóa module)
+  - [ ] Quản lý Flashcard (CRUD theo module)
+  - [ ] Quản lý Exam + PracticeQuestion
+
+- [ ] **18.8 Notifications Management**
+  - [ ] Tạo thông báo broadcast (gửi cho tất cả users)
+  - [ ] Danh sách thông báo đã gửi
+
+- [ ] **18.9 Admin API Services** (`src/admin/src/services/`)
+  - [ ] `admin.auth.service.js` — login staff
+  - [ ] `admin.users.service.js` — CRUD users, device unlink
+  - [ ] `admin.books.service.js` — CRUD books, chapters, categories
+  - [ ] `admin.videos.service.js` — CRUD courses, lessons
+  - [ ] `admin.vouchers.service.js` — generate, list, export CSV
+  - [ ] `admin.dashboard.service.js` — stats, charts data
 
 ---
 
@@ -450,20 +514,24 @@ gantt
 - [x] Auth store + JWT interceptor
 - [x] Device fingerprinting composable
 - [x] Language support (VI + EN)
+- [x] `books.service.js` — API service cho Books module
+- [x] `videos.service.js` — API service cho Videos module
+- [x] `VideosView.vue` — danh sách video courses với search + filter UI
+- [x] Fake data fixtures (`src/backend/fixtures/fake/`) + management command import
 
 ### Đang làm
 - [/] Profile page (ProfileView.vue) — cần hoàn thiện form + device info
-- [/] Videos module (VideosView.vue) — đây là focus của branch hiện tại
+- [/] Videos module — VideosView done, cần kết nối API thật + VideoDetailView
 
 ### Tiếp theo (theo thứ tự ưu tiên)
-1. Hoàn thiện Profile page
+1. Hoàn thiện Profile page (form chỉnh tên, device info, logout)
 2. Home page với content nổi bật
-3. API services layer (books, videos, practice, exams)
-4. Books list + detail + reader
-5. Videos list + player
-6. Practice module (flashcards + exam)
-7. Notifications badge
-8. UX polish + responsive
+3. Books list + detail + reader (books.service.js đã có)
+4. Videos detail + player (videos.service.js đã có)
+5. Practice module (flashcards + exam)
+6. Notifications badge
+7. UX polish + responsive
+8. **Admin Panel** (`src/admin/`) — Vue.js dashboard riêng cho quản trị viên
 
 ---
 
@@ -481,17 +549,27 @@ gantt
 - [x] Project setup
 - [x] Auth (Login + Register)
 - [x] Wallet / Store page
+- [x] API services: auth, wallet, books, videos
+- [x] Videos list page (search + filter UI)
 - [ ] Profile page
 - [ ] Home page
 - [ ] Books list + detail + reader
-- [ ] Videos list + player
+- [ ] Videos detail + player
 - [ ] Practice + Flashcards + Exam
 - [ ] Notification center
-- [ ] API services layer
+- [ ] API services: practice, exams, notifications, user
 - [ ] Purchase flows end-to-end
 - [ ] Watermark composable
 - [ ] UX polish (errors, loading, empty states)
 - [ ] Responsive design check
+
+### Admin Panel — `src/admin/` (Planned)
+- [ ] Vue.js project setup tại `src/admin/`
+- [ ] Dashboard tổng quan
+- [ ] User management
+- [ ] Books + Videos management
+- [ ] Voucher management + Revenue
+- [ ] Practice & Exams management
 
 ---
 
@@ -515,12 +593,13 @@ gantt
 | 9. Auth & Profile | Login + Register done; Profile skeleton | 🚧 |
 | 10. Home Page | Skeleton only | ❌ |
 | 11. Books (Web) | Skeleton only | ❌ |
-| 12. Videos (Web) | Not started | ❌ |
+| 12. Videos (Web) | VideosView.vue (list + search/filter) done; detail + player pending | 🟡 |
 | 13. Practice (Web) | Not started | ❌ |
 | 14. Store / Wallet (Web) | Fully implemented | ✅ |
 | 15. Notifications (Web) | Not started | ❌ |
 | 16. UX & Polish | Not started | ❌ |
-| 17. API Services Layer | Auth + Wallet done; rest pending | 🚧 |
+| 17. API Services Layer | Auth + Wallet + Books + Videos done; practice/exams/notifs pending | 🚧 |
+| 18. Admin Panel (Vue.js) | Chưa bắt đầu — `src/admin/` | ❌ |
 
 ---
 
@@ -540,4 +619,4 @@ gantt
 
 ---
 
-*Last updated: 2026-02-24*
+*Last updated: 2026-02-24 (v1.2 — thêm Feature 18: Admin Panel Vue.js tại `src/admin/`; cập nhật trạng thái books.service, videos.service, VideosView)*
