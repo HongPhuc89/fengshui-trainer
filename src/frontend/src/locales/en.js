@@ -16,16 +16,16 @@ export default {
     auth: {
         login: {
             heading: 'Access the Archives',
-            usernamePlaceholder: 'Enter your scholar ID',
-            usernameLabel: 'Username / Phone',
+            usernamePlaceholder: 'Enter your email address',
+            usernameLabel: 'Email Address',
             passwordLabel: 'Password',
             passwordPlaceholder: 'Enter your secure key',
             forgotPassword: 'Forgot Password?',
             submitButton: 'Enter Library',
             noAccount: 'New Scholar?',
             registerLink: 'Register for Access',
-            errorEmpty: 'Please enter phone number and password.',
-            errorInvalid: 'Invalid phone number or password.',
+            errorEmpty: 'Please enter email and password.',
+            errorInvalid: 'Invalid email or password.',
             errorDeviceLocked: 'This account is locked to another device.',
         },
         register: {

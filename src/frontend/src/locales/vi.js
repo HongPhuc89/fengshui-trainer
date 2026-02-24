@@ -16,16 +16,16 @@ export default {
   auth: {
     login: {
       heading: 'Truy Cập Thư Viện',
-      usernamePlaceholder: 'Nhập số điện thoại hoặc danh hiệu',
-      usernameLabel: 'Số điện thoại / Tên đăng nhập',
+      usernamePlaceholder: 'Nhập địa chỉ email của bạn',
+      usernameLabel: 'Địa Chỉ Email',
       passwordLabel: 'Mật khẩu',
       passwordPlaceholder: 'Nhập mật khẩu bảo mật',
       forgotPassword: 'Quên mật khẩu?',
       submitButton: 'Vào Thư Viện',
       noAccount: 'Học giả mới?',
       registerLink: 'Đăng Ký',
-      errorEmpty: 'Vui lòng nhập số điện thoại và mật khẩu.',
-      errorInvalid: 'Số điện thoại hoặc mật khẩu không đúng.',
+      errorEmpty: 'Vui lòng nhập email và mật khẩu.',
+      errorInvalid: 'Email hoặc mật khẩu không đúng.',
       errorDeviceLocked: 'Tài khoản này đã bị khóa với thiết bị khác.',
     },
     register: {

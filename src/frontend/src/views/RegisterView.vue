@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
@@ -24,6 +24,17 @@ const termsAccepted = ref(false)
 const loading = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
+const touched = ref({
+  email: false,
+  password: false,
+  confirmPassword: false
+})
+
+let debounceTimers = {
+  email: null,
+  password: null,
+  confirmPassword: null
+}
 
 const canSubmit = computed(() => {
   if (!termsAccepted.value) return false
@@ -33,16 +44,82 @@ const canSubmit = computed(() => {
   return true
 })
 
+function validateField(field) {
+  if (field === 'email' && touched.value.email) {
+    if (!email.value.trim()) {
+      fieldErrors.value.email = t('auth.register.validation.emailRequired')
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+      fieldErrors.value.email = t('auth.register.validation.emailInvalid')
+    } else {
+      delete fieldErrors.value.email
+    }
+  }
+
+  if (field === 'password' && touched.value.password) {
+    if (!password.value) {
+      fieldErrors.value.password = t('auth.register.validation.passwordRequired')
+    } else if (password.value.length < 8) {
+      fieldErrors.value.password = t('auth.register.validation.passwordMin')
+    } else {
+      delete fieldErrors.value.password
+    }
+    // Re-validate confirmPassword if it has been touched
+    if (touched.value.confirmPassword && confirmPassword.value) {
+      validateField('confirmPassword')
+    }
+  }
+
+  if (field === 'confirmPassword' && touched.value.confirmPassword) {
+    if (!confirmPassword.value) {
+      fieldErrors.value.confirmPassword = t('auth.register.validation.passwordRequired')
+    } else if (password.value !== confirmPassword.value) {
+      fieldErrors.value.confirmPassword = t('auth.register.validation.passwordMismatch')
+    } else {
+      delete fieldErrors.value.confirmPassword
+    }
+  }
+}
+
+function debouncedValidate(field, delay = 500) {
+  if (debounceTimers[field]) {
+    clearTimeout(debounceTimers[field])
+  }
+  debounceTimers[field] = setTimeout(() => {
+    validateField(field)
+  }, delay)
+}
+
 function validate() {
+  touched.value.email = true
+  touched.value.password = true
+  touched.value.confirmPassword = true
+
   fieldErrors.value = {}
   if (!email.value.trim()) fieldErrors.value.email = t('auth.register.validation.emailRequired')
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) fieldErrors.value.email = t('auth.register.validation.emailInvalid')
   if (!password.value) fieldErrors.value.password = t('auth.register.validation.passwordRequired')
   else if (password.value.length < 8) fieldErrors.value.password = t('auth.register.validation.passwordMin')
-  if (password.value !== confirmPassword.value) fieldErrors.value.confirmPassword = t('auth.register.validation.passwordMismatch')
+  if (!confirmPassword.value) fieldErrors.value.confirmPassword = t('auth.register.validation.passwordRequired')
+  else if (password.value !== confirmPassword.value) fieldErrors.value.confirmPassword = t('auth.register.validation.passwordMismatch')
   if (!termsAccepted.value) fieldErrors.value.terms = t('auth.register.validation.termsRequired')
   return Object.keys(fieldErrors.value).length === 0
 }
+
+// Watch for input changes with debounce
+watch(email, () => {
+  touched.value.email = true
+  debouncedValidate('email')
+})
+
+watch(password, () => {
+  touched.value.password = true
+  debouncedValidate('password')
+})
+
+watch(confirmPassword, () => {
+  touched.value.confirmPassword = true
+  debouncedValidate('confirmPassword')
+})
 
 async function submit() {
   error.value = ''
