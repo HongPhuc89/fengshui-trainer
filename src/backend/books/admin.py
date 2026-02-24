@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.text import slugify
 from .models import BookCategory, Book, BookChapter, UserBookPurchase
 
 
@@ -6,6 +7,11 @@ from .models import BookCategory, Book, BookChapter, UserBookPurchase
 class BookCategoryAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug')
     prepopulated_fields = {'slug': ('title',)}
+
+    def save_model(self, request, obj, form, change):
+        if not obj.slug:
+            obj.slug = slugify(obj.title)
+        super().save_model(request, obj, form, change)
 
 
 class BookChapterInline(admin.TabularInline):
@@ -20,8 +26,12 @@ class BookAdmin(admin.ModelAdmin):
     list_filter = ('is_free', 'is_new_release', 'category')
     search_fields = ('title', 'author')
     prepopulated_fields = {'slug': ('title',)}
-    raw_id_fields = ('category',)
     inlines = [BookChapterInline]
+
+    def save_model(self, request, obj, form, change):
+        if not obj.slug:
+            obj.slug = slugify(obj.title)
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(BookChapter)
