@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.http import FileResponse, Http404
 from rest_framework import generics, status, views
 from rest_framework.response import Response
@@ -82,19 +81,14 @@ class BookChapterDetailView(views.APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Return file URL or path for client to load (e.g. signed URL or media path)
-        import os
-        if chapter.file_path and os.path.isabs(chapter.file_path):
-            file_url = chapter.file_path
-        else:
-            file_url = request.build_absolute_uri(settings.MEDIA_URL + chapter.file_path) if chapter.file_path else None
+        file_url = request.build_absolute_uri(chapter.file_path.url) if chapter.file_path else None
 
         return Response({
             'public_id': str(chapter.public_id),
             'title': chapter.title,
             'order': chapter.order,
             'file_url': file_url,
-            'file_path': chapter.file_path,
+            'file_path': chapter.file_path.name if chapter.file_path else None,
             'page_count': chapter.page_count,
         })
 

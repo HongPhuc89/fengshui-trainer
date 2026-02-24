@@ -62,7 +62,7 @@ class BookChapter(BaseModel):
     title = models.CharField(max_length=255)
     slug = models.CharField(max_length=255)
     order = models.PositiveIntegerField()
-    file_path = models.CharField(max_length=500)
+    file_path = models.FileField(upload_to='book_chapters/', blank=True, null=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
     is_demo = models.BooleanField(default=False)

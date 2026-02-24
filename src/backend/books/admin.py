@@ -36,7 +36,7 @@ class BookAdmin(admin.ModelAdmin):
 
 @admin.register(BookChapter)
 class BookChapterAdmin(admin.ModelAdmin):
-    list_display = ('book', 'title', 'order', 'is_demo', 'file_path')
+    list_display = ('book', 'title', 'order', 'is_demo')
     list_filter = ('is_demo',)
     raw_id_fields = ('book',)
 
