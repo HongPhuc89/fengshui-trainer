@@ -30,7 +30,7 @@ class Book(BaseModel):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=255)
     author = models.CharField(max_length=255, blank=True)
-    cover_image = models.CharField(max_length=255, blank=True)
+    cover_image = models.ImageField(upload_to='book_covers/', blank=True, null=True)
     description = models.TextField(blank=True)
     is_free = models.BooleanField(default=False)
     is_new_release = models.BooleanField(default=False)

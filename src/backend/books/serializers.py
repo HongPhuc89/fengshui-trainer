@@ -16,6 +16,15 @@ class BookChapterListSerializer(serializers.ModelSerializer):
 
 class BookListSerializer(serializers.ModelSerializer):
     category = BookCategorySerializer(read_only=True)
+    cover_image = serializers.SerializerMethodField()
+
+    def get_cover_image(self, obj):
+        if not obj.cover_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.cover_image.url)
+        return obj.cover_image.url
 
     class Meta:
         model = Book
@@ -28,7 +37,16 @@ class BookListSerializer(serializers.ModelSerializer):
 class BookDetailSerializer(serializers.ModelSerializer):
     category = BookCategorySerializer(read_only=True)
     chapters = BookChapterListSerializer(many=True, read_only=True)
+    cover_image = serializers.SerializerMethodField()
     final_exam_id = serializers.SerializerMethodField()
+
+    def get_cover_image(self, obj):
+        if not obj.cover_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.cover_image.url)
+        return obj.cover_image.url
 
     def get_final_exam_id(self, obj):
         return str(obj.final_exam_id) if obj.final_exam_id else None
