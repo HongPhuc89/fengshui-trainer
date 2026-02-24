@@ -3,7 +3,7 @@ export default {
     home: 'Trang Chủ',
     books: 'Thư Viện',
     store: 'Ví',
-    community: 'Cộng Đồng',
+    videos: 'Video',
     profile: 'Hồ Sơ',
   },
 

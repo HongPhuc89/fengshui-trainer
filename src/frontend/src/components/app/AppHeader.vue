@@ -16,19 +16,15 @@ function goHome() {
 
 <template>
   <header class="app-header">
-    <button type="button" class="app-header__btn" :aria-label="t('header.menuAriaLabel')" @click="drawerOpen = true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
+    <!-- TODO: menu drawer – ẩn tạm -->
+    <span class="app-header__btn-placeholder"></span>
     <div class="app-header__brand" @click="goHome">
       <span class="app-header__title">THIÊN THƯ</span>
       <span class="app-header__subtitle">{{ t('header.subtitle') }}</span>
     </div>
     <div class="app-header__right">
       <LangSwitcher />
-      <button type="button" class="app-header__btn app-header__btn--bell" :aria-label="t('header.notificationsAriaLabel')" @click="() => {}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span v-if="hasUnread" class="app-header__dot" aria-hidden="true"></span>
-      </button>
+      <!-- TODO: notifications – ẩn tạm -->
     </div>
   </header>
   <!-- TODO: Side drawer for menu (drawerOpen) -->
@@ -72,6 +68,7 @@ function goHome() {
   background: var(--btn-primary);
   border-radius: 50%;
 }
+.app-header__btn-placeholder { width: 40px; }
 .app-header__brand { text-align: center; cursor: pointer; }
 .app-header__title { display: block; font-size: 1.15rem; font-weight: 700; color: var(--header-title); letter-spacing: 0.02em; }
 .app-header__subtitle { display: block; font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }

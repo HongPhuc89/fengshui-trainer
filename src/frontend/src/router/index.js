@@ -13,7 +13,7 @@ const routes = [
       { path: 'profile', name: 'Profile', component: () => import('../views/ProfileView.vue') },
       { path: 'books', name: 'Books', component: () => import('../views/BooksView.vue') },
       { path: 'store', name: 'Store', component: () => import('../views/StoreView.vue') },
-      { path: 'community', name: 'Community', component: () => import('../views/CommunityView.vue') },
+      { path: 'videos', name: 'Videos', component: () => import('../views/VideosView.vue') },
     ],
   },
   {

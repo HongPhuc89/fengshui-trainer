@@ -3,7 +3,7 @@ export default {
         home: 'Home',
         books: 'Library',
         store: 'Wallet',
-        community: 'Community',
+        videos: 'Videos',
         profile: 'Profile',
     },
 
