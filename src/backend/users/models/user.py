@@ -18,6 +18,9 @@ class User(AbstractUser, BaseModel):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='FREE')
     subscription_end_date = models.DateTimeField(null=True, blank=True)
     
+    # Avatar
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+
     # Device Locking Logic
     is_device_locked = models.BooleanField(default=False)
     last_device_reset = models.DateTimeField(default=timezone.now)

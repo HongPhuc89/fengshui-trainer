@@ -226,12 +226,46 @@ gantt
   - [x] Auth store with JWT management ✅
 
 - [/] **9.2 Profile Page** ← ĐANG LÀM
+
+  **Backend — cần làm trước (chưa có):**
+  - [ ] Thêm field `avatar = ImageField(upload_to='avatars/', blank=True, null=True)` vào User model
+  - [ ] Tạo migration cho field avatar
+  - [ ] Cập nhật `UserSerializer` trả về `avatar_url` (absolute URL)
+  - [ ] Tạo endpoint riêng: `POST /api/users/me/avatar/` — nhận file ảnh đã crop
+    - Validate: chỉ chấp nhận JPEG/PNG/WEBP, tối đa 5MB
+    - Resize server-side về 400×400px (dùng Pillow — đã có trong deps)
+    - Xóa file avatar cũ trước khi lưu file mới
+    - Trả về `{ avatar_url: "..." }`
+  - [ ] Thêm route `path('me/avatar/', AvatarUploadView.as_view())` vào `users/urls.py`
+
+  **Frontend — ProfileView.vue:**
   - [x] ProfileView.vue skeleton
-  - [ ] Hiển thị thông tin user (tên, phone/email, loại tài khoản, VIP badge)
-  - [ ] Form chỉnh sửa tên (gọi PUT `/api/users/me/`)
-  - [ ] Hiển thị số dư Linh Thạch trong header/profile
-  - [ ] Nút đăng xuất (gọi POST `/api/auth/logout/`)
-  - [ ] Device management UI (xem device hiện tại, thời gian reset tiếp theo)
+  - [ ] **Avatar section**
+    - [ ] Hiển thị avatar hiện tại (vòng tròn 96px, fallback initials nếu chưa có)
+    - [ ] Nút "Đổi ảnh" → mở file picker (`accept="image/*"`)
+    - [ ] Sau khi chọn file → mở **Crop Modal**:
+      - Dùng thư viện `vue-advanced-cropper` (hoặc `cropperjs` + Vue wrapper)
+      - Crop ratio cố định 1:1
+      - Nút "Xác nhận" → xuất blob JPEG đã crop → POST lên `/api/users/me/avatar/`
+      - Loading spinner khi đang upload
+      - Cập nhật avatar hiển thị ngay sau khi upload thành công (không cần reload)
+  - [ ] **Thông tin cơ bản**
+    - [ ] Hiển thị tên, email/phone, loại tài khoản, VIP badge
+    - [ ] Hiển thị số dư Linh Thạch (lấy từ wallet store)
+  - [ ] **Form chỉnh sửa tên**
+    - [ ] Inline edit: click vào tên → input field xuất hiện
+    - [ ] Nút "Lưu" → PUT `/api/users/me/` với `{ first_name, last_name }`
+    - [ ] Validation: tên không được để trống
+    - [ ] Cập nhật auth store sau khi lưu thành công
+  - [ ] **Device info section**
+    - [ ] Gọi GET `/api/users/me/device-status/`
+    - [ ] Hiển thị: tên thiết bị đang dùng, ngày bound, thời gian reset tiếp theo
+  - [ ] **Nút đăng xuất**
+    - [ ] Gọi POST `/api/auth/logout/` → clear store → redirect về `/login`
+  - [ ] **user.service.js** — thêm các hàm:
+    - [ ] `getProfile()` → GET `/api/users/me/`
+    - [ ] `updateProfile(data)` → PUT `/api/users/me/`
+    - [ ] `uploadAvatar(blob)` → POST `/api/users/me/avatar/` (multipart/form-data)
 
 ---
 
@@ -551,7 +585,8 @@ gantt
 - [x] Wallet / Store page
 - [x] API services: auth, wallet, books, videos
 - [x] Videos list page (search + filter UI)
-- [ ] Profile page
+- [ ] Profile page (edit tên + avatar upload + crop)
+- [ ] Backend: Avatar API endpoint (`POST /api/users/me/avatar/`)
 - [ ] Home page
 - [ ] Books list + detail + reader
 - [ ] Videos detail + player
@@ -590,7 +625,7 @@ gantt
 | Feature | Web Frontend | Status |
 |---------|-------------|--------|
 | 8. Vue.js Setup | Vite + Pinia + Axios + Router + i18n done | ✅ |
-| 9. Auth & Profile | Login + Register done; Profile skeleton | 🚧 |
+| 9. Auth & Profile | Login + Register done; Profile skeleton — cần: avatar API (BE) + edit form + crop UI (FE) | 🚧 |
 | 10. Home Page | Skeleton only | ❌ |
 | 11. Books (Web) | Skeleton only | ❌ |
 | 12. Videos (Web) | VideosView.vue (list + search/filter) done; detail + player pending | 🟡 |
@@ -619,4 +654,4 @@ gantt
 
 ---
 
-*Last updated: 2026-02-24 (v1.2 — thêm Feature 18: Admin Panel Vue.js tại `src/admin/`; cập nhật trạng thái books.service, videos.service, VideosView)*
+*Last updated: 2026-02-24 (v1.2 — thêm Feature 18: Admin Panel Vue.js tại `src/admin/`; cập nhật trạng thái books.service, videos.service, VideosView; bổ sung avatar API backend + crop UI frontend vào Feature 9.2)*

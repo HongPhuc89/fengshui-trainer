@@ -1,12 +1,20 @@
+import io
 from datetime import timedelta
 
+from django.core.files.base import ContentFile
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics, views
+from PIL import Image
+from rest_framework import generics, status, views
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
 
 from ..serializers import UserSerializer
+
+ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
+AVATAR_DIMENSION = 400
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -16,6 +24,60 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AvatarUploadView(views.APIView):
+    """POST /api/users/me/avatar/ - Upload and replace user avatar."""
+    permission_classes = (IsAuthenticated,)
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        file = request.FILES.get('avatar')
+        if not file:
+            return Response({'detail': 'Không có file ảnh.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if file.content_type not in ALLOWED_AVATAR_TYPES:
+            return Response(
+                {'detail': 'Định dạng không hỗ trợ. Chỉ chấp nhận JPEG, PNG, WEBP.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if file.size > MAX_AVATAR_SIZE:
+            return Response(
+                {'detail': 'File quá lớn. Tối đa 5MB.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Process with Pillow: resize + center-crop to 400×400 JPEG
+        img = Image.open(file)
+        img = img.convert('RGB')
+
+        # Scale down so the shorter side = AVATAR_DIMENSION, then center-crop
+        w, h = img.size
+        if w < h:
+            new_w = AVATAR_DIMENSION
+            new_h = int(h * AVATAR_DIMENSION / w)
+        else:
+            new_h = AVATAR_DIMENSION
+            new_w = int(w * AVATAR_DIMENSION / h)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+
+        left = (new_w - AVATAR_DIMENSION) // 2
+        top = (new_h - AVATAR_DIMENSION) // 2
+        img = img.crop((left, top, left + AVATAR_DIMENSION, top + AVATAR_DIMENSION))
+
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=88, optimize=True)
+        output.seek(0)
+
+        user = request.user
+        if user.avatar:
+            user.avatar.delete(save=False)
+
+        user.avatar.save('avatar.jpg', ContentFile(output.read()), save=True)
+
+        avatar_url = request.build_absolute_uri(user.avatar.url)
+        return Response({'avatar_url': avatar_url}, status=status.HTTP_200_OK)
 
 
 @extend_schema(responses={200: {

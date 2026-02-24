@@ -32,4 +32,8 @@ export const authService = {
   getMe() {
     return api.get('/users/me/')
   },
+
+  logout(refreshToken) {
+    return api.post('/auth/logout/', { refresh: refreshToken })
+  },
 }
