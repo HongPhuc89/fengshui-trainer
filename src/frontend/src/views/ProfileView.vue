@@ -698,11 +698,6 @@ onMounted(() => {
   font-size: 0.85rem;
 }
 
-.text-green {
-  color: #4ade80;
-  font-size: 0.875rem;
-}
-
 /* ── Spinner ────────────────────────────────────────────── */
 .spinner {
   display: inline-block;
