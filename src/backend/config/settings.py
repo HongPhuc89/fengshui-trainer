@@ -194,6 +194,13 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@fengshuitrainer.com")
 
+# Video storage backend: 'local' (default) or 'bunny'
+# Switch to 'bunny' and provide BUNNY_LIBRARY_ID, BUNNY_API_KEY, BUNNY_CDN_HOSTNAME in .env
+VIDEO_STORAGE_BACKEND = env('VIDEO_STORAGE_BACKEND', default='local')
+BUNNY_LIBRARY_ID = env('BUNNY_LIBRARY_ID', default='')
+BUNNY_API_KEY = env('BUNNY_API_KEY', default='')
+BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net')
+
 # SimpleJWT Configuration
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=4),

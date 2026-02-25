@@ -1,7 +1,8 @@
 from django.utils import timezone
 from rest_framework import generics, status, views
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import (
     VideoCategory, VideoCourse, VideoLesson,
@@ -91,6 +92,54 @@ class VideoLessonDetailView(views.APIView):
 
         serializer = VideoLessonDetailSerializer(lesson)
         return Response(serializer.data)
+
+
+class VideoLessonUploadView(views.APIView):
+    """POST /api/videos/lessons/<public_id>/upload/ - Upload video file to a lesson (staff only)."""
+    permission_classes = (IsAdminUser,)
+    parser_classes = (MultiPartParser,)
+
+    ALLOWED_CONTENT_TYPES = {
+        'video/mp4',
+        'video/quicktime',       # .mov
+        'video/x-matroska',      # .mkv
+        'video/x-msvideo',       # .avi
+        'video/webm',
+    }
+    MAX_SIZE_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB
+
+    def post(self, request, public_id):
+        try:
+            lesson = VideoLesson.objects.get(public_id=public_id)
+        except VideoLesson.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        video_file = request.FILES.get('video')
+        if not video_file:
+            return Response({'detail': 'No video file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if video_file.content_type not in self.ALLOWED_CONTENT_TYPES:
+            return Response(
+                {'detail': f'Unsupported file type: {video_file.content_type}. '
+                           f'Allowed: mp4, mov, mkv, avi, webm.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if video_file.size > self.MAX_SIZE_BYTES:
+            return Response(
+                {'detail': 'File too large. Maximum allowed size is 5 GB.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .storage import get_video_storage
+        result = get_video_storage().upload(video_file, video_file.name)
+
+        lesson.video_id = result.video_id
+        if result.video_url:
+            lesson.video_url = result.video_url
+        lesson.save(update_fields=['video_id', 'video_url'])
+
+        return Response({'video_id': result.video_id, 'video_url': result.video_url})
 
 
 class LessonProgressView(views.APIView):

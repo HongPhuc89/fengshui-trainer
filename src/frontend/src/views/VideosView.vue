@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { videosService } from '../services/videos.service'
+
+const router = useRouter()
 
 // ── State ────────────────────────────────────────────────────
 const courses = ref([])
@@ -218,6 +221,8 @@ function coverGradient(course) {
         class="videos__card"
         role="button"
         tabindex="0"
+        @click="router.push({ name: 'VideoDetail', params: { slug: course.slug } })"
+        @keydown.enter="router.push({ name: 'VideoDetail', params: { slug: course.slug } })"
       >
         <!-- Thumbnail -->
         <div

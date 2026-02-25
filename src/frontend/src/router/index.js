@@ -14,7 +14,14 @@ const routes = [
       { path: 'books', name: 'Books', component: () => import('../views/BooksView.vue') },
       { path: 'store', name: 'Store', component: () => import('../views/StoreView.vue') },
       { path: 'videos', name: 'Videos', component: () => import('../views/VideosView.vue') },
+      { path: 'videos/:slug', name: 'VideoDetail', component: () => import('../views/VideoDetailView.vue') },
     ],
+  },
+  {
+    path: '/videos/:slug/lessons/:lessonSlug',
+    name: 'VideoPlayer',
+    component: () => import('../views/VideoPlayerView.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/books/:slug/read',

@@ -26,4 +26,19 @@ export const videosService = {
   getCourseProgress(courseSlug) {
     return api.get(`videos/${courseSlug}/progress/`)
   },
+
+  /**
+   * Upload a video file to a lesson (staff only).
+   * @param {string} lessonPublicId - lesson public_id (UUID)
+   * @param {File} file - video file
+   * @param {function} onProgress - optional progress callback (progressEvent) => void
+   */
+  uploadLessonVideo(lessonPublicId, file, onProgress) {
+    const form = new FormData()
+    form.append('video', file)
+    return api.post(`videos/lessons/${lessonPublicId}/upload/`, form, {
+      headers: { 'Content-Type': undefined },
+      onUploadProgress: onProgress,
+    })
+  },
 }
