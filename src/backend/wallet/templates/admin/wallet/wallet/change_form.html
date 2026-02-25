@@ -10,7 +10,7 @@
   {# ── Top-up card ─────────────────────────────────────────── #}
   <div class="card mb-3">
     <div class="card-header">
-      <h3 class="card-title mb-0" style="font-size:0.95rem;">⚡ Nạp nhanh Linh Thạch</h3>
+      <h3 class="card-title mb-0" style="font-size:0.95rem;">⚡ Đóng góp Linh Thạch</h3>
     </div>
     <div class="card-body">
       <p class="text-muted mb-3" style="font-size:0.85rem;">
@@ -42,7 +42,7 @@
                class="form-control form-control-sm" />
         <button id="custom-btn" type="button" disabled class="btn btn-success btn-sm"
                 style="white-space:nowrap;">
-          Nạp
+          Đóng góp
         </button>
       </div>
     </div>
@@ -97,7 +97,7 @@
 
   /* Submit via a temporary form appended to <body> to avoid nested-form issue */
   function doTopup(amount) {
-    if (!confirm('Nạp +' + amount + ' 💎 cho ' + userName + '?')) return;
+    if (!confirm('Đóng góp +' + amount + ' 💎 cho ' + userName + '?')) return;
 
     var f = document.createElement('form');
     f.method = 'POST';

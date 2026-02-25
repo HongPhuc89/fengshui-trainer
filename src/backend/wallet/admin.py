@@ -84,14 +84,14 @@ class WalletAdmin(admin.ModelAdmin):
                 amount=amount,
                 transaction_type='ADMIN_TOPUP',
                 reference_id=str(audit.public_id),
-                description=f'Nạp +{amount} Linh Thạch từ quản trị viên',
+                description=f'Đóng góp +{amount} Linh Thạch từ quản trị viên',
                 balance_after=new_balance,
             )
             try:
                 from notifications.models import Notification
                 Notification.objects.create(
                     user=wallet.user,
-                    title='Nạp Linh Thạch thành công',
+                    title='Đóng góp Linh Thạch thành công',
                     body=f'Tài khoản của bạn vừa được cộng {amount} Linh Thạch. Số dư hiện tại: {new_balance} 💎',
                     notification_type='RECHARGE',
                     related_object_type='wallet',
@@ -99,7 +99,7 @@ class WalletAdmin(admin.ModelAdmin):
             except Exception:
                 pass
 
-        messages.success(request, f'✅ Đã nạp +{amount} 💎 cho {wallet.user}. Số dư mới: {new_balance}.')
+        messages.success(request, f'✅ Đã đóng góp +{amount} 💎 cho {wallet.user}. Số dư mới: {new_balance}.')
         return self._topup_redirect(pk)
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):

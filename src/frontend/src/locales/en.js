@@ -113,6 +113,16 @@ export default {
         title: 'Store',
     },
 
+    donate: {
+        title: 'Community Contribution',
+        balanceLabel: 'Your Linh Thạch',
+        contactTitle: 'Contribute Linh Thạch',
+        contactDesc: 'Contact the administrator for support adding Linh Thạch to your account.',
+        historyTitle: 'Transaction History',
+        loading: 'Loading...',
+        empty: 'No transactions yet.',
+    },
+
     community: {
         title: 'Community',
     },

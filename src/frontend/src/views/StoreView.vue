@@ -1,7 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { walletService } from '../services/wallet.service'
 import GemIcon from '../components/icons/GemIcon.vue'
+
+const { t } = useI18n()
 
 const ADMIN_EMAIL = 'admin@thienthu.vn'
 
@@ -60,12 +63,12 @@ function formatDate(dateStr) {
   <div class="donate">
     <!-- Page header -->
     <div class="donate__header">
-      <span class="donate__title">Đóng Góp Cộng Đồng</span>
+      <span class="donate__title">{{ t('donate.title') }}</span>
     </div>
 
     <!-- Balance card -->
     <div class="donate__balance-card">
-      <span class="donate__balance-label">Linh Thạch của bạn</span>
+      <span class="donate__balance-label">{{ t('donate.balanceLabel') }}</span>
       <div class="donate__balance-amount">
         <span class="donate__balance-number">{{ balance.toLocaleString('vi-VN') }}</span>
         <GemIcon :size="32" class="donate__gem-icon" />
@@ -81,10 +84,8 @@ function formatDate(dateStr) {
         </svg>
       </div>
       <div class="donate__contact-body">
-        <p class="donate__contact-title">Nạp thêm Linh Thạch</p>
-        <p class="donate__contact-desc">
-          Liên hệ quản trị viên để được hỗ trợ nạp Linh Thạch vào tài khoản.
-        </p>
+        <p class="donate__contact-title">{{ t('donate.contactTitle') }}</p>
+        <p class="donate__contact-desc">{{ t('donate.contactDesc') }}</p>
         <a :href="`mailto:${ADMIN_EMAIL}`" class="donate__contact-email">
           {{ ADMIN_EMAIL }}
         </a>
@@ -93,12 +94,10 @@ function formatDate(dateStr) {
 
     <!-- Transaction history -->
     <div class="donate__section">
-      <span class="donate__section-title">Lịch sử giao dịch</span>
+      <span class="donate__section-title">{{ t('donate.historyTitle') }}</span>
 
-      <div v-if="loading" class="donate__tx-empty">Đang tải...</div>
-      <div v-else-if="transactions.length === 0" class="donate__tx-empty">
-        Chưa có giao dịch nào.
-      </div>
+      <div v-if="loading" class="donate__tx-empty">{{ t('donate.loading') }}</div>
+      <div v-else-if="transactions.length === 0" class="donate__tx-empty">{{ t('donate.empty') }}</div>
       <template v-else>
         <div v-for="tx in transactions" :key="tx.id ?? tx.public_id" class="donate__tx">
           <div

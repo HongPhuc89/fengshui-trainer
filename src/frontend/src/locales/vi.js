@@ -113,6 +113,16 @@ export default {
     title: 'Cửa Hàng',
   },
 
+  donate: {
+    title: 'Đóng Góp Cộng Đồng',
+    balanceLabel: 'Linh Thạch của bạn',
+    contactTitle: 'Đóng góp Linh Thạch',
+    contactDesc: 'Liên hệ quản trị viên để được hỗ trợ đóng góp Linh Thạch vào tài khoản.',
+    historyTitle: 'Lịch sử giao dịch',
+    loading: 'Đang tải...',
+    empty: 'Chưa có giao dịch nào.',
+  },
+
   community: {
     title: 'Cộng Đồng',
   },
