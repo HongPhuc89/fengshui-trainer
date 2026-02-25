@@ -24,6 +24,43 @@ def _can_access_chapter(user, book, chapter):
     return chapter.is_demo
 
 
+class RecentlyReadBooksView(views.APIView):
+    """GET /api/books/recently-read/ - Books the user recently read, one per book."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        progresses = (
+            UserChapterProgress.objects
+            .filter(user=request.user)
+            .select_related('chapter__book')
+            .order_by('chapter__book_id', '-last_read')
+        )
+        seen = set()
+        recent = []
+        for p in progresses:
+            book_id = p.chapter.book_id
+            if book_id not in seen:
+                seen.add(book_id)
+                recent.append(p)
+                if len(recent) >= 10:
+                    break
+        recent.sort(key=lambda p: p.last_read, reverse=True)
+        data = []
+        for p in recent:
+            book = p.chapter.book
+            cover_url = None
+            if book.cover_image:
+                cover_url = request.build_absolute_uri(book.cover_image.url)
+            data.append({
+                'slug': book.slug,
+                'title': book.title,
+                'cover_image': cover_url,
+                'chapter_order': p.chapter.order,
+                'current_page': p.current_page,
+            })
+        return Response(data)
+
+
 class BookCategoryListView(generics.ListAPIView):
     """GET /api/books/categories/ - List categories."""
     permission_classes = (AllowAny,)
@@ -49,6 +86,14 @@ class BookListView(generics.ListAPIView):
         search = self.request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(title__icontains=search) | qs.filter(author__icontains=search)
+        if self.request.query_params.get('exclude_read') == 'true' and self.request.user.is_authenticated:
+            read_book_ids = (
+                UserChapterProgress.objects
+                .filter(user=self.request.user)
+                .values_list('chapter__book_id', flat=True)
+                .distinct()
+            )
+            qs = qs.exclude(id__in=read_book_ids)
         return qs.order_by('-created_at')
 
 

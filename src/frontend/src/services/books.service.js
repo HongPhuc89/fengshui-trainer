@@ -5,6 +5,10 @@ export const booksService = {
     return api.get('books/categories/')
   },
 
+  getRecentlyRead() {
+    return api.get('books/recently-read/')
+  },
+
   getBooks(params = {}) {
     return api.get('books/', { params })
   },
