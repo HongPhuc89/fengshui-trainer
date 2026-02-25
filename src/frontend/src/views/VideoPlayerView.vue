@@ -18,9 +18,21 @@ const loading = ref(true)
 const error   = ref(null)
 
 // ── Video player refs ─────────────────────────────────────────
-const videoRef     = ref(null)
-const lastSavedAt  = ref(0)
+const videoRef      = ref(null)
+const playerWrapRef = ref(null)
+const lastSavedAt   = ref(0)
 const SAVE_INTERVAL = 15_000 // 15s
+
+// ── Fullscreen (container-level, keeps watermark) ─────────────
+function onFullscreenChange() {
+  const fsEl = document.fullscreenElement
+  // If native video fullscreen was triggered, redirect to container
+  if (fsEl === videoRef.value) {
+    document.exitFullscreen().then(() => playerWrapRef.value?.requestFullscreen())
+    return
+  }
+}
+
 
 // ── Load data ─────────────────────────────────────────────────
 onMounted(async () => {
@@ -37,10 +49,12 @@ onMounted(async () => {
     course.value = courseRes.value.data
   }
   loading.value = false
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 })
 
 onBeforeUnmount(() => {
   saveProgress()
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 
 // ── Navigation between lessons ────────────────────────────────
@@ -135,7 +149,7 @@ function formatDuration(s) {
     <div v-if="loading" class="vp__player-wrap vp__player-wrap--skeleton"></div>
 
     <!-- ── Video area ─────────────────────────────────────── -->
-    <div v-else-if="lesson" class="vp__player-wrap">
+    <div v-else-if="lesson" ref="playerWrapRef" class="vp__player-wrap">
       <!-- Watermark overlay -->
       <div v-if="watermarkText" class="vp__watermark" aria-hidden="true">
         {{ watermarkText }}
@@ -166,7 +180,8 @@ function formatDuration(s) {
         Trình duyệt của bạn không hỗ trợ phát video.
       </video>
 
-      <!-- No video URL yet -->
+
+<!-- No video URL yet -->
       <div v-else class="vp__no-video">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" opacity=".3">
           <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>

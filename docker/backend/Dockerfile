@@ -13,6 +13,7 @@ RUN apt-get update \
     gcc \
     libpq-dev \
     postgresql-client \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies

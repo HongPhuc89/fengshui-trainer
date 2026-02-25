@@ -15,3 +15,4 @@ pyjwt
 drf-spectacular
 gunicorn
 sentry-sdk
+requests
