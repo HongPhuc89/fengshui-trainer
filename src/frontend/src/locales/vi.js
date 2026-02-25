@@ -79,7 +79,7 @@ export default {
       morning: 'Chào buổi sáng',
       afternoon: 'Chào buổi trưa',
       evening: 'Chào buổi tối',
-      scholar: 'Học giả',
+      scholar: 'học giả',
     },
     motto: 'Tinh tú hội tụ, thời khắc học tập.',
     profile: {

@@ -34,6 +34,8 @@ const saveTimer = ref(null)
 const renderingTask = shallowRef(null)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
+const progressTrackRef = ref(null)
+const dragPercent = ref(null)
 
 // ── Computed ──────────────────────────────────────────────
 const currentChapter = computed(() =>
@@ -51,6 +53,10 @@ const bookProgressPercent = computed(() => {
     .reduce((s, c) => s + (c.page_count || 0), 0)
   return Math.round(((pagesBeforeCurrent + currentPage.value) / totalBookPages.value) * 100)
 })
+
+const displayPercent = computed(() =>
+  dragPercent.value !== null ? Math.round(dragPercent.value) : bookProgressPercent.value,
+)
 
 const hasPrev = computed(() => currentPage.value > 1 || currentChapterOrder.value > 1)
 const hasNext = computed(
@@ -162,6 +168,11 @@ async function loadPdf(url, targetPage = 1) {
   }
   pdfDoc.value = await pdfjsLib.getDocument({ url: fetchUrl }).promise
   chapterPageCount.value = pdfDoc.value.numPages
+
+  // Sync real page count back into chapters array so totalBookPages stays accurate
+  const idx = chapters.value.findIndex((c) => c.order === currentChapterOrder.value)
+  if (idx !== -1) chapters.value[idx].page_count = pdfDoc.value.numPages
+
   currentPage.value = Math.min(Math.max(1, targetPage), pdfDoc.value.numPages)
   await renderPage(currentPage.value)
 }
@@ -262,6 +273,65 @@ function onTouchEnd(e) {
     if (dx < 0) nextPage()
     else prevPage()
   }
+}
+
+// ── Progress track drag ───────────────────────────────────
+function calcPctFromPointer(e) {
+  const track = progressTrackRef.value
+  if (!track) return null
+  const rect = track.getBoundingClientRect()
+  return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+}
+
+async function seekToPercent(pct) {
+  if (!totalBookPages.value || !chapters.value.length) return
+  const targetGlobal = Math.max(1, Math.min(Math.round(pct * totalBookPages.value), totalBookPages.value))
+  let accumulated = 0
+  for (const ch of chapters.value) {
+    const count = ch.page_count || 0
+    if (targetGlobal <= accumulated + count) {
+      const localPage = Math.max(1, targetGlobal - accumulated)
+      if (ch.order !== currentChapterOrder.value) {
+        currentChapterOrder.value = ch.order
+        await loadChapter(ch.order, localPage)
+      } else {
+        await goToPage(localPage)
+      }
+      scheduleSave()
+      return
+    }
+    accumulated += count
+  }
+  // Edge: clamp to last page of last chapter
+  const last = chapters.value[chapters.value.length - 1]
+  if (last.order !== currentChapterOrder.value) {
+    currentChapterOrder.value = last.order
+    await loadChapter(last.order, last.page_count || 1)
+  } else {
+    await goToPage(last.page_count || 1)
+  }
+  scheduleSave()
+}
+
+function onProgressPointerDown(e) {
+  e.preventDefault()
+  const pct = calcPctFromPointer(e)
+  if (pct === null) return
+  dragPercent.value = pct * 100
+
+  function onMove(ev) {
+    const p = calcPctFromPointer(ev)
+    if (p !== null) dragPercent.value = p * 100
+  }
+  function onUp(ev) {
+    const p = calcPctFromPointer(ev)
+    dragPercent.value = null
+    document.removeEventListener('pointermove', onMove)
+    document.removeEventListener('pointerup', onUp)
+    if (p !== null) seekToPercent(p)
+  }
+  document.addEventListener('pointermove', onMove)
+  document.addEventListener('pointerup', onUp)
 }
 
 // ── Progress saving ───────────────────────────────────────
@@ -410,9 +480,14 @@ function scheduleSave() {
 
     <!-- ── Progress bar ───────────────────────────────── -->
     <div v-if="!loading && !error" class="reader__progress-bar">
-      <span class="reader__progress-label">{{ bookProgressPercent }}%</span>
-      <div class="reader__progress-track">
-        <div class="reader__progress-fill" :style="{ width: bookProgressPercent + '%' }"></div>
+      <span class="reader__progress-label">{{ displayPercent }}%</span>
+      <div
+        class="reader__progress-track"
+        ref="progressTrackRef"
+        @pointerdown.prevent="onProgressPointerDown"
+      >
+        <div class="reader__progress-fill" :style="{ width: displayPercent + '%' }"></div>
+        <div class="reader__progress-thumb" :style="{ left: displayPercent + '%' }"></div>
       </div>
       <span class="reader__progress-label">100%</span>
     </div>
@@ -631,6 +706,7 @@ function scheduleSave() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   background: #1a2035;
   min-height: 0;
 }
@@ -732,17 +808,44 @@ function scheduleSave() {
 
 .reader__progress-track {
   flex: 1;
-  height: 4px;
+  height: 20px;
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+}
+
+.reader__progress-track::before {
+  content: '';
+  position: absolute;
+  inset: 8px 0;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 2px;
-  overflow: hidden;
 }
 
 .reader__progress-fill {
-  height: 100%;
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
   background: var(--accent-gold);
   border-radius: 2px;
-  transition: width 0.4s ease;
+  transition: width 0.2s ease;
+  pointer-events: none;
+}
+
+.reader__progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: var(--accent-gold);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(197, 165, 81, 0.6);
+  pointer-events: none;
+  transition: left 0.2s ease;
 }
 
 /* ── Bottom nav ───────────────────────────────────────────── */

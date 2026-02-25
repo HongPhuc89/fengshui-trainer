@@ -168,7 +168,7 @@ class BookChapterWatermarkConfigView(views.APIView):
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         name = (request.user.get_full_name() or request.user.username or '').strip() or 'User'
-        phone = (request.user.phone_number or '').strip()
+        phone = (request.user.phone_number or '').strip() or (request.user.email or '').strip()
         return Response(WatermarkConfigSerializer({
             'display_name': name,
             'phone_number': phone,
