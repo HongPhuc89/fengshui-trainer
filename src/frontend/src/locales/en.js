@@ -2,7 +2,7 @@ export default {
     nav: {
         home: 'Home',
         books: 'Library',
-        store: 'Wallet',
+        store: 'Donate',
         videos: 'Videos',
         profile: 'Profile',
     },

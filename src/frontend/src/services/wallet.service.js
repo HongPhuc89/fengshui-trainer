@@ -5,9 +5,6 @@ export const walletService = {
     return api.get('wallet/me/')
   },
   getTransactions(params = {}) {
-    return api.get('wallet/transactions/', { params })
-  },
-  redeemVoucher(code) {
-    return api.post('wallet/voucher/redeem/', { code })
+    return api.get('wallet/history/', { params })
   },
 }

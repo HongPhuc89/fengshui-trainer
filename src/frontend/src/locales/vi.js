@@ -2,7 +2,7 @@ export default {
   nav: {
     home: 'Trang Chủ',
     books: 'Thư Viện',
-    store: 'Ví',
+    store: 'Đóng Góp',
     videos: 'Video',
     profile: 'Hồ Sơ',
   },

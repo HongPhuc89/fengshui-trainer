@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { videosService } from '../services/videos.service'
+import GemIcon from '../components/icons/GemIcon.vue'
 
 const router = useRouter()
 
@@ -277,9 +278,7 @@ function coverGradient(course) {
               :class="{ 'videos__price-value--free': course.is_free }"
             >
               {{ priceLabel(course) }}
-              <svg v-if="!course.is_free" viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;margin-bottom:1px">
-                <path d="M6 2L2 8l10 14L22 8l-4-6H6zm1.5 2h9l2.5 4H5L6.5 4zM5.5 10h13l-8.5 12L5.5 10z"/>
-              </svg>
+              <GemIcon v-if="!course.is_free" :size="11" style="flex-shrink:0;margin-bottom:1px" />
             </span>
           </div>
         </div>
