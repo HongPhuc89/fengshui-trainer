@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { videosService } from '../services/videos.service'
+import GemIcon from '../components/icons/GemIcon.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -55,8 +56,28 @@ function startOrContinue() {
   router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug: lessons[0].slug } })
 }
 
-function handleBuy() {
-  alert('Tính năng mua khóa học sẽ sớm có. Vui lòng liên hệ admin để được hỗ trợ.')
+const buying   = ref(false)
+const buyError = ref(null)
+
+async function handleBuy() {
+  if (buying.value || !course.value) return
+  buying.value = true
+  buyError.value = null
+  try {
+    await videosService.purchaseCourse(course.value.public_id)
+    course.value.has_purchased = true
+  } catch (err) {
+    const detail = err.response?.data?.detail
+    if (detail === 'INSUFFICIENT_FUNDS') {
+      buyError.value = 'Số dư Linh Thạch không đủ để mở khóa khóa học này.'
+    } else if (detail === 'ALREADY_PURCHASED') {
+      course.value.has_purchased = true
+    } else {
+      buyError.value = 'Mở khóa thất bại. Vui lòng thử lại.'
+    }
+  } finally {
+    buying.value = false
+  }
 }
 
 // ── Description expand ────────────────────────────────────────
@@ -163,12 +184,17 @@ function levelInfo(level) {
           </svg>
           {{ progress && progress.completed_lessons > 0 ? 'Tiếp tục học' : 'Bắt đầu học' }}
         </button>
-        <button v-else class="vd__cta-btn vd__cta-btn--buy" @click="handleBuy">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style="flex-shrink:0">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+        <button v-else class="vd__cta-btn vd__cta-btn--buy" :disabled="buying" @click="handleBuy">
+          <svg v-if="buying" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="flex-shrink:0;animation:spin 0.8s linear infinite">
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
           </svg>
-          Mua khóa học · {{ course.price_lt?.toLocaleString('vi-VN') }} LT
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="flex-shrink:0">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Mở khóa với {{ course.price_lt?.toLocaleString('vi-VN') }}
+          <GemIcon :size="14" style="flex-shrink:0" />
         </button>
+        <p v-if="buyError" class="vd__buy-error">{{ buyError }}</p>
 
         <!-- Description -->
         <div v-if="course.description" class="vd__desc-wrap">
@@ -358,6 +384,14 @@ function levelInfo(level) {
   background: var(--color-action);
   color: #fff;
 }
+.vd__cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.vd__buy-error {
+  font-size: 0.8rem;
+  color: #ef9a9a;
+  text-align: center;
+  margin-top: -4px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Description ───────────────────────────────────────────── */
 .vd__desc-wrap {

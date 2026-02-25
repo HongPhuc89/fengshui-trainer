@@ -56,6 +56,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
+    prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
 
     fieldsets = (

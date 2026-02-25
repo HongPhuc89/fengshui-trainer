@@ -27,6 +27,10 @@ export const videosService = {
     return api.get(`videos/${courseSlug}/progress/`)
   },
 
+  purchaseCourse(videoId) {
+    return api.post('payments/purchase-video/', { video_id: videoId })
+  },
+
   /**
    * Upload a video file to a lesson (staff only).
    * @param {string} lessonPublicId - lesson public_id (UUID)
