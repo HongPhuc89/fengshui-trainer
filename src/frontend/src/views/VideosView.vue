@@ -249,14 +249,7 @@ function coverGradient(course) {
 
         <!-- Info -->
         <div class="videos__info">
-          <div class="videos__info-top">
-            <p class="videos__title">{{ course.title }}</p>
-            <button class="videos__more-btn" title="Thêm" @click.stop>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-              </svg>
-            </button>
-          </div>
+          <p class="videos__title">{{ course.title }}</p>
 
           <!-- Instructor -->
           <span v-if="course.instructor" class="videos__instructor">
@@ -264,7 +257,7 @@ function coverGradient(course) {
             {{ course.instructor }}
           </span>
 
-          <!-- Lessons count + Level -->
+          <!-- Lessons + Level + Price -->
           <div class="videos__tags">
             <span v-if="course.total_lessons" class="videos__tag">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11">
@@ -279,31 +272,14 @@ function coverGradient(course) {
             >
               {{ levelInfo(course.level).label }}
             </span>
-          </div>
-
-          <!-- Price row -->
-          <div class="videos__price-row">
-            <div class="videos__price-block">
-              <span class="videos__price-label">GIÁ BÁN</span>
-              <div class="videos__price">
-                <svg v-if="!course.is_free" viewBox="0 0 24 24" fill="var(--accent-gold)" width="13" height="13" style="flex-shrink:0">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                </svg>
-                <span
-                  class="videos__price-value"
-                  :class="{ 'videos__price-value--free': course.is_free }"
-                >
-                  {{ priceLabel(course) }}
-                </span>
-              </div>
-            </div>
-
             <span
-              class="videos__status"
-              :class="course.is_free ? 'videos__status--free' : 'videos__status--paid'"
+              class="videos__price-value"
+              :class="{ 'videos__price-value--free': course.is_free }"
             >
-              <span class="videos__status-dot"></span>
-              {{ course.is_free ? 'Miễn phí' : 'Trả phí' }}
+              {{ priceLabel(course) }}
+              <svg v-if="!course.is_free" viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;margin-bottom:1px">
+                <path d="M6 2L2 8l10 14L22 8l-4-6H6zm1.5 2h9l2.5 4H5L6.5 4zM5.5 10h13l-8.5 12L5.5 10z"/>
+              </svg>
             </span>
           </div>
         </div>
@@ -490,12 +466,6 @@ function coverGradient(course) {
   gap: 4px;
   padding-top: 2px;
 }
-.videos__info-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
 .videos__title {
   font-size: 0.9rem;
   font-weight: 700;
@@ -506,20 +476,6 @@ function coverGradient(course) {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.videos__more-btn {
-  background: none;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 2px;
-  flex-shrink: 0;
-  min-width: 28px;
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  margin-top: -2px;
-}
-.videos__more-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
 
 .videos__instructor {
   display: flex;
@@ -559,49 +515,17 @@ function coverGradient(course) {
   font-weight: 600;
 }
 
-/* ── Price row ───────────────────────────────────────────── */
-.videos__price-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  margin-top: 2px;
-}
-.videos__price-block { display: flex; flex-direction: column; gap: 2px; }
-.videos__price-label {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.06em;
-  font-weight: 600;
-}
-.videos__price { display: flex; align-items: center; gap: 4px; }
+/* ── Price inline in tags ────────────────────────────────── */
 .videos__price-value {
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--accent-gold);
-  line-height: 1;
-}
-.videos__price-value--free { color: #66bb6a; font-size: 0.88rem; }
-
-/* ── Status badge ────────────────────────────────────────── */
-.videos__status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 4px;
-  padding: 3px 8px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  gap: 3px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  margin-left: auto;
 }
-.videos__status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.videos__status--free  { background: rgba(102,187,106,0.15); color: #66bb6a; }
-.videos__status--free  .videos__status-dot { background: #66bb6a; }
-.videos__status--paid  { background: rgba(197,165,81,0.12);  color: var(--accent-gold); }
-.videos__status--paid  .videos__status-dot { background: var(--accent-gold); }
+.videos__price-value--free { color: #66bb6a; }
 
 /* ── Skeleton ────────────────────────────────────────────── */
 .videos__card--skeleton { pointer-events: none; }

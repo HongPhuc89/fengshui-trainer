@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from rest_framework import serializers
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
 
@@ -16,6 +17,11 @@ class VideoLessonListSerializer(serializers.ModelSerializer):
 
 class VideoCourseListSerializer(serializers.ModelSerializer):
     category = VideoCategorySerializer(read_only=True)
+    total_duration_seconds = serializers.SerializerMethodField()
+
+    def get_total_duration_seconds(self, obj):
+        result = obj.lessons.aggregate(total=Sum('duration_seconds'))['total']
+        return result or 0
 
     class Meta:
         model = VideoCourse
