@@ -1,15 +1,27 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { authService } from '../services/auth.service'
 
 const ACCESS_KEY = 'access'
 const REFRESH_KEY = 'refresh'
 const USER_KEY = 'thienthu_user'
+const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000 // refresh 5 min trước khi hết hạn
+
+function decodeJwtExpiry(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const access = ref(localStorage.getItem(ACCESS_KEY))
   const refresh = ref(localStorage.getItem(REFRESH_KEY))
   const user = ref(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
+  let refreshTimer = null
 
   const isAuthenticated = computed(() => !!access.value && !!user.value)
 
@@ -27,12 +39,59 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function clearAuth() {
+    stopAutoRefresh()
     access.value = null
     refresh.value = null
     user.value = null
     localStorage.removeItem(ACCESS_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_KEY)
+  }
+
+  async function doRefresh() {
+    const refreshToken = refresh.value || localStorage.getItem(REFRESH_KEY)
+    if (!refreshToken) return
+
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+      const { data } = await axios.post(
+        `${baseURL.replace(/\/$/, '')}/auth/refresh/`,
+        { refresh: refreshToken },
+      )
+      setTokens({ access: data.access, refresh: data.refresh || refreshToken })
+      scheduleTokenRefresh()
+    } catch {
+      clearAuth()
+      window.dispatchEvent(new Event('auth:logout'))
+    }
+  }
+
+  function scheduleTokenRefresh() {
+    stopAutoRefresh()
+    const token = access.value
+    if (!token) return
+
+    const expiry = decodeJwtExpiry(token)
+    if (!expiry) return
+
+    const delay = expiry - Date.now() - REFRESH_BEFORE_EXPIRY_MS
+    if (delay <= 0) {
+      doRefresh()
+      return
+    }
+
+    refreshTimer = setTimeout(() => doRefresh(), delay)
+  }
+
+  function startAutoRefresh() {
+    scheduleTokenRefresh()
+  }
+
+  function stopAutoRefresh() {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer)
+      refreshTimer = null
+    }
   }
 
   async function fetchMe() {
@@ -50,5 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
     setUser,
     clearAuth,
     fetchMe,
+    startAutoRefresh,
+    stopAutoRefresh,
   }
 })
