@@ -1,5 +1,8 @@
 from django import forms
 from django.contrib import admin
+from django.core.files.base import ContentFile
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import path, reverse
 from django.utils.html import format_html
 
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
@@ -53,14 +56,14 @@ class VideoLessonAdmin(admin.ModelAdmin):
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
-    readonly_fields = ('video_id', 'video_url', 'video_status')
+    readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
 
     fieldsets = (
         (None, {
             'fields': ('course', 'title', 'slug', 'order', 'is_free'),
         }),
         ('Video', {
-            'fields': ('video_upload', 'video_status', 'video_id', 'video_url', 'duration_seconds', 'thumbnail'),
+            'fields': ('video_upload', 'video_status', 'video_id', 'video_url', 'duration_seconds', 'fetch_metadata_btn', 'thumbnail', 'extract_thumbnail_btn'),
         }),
         ('Nội dung', {
             'fields': ('description', 'transcript', 'summary'),
@@ -85,6 +88,80 @@ class VideoLessonAdmin(admin.ModelAdmin):
             return format_html('<span style="color:#ffa726">✓ Local: {}</span>', obj.video_id)
         return format_html('<span style="color:#ef5350">✗ Chưa có video</span>')
     video_status.short_description = 'Trạng thái video'
+
+    def fetch_metadata_btn(self, obj):
+        if not obj.pk or not obj.video_id:
+            return '—'
+        url = reverse('admin:videos_videolesson_fetch_metadata', args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}" style="padding:6px 12px;background:#417690;color:#fff;'
+            'border-radius:4px;text-decoration:none;font-size:13px">'
+            'Cập nhật thời lượng từ video</a>',
+            url,
+        )
+    fetch_metadata_btn.short_description = 'Thời lượng tự động'
+
+    def extract_thumbnail_btn(self, obj):
+        if not obj.pk or not obj.video_id:
+            return '—'
+        url = reverse('admin:videos_videolesson_extract_thumbnail', args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}" style="padding:6px 12px;background:#417690;color:#fff;'
+            'border-radius:4px;text-decoration:none;font-size:13px">'
+            'Lấy thumbnail từ video</a>',
+            url,
+        )
+    extract_thumbnail_btn.short_description = 'Thumbnail tự động'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<int:pk>/fetch-metadata/',
+                self.admin_site.admin_view(self.fetch_metadata_view),
+                name='videos_videolesson_fetch_metadata',
+            ),
+            path(
+                '<int:pk>/extract-thumbnail/',
+                self.admin_site.admin_view(self.extract_thumbnail_view),
+                name='videos_videolesson_extract_thumbnail',
+            ),
+        ]
+        return custom + urls
+
+    def fetch_metadata_view(self, request, pk):
+        lesson = get_object_or_404(VideoLesson, pk=pk)
+        if not lesson.video_id:
+            self.message_user(request, 'Bài học chưa có video_id.', level='error')
+        else:
+            try:
+                meta = get_video_storage().get_metadata(lesson.video_id)
+                if meta.duration_seconds:
+                    lesson.duration_seconds = meta.duration_seconds
+                    lesson.save(update_fields=['duration_seconds'])
+                    self.message_user(request, f'Đã cập nhật thời lượng: {meta.duration_seconds}s.')
+                else:
+                    self.message_user(request, 'Không lấy được thời lượng từ video.', level='warning')
+            except Exception as exc:
+                self.message_user(request, f'Lỗi khi lấy metadata: {exc}', level='error')
+        return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+
+    def extract_thumbnail_view(self, request, pk):
+        lesson = get_object_or_404(VideoLesson, pk=pk)
+        if not lesson.video_id:
+            self.message_user(request, 'Bài học chưa có video_id.', level='error')
+        else:
+            try:
+                data = get_video_storage().extract_thumbnail(lesson.video_id)
+                if data:
+                    filename = f'{lesson.video_id}.jpg'
+                    lesson.thumbnail.save(filename, ContentFile(data), save=True)
+                    self.message_user(request, 'Đã lấy thumbnail từ video thành công.')
+                else:
+                    self.message_user(request, 'Không thể lấy thumbnail từ video.', level='warning')
+            except Exception as exc:
+                self.message_user(request, f'Lỗi khi lấy thumbnail: {exc}', level='error')
+        return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
 
     def save_model(self, request, obj, form, change):
         video_file = request.FILES.get('video_upload')

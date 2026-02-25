@@ -79,7 +79,7 @@ class VideoLesson(BaseModel):
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     transcript = models.TextField(blank=True)
     summary = models.TextField(blank=True)
-    thumbnail = models.CharField(max_length=255, blank=True)
+    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
     is_free = models.BooleanField(default=False)
 
     class Meta:

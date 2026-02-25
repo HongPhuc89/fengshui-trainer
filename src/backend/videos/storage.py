@@ -9,6 +9,7 @@ To switch backends, set the env var:
     VIDEO_STORAGE_BACKEND=local   (default)
 """
 
+import json
 import logging
 import shutil
 import subprocess
@@ -30,6 +31,12 @@ class VideoUploadResult:
     video_url: str  # empty for local (resolved at request time); Bunny embed URL for bunny
 
 
+@dataclass
+class VideoMetadata:
+    """Metadata fetched from a stored video."""
+    duration_seconds: int | None = None
+
+
 class VideoStorageBackend(ABC):
     @abstractmethod
     def upload(self, file_obj, original_filename: str) -> VideoUploadResult:
@@ -38,6 +45,14 @@ class VideoStorageBackend(ABC):
     @abstractmethod
     def delete(self, video_id: str) -> None:
         """Delete a previously uploaded video by its ID."""
+
+    @abstractmethod
+    def get_metadata(self, video_id: str) -> VideoMetadata:
+        """Fetch metadata (duration etc.) for a stored video."""
+
+    @abstractmethod
+    def extract_thumbnail(self, video_id: str) -> bytes | None:
+        """Extract a thumbnail image (JPEG bytes) from the video. Returns None on failure."""
 
 
 class LocalVideoStorage(VideoStorageBackend):
@@ -99,6 +114,53 @@ class LocalVideoStorage(VideoStorageBackend):
             if path.exists():
                 path.unlink()
                 break
+
+    def get_metadata(self, video_id: str) -> VideoMetadata:
+        for suffix in ('.mp4', '.mov', '.mkv', '.avi', '.webm'):
+            path = Path(settings.MEDIA_ROOT) / 'videos' / f'{video_id}{suffix}'
+            if path.exists():
+                if shutil.which('ffprobe'):
+                    try:
+                        result = subprocess.run(
+                            ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', str(path)],
+                            capture_output=True, text=True, check=True,
+                        )
+                        data = json.loads(result.stdout)
+                        duration = float(data['format'].get('duration', 0))
+                        return VideoMetadata(duration_seconds=int(duration) if duration else None)
+                    except Exception as exc:
+                        logger.warning('LocalVideoStorage: ffprobe failed: %s', exc)
+                break
+        return VideoMetadata()
+
+    def extract_thumbnail(self, video_id: str) -> bytes | None:
+        for suffix in ('.mp4', '.mov', '.mkv', '.avi', '.webm'):
+            path = Path(settings.MEDIA_ROOT) / 'videos' / f'{video_id}{suffix}'
+            if path.exists():
+                if not shutil.which('ffmpeg'):
+                    logger.warning('LocalVideoStorage: ffmpeg not found, cannot extract thumbnail')
+                    return None
+                try:
+                    result = subprocess.run(
+                        [
+                            'ffmpeg', '-y',
+                            '-ss', '5',          # seek to 5 s (fast thumbnail)
+                            '-i', str(path),
+                            '-vframes', '1',
+                            '-q:v', '2',         # high quality JPEG
+                            '-f', 'image2pipe',
+                            '-vcodec', 'mjpeg',
+                            'pipe:1',            # output to stdout
+                        ],
+                        capture_output=True,
+                        check=True,
+                    )
+                    logger.info('LocalVideoStorage: extracted thumbnail for %s', video_id)
+                    return result.stdout
+                except subprocess.CalledProcessError as exc:
+                    logger.warning('LocalVideoStorage: thumbnail extraction failed: %s', exc.stderr.decode(errors='replace'))
+                    return None
+        return None
 
 
 class BunnyVideoStorage(VideoStorageBackend):
@@ -180,6 +242,29 @@ class BunnyVideoStorage(VideoStorageBackend):
         )
         resp.raise_for_status()
         logger.info('BunnyVideoStorage: deleted video guid=%s', video_id)
+
+    def get_metadata(self, video_id: str) -> VideoMetadata:
+        resp = http.get(
+            f'{self._API_BASE}/{self._library_id}/videos/{video_id}',
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        length = data.get('length')  # Bunny returns duration in seconds
+        return VideoMetadata(duration_seconds=int(length) if length else None)
+
+    def extract_thumbnail(self, video_id: str) -> bytes | None:
+        # Bunny auto-generates a thumbnail — download it directly from CDN
+        thumbnail_url = f'https://iframe.mediadelivery.net/{self._library_id}/{video_id}/thumbnail.jpg'
+        try:
+            resp = http.get(thumbnail_url, timeout=30)
+            resp.raise_for_status()
+            logger.info('BunnyVideoStorage: fetched thumbnail for guid=%s', video_id)
+            return resp.content
+        except Exception as exc:
+            logger.warning('BunnyVideoStorage: thumbnail fetch failed: %s', exc)
+            return None
 
     @staticmethod
     def _iter_chunks(file_obj):

@@ -79,18 +79,6 @@ function levelInfo(level) {
   return LEVEL_MAP[level] ?? { label: level, color: 'rgba(255,255,255,0.5)' }
 }
 
-const COVER_GRADIENTS = [
-  'linear-gradient(135deg,#1a237e,#7b1fa2)',
-  'linear-gradient(135deg,#004d40,#00695c)',
-  'linear-gradient(135deg,#880e4f,#c62828)',
-  'linear-gradient(135deg,#e65100,#bf360c)',
-  'linear-gradient(135deg,#1b5e20,#33691e)',
-  'linear-gradient(135deg,#0d47a1,#1565c0)',
-]
-function coverGradient(c) {
-  const idx = (c.title?.charCodeAt(0) ?? 0) % COVER_GRADIENTS.length
-  return COVER_GRADIENTS[idx]
-}
 </script>
 
 <template>
@@ -115,7 +103,6 @@ function coverGradient(c) {
 
     <!-- ── Skeleton ───────────────────────────────────────── -->
     <template v-if="loading">
-      <div class="vd__hero vd__hero--skeleton"></div>
       <div class="vd__body">
         <div class="skeleton-line w-80" style="height:18px"></div>
         <div class="skeleton-line w-50" style="height:13px;margin-top:8px"></div>
@@ -127,28 +114,6 @@ function coverGradient(c) {
     </template>
 
     <template v-else-if="course">
-      <!-- ── Hero ───────────────────────────────────────── -->
-      <div
-        class="vd__hero"
-        :style="course.cover_image
-          ? `background-image:url(${course.cover_image})`
-          : `background:${coverGradient(course)}`"
-      >
-        <div class="vd__hero-overlay">
-          <div class="vd__play-badge">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-          </div>
-          <span v-if="course.total_duration_seconds" class="vd__duration-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-            {{ formatDuration(course.total_duration_seconds) }}
-          </span>
-        </div>
-      </div>
-
       <!-- ── Body ───────────────────────────────────────── -->
       <div class="vd__body">
         <!-- Title + instructor -->
@@ -229,8 +194,17 @@ function coverGradient(c) {
             }"
             @click="goToLesson(lesson)"
           >
-            <!-- Order number -->
-            <span class="vd__lesson-order">{{ lesson.order }}</span>
+            <!-- Thumbnail or order number -->
+            <div class="vd__lesson-thumb">
+              <img
+                v-if="lesson.thumbnail"
+                :src="lesson.thumbnail"
+                class="vd__lesson-thumb-img"
+                :alt="lesson.title"
+                loading="lazy"
+              />
+              <span v-else class="vd__lesson-order">{{ lesson.order }}</span>
+            </div>
 
             <!-- Info -->
             <div class="vd__lesson-info">
@@ -283,56 +257,6 @@ function coverGradient(c) {
   min-height: 36px;
 }
 .vd__back-btn:hover { opacity: 0.8; }
-
-/* ── Hero ──────────────────────────────────────────────────── */
-.vd__hero {
-  width: calc(100% + 2 * var(--space-md));
-  margin: 0 calc(-1 * var(--space-md));
-  height: 200px;
-  background-size: cover;
-  background-position: center;
-  position: relative;
-  overflow: hidden;
-}
-.vd__hero--skeleton {
-  background: rgba(255,255,255,0.07);
-  animation: shimmer 1.4s infinite;
-  height: 200px;
-}
-.vd__hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.vd__play-badge {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  padding-left: 3px;
-}
-.vd__duration-badge {
-  position: absolute;
-  bottom: 10px;
-  right: var(--space-md);
-  background: rgba(0,0,0,0.65);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 
 /* ── Body ──────────────────────────────────────────────────── */
 .vd__body {
@@ -495,6 +419,24 @@ function coverGradient(c) {
 .vd__lesson--accessible:hover { background: rgba(74,44,39,0.9); }
 .vd__lesson--locked { opacity: 0.55; cursor: default; }
 
+.vd__lesson-thumb {
+  width: 72px;
+  min-width: 72px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.vd__lesson-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .vd__lesson-order {
   width: 24px;
   min-width: 24px;
@@ -585,11 +527,9 @@ function coverGradient(c) {
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (min-width: 480px) {
-  .vd__hero { height: 230px; }
   .vd__title { font-size: 1.25rem; }
 }
 @media (min-width: 768px) {
-  .vd__hero { height: 280px; }
   .vd__title { font-size: 1.4rem; }
 }
 </style>
