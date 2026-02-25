@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
+import GemIcon from '../components/icons/GemIcon.vue'
 import { useAuthStore } from '../stores/auth'
 import { userService } from '../services/user.service'
 import { authService } from '../services/auth.service'
@@ -285,7 +286,7 @@ onMounted(() => {
         <div class="info-row">
           <span class="info-label">Số dư</span>
           <span class="info-value balance">
-            <span v-if="walletBalance !== null">{{ walletBalance.toLocaleString('vi-VN') }} LT</span>
+            <span v-if="walletBalance !== null" style="display:inline-flex;align-items:center;gap:4px;">{{ walletBalance.toLocaleString('vi-VN') }}<GemIcon :size="13" /></span>
             <span v-else class="text-muted">Đang tải...</span>
           </span>
         </div>

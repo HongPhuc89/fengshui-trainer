@@ -29,6 +29,7 @@ onMounted(async () => {
 })
 
 const TX_CONFIG = {
+  ADMIN_TOPUP:       { icon: 'plus',  bg: 'rgba(21,101,192,0.25)', color: '#64b5f6' },
   ADMIN_EDIT:        { icon: 'plus',  bg: 'rgba(21,101,192,0.25)', color: '#64b5f6' },
   RECHARGE_VOUCHER:  { icon: 'plus',  bg: 'rgba(21,101,192,0.25)', color: '#64b5f6' },
   PURCHASE_BOOK:     { icon: 'book',  bg: 'rgba(198,40,40,0.25)',  color: '#ef9a9a' },

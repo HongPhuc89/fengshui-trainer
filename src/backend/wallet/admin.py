@@ -2,10 +2,10 @@ import csv
 import secrets
 from django.contrib import admin
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.html import format_html
-from django.urls import path
+from django.urls import path, reverse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
@@ -28,13 +28,90 @@ def format_voucher_code(raw: str) -> str:
     return '-'.join(parts)
 
 
+TOPUP_PRESETS = [100, 500, 1000]
+
+
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
     list_display = ('user', 'balance', 'total_recharged', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('user__username', 'user__phone_number', 'user__email')
-    readonly_fields = ('total_recharged',)
-    raw_id_fields = ('user',)
+    readonly_fields = ('user','balance', 'total_recharged',)
+    change_form_template = 'admin/wallet/wallet/change_form.html'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path('<pk>/topup/', self.admin_site.admin_view(self.topup_view), name='wallet_wallet_topup'),
+        ]
+        return custom + urls
+
+    def _topup_redirect(self, pk):
+        url = reverse('admin:wallet_wallet_change', args=[pk])
+        return HttpResponseRedirect(f'{url}#topup')
+
+    def topup_view(self, request, pk):
+        wallet = Wallet.objects.select_related('user').get(pk=pk)
+        if request.method != 'POST':
+            return self._topup_redirect(pk)
+
+        try:
+            amount = int(request.POST.get('amount', 0))
+        except (TypeError, ValueError):
+            messages.error(request, 'Số linh thạch không hợp lệ.')
+            return self._topup_redirect(pk)
+
+        if amount <= 0 or amount > 50_000:
+            messages.error(request, 'Số linh thạch phải từ 1 đến 50.000.')
+            return self._topup_redirect(pk)
+
+        old_balance = wallet.balance
+        new_balance = old_balance + amount
+        with transaction.atomic():
+            wallet.balance = new_balance
+            wallet.total_recharged = wallet.total_recharged + amount
+            wallet.save(update_fields=['balance', 'total_recharged'])
+            audit = AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=wallet.user,
+                action_category='CURRENCY',
+                action_detail=f'Admin top-up +{amount} LT (balance: {old_balance} → {new_balance})',
+                change_log={'before': {'balance': old_balance}, 'after': {'balance': new_balance}},
+                ip_address=self.get_client_ip(request),
+            )
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=amount,
+                transaction_type='ADMIN_TOPUP',
+                reference_id=str(audit.public_id),
+                description=f'Nạp +{amount} Linh Thạch từ quản trị viên',
+                balance_after=new_balance,
+            )
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=wallet.user,
+                    title='Nạp Linh Thạch thành công',
+                    body=f'Tài khoản của bạn vừa được cộng {amount} Linh Thạch. Số dư hiện tại: {new_balance} 💎',
+                    notification_type='RECHARGE',
+                    related_object_type='wallet',
+                )
+            except Exception:
+                pass
+
+        messages.success(request, f'✅ Đã nạp +{amount} 💎 cho {wallet.user}. Số dư mới: {new_balance}.')
+        return self._topup_redirect(pk)
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['topup_presets'] = TOPUP_PRESETS
+        if object_id:
+            extra_context['recent_transactions'] = (
+                WalletTransaction.objects
+                .filter(wallet__pk=object_id)
+                .order_by('-created_at')[:10]
+            )
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
         if change and obj.pk:

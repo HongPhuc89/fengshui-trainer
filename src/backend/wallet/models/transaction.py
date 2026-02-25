@@ -14,6 +14,7 @@ class WalletTransaction(BaseModel):
         ('PURCHASE_BOOK', 'Purchase Book'),
         ('PURCHASE_VIDEO', 'Purchase Video'),
         ('ADMIN_EDIT', 'Admin Edit'),
+        ('ADMIN_TOPUP', 'Admin Top-up'),
         ('VIP_SUBSCRIPTION', 'VIP Subscription'),
     ]
 

@@ -1,0 +1,143 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block after_field_sets %}
+{{ block.super }}
+
+{% if original %}
+<div class="col-12" id="topup">
+
+  {# ── Top-up card ─────────────────────────────────────────── #}
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title mb-0" style="font-size:0.95rem;">⚡ Nạp nhanh Linh Thạch</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3" style="font-size:0.85rem;">
+        Số dư hiện tại:
+        <strong style="color:#fbbf24;">{{ original.balance }} 💎</strong>
+        &nbsp;—&nbsp;{{ original.user }}
+      </p>
+
+      {# Row 1: Preset buttons — no <form> here, JS submits via dynamic form #}
+      <div class="d-flex flex-wrap mb-3">
+        {% for amount in topup_presets %}
+        <button type="button" data-amount="{{ amount }}" class="btn btn-primary topup-preset-btn mr-2 mb-2">
+          +{{ amount }} 💎
+        </button>
+        {% endfor %}
+      </div>
+
+      {# Divider #}
+      <div class="d-flex align-items-center mb-3" style="gap:10px;">
+        <hr style="flex:1;border-color:#dee2e6;margin:0;" />
+        <span class="text-muted" style="font-size:0.8rem;white-space:nowrap;">hoặc nhập số khác</span>
+        <hr style="flex:1;border-color:#dee2e6;margin:0;" />
+      </div>
+
+      {# Row 2: Custom amount #}
+      <div class="d-flex align-items-center" style="gap:8px;max-width:280px;">
+        <input id="custom-amount" type="number" min="1" max="50000"
+               placeholder="Số linh thạch..."
+               class="form-control form-control-sm" />
+        <button id="custom-btn" type="button" disabled class="btn btn-success btn-sm"
+                style="white-space:nowrap;">
+          Nạp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Recent transactions card ─────────────────────────────── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title mb-0" style="font-size:0.95rem;">Giao dịch gần đây</h3>
+    </div>
+    {% if recent_transactions %}
+    <div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Mô tả</th>
+            <th class="text-right">Số tiền</th>
+            <th class="text-right">Số dư sau</th>
+            <th class="text-right">Thời gian</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tx in recent_transactions %}
+          <tr>
+            <td>{{ tx.description }}</td>
+            <td class="text-right font-weight-bold" data-amount="{{ tx.amount|stringformat:'d' }}">
+              {% if tx.amount >= 0 %}+{% endif %}{{ tx.amount }} 💎
+            </td>
+            <td class="text-right" style="color:#b8860b;">{{ tx.balance_after }} 💎</td>
+            <td class="text-right text-muted">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">
+      <p class="text-muted mb-0" style="font-size:0.85rem;">Chưa có giao dịch nào.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var TOPUP_URL  = "{% url 'admin:wallet_wallet_topup' original.pk %}";
+  var CSRF_TOKEN = "{{ csrf_token }}";
+  var userName   = "{{ original.user|escapejs }}";
+  var input      = document.getElementById('custom-amount');
+  var customBtn  = document.getElementById('custom-btn');
+
+  /* Submit via a temporary form appended to <body> to avoid nested-form issue */
+  function doTopup(amount) {
+    if (!confirm('Nạp +' + amount + ' 💎 cho ' + userName + '?')) return;
+
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = TOPUP_URL;
+    f.style.display = 'none';
+
+    var csrf = document.createElement('input');
+    csrf.type = 'hidden'; csrf.name = 'csrfmiddlewaretoken'; csrf.value = CSRF_TOKEN;
+    f.appendChild(csrf);
+
+    var amt = document.createElement('input');
+    amt.type = 'hidden'; amt.name = 'amount'; amt.value = amount;
+    f.appendChild(amt);
+
+    document.body.appendChild(f);
+    f.submit();
+  }
+
+  document.querySelectorAll('.topup-preset-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      doTopup(parseInt(this.dataset.amount, 10));
+    });
+  });
+
+  input.addEventListener('input', function () {
+    var ok = this.value && parseInt(this.value, 10) > 0;
+    customBtn.disabled = !ok;
+  });
+
+  customBtn.addEventListener('click', function () {
+    var v = parseInt(input.value, 10);
+    if (v > 0) doTopup(v);
+  });
+
+  /* Color positive/negative transaction amounts */
+  document.querySelectorAll('td[data-amount]').forEach(function (td) {
+    td.style.color = parseInt(td.dataset.amount, 10) >= 0 ? '#28a745' : '#dc3545';
+  });
+})();
+</script>
+
+{% endif %}
+{% endblock %}
