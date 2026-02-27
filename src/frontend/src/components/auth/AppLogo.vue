@@ -8,11 +8,7 @@ defineProps({
 <template>
   <div class="app-logo" :class="[`app-logo--${variant}`]">
     <div class="app-logo__icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        <path d="M8 7h8M8 11h8" />
-      </svg>
+      <img src="/favicon.svg" alt="Thiên Thư Logo" />
     </div>
     <h1 class="app-logo__title">THIÊN THƯ</h1>
     <p v-if="subtitle || variant === 'login'" class="app-logo__subtitle">
@@ -30,28 +26,22 @@ defineProps({
   margin-bottom: var(--space-lg);
 }
 .app-logo__icon {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   margin: 0 auto var(--space-md);
-  border: 2px solid var(--accent-gold);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.app-logo__icon svg {
-  width: 32px;
-  height: 32px;
-  color: var(--accent-gold);
-}
-.app-logo--register .app-logo__icon {
-  background: rgba(197, 165, 81, 0.2);
-}
-.app-logo__icon svg {
-  color: var(--accent-gold);
+.app-logo__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .app-logo--app .app-logo__icon {
-  display: none;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0;
 }
 .app-logo__title {
   font-size: 1.75rem;
