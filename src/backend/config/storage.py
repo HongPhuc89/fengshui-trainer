@@ -75,12 +75,14 @@ class LocalFirstSupabaseStorage(FileSystemStorage):
 
     def _upload(self, name):
         content_type, _ = mimetypes.guess_type(name)
+        expiry = getattr(settings, "SUPABASE_URL_EXPIRY", 604800)
         with self.open(name, "rb") as f:
             self._s3_client().put_object(
                 Bucket=settings.SUPABASE_STORAGE_BUCKET,
                 Key=name,
                 Body=f.read(),
                 ContentType=content_type or "application/octet-stream",
+                CacheControl=f"private, max-age={expiry}",
             )
 
     def _presigned_url(self, name):

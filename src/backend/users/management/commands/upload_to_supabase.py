@@ -17,7 +17,14 @@ MEDIA_FIELDS = [
 
 
 class Command(BaseCommand):
-    help = "Upload all local media files that are missing on Supabase."
+    help = "Upload local media files to Supabase. Use --force to re-upload all (e.g. to refresh CacheControl headers)."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Re-upload every file even if already on Supabase (updates CacheControl and other metadata).",
+        )
 
     def handle(self, *args, **options):
         if not isinstance(default_storage, LocalFirstSupabaseStorage):
@@ -29,6 +36,7 @@ class Command(BaseCommand):
             self.stderr.write("Supabase credentials not configured. Aborting.")
             return
 
+        force = options["force"]
         s3 = storage._s3_client()
         bucket = settings.SUPABASE_STORAGE_BUCKET
 
@@ -43,23 +51,24 @@ class Command(BaseCommand):
                 if not name:
                     continue
 
-                # 1. Cache hit → already synced
-                if cache.get(f"supabase_sync:{name}"):
-                    already_synced += 1
-                    continue
-
-                # 2. Check S3 directly
-                try:
-                    s3.head_object(Bucket=bucket, Key=name)
-                    cache.set(f"supabase_sync:{name}", True, timeout=SUPABASE_SYNC_TTL)
-                    already_synced += 1
-                    continue
-                except ClientError as exc:
-                    code = exc.response["Error"]["Code"]
-                    if code not in ("404", "NoSuchKey"):
-                        self.stderr.write(f"  S3 error for {name}: {exc}")
-                        errors += 1
+                if not force:
+                    # 1. Cache hit → already synced
+                    if cache.get(f"supabase_sync:{name}"):
+                        already_synced += 1
                         continue
+
+                    # 2. Check S3 directly
+                    try:
+                        s3.head_object(Bucket=bucket, Key=name)
+                        cache.set(f"supabase_sync:{name}", True, timeout=SUPABASE_SYNC_TTL)
+                        already_synced += 1
+                        continue
+                    except ClientError as exc:
+                        code = exc.response["Error"]["Code"]
+                        if code not in ("404", "NoSuchKey"):
+                            self.stderr.write(f"  S3 error for {name}: {exc}")
+                            errors += 1
+                            continue
 
                 # 3. Local file must exist before uploading
                 if not storage.exists(name):
@@ -67,11 +76,13 @@ class Command(BaseCommand):
                     missing_local += 1
                     continue
 
-                # 4. Upload
+                # 4. Upload (or re-upload with updated metadata when --force)
                 try:
                     storage._upload(name)
                     cache.set(f"supabase_sync:{name}", True, timeout=SUPABASE_SYNC_TTL)
-                    self.stdout.write(f"  [uploaded] {name}")
+                    cache.delete(f"supabase_url:{name}")  # invalidate cached pre-signed URL
+                    label = "[re-uploaded]" if force else "[uploaded]"
+                    self.stdout.write(f"  {label} {name}")
                     uploaded += 1
                 except Exception as exc:
                     self.stderr.write(f"  [error] {name}: {exc}")
