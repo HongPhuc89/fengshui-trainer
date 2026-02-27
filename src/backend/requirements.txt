@@ -16,3 +16,4 @@ drf-spectacular
 gunicorn
 sentry-sdk
 requests
+boto3

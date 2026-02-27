@@ -74,7 +74,7 @@ class AvatarUploadView(views.APIView):
         if user.avatar:
             user.avatar.delete(save=False)
 
-        user.avatar.save('avatar.jpg', ContentFile(output.read()), save=True)
+        user.avatar.save(f'{user.pk}.jpg', ContentFile(output.read()), save=True)
 
         avatar_url = request.build_absolute_uri(user.avatar.url)
         return Response({'avatar_url': avatar_url}, status=status.HTTP_200_OK)

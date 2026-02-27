@@ -17,6 +17,13 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # Redis (sessions, Celery broker)
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
@@ -154,6 +161,20 @@ STATICFILES_DIRS = [BASE_DIR / "config" / "static"]
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Supabase Storage (private bucket, pre-signed URLs)
+# Get credentials from: Supabase Dashboard > Project Settings > Storage > S3 Connection
+SUPABASE_PROJECT_REF = env("SUPABASE_PROJECT_REF", default="")
+SUPABASE_S3_ACCESS_KEY_ID = env("SUPABASE_S3_ACCESS_KEY_ID", default="")
+SUPABASE_S3_SECRET_ACCESS_KEY = env("SUPABASE_S3_SECRET_ACCESS_KEY", default="")
+SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="media")
+SUPABASE_REGION = env("SUPABASE_REGION", default="ap-southeast-1")
+SUPABASE_URL_EXPIRY = 3600  # pre-signed URL valid for 1 hour
+
+STORAGES = {
+    "default": {"BACKEND": "config.storage.LocalFirstSupabaseStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -1,8 +1,20 @@
-from django.db import models
+import os
+
 from django.conf import settings
+from django.db import models
 from PyPDF2 import PdfReader
 
 from users.models import BaseModel
+
+
+def book_cover_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    return f'book_covers/{instance.pk}{ext}'
+
+
+def book_chapter_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    return f'book_chapters/{instance.pk}{ext}'
 
 
 class BookCategory(BaseModel):
@@ -31,7 +43,7 @@ class Book(BaseModel):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=255)
     author = models.CharField(max_length=255, blank=True)
-    cover_image = models.ImageField(upload_to='book_covers/', blank=True, null=True)
+    cover_image = models.ImageField(upload_to=book_cover_upload_to, blank=True, null=True)
     description = models.TextField(blank=True)
     is_free = models.BooleanField(default=False)
     is_new_release = models.BooleanField(default=False)
@@ -63,7 +75,7 @@ class BookChapter(BaseModel):
     title = models.CharField(max_length=255)
     slug = models.CharField(max_length=255)
     order = models.PositiveIntegerField()
-    file_path = models.FileField(upload_to='book_chapters/', blank=True, null=True)
+    file_path = models.FileField(upload_to=book_chapter_upload_to, blank=True, null=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
     is_demo = models.BooleanField(default=False)

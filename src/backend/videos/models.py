@@ -1,7 +1,14 @@
-from django.db import models
+import os
+
 from django.conf import settings
+from django.db import models
 
 from users.models import BaseModel
+
+
+def lesson_thumbnail_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    return f'thumbnails/{instance.pk}{ext}'
 
 
 class VideoCategory(BaseModel):
@@ -79,7 +86,7 @@ class VideoLesson(BaseModel):
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     transcript = models.TextField(blank=True)
     summary = models.TextField(blank=True)
-    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
+    thumbnail = models.ImageField(upload_to=lesson_thumbnail_upload_to, blank=True, null=True)
     is_free = models.BooleanField(default=False)
 
     class Meta:
