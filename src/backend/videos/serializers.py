@@ -18,10 +18,20 @@ class VideoLessonListSerializer(serializers.ModelSerializer):
 class VideoCourseListSerializer(serializers.ModelSerializer):
     category = VideoCategorySerializer(read_only=True)
     total_duration_seconds = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     def get_total_duration_seconds(self, obj):
         result = obj.lessons.aggregate(total=Sum('duration_seconds'))['total']
         return result or 0
+
+    def get_cover_image(self, obj):
+        if obj.cover_image:
+            return obj.cover_image
+        first = obj.lessons.order_by('order').exclude(thumbnail='').filter(thumbnail__isnull=False).first()
+        if first and first.thumbnail:
+            request = self.context.get('request')
+            return request.build_absolute_uri(first.thumbnail.url) if request else first.thumbnail.url
+        return None
 
     class Meta:
         model = VideoCourse
@@ -36,9 +46,19 @@ class VideoCourseDetailSerializer(serializers.ModelSerializer):
     category = VideoCategorySerializer(read_only=True)
     lessons = VideoLessonListSerializer(many=True, read_only=True)
     final_exam_id = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     def get_final_exam_id(self, obj):
         return str(obj.final_exam_id) if obj.final_exam_id else None
+
+    def get_cover_image(self, obj):
+        if obj.cover_image:
+            return obj.cover_image
+        first = next((l for l in obj.lessons.all() if l.thumbnail), None)
+        if first:
+            request = self.context.get('request')
+            return request.build_absolute_uri(first.thumbnail.url) if request else first.thumbnail.url
+        return None
 
     class Meta:
         model = VideoCourse

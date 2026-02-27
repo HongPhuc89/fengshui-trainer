@@ -90,6 +90,9 @@ class LessonFlashcardInline(admin.StackedInline):
 class VideoLessonAdmin(admin.ModelAdmin):
     form = VideoLessonAdminForm
 
+    class Media:
+        js = ('videos/js/upload_progress.js',)
+
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'flashcard_count', 'has_exam', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
