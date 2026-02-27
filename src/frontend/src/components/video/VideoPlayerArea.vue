@@ -41,10 +41,14 @@ async function onEnded() {
 }
 
 // ── Fullscreen ────────────────────────────────────────────────
+// Intercept bất kỳ element con nào (iframe Bunny hoặc native video) đi fullscreen,
+// thay bằng container (playerWrapRef) để watermark luôn hiện kể cả fullscreen.
 function onFullscreenChange() {
   const fsEl = document.fullscreenElement
-  if (fsEl === videoRef.value) {
-    document.exitFullscreen().then(() => playerWrapRef.value?.requestFullscreen())
+  const wrap  = playerWrapRef.value
+  if (!fsEl || !wrap || fsEl === wrap) return  // đang thoát hoặc đã là container
+  if (wrap.contains(fsEl)) {
+    document.exitFullscreen().then(() => wrap.requestFullscreen())
   }
 }
 
@@ -106,6 +110,15 @@ defineExpose({ saveProgress })
   background: #000;
   position: relative;
   overflow: hidden;
+}
+
+/* Khi container lên fullscreen, fill toàn bộ màn hình */
+.player-area:fullscreen,
+.player-area:-webkit-full-screen,
+.player-area:-moz-full-screen {
+  aspect-ratio: unset;
+  width: 100%;
+  height: 100%;
 }
 
 .player-area__player {

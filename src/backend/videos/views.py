@@ -146,6 +146,92 @@ class VideoLessonUploadView(views.APIView):
         return Response({'video_id': result.video_id, 'video_url': result.video_url})
 
 
+class VideoUploadInitView(views.APIView):
+    """
+    POST /api/videos/lessons/<public_id>/upload/init/
+
+    Creates a Bunny Stream video entry and returns TUS auth headers so the
+    browser can upload the file directly to Bunny (no Django proxy).
+    Only available when VIDEO_STORAGE_BACKEND=bunny.
+    """
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, public_id):
+        lesson = get_object_or_404(VideoLesson, public_id=public_id)
+
+        from .storage import BunnyVideoStorage, get_video_storage
+        storage = get_video_storage()
+        if not isinstance(storage, BunnyVideoStorage):
+            return Response(
+                {'detail': 'Bunny storage is not configured (VIDEO_STORAGE_BACKEND != bunny).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            guid     = storage.create_entry(lesson.title)
+            tus_info = storage.generate_tus_auth(guid)
+        except Exception as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(tus_info)
+
+
+class VideoUploadCompleteView(views.APIView):
+    """
+    POST /api/videos/lessons/<public_id>/upload/complete/
+
+    Called by the browser after a successful TUS upload to save the
+    video_id and video_url on the lesson.
+    Body: { "guid": "<bunny-video-guid>" }
+    """
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, public_id):
+        lesson = get_object_or_404(VideoLesson, public_id=public_id)
+        guid   = request.data.get('guid', '').strip()
+        if not guid:
+            return Response({'detail': '"guid" is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .storage import BunnyVideoStorage, get_video_storage
+        storage = get_video_storage()
+        if not isinstance(storage, BunnyVideoStorage):
+            return Response(
+                {'detail': 'Bunny storage is not configured.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lesson.video_id  = guid
+        lesson.video_url = f'https://iframe.mediadelivery.net/embed/{storage._library_id}/{guid}'
+        lesson.save(update_fields=['video_id', 'video_url'])
+
+        return Response({'video_id': lesson.video_id, 'video_url': lesson.video_url})
+
+
+class VideoUploadStatusView(views.APIView):
+    """
+    GET /api/videos/lessons/<public_id>/upload/status/?guid=<guid>
+
+    Proxies Bunny transcoding status so the browser can poll progress.
+    Returns: { status: 0-6, encode_progress: 0-100 }
+    """
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request, public_id):
+        guid = request.query_params.get('guid', '').strip()
+        if not guid:
+            return Response({'detail': '"guid" query param is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .storage import BunnyVideoStorage, get_video_storage
+        storage = get_video_storage()
+        if not isinstance(storage, BunnyVideoStorage):
+            return Response({'status': 4, 'encode_progress': 100})
+
+        try:
+            return Response(storage.get_video_status(guid))
+        except Exception as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
 class LessonProgressView(views.APIView):
     """POST /api/videos/{slug}/lessons/{lesson_slug}/progress/ - Update watch progress."""
     permission_classes = (IsAuthenticated,)

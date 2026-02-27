@@ -9,10 +9,13 @@ To switch backends, set the env var:
     VIDEO_STORAGE_BACKEND=local   (default)
 """
 
+import hashlib
+import hmac as _hmac
 import json
 import logging
 import shutil
 import subprocess
+import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -265,6 +268,71 @@ class BunnyVideoStorage(VideoStorageBackend):
         except Exception as exc:
             logger.warning('BunnyVideoStorage: thumbnail fetch failed: %s', exc)
             return None
+
+    # ── Direct TUS upload helpers ─────────────────────────────────────────────
+
+    def create_entry(self, title: str) -> str:
+        """Create a video entry in Bunny library and return its GUID."""
+        resp = http.post(
+            f'{self._API_BASE}/{self._library_id}/videos',
+            json={'title': title},
+            headers={
+                'AccessKey': self._api_key,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        guid = resp.json()['guid']
+        logger.info('BunnyVideoStorage: created entry guid=%s', guid)
+        return guid
+
+    def generate_tus_auth(self, guid: str) -> dict:
+        """
+        Generate a pre-signed TUS auth payload for direct browser→Bunny upload.
+
+        Signature = HMAC-SHA256( library_id + api_key + expiration + video_id )
+        Valid for 1 hour.
+        """
+        expiration = int(time.time()) + 3600
+        sig_input  = f'{self._library_id}{self._api_key}{expiration}{guid}'
+        signature  = _hmac.new(
+            self._api_key.encode('utf-8'),
+            sig_input.encode('utf-8'),
+            hashlib.sha256,
+        ).hexdigest()
+
+        return {
+            'tus_endpoint': 'https://video.bunnycdn.com/tusupload',
+            'guid': guid,
+            'video_url': f'https://iframe.mediadelivery.net/embed/{self._library_id}/{guid}',
+            'headers': {
+                'AuthorizationSignature': signature,
+                'AuthorizationExpire':    str(expiration),
+                'VideoId':               guid,
+                'LibraryId':             self._library_id,
+            },
+        }
+
+    def get_video_status(self, guid: str) -> dict:
+        """
+        Return Bunny transcoding status for a video.
+
+        status codes: 0=Created, 1=Uploading, 2=Processing,
+                      3=Transcoding, 4=Finished, 5=Error, 6=UploadFailed
+        """
+        resp = http.get(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}',
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return {
+            'status':          data.get('status', 0),
+            'encode_progress': data.get('encodeProgress', 0),
+        }
 
     @staticmethod
     def _iter_chunks(file_obj):
