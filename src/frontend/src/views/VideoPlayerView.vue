@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { videosService } from '../services/videos.service'
@@ -40,6 +40,19 @@ const isEmbedUrl = computed(() => {
 })
 
 // ── Load data ─────────────────────────────────────────────────
+async function loadLesson() {
+  loading.value = true
+  error.value   = null
+  lesson.value  = null
+  try {
+    const res    = await videosService.getLesson(route.params.slug, route.params.lessonSlug)
+    lesson.value = res.data
+  } catch {
+    error.value = 'Không thể tải bài học.'
+  }
+  loading.value = false
+}
+
 onMounted(async () => {
   const [lessonRes, courseRes] = await Promise.allSettled([
     videosService.getLesson(route.params.slug, route.params.lessonSlug),
@@ -55,6 +68,9 @@ onMounted(async () => {
   }
   loading.value = false
 })
+
+// Reload lesson when navigating between lessons in the same course
+watch(() => route.params.lessonSlug, loadLesson)
 
 onBeforeUnmount(() => playerAreaRef.value?.saveProgress())
 
