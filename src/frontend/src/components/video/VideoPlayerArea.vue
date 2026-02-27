@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { videosService } from '../../services/videos.service'
+import FullscreenIcon from './FullscreenIcon.vue'
 
 const props = defineProps({
   lesson:        { type: Object,  required: true },
@@ -14,6 +15,7 @@ const videoRef      = ref(null)
 const playerWrapRef = ref(null)
 const lastSavedAt   = ref(0)
 const SAVE_INTERVAL = 15_000
+const isFullscreen  = ref(false)
 
 // ── Progress saving ───────────────────────────────────────────
 async function saveProgress() {
@@ -41,15 +43,21 @@ async function onEnded() {
 }
 
 // ── Fullscreen ────────────────────────────────────────────────
-// Intercept bất kỳ element con nào (iframe Bunny hoặc native video) đi fullscreen,
-// thay bằng container (playerWrapRef) để watermark luôn hiện kể cả fullscreen.
-function onFullscreenChange() {
-  const fsEl = document.fullscreenElement
-  const wrap  = playerWrapRef.value
-  if (!fsEl || !wrap || fsEl === wrap) return  // đang thoát hoặc đã là container
-  if (wrap.contains(fsEl)) {
-    document.exitFullscreen().then(() => wrap.requestFullscreen())
+// Use a custom overlay button instead of the native iframe/video fullscreen button.
+// Reason: requestFullscreen() must be called DIRECTLY from a user gesture.
+// Calling it inside exitFullscreen().then(requestFullscreen) is rejected by the browser.
+function toggleFullscreen() {
+  const wrap = playerWrapRef.value
+  if (!wrap) return
+  if (document.fullscreenElement) {
+    document.exitFullscreen()
+  } else {
+    wrap.requestFullscreen()
   }
+}
+
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
 }
 
 onMounted(() => document.addEventListener('fullscreenchange', onFullscreenChange))
@@ -63,34 +71,46 @@ defineExpose({ saveProgress })
 
 <template>
   <div ref="playerWrapRef" class="player-area">
+
     <!-- Watermark overlay -->
     <div v-if="watermarkText" class="player-area__watermark" aria-hidden="true">
       {{ watermarkText }}
     </div>
 
-    <!-- Embed iframe (Bunny Stream, etc.) -->
+    <!-- Custom fullscreen button (works for both iframe and native video) -->
+    <button
+      v-if="lesson.video_url"
+      class="player-area__fs-btn"
+      :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+      @click="toggleFullscreen"
+    >
+      <FullscreenIcon :compressed="isFullscreen" />
+    </button>
+
+    <!-- Embed iframe (Bunny Stream) — no allowfullscreen so the iframe cannot -->
+    <!-- go fullscreen on its own; the custom button above handles it instead. -->
     <iframe
       v-if="isEmbedUrl && lesson.video_url"
       :src="lesson.video_url"
       class="player-area__player"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen
       loading="lazy"
     ></iframe>
 
-    <!-- Native video -->
+    <!-- Native video — controlsList="nofullscreen" hides the native fullscreen button -->
     <video
       v-else-if="lesson.video_url"
       ref="videoRef"
       class="player-area__player"
       controls
+      controlsList="nofullscreen"
       preload="metadata"
       @timeupdate="onTimeUpdate"
       @pause="saveProgress"
       @ended="onEnded"
     >
       <source :src="lesson.video_url" type="video/mp4" />
-      Trình duyệt của bạn không hỗ trợ phát video.
+      Your browser does not support video playback.
     </video>
 
     <!-- No URL -->
@@ -98,8 +118,9 @@ defineExpose({ saveProgress })
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" opacity=".3">
         <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
       </svg>
-      <p>Video chưa được upload.</p>
+      <p>No video uploaded yet.</p>
     </div>
+
   </div>
 </template>
 
@@ -112,7 +133,7 @@ defineExpose({ saveProgress })
   overflow: hidden;
 }
 
-/* Khi container lên fullscreen, fill toàn bộ màn hình */
+/* When the container enters fullscreen, fill the entire screen */
 .player-area:fullscreen,
 .player-area:-webkit-full-screen,
 .player-area:-moz-full-screen {
@@ -128,6 +149,11 @@ defineExpose({ saveProgress })
   display: block;
 }
 
+/* Hide the native fullscreen button on the video element (Chrome/Safari/Edge) */
+.player-area__player::-webkit-media-controls-fullscreen-button {
+  display: none;
+}
+
 .player-area__empty {
   width: 100%;
   height: 100%;
@@ -141,6 +167,36 @@ defineExpose({ saveProgress })
   background: rgba(255,255,255,0.03);
 }
 
+/* ── Custom fullscreen button ──────────────────────────────── */
+.player-area__fs-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 6;
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.15s;
+  backdrop-filter: blur(4px);
+}
+.player-area:hover .player-area__fs-btn,
+.player-area:fullscreen .player-area__fs-btn,
+.player-area:-webkit-full-screen .player-area__fs-btn {
+  opacity: 1;
+}
+.player-area__fs-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* ── Watermark ──────────────────────────────────────────────── */
 .player-area__watermark {
   position: absolute;
   z-index: 5;
