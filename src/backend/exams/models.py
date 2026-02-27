@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 
@@ -35,6 +36,13 @@ class Exam(BaseModel):
         blank=True,
         related_name='exams',
     )
+    lesson = models.ForeignKey(
+        'videos.VideoLesson',
+        on_delete=models.CASCADE,
+        related_name='exams',
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=255)
     description = models.TextField(blank=True)
@@ -53,7 +61,18 @@ class Exam(BaseModel):
 
 class PracticeQuestion(BaseModel):
     """Question belonging to an exam."""
+    QUESTION_TYPE_CHOICES = [
+        ('MULTIPLE_CHOICE', 'Trắc nghiệm nhiều lựa chọn'),
+        ('YES_NO', 'Có / Không'),
+        ('TRUE_FALSE', 'Đúng / Sai'),
+    ]
+
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='questions')
+    question_type = models.CharField(
+        max_length=20,
+        choices=QUESTION_TYPE_CHOICES,
+        default='MULTIPLE_CHOICE',
+    )
     question_text = models.TextField()
     options = models.JSONField(default=list)  # [{"id": "a", "text": "..."}, ...]
     correct_answer = models.CharField(max_length=50)  # id of correct option
@@ -98,7 +117,7 @@ class UserExamProgress(BaseModel):
 
 
 class Flashcard(BaseModel):
-    """Flashcard for spaced repetition (can link to module or chapter)."""
+    """Flashcard for spaced repetition (can link to lesson or module)."""
     module = models.ForeignKey(
         PracticeModule,
         on_delete=models.CASCADE,
@@ -106,8 +125,20 @@ class Flashcard(BaseModel):
         null=True,
         blank=True,
     )
+    lesson = models.ForeignKey(
+        'videos.VideoLesson',
+        on_delete=models.CASCADE,
+        related_name='flashcards',
+        null=True,
+        blank=True,
+    )
     front = models.TextField()
     back = models.TextField()
+    category = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Nhãn hiển thị trên thẻ, vd: KHÁI NIỆM CỐT LÕI",
+    )
     image = models.CharField(max_length=255, blank=True)
     difficulty = models.CharField(max_length=10, blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -115,7 +146,13 @@ class Flashcard(BaseModel):
     class Meta:
         verbose_name = "Flashcard"
         verbose_name_plural = "Flashcards"
-        ordering = ['module', 'order']
+        ordering = ['order']
+
+    def clean(self):
+        if not self.lesson_id and not self.module_id:
+            raise ValidationError(
+                "Flashcard phải thuộc một VideoLesson hoặc PracticeModule."
+            )
 
     def __str__(self):
         return (self.front[:40] + '...') if len(self.front) > 40 else self.front

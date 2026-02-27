@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from exams.models import Exam as ExamModel, Flashcard as FlashcardModel
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
 from .storage import get_video_storage
 
@@ -19,8 +20,22 @@ class VideoLessonInline(admin.TabularInline):
     model = VideoLesson
     extra = 0
     ordering = ('order',)
-    fields = ('order', 'title', 'slug', 'is_free', 'duration_seconds', 'video_id')
-    readonly_fields = ('video_id',)
+    fields = ('order', 'title', 'slug', 'is_free', 'duration_seconds', 'flashcard_count_display', 'has_exam_display')
+    readonly_fields = ('flashcard_count_display', 'has_exam_display')
+    show_change_link = True
+
+    def flashcard_count_display(self, obj):
+        if not obj.pk:
+            return "—"
+        c = obj.flashcards.count()
+        return f"{c} thẻ" if c else "—"
+    flashcard_count_display.short_description = "Flashcards"
+
+    def has_exam_display(self, obj):
+        if not obj.pk:
+            return "—"
+        return "✅" if obj.exams.filter(exam_type='PRACTICE').exists() else "—"
+    has_exam_display.short_description = "Ôn luyện"
 
 
 @admin.register(VideoCourse)
@@ -32,7 +47,7 @@ class VideoCourseAdmin(admin.ModelAdmin):
     inlines = [VideoLessonInline]
 
 
-# ── VideoLesson admin with file upload ────────────────────────────────────────
+# ── VideoLesson admin with file upload + flashcard/exam inlines ───────────────
 
 class VideoLessonAdminForm(forms.ModelForm):
     video_upload = forms.FileField(
@@ -49,15 +64,38 @@ class VideoLessonAdminForm(forms.ModelForm):
         fields = '__all__'
 
 
+class LessonExamInline(admin.TabularInline):
+    model = ExamModel
+    fk_name = 'lesson'
+    verbose_name = "Bài ôn luyện"
+    verbose_name_plural = "Bài ôn luyện"
+    extra = 0
+    show_change_link = True
+    fields = ('title', 'slug', 'exam_type', 'passing_score', 'time_limit_minutes')
+
+
+class LessonFlashcardInline(admin.StackedInline):
+    model = FlashcardModel
+    fk_name = 'lesson'
+    verbose_name = "Flashcard"
+    verbose_name_plural = "Kho Flashcard"
+    extra = 0
+    show_change_link = True
+    classes = ('collapse',)
+    fields = ('order', 'category', 'front', 'back', 'difficulty')
+    ordering = ('order',)
+
+
 @admin.register(VideoLesson)
 class VideoLessonAdmin(admin.ModelAdmin):
     form = VideoLessonAdminForm
 
-    list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'video_status')
+    list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'flashcard_count', 'has_exam', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
+    inlines = [LessonExamInline, LessonFlashcardInline]
 
     fieldsets = (
         (None, {
@@ -80,6 +118,15 @@ class VideoLessonAdmin(admin.ModelAdmin):
         'video/webm',
     }
     MAX_SIZE_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB
+
+    def flashcard_count(self, obj):
+        c = obj.flashcards.count()
+        return f"{c} thẻ" if c else "—"
+    flashcard_count.short_description = "Kho Flashcard"
+
+    def has_exam(self, obj):
+        return "✅" if obj.exams.filter(exam_type='PRACTICE').exists() else "—"
+    has_exam.short_description = "Ôn luyện"
 
     def video_status(self, obj):
         if obj.video_url:
@@ -127,6 +174,16 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.extract_thumbnail_view),
                 name='videos_videolesson_extract_thumbnail',
             ),
+            path(
+                '<int:pk>/import-flashcards/',
+                self.admin_site.admin_view(self.import_flashcards_view),
+                name='videos_videolesson_import_flashcards',
+            ),
+            path(
+                'export-flashcards-template/',
+                self.admin_site.admin_view(self.export_flashcards_template_view),
+                name='videos_videolesson_export_flashcards_template',
+            ),
         ]
         return custom + urls
 
@@ -163,6 +220,43 @@ class VideoLessonAdmin(admin.ModelAdmin):
             except Exception as exc:
                 self.message_user(request, f'Lỗi khi lấy thumbnail: {exc}', level='error')
         return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+
+    def import_flashcards_view(self, request, pk):
+        lesson = get_object_or_404(VideoLesson, pk=pk)
+        if request.method == 'POST':
+            from exams.utils import parse_flashcards_csv
+            csv_file = request.FILES.get('file')
+            if not csv_file:
+                self.message_user(request, 'Không tìm thấy file.', level='error')
+            else:
+                result = parse_flashcards_csv(csv_file, lesson)
+                msg = f'Đã import {result["created"]} flashcard.'
+                if result['skipped']:
+                    msg += f' Bỏ qua {result["skipped"]} dòng.'
+                self.message_user(request, msg, level='success' if result['created'] else 'warning')
+                for err in result['errors'][:10]:
+                    self.message_user(request, f'Dòng {err["row"]}: {err["error"]}', level='warning')
+            return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+
+        from django.template.response import TemplateResponse
+        return TemplateResponse(request, 'admin/videos/videolesson/import_flashcards.html', {
+            'lesson': lesson,
+            'title': f'Import Flashcard — {lesson.title}',
+            'opts': self.model._meta,
+        })
+
+    def export_flashcards_template_view(self, request):
+        from django.http import HttpResponse
+        from exams.utils import FLASHCARDS_CSV_TEMPLATE
+        response = HttpResponse(FLASHCARDS_CSV_TEMPLATE, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="flashcards_template.csv"'
+        return response
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['import_flashcards_url'] = reverse('admin:videos_videolesson_import_flashcards', args=[object_id])
+        extra_context['export_flashcards_template_url'] = reverse('admin:videos_videolesson_export_flashcards_template')
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
         video_file = request.FILES.get('video_upload')

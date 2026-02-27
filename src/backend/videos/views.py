@@ -1,3 +1,7 @@
+import random
+
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status, views
 from rest_framework.parsers import MultiPartParser
@@ -204,3 +208,73 @@ class CourseProgressView(views.APIView):
             'completed_lessons': completed,
             'total_lessons': total,
         })
+
+
+# ---------- Lesson Flashcards & Exam ----------
+
+class LessonFlashcardsView(views.APIView):
+    """GET /api/videos/{slug}/lessons/{lesson_slug}/flashcards/ - Smart-sampled flashcard pool."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, slug, lesson_slug):
+        from django.db.models import Q
+        from exams.models import Flashcard, FlashcardReview
+        from exams.serializers import FlashcardWithReviewSerializer
+
+        lesson = get_object_or_404(VideoLesson, course__slug=slug, slug=lesson_slug)
+        if not _can_access_lesson(request.user, lesson.course, lesson):
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        count = min(int(request.query_params.get('count', 10)), 50)
+        user = request.user
+
+        all_ids = list(lesson.flashcards.values_list('id', flat=True))
+        total = len(all_ids)
+
+        if total == 0:
+            return Response({'total_in_pool': 0, 'due_count': 0, 'count': 0, 'cards': []})
+
+        # Due = has a review with next_review <= now, OR has never been reviewed
+        due_ids = set(lesson.flashcards.filter(
+            Q(reviews__user=user, reviews__next_review__lte=timezone.now())
+            | ~Q(reviews__user=user)
+        ).values_list('id', flat=True))
+
+        due_sample = random.sample(list(due_ids), min(count, len(due_ids)))
+        remaining_ids = [i for i in all_ids if i not in set(due_sample)]
+        fill_count = count - len(due_sample)
+        fill_sample = random.sample(remaining_ids, min(fill_count, len(remaining_ids)))
+
+        selected_ids = due_sample + fill_sample
+        random.shuffle(selected_ids)
+
+        cards = Flashcard.objects.filter(id__in=selected_ids)
+        reviews = {
+            r.flashcard_id: r
+            for r in FlashcardReview.objects.filter(user=user, flashcard_id__in=selected_ids)
+        }
+        serializer = FlashcardWithReviewSerializer(
+            cards, many=True,
+            context={'reviews': reviews, 'due_ids': due_ids},
+        )
+        return Response({
+            'total_in_pool': total,
+            'due_count': len(due_ids),
+            'count': len(selected_ids),
+            'cards': serializer.data,
+        })
+
+
+class LessonExamView(views.APIView):
+    """GET /api/videos/{slug}/lessons/{lesson_slug}/exam/ - First PRACTICE exam for the lesson."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, slug, lesson_slug):
+        from exams.serializers import ExamDetailSerializer
+
+        lesson = get_object_or_404(VideoLesson, course__slug=slug, slug=lesson_slug)
+        exam = lesson.exams.filter(exam_type='PRACTICE').first()
+        if not exam:
+            raise Http404
+        serializer = ExamDetailSerializer(exam, context={'request': request})
+        return Response(serializer.data)

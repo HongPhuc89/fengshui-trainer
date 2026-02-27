@@ -3,38 +3,57 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { videosService } from '../services/videos.service'
+import VideoTabNav      from '../components/video/VideoTabNav.vue'
+import LessonSummaryTab from '../components/video/LessonSummaryTab.vue'
+import FlashcardTab     from '../components/video/FlashcardTab.vue'
+import QuizTab          from '../components/video/QuizTab.vue'
 
-const auth = useAuthStore()
-
-// ── Watermark ─────────────────────────────────────────────────
-const watermarkText = computed(() => auth.user?.email ?? '')
-
+const auth   = useAuthStore()
 const route  = useRoute()
 const router = useRouter()
 
+// ── Watermark ─────────────────────────────────────────────────────────────────
+const watermarkText = computed(() => auth.user?.email ?? '')
+
+// ── Data ──────────────────────────────────────────────────────────────────────
 const lesson  = ref(null)
 const course  = ref(null)
 const loading = ref(true)
 const error   = ref(null)
 
-// ── Video player refs ─────────────────────────────────────────
+// ── Video player refs ─────────────────────────────────────────────────────────
 const videoRef      = ref(null)
 const playerWrapRef = ref(null)
 const lastSavedAt   = ref(0)
-const SAVE_INTERVAL = 15_000 // 15s
+const SAVE_INTERVAL = 15_000
 
-// ── Fullscreen (container-level, keeps watermark) ─────────────
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const activeTab     = ref(0)
+const dueBadgeCount = ref(0)
+
+const TABS = [
+  { label: 'Tóm tắt AI' },
+  { label: 'Flashcards' },
+  { label: 'Ôn luyện'   },
+]
+
+function onFlashcardDueCount(count) {
+  dueBadgeCount.value = count
+}
+
+function switchToQuiz() {
+  activeTab.value = 2
+}
+
+// ── Fullscreen ────────────────────────────────────────────────────────────────
 function onFullscreenChange() {
   const fsEl = document.fullscreenElement
-  // If native video fullscreen was triggered, redirect to container
   if (fsEl === videoRef.value) {
     document.exitFullscreen().then(() => playerWrapRef.value?.requestFullscreen())
-    return
   }
 }
 
-
-// ── Load data ─────────────────────────────────────────────────
+// ── Load data ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
   const [lessonRes, courseRes] = await Promise.allSettled([
     videosService.getLesson(route.params.slug, route.params.lessonSlug),
@@ -57,14 +76,14 @@ onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 
-// ── Navigation between lessons ────────────────────────────────
-const sortedLessons = computed(() => {
-  return [...(course.value?.lessons ?? [])].sort((a, b) => a.order - b.order)
-})
+// ── Lesson navigation ─────────────────────────────────────────────────────────
+const sortedLessons = computed(() =>
+  [...(course.value?.lessons ?? [])].sort((a, b) => a.order - b.order)
+)
 
-const currentIndex = computed(() => {
-  return sortedLessons.value.findIndex(l => l.slug === route.params.lessonSlug)
-})
+const currentIndex = computed(() =>
+  sortedLessons.value.findIndex(l => l.slug === route.params.lessonSlug)
+)
 
 const prevLesson = computed(() => {
   const i = currentIndex.value
@@ -77,33 +96,32 @@ const nextLesson = computed(() => {
 })
 
 function goToLesson(l) {
+  if (!l) return
   saveProgress()
+  activeTab.value = 0
   router.replace({ name: 'VideoPlayer', params: { slug: route.params.slug, lessonSlug: l.slug } })
 }
 
-// ── Video type detection ──────────────────────────────────────
+// ── Video type detection ──────────────────────────────────────────────────────
 const isEmbedUrl = computed(() => {
   const url = lesson.value?.video_url ?? ''
   return url.includes('iframe') || url.includes('embed') || url.includes('mediadelivery')
 })
 
-// ── Progress saving ───────────────────────────────────────────
+// ── Progress saving ───────────────────────────────────────────────────────────
 async function saveProgress() {
   const vid = videoRef.value
   if (!lesson.value || !vid || vid.currentTime <= 0) return
-  const sec = Math.floor(vid.currentTime)
   try {
-    await videosService.updateProgress(route.params.slug, route.params.lessonSlug, sec)
+    await videosService.updateProgress(route.params.slug, route.params.lessonSlug, Math.floor(vid.currentTime))
     lastSavedAt.value = Date.now()
   } catch {
-    // silently ignore save errors
+    // silently ignore
   }
 }
 
 function onTimeUpdate() {
-  if (Date.now() - lastSavedAt.value > SAVE_INTERVAL) {
-    saveProgress()
-  }
+  if (Date.now() - lastSavedAt.value > SAVE_INTERVAL) saveProgress()
 }
 
 async function onEnded() {
@@ -115,7 +133,7 @@ async function onEnded() {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDuration(s) {
   if (!s) return ''
   const h = Math.floor(s / 3600)
@@ -165,7 +183,7 @@ function formatDuration(s) {
         loading="lazy"
       ></iframe>
 
-      <!-- Native video (local / direct URL) -->
+      <!-- Native video -->
       <video
         v-else-if="lesson.video_url"
         ref="videoRef"
@@ -180,8 +198,7 @@ function formatDuration(s) {
         Trình duyệt của bạn không hỗ trợ phát video.
       </video>
 
-
-<!-- No video URL yet -->
+      <!-- No video URL -->
       <div v-else class="vp__no-video">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" opacity=".3">
           <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
@@ -190,9 +207,9 @@ function formatDuration(s) {
       </div>
     </div>
 
-    <!-- ── Lesson info ────────────────────────────────────── -->
-    <div v-if="lesson && !loading" class="vp__body">
-      <div class="vp__lesson-header">
+    <!-- ── Lesson meta (index + title + duration) ─────────── -->
+    <div v-if="lesson && !loading" class="vp__lesson-meta">
+      <div class="vp__lesson-meta-row">
         <h1 class="vp__lesson-title">{{ lesson.title }}</h1>
         <span v-if="sortedLessons.length" class="vp__lesson-index">
           {{ currentIndex + 1 }} / {{ sortedLessons.length }}
@@ -204,43 +221,73 @@ function formatDuration(s) {
         </svg>
         {{ formatDuration(lesson.duration_seconds) }}
       </p>
+    </div>
 
-      <!-- Prev / Next navigation -->
-      <div class="vp__nav-row">
-        <button
-          class="vp__nav-btn"
-          :disabled="!prevLesson"
-          @click="prevLesson && goToLesson(prevLesson)"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          Bài trước
-        </button>
+    <!-- ── Tab bar (sticky below header) ─────────────────── -->
+    <VideoTabNav
+      v-if="lesson && !loading"
+      v-model="activeTab"
+      :tabs="TABS"
+      :due-badge-count="dueBadgeCount"
+    />
 
-        <button
-          class="vp__nav-btn vp__nav-btn--next"
-          :disabled="!nextLesson"
-          @click="nextLesson && goToLesson(nextLesson)"
-        >
-          Bài tiếp
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-      </div>
+    <!-- ── Tab content ────────────────────────────────────── -->
+    <div v-if="lesson && !loading" class="vp__tab-content">
+      <!-- Tab 0: Summary (always mounted, shown via v-show) -->
+      <LessonSummaryTab
+        v-show="activeTab === 0"
+        :summary="lesson.summary"
+      />
 
-      <!-- Description -->
-      <div v-if="lesson.description" class="vp__section">
-        <h2 class="vp__section-title">Mô tả</h2>
-        <p class="vp__section-text">{{ lesson.description }}</p>
-      </div>
+      <!-- Tab 1: Flashcards (lazy, keep-alive) -->
+      <keep-alive>
+        <FlashcardTab
+          v-if="activeTab === 1"
+          :course-slug="route.params.slug"
+          :lesson-slug="route.params.lessonSlug"
+          @due-count="onFlashcardDueCount"
+          @go-quiz="switchToQuiz"
+        />
+      </keep-alive>
 
-      <!-- Summary -->
-      <div v-if="lesson.summary" class="vp__section">
-        <h2 class="vp__section-title">Tóm tắt</h2>
-        <p class="vp__section-text">{{ lesson.summary }}</p>
-      </div>
+      <!-- Tab 2: Quiz (lazy, keep-alive) -->
+      <keep-alive>
+        <QuizTab
+          v-if="activeTab === 2"
+          :course-slug="route.params.slug"
+          :lesson-slug="route.params.lessonSlug"
+        />
+      </keep-alive>
+    </div>
+
+    <!-- ── Description (always visible) ──────────────────── -->
+    <div v-if="lesson && !loading && lesson.description" class="vp__section">
+      <h2 class="vp__section-title">Mô tả</h2>
+      <p class="vp__section-text">{{ lesson.description }}</p>
+    </div>
+
+    <!-- ── Floating bottom nav ────────────────────────────── -->
+    <div v-if="lesson && !loading" class="vp__bottom-nav">
+      <button
+        class="vp__nav-btn"
+        :disabled="!prevLesson"
+        @click="goToLesson(prevLesson)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Bài trước
+      </button>
+      <button
+        class="vp__nav-btn vp__nav-btn--next"
+        :disabled="!nextLesson"
+        @click="goToLesson(nextLesson)"
+      >
+        Bài tiếp
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -251,7 +298,7 @@ function formatDuration(s) {
   flex-direction: column;
   min-height: 100dvh;
   background: var(--bg-main);
-  padding-bottom: var(--space-xl);
+  padding-bottom: 80px; /* clearance for floating bottom nav */
 }
 
 /* ── Header ────────────────────────────────────────────────── */
@@ -322,15 +369,14 @@ function formatDuration(s) {
   background: rgba(255,255,255,0.03);
 }
 
-/* ── Body ──────────────────────────────────────────────────── */
-.vp__body {
+/* ── Lesson meta ───────────────────────────────────────────── */
+.vp__lesson-meta {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: 4px;
+  padding: var(--space-md) var(--space-md) var(--space-sm);
 }
-
-.vp__lesson-header {
+.vp__lesson-meta-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -355,33 +401,14 @@ function formatDuration(s) {
   gap: 4px;
   font-size: 0.78rem;
   color: rgba(255,255,255,0.45);
-  margin-top: -var(--space-sm);
 }
 
-/* ── Prev / Next nav ───────────────────────────────────────── */
-.vp__nav-row {
-  display: flex;
-  gap: var(--space-sm);
-}
-.vp__nav-btn {
+/* ── Tab content ───────────────────────────────────────────── */
+.vp__tab-content {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 44px;
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  transition: background 0.15s;
 }
-.vp__nav-btn:hover:not(:disabled) { background: rgba(74,44,39,0.9); }
-.vp__nav-btn:disabled { opacity: 0.3; cursor: default; }
-.vp__nav-btn--next { flex-direction: row-reverse; }
 
-/* ── Sections ──────────────────────────────────────────────── */
+/* ── Description section ───────────────────────────────────── */
 .vp__section {
   display: flex;
   flex-direction: column;
@@ -389,6 +416,7 @@ function formatDuration(s) {
   padding: var(--space-sm) var(--space-md);
   background: var(--bg-card);
   border-radius: var(--radius-md);
+  margin: var(--space-sm) var(--space-md);
 }
 .vp__section-title {
   font-size: 0.72rem;
@@ -424,16 +452,15 @@ function formatDuration(s) {
   z-index: 5;
   pointer-events: none;
   user-select: none;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255,255,255,0.55);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.5);
   white-space: nowrap;
   -webkit-font-smoothing: antialiased;
   animation: wm-drift 120s linear infinite;
 }
-
 @keyframes wm-drift {
   0%   { top: 12%;  left:  8%; }
   20%  { top: 72%;  left: 55%; }
@@ -442,6 +469,38 @@ function formatDuration(s) {
   80%  { top: 40%;  left: 40%; }
   100% { top: 12%;  left:  8%; }
 }
+
+/* ── Floating bottom nav ───────────────────────────────────── */
+.vp__bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom));
+  background: var(--bg-main);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 20;
+}
+.vp__nav-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+.vp__nav-btn:hover:not(:disabled) { background: rgba(74,44,39,0.9); }
+.vp__nav-btn:disabled { opacity: 0.3; cursor: default; }
+.vp__nav-btn--next { flex-direction: row-reverse; }
 
 @keyframes shimmer {
   0%, 100% { opacity: 0.5; }

@@ -1,8 +1,11 @@
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import generics, status, views
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from .models import (
     PracticeModule, Exam, PracticeQuestion, UserExamProgress,
@@ -11,6 +14,10 @@ from .models import (
 from .serializers import (
     PracticeModuleSerializer, ExamListSerializer, ExamDetailSerializer,
     ExamSubmitSerializer, FlashcardSerializer, FlashcardReviewSerializer,
+)
+from .utils import (
+    parse_questions_csv, parse_flashcards_csv,
+    QUESTIONS_CSV_TEMPLATE, FLASHCARDS_CSV_TEMPLATE,
 )
 
 
@@ -169,3 +176,54 @@ class FlashcardReviewView(views.APIView):
             'interval': review.interval,
             'repetitions': review.repetitions,
         })
+
+
+# ---------- CSV Import / Export ----------
+
+class QuestionImportView(views.APIView):
+    """POST /api/exams/{slug}/questions/import/ - Import questions from CSV (admin only)."""
+    permission_classes = (IsAdminUser,)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request, slug):
+        exam = get_object_or_404(Exam, slug=slug)
+        csv_file = request.FILES.get('file')
+        if not csv_file:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        result = parse_questions_csv(csv_file, exam)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class QuestionExportTemplateView(views.APIView):
+    """GET /api/exams/questions/export-template/ - Download questions CSV template."""
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        response = HttpResponse(QUESTIONS_CSV_TEMPLATE, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="questions_template.csv"'
+        return response
+
+
+class FlashcardImportView(views.APIView):
+    """POST /api/exams/flashcards/{lesson_slug}/import/ - Import flashcards CSV for a lesson (admin only)."""
+    permission_classes = (IsAdminUser,)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request, lesson_slug):
+        from videos.models import VideoLesson
+        lesson = get_object_or_404(VideoLesson, slug=lesson_slug)
+        csv_file = request.FILES.get('file')
+        if not csv_file:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        result = parse_flashcards_csv(csv_file, lesson)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class FlashcardExportTemplateView(views.APIView):
+    """GET /api/exams/flashcards/export-template/ - Download flashcards CSV template."""
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        response = HttpResponse(FLASHCARDS_CSV_TEMPLATE, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="flashcards_template.csv"'
+        return response

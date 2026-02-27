@@ -31,6 +31,14 @@ export const videosService = {
     return api.post('payments/purchase-video/', { video_id: videoId })
   },
 
+  getLessonFlashcards(courseSlug, lessonSlug, count = 10) {
+    return api.get(`videos/${courseSlug}/lessons/${lessonSlug}/flashcards/`, { params: { count } })
+  },
+
+  getLessonExam(courseSlug, lessonSlug) {
+    return api.get(`videos/${courseSlug}/lessons/${lessonSlug}/exam/`)
+  },
+
   /**
    * Upload a video file to a lesson (staff only).
    * @param {string} lessonPublicId - lesson public_id (UUID)
