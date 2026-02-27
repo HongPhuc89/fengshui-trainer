@@ -8,6 +8,8 @@ from django.core.files.storage import FileSystemStorage
 logger = logging.getLogger(__name__)
 
 SUPABASE_SYNC_TTL = 60 * 60 * 24 * 30  # 30 days
+# Cache the pre-signed URL itself for (expiry - 5 min) to avoid returning a nearly-expired URL
+_URL_CACHE_BUFFER = 5 * 60  # 5 minutes
 
 
 class LocalFirstSupabaseStorage(FileSystemStorage):
@@ -37,8 +39,15 @@ class LocalFirstSupabaseStorage(FileSystemStorage):
 
     def url(self, name):
         if name and self._is_configured() and cache.get(f"supabase_sync:{name}"):
+            cache_key = f"supabase_url:{name}"
+            cached_url = cache.get(cache_key)
+            if cached_url:
+                return cached_url
             try:
-                return self._presigned_url(name)
+                url = self._presigned_url(name)
+                expiry = getattr(settings, "SUPABASE_URL_EXPIRY", 3600)
+                cache.set(cache_key, url, timeout=expiry - _URL_CACHE_BUFFER)
+                return url
             except Exception as exc:
                 logger.warning("Supabase URL failed for %s: %s, using local", name, exc)
         return super().url(name)
