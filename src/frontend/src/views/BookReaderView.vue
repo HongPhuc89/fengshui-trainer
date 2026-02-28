@@ -158,15 +158,7 @@ async function loadPdf(url, targetPage = 1) {
     renderingTask.value.cancel()
     renderingTask.value = null
   }
-  // Convert absolute URL → relative path so it goes through the Vite /media proxy
-  let fetchUrl = url
-  try {
-    const parsed = new URL(url)
-    fetchUrl = parsed.pathname + parsed.search
-  } catch {
-    // already relative, keep as-is
-  }
-  pdfDoc.value = await pdfjsLib.getDocument({ url: fetchUrl }).promise
+  pdfDoc.value = await pdfjsLib.getDocument({ url }).promise
   chapterPageCount.value = pdfDoc.value.numPages
 
   // Sync real page count back into chapters array so totalBookPages stays accurate
