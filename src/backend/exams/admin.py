@@ -106,22 +106,89 @@ class UserExamProgressAdmin(admin.ModelAdmin):
 
 @admin.register(Flashcard)
 class FlashcardAdmin(admin.ModelAdmin):
-    list_display = ('front_preview', 'category', 'lesson_link', 'module', 'difficulty', 'order')
-    list_filter = ('difficulty',)
+    list_display  = ('front_preview', 'category', 'lesson_link', 'module', 'difficulty', 'order')
+    list_filter   = ('difficulty',)
     list_editable = ('order', 'category', 'difficulty')
     search_fields = ('front', 'back', 'category', 'lesson__title')
-    ordering = ('lesson', 'order')
+    ordering      = ('lesson', 'order')
+    change_list_template = 'admin/exams/flashcard/change_list.html'
 
     def front_preview(self, obj):
         return (obj.front[:60] + '...') if len(obj.front) > 60 else obj.front
-    front_preview.short_description = "Mặt trước"
+    front_preview.short_description = "Front"
 
     def lesson_link(self, obj):
         if obj.lesson:
             url = reverse('admin:videos_videolesson_change', args=[obj.lesson.pk])
             return format_html('<a href="{}">{}</a>', url, obj.lesson.title)
         return "—"
-    lesson_link.short_description = "Bài học"
+    lesson_link.short_description = "Lesson"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                'import-flashcards/',
+                self.admin_site.admin_view(self.import_flashcards_view),
+                name='flashcard_import',
+            ),
+            path(
+                'export-flashcards-template/',
+                self.admin_site.admin_view(self.export_flashcards_template_view),
+                name='flashcard_export_template',
+            ),
+        ]
+        return custom + urls
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['import_url']           = reverse('admin:flashcard_import')
+        extra_context['export_template_url']  = reverse('admin:flashcard_export_template')
+        return super().changelist_view(request, extra_context)
+
+    def import_flashcards_view(self, request):
+        from django.template.response import TemplateResponse
+        from videos.models import VideoLesson
+        from .utils import parse_flashcards_csv
+
+        lessons = VideoLesson.objects.select_related('course').order_by('course__title', 'order')
+        modules = PracticeModule.objects.order_by('order', 'title')
+
+        if request.method == 'POST':
+            csv_file    = request.FILES.get('file')
+            lesson_id   = request.POST.get('lesson_id') or None
+            module_id   = request.POST.get('module_id') or None
+
+            if not csv_file:
+                self.message_user(request, 'No file selected.', level='error')
+            elif not lesson_id and not module_id:
+                self.message_user(request, 'Select a lesson or a module to assign the flashcards to.', level='error')
+            else:
+                lesson = VideoLesson.objects.get(pk=lesson_id) if lesson_id else None
+                module = PracticeModule.objects.get(pk=module_id) if module_id else None
+                result = parse_flashcards_csv(csv_file, lesson=lesson, module=module)
+                msg = f'Imported {result["created"]} flashcard(s).'
+                if result['skipped']:
+                    msg += f' Skipped {result["skipped"]} row(s).'
+                self.message_user(request, msg, level='success' if result['created'] else 'warning')
+                for err in result['errors'][:10]:
+                    self.message_user(request, f'Row {err["row"]}: {err["error"]}', level='warning')
+                return redirect(reverse('admin:exams_flashcard_changelist'))
+
+        return TemplateResponse(request, 'admin/exams/flashcard/import_flashcards.html', {
+            'title':              'Import Flashcards from CSV',
+            'opts':               self.model._meta,
+            'lessons':            lessons,
+            'modules':            modules,
+            'export_template_url': reverse('admin:flashcard_export_template'),
+        })
+
+    def export_flashcards_template_view(self, request):
+        from django.http import HttpResponse
+        from .utils import FLASHCARDS_CSV_TEMPLATE
+        response = HttpResponse(FLASHCARDS_CSV_TEMPLATE, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="flashcards_template.csv"'
+        return response
 
 
 @admin.register(FlashcardReview)

@@ -108,6 +108,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
     inlines = [LessonExamInline, LessonFlashcardInline]
+    change_form_template = 'admin/videos/videolesson/change_form.html'
 
     fieldsets = (
         (None, {

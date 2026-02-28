@@ -76,27 +76,31 @@ def parse_questions_csv(file_obj, exam) -> dict:
     return {'created': len(to_create), 'skipped': skipped, 'errors': errors}
 
 
-def parse_flashcards_csv(file_obj, lesson) -> dict:
-    """Parse flashcards CSV, bulk create for a lesson, return stats."""
+def parse_flashcards_csv(file_obj, lesson=None, module=None) -> dict:
+    """Parse flashcards CSV, bulk create for a lesson or module, return stats."""
+    if not lesson and not module:
+        return {'created': 0, 'skipped': 0, 'errors': [{'row': 0, 'error': 'Must provide lesson or module'}]}
+
     text = file_obj.read()
     if isinstance(text, bytes):
         text = text.decode('utf-8-sig')
     reader = csv.DictReader(io.StringIO(text))
     to_create, errors, skipped = [], [], 0
 
-    existing = set(lesson.flashcards.values_list('front', flat=True))
-    next_order = lesson.flashcards.count() + 1
+    parent_qs = lesson.flashcards if lesson else module.flashcards
+    existing = set(parent_qs.values_list('front', flat=True))
+    next_order = parent_qs.count() + 1
 
     for i, row in enumerate(reader, start=2):
         front = row.get('front', '').strip()
         back = row.get('back', '').strip()
 
         if not front or not back:
-            errors.append({'row': i, 'error': 'front và back không được trống'})
+            errors.append({'row': i, 'error': 'front and back must not be empty'})
             skipped += 1
             continue
         if front in existing:
-            errors.append({'row': i, 'error': 'Flashcard đã tồn tại (bỏ qua duplicate)'})
+            errors.append({'row': i, 'error': 'Duplicate front text — skipped'})
             skipped += 1
             continue
 
@@ -106,6 +110,7 @@ def parse_flashcards_csv(file_obj, lesson) -> dict:
 
         to_create.append(Flashcard(
             lesson=lesson,
+            module=module,
             front=front,
             back=back,
             category=row.get('category', '').strip(),
