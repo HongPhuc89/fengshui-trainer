@@ -13,13 +13,15 @@ Skill Claude Code (chuẩn Agent Skills). Giúp Claude đóng vai **Fullstack De
 
 ## Cách gọi skill
 
-### 1. Slash command (gọi trực tiếp)
+### 1. Slash command (gọi trực tiếp từ picker)
 
-Trong Claude Code, gõ:
+Trong Claude Code (VSCode extension hoặc terminal), gõ `/` để mở picker rồi chọn:
 
 ```
 /fullstack-developer [file design hoặc mô tả]
 ```
+
+Command này được định nghĩa tại `.claude/commands/fullstack-developer.md`.
 
 Ví dụ:
 - `/fullstack-developer md/design/feature-9-detail-design.md` — implement feature theo doc đó

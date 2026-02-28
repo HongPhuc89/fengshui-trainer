@@ -13,13 +13,15 @@ Skill Claude Code (chuẩn Agent Skills). Giúp Claude đóng vai **Technical Le
 
 ## Cách gọi skill
 
-### 1. Slash command (gọi trực tiếp)
+### 1. Slash command (gọi trực tiếp từ picker)
 
-Trong Claude Code, gõ:
+Trong Claude Code (VSCode extension hoặc terminal), gõ `/` để mở picker rồi chọn:
 
 ```
 /technical-leader [mô tả vấn đề hoặc file]
 ```
+
+Command này được định nghĩa tại `.claude/commands/technical-leader.md`.
 
 Ví dụ:
 - `/technical-leader Cách implement export báo cáo ra PDF từ Django qua Vue`

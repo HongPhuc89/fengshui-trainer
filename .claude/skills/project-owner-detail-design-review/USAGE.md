@@ -15,19 +15,19 @@ Skill Claude Code (chuẩn [Agent Skills](https://agentskills.io/)). Giúp Claud
 
 ## Cách gọi skill
 
-### 1. Slash command (gọi trực tiếp)
+### 1. Slash command (gọi trực tiếp từ picker)
 
-Trong Claude Code, gõ:
+Trong Claude Code (VSCode extension hoặc terminal), gõ `/` để mở picker rồi chọn:
 
 ```
 /project-owner-detail-design-review [file hoặc mô tả]
 ```
 
+Command này được định nghĩa tại `.claude/commands/project-owner-detail-design-review.md`.
+
 Ví dụ:
 - `/project-owner-detail-design-review md/design/feature-9-detail-design.md` — review doc đó
-- `/project-owner-detail-design-review` — rồi mô tả ý tưởng tính năng trong tin nhắn tiếp theo
-
-Tên slash command = trường `name` trong frontmatter của `SKILL.md` (dấu gạch ngang).
+- `/project-owner-detail-design-review Tính năng đăng nhập bằng Google` — đề xuất tính năng
 
 ### 2. Tự động (theo description)
 
