@@ -38,6 +38,7 @@ class BookAdmin(admin.ModelAdmin):
 class BookChapterAdmin(admin.ModelAdmin):
     list_display = ('book', 'title', 'order', 'is_demo')
     list_filter = ('is_demo',)
+    search_fields = ('title', 'book__title')  # required for autocomplete_fields in TrainingSetAdmin
     raw_id_fields = ('book',)
 
 

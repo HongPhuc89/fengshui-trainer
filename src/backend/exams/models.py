@@ -1,8 +1,126 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.conf import settings
+from django.utils.functional import cached_property
 
 from users.models import BaseModel
+
+
+class TrainingSet(BaseModel):
+    """Groups flashcards and quizzes for a single content source (lesson, chapter, or module).
+
+    Exactly one of lesson / chapter / module must be non-null (enforced by CheckConstraint + clean()).
+    source_type is a @cached_property derived from which FK is set — never stored in DB.
+    """
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    lesson = models.OneToOneField(
+        'videos.VideoLesson',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='training_set',
+    )
+    chapter = models.OneToOneField(
+        'books.BookChapter',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='training_set',
+    )
+    module = models.ForeignKey(
+        'PracticeModule',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='training_sets',
+    )
+
+    class Meta:
+        verbose_name = "Training Set"
+        verbose_name_plural = "Training Sets"
+        ordering = ['title']
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    Q(lesson_id__isnull=False, chapter_id__isnull=True, module_id__isnull=True)
+                    | Q(lesson_id__isnull=True, chapter_id__isnull=False, module_id__isnull=True)
+                    | Q(lesson_id__isnull=True, chapter_id__isnull=True, module_id__isnull=False)
+                ),
+                name='trainingset_exactly_one_source',
+            )
+        ]
+
+    def clean(self):
+        sources = [bool(self.lesson_id), bool(self.chapter_id), bool(self.module_id)]
+        if sources.count(True) != 1:
+            raise ValidationError("TrainingSet phải gắn với đúng 1 source (lesson, chapter, hoặc module).")
+
+    @cached_property
+    def source_type(self):
+        if self.lesson_id:
+            return 'LESSON'
+        if self.chapter_id:
+            return 'CHAPTER'
+        return 'STANDALONE'
+
+    @cached_property
+    def source_meta(self):
+        """Thông tin source cho frontend fallback navigation."""
+        if self.lesson_id:
+            return {
+                'lesson_slug': self.lesson.slug,
+                'course_slug': self.lesson.course.slug,
+            }
+        if self.chapter_id:
+            return {
+                'book_slug': self.chapter.book.slug,
+                'chapter_order': self.chapter.order,
+            }
+        return {'module_slug': self.module.slug}
+
+    def __str__(self):
+        return self.title
+
+
+class TrainingActivity(BaseModel):
+    """One learning mode (FLASHCARD, QUIZ, …) within a TrainingSet.
+
+    Extensibility rule:
+      - Thêm value vào ActivityType
+      - Tạo content model mới với FK/OneToOne trỏ vào TrainingActivity
+      - KHÔNG thay đổi TrainingSet, Flashcard, Exam, hay migration cũ
+    """
+
+    class ActivityType(models.TextChoices):
+        FLASHCARD = 'FLASHCARD', 'Flashcard Deck'
+        QUIZ = 'QUIZ', 'Quiz / Exam'
+        # v2: MINDMAP = 'MINDMAP', 'Mind Map'
+        # v2: INFOGRAPHIC = 'INFOGRAPHIC', 'Infographic'
+
+    training_set = models.ForeignKey(
+        TrainingSet,
+        on_delete=models.CASCADE,
+        related_name='activities',
+    )
+    activity_type = models.CharField(max_length=20, choices=ActivityType.choices)
+    title = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Training Activity"
+        verbose_name_plural = "Training Activities"
+        ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['training_set', 'activity_type'],
+                name='exams_trainingactivity_unique_type_per_set',
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.training_set} — {self.activity_type}"
 
 
 class PracticeModule(BaseModel):
@@ -22,13 +140,25 @@ class PracticeModule(BaseModel):
 
 
 class Exam(BaseModel):
-    """Exam (final, practice, quiz)."""
+    """Exam (final, practice, quiz).
+
+    PRACTICE exam → activity (OneToOne to TrainingActivity type=QUIZ).
+    FINAL_EXAM → activity=None (linked directly from Book.final_exam_id / Course.final_exam_id).
+    """
     EXAM_TYPE_CHOICES = [
         ('FINAL_EXAM', 'Final Exam'),
         ('PRACTICE', 'Practice'),
         ('QUIZ', 'Quiz'),
     ]
 
+    activity = models.OneToOneField(
+        TrainingActivity,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='exam',
+    )
+    # Legacy FKs — kept until Phase 3 cleanup migration
     module = models.ForeignKey(
         PracticeModule,
         on_delete=models.SET_NULL,
@@ -117,7 +247,19 @@ class UserExamProgress(BaseModel):
 
 
 class Flashcard(BaseModel):
-    """Flashcard for spaced repetition (can link to lesson or module)."""
+    """Flashcard for spaced repetition.
+
+    Phase 1-2: activity is nullable (migration period — lesson/module still present).
+    Phase 3: activity becomes NOT NULL after data migration verified.
+    """
+    activity = models.ForeignKey(
+        TrainingActivity,
+        on_delete=models.CASCADE,
+        related_name='flashcards',
+        null=True,
+        blank=True,
+    )
+    # Legacy FKs — kept until Phase 3 cleanup migration
     module = models.ForeignKey(
         PracticeModule,
         on_delete=models.CASCADE,
@@ -139,7 +281,7 @@ class Flashcard(BaseModel):
         blank=True,
         help_text="Nhãn hiển thị trên thẻ, vd: KHÁI NIỆM CỐT LÕI",
     )
-    image = models.CharField(max_length=255, blank=True)
+    image = models.URLField(max_length=500, blank=True)  # S3/CDN URL — không phải file upload
     difficulty = models.CharField(max_length=10, blank=True)
     order = models.PositiveIntegerField(default=0)
 
@@ -149,9 +291,10 @@ class Flashcard(BaseModel):
         ordering = ['order']
 
     def clean(self):
-        if not self.lesson_id and not self.module_id:
+        # Phase 1-2: accept activity OR legacy lesson/module
+        if not self.activity_id and not self.lesson_id and not self.module_id:
             raise ValidationError(
-                "Flashcard phải thuộc một VideoLesson hoặc PracticeModule."
+                "Flashcard phải thuộc một TrainingActivity, VideoLesson, hoặc PracticeModule."
             )
 
     def __str__(self):

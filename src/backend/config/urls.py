@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/payments/', include('wallet.urls_payments')),
     path('api/exams/', include('exams.urls')),
     path('api/practice/', include('exams.urls_practice')),
+    path('api/training/', include('exams.urls_training')),
     path('api/books/', include('books.urls')),
     path('api/videos/', include('videos.urls')),
     path('api/comments/', include('comments.urls')),

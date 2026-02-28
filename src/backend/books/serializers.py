@@ -85,3 +85,15 @@ class BookChapterContentSerializer(serializers.Serializer):
     file_url = serializers.CharField(allow_null=True)
     file_path = serializers.CharField(allow_null=True)
     page_count = serializers.IntegerField()
+    has_training_set = serializers.SerializerMethodField()
+
+    def get_has_training_set(self, chapter):
+        """
+        True nếu chapter có ít nhất 1 active TrainingActivity.
+        Dùng để show/hide nút "Luyện tập" mà không cần gọi thêm API (§7.7).
+        View phải prefetch training_set__activities để tránh N+1.
+        """
+        ts = getattr(chapter, 'training_set', None)
+        if ts is None:
+            return False
+        return ts.activities.filter(is_active=True).exists()

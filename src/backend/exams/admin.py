@@ -3,12 +3,16 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from .models import PracticeModule, Exam, PracticeQuestion, UserExamProgress, Flashcard, FlashcardReview
+from .models import (
+    PracticeModule, Exam, PracticeQuestion, UserExamProgress,
+    Flashcard, FlashcardReview, TrainingSet, TrainingActivity,
+)
 
 
 @admin.register(PracticeModule)
 class PracticeModuleAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'order')
+    search_fields = ('title', 'slug')  # required for autocomplete_fields in TrainingSetAdmin
     prepopulated_fields = {'slug': ('title',)}
 
 
@@ -195,3 +199,93 @@ class FlashcardAdmin(admin.ModelAdmin):
 class FlashcardReviewAdmin(admin.ModelAdmin):
     list_display = ('user', 'flashcard', 'next_review', 'interval', 'repetitions')
     raw_id_fields = ('user', 'flashcard')
+
+
+# ---------------------------------------------------------------------------
+# Training admin (§6.3)
+# ---------------------------------------------------------------------------
+
+class TrainingActivityInline(admin.TabularInline):
+    model = TrainingActivity
+    extra = 0
+    fields = ['activity_type', 'title', 'order', 'is_active', 'public_id']
+    readonly_fields = ['public_id']  # shown for copy-paste into import API
+    ordering = ['order']
+
+
+@admin.register(TrainingSet)
+class TrainingSetAdmin(admin.ModelAdmin):
+    list_display = ['title', 'source_type', 'get_source_name', 'activity_summary']
+    list_filter = ['lesson__course', 'chapter__book']
+    search_fields = ['title']
+    autocomplete_fields = ['lesson', 'chapter', 'module']
+    inlines = [TrainingActivityInline]
+
+    def get_queryset(self, request):
+        # prefetch activities to avoid N+1 in activity_summary (§T5)
+        return super().get_queryset(request).prefetch_related('activities')
+
+    def get_source_name(self, obj):
+        return obj.lesson or obj.chapter or obj.module
+    get_source_name.short_description = 'Source'
+
+    def activity_summary(self, obj):
+        parts = [
+            f"{'✓' if a.is_active else '✗'} {a.activity_type}"
+            for a in obj.activities.all()
+        ]
+        return ' | '.join(parts) or '—'
+    activity_summary.short_description = 'Activities'
+
+
+@admin.register(TrainingActivity)
+class TrainingActivityAdmin(admin.ModelAdmin):
+    list_display = ['title', 'training_set', 'activity_type', 'order', 'is_active', 'public_id']
+    list_filter = ['activity_type', 'is_active']
+    search_fields = ['title', 'training_set__title']
+    readonly_fields = ['public_id']
+    autocomplete_fields = ['training_set']
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<int:pk>/import-flashcards/',
+                self.admin_site.admin_view(self.import_flashcards_view),
+                name='trainingactivity_import_flashcards',
+            ),
+        ]
+        return custom + urls
+
+    def import_flashcards_view(self, request, pk):
+        activity = get_object_or_404(TrainingActivity, pk=pk)
+        if request.method == 'POST':
+            from .utils import parse_flashcards_csv_for_activity
+            csv_file = request.FILES.get('file')
+            if not csv_file:
+                self.message_user(request, 'Không tìm thấy file.', level='error')
+            else:
+                result = parse_flashcards_csv_for_activity(csv_file, activity)
+                msg = f'Đã import {result["created"]} flashcard(s).'
+                if result['skipped']:
+                    msg += f' Bỏ qua {result["skipped"]} dòng.'
+                self.message_user(request, msg, level='success' if result['created'] else 'warning')
+                for err in result['errors'][:10]:
+                    self.message_user(request, f'Dòng {err["row"]}: {err["error"]}', level='warning')
+            return redirect(reverse('admin:exams_trainingactivity_change', args=[pk]))
+
+        from django.template.response import TemplateResponse
+        return TemplateResponse(request, 'admin/exams/flashcard/import_flashcards.html', {
+            'activity': activity,
+            'title': f'Import Flashcards — {activity.title}',
+            'opts': self.model._meta,
+        })
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj and obj.activity_type == TrainingActivity.ActivityType.FLASHCARD:
+            extra_context['import_url'] = reverse(
+                'admin:trainingactivity_import_flashcards', args=[object_id]
+            )
+        return super().change_view(request, object_id, form_url, extra_context)

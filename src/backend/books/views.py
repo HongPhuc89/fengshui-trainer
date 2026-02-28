@@ -118,7 +118,13 @@ class BookChapterDetailView(views.APIView):
     def get(self, request, slug, order):
         try:
             book = Book.objects.get(slug=slug)
-            chapter = BookChapter.objects.get(book=book, order=order)
+            # Prefetch training_set + activities so has_training_set requires no extra queries (§7.7)
+            chapter = (
+                BookChapter.objects
+                .select_related('training_set')
+                .prefetch_related('training_set__activities')
+                .get(book=book, order=order)
+            )
         except (Book.DoesNotExist, BookChapter.DoesNotExist):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -130,14 +136,22 @@ class BookChapterDetailView(views.APIView):
 
         file_url = request.build_absolute_uri(chapter.file_path.url) if chapter.file_path else None
 
-        return Response({
-            'public_id': str(chapter.public_id),
+        serializer = BookChapterContentSerializer({
+            'public_id': chapter.public_id,
             'title': chapter.title,
             'order': chapter.order,
             'file_url': file_url,
             'file_path': chapter.file_path.name if chapter.file_path else None,
             'page_count': chapter.page_count,
+            # has_training_set needs the actual model instance, so pass chapter via context
         })
+        # Override has_training_set using the model instance directly
+        data = serializer.data
+        ts = getattr(chapter, 'training_set', None)
+        data['has_training_set'] = (
+            ts is not None and ts.activities.filter(is_active=True).exists()
+        )
+        return Response(data)
 
 
 class BookReadingProgressView(views.APIView):

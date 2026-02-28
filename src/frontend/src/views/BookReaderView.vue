@@ -3,6 +3,7 @@ import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
+import TrainingDrawer from '../components/training/TrainingDrawer.vue'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -36,6 +37,8 @@ const touchStartX = ref(0)
 const touchStartY = ref(0)
 const progressTrackRef = ref(null)
 const dragPercent = ref(null)
+const showTraining = ref(false)
+const currentChapterHasTraining = ref(false)
 
 // ── Computed ──────────────────────────────────────────────
 const currentChapter = computed(() =>
@@ -141,8 +144,9 @@ async function loadChapter(order, page = 1) {
       watermark.value = watermarkRes.value.data
     }
 
-    const { file_url, page_count } = chapterRes.value.data
+    const { file_url, page_count, has_training_set } = chapterRes.value.data
     chapterPageCount.value = page_count ?? 0
+    currentChapterHasTraining.value = !!has_training_set
     chapterLoading.value = false  // reveal canvas BEFORE rendering PDF
     await nextTick()
     await loadPdf(file_url, page)
@@ -385,6 +389,21 @@ function scheduleSave() {
         </Transition>
       </div>
 
+      <!-- Training button (only when chapter has active training) -->
+      <button
+        v-if="currentChapterHasTraining"
+        class="reader__icon-btn"
+        :class="{ 'reader__icon-btn--active': showTraining }"
+        @click="showTraining = true; showZoom = false; showToc = false"
+        aria-label="Luyện tập"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </button>
+
       <button
         class="reader__icon-btn"
         @click="showToc = !showToc; showZoom = false"
@@ -483,6 +502,15 @@ function scheduleSave() {
       </div>
       <span class="reader__progress-label">100%</span>
     </div>
+
+    <!-- ── Training Drawer ────────────────────────────── -->
+    <TrainingDrawer
+      v-if="currentChapterHasTraining"
+      :book-slug="bookSlug"
+      :chapter-order="currentChapterOrder"
+      :open="showTraining"
+      @close="showTraining = false"
+    />
 
     <!-- ── Bottom nav ─────────────────────────────────── -->
     <div v-if="!loading && !error" class="reader__bottom-nav">

@@ -1,7 +1,7 @@
 import csv
 import io
 
-from .models import Flashcard, PracticeQuestion
+from .models import Flashcard, PracticeQuestion, TrainingActivity
 
 
 def parse_questions_csv(file_obj, exam) -> dict:
@@ -130,6 +130,48 @@ QUESTIONS_CSV_TEMPLATE = (
     'YES_NO,"Phòng ngủ nên đặt gương đối diện giường?","","","","","no","Gương tạo năng lượng bất an",10,EASY\r\n'
     'TRUE_FALSE,"Hướng Nam thuộc hành Hỏa?","","","","","true","Nam thuộc Hỏa — Hậu Thiên Bát Quái",10,EASY\r\n'
 )
+
+def parse_flashcards_csv_for_activity(file_obj, activity: 'TrainingActivity') -> dict:
+    """Parse flashcards CSV and bulk-create for a TrainingActivity. Returns stats."""
+    text = file_obj.read()
+    if isinstance(text, bytes):
+        text = text.decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(text))
+    to_create, errors, skipped = [], [], 0
+
+    existing = set(activity.flashcards.values_list('front', flat=True))
+    next_order = activity.flashcards.count() + 1
+
+    for i, row in enumerate(reader, start=2):
+        front = row.get('front', '').strip()
+        back = row.get('back', '').strip()
+
+        if not front or not back:
+            errors.append({'row': i, 'error': 'front and back must not be empty'})
+            skipped += 1
+            continue
+        if front in existing:
+            errors.append({'row': i, 'error': 'Duplicate front text — skipped'})
+            skipped += 1
+            continue
+
+        difficulty = row.get('difficulty', '').strip().upper()
+        if difficulty not in {'EASY', 'MEDIUM', 'HARD', ''}:
+            difficulty = ''
+
+        to_create.append(Flashcard(
+            activity=activity,
+            front=front,
+            back=back,
+            category=row.get('category', '').strip(),
+            difficulty=difficulty,
+            order=next_order + len(to_create),
+        ))
+        existing.add(front)
+
+    Flashcard.objects.bulk_create(to_create)
+    return {'created': len(to_create), 'skipped': skipped, 'errors': errors}
+
 
 FLASHCARDS_CSV_TEMPLATE = (
     'category,front,back,difficulty\r\n'
