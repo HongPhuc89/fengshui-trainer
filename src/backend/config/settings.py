@@ -250,10 +250,16 @@ JAZZMIN_SETTINGS = {
         "users",
         "books",
         "videos",
+        "exams",
         "wallet",
     ],
     "hide_models": [
         "wallet.Voucher",
+        "comments.Comment",
+        "comments.CommentReply",
+        "auth.Group",
+        "notifications.EmailLog",
+        "notifications.EmailQuota",
     ],
     "icons": {
         "auth": "fas fa-users-cog",
