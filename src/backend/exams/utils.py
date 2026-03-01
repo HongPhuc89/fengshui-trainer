@@ -179,3 +179,55 @@ FLASHCARDS_CSV_TEMPLATE = (
     'ÂM DƯƠNG,"Tại sao phòng ngủ cần năng lượng Âm?","Phòng ngủ cần năng lượng Âm để thư giãn. Quá nhiều Dương gây mất ngủ.",EASY\r\n'
     'NGŨ HÀNH,"Kim khắc Mộc — ý nghĩa thực tế?","Kim đại diện cho sắc bén kiểm soát sự bành trướng của Mộc.",HARD\r\n'
 )
+
+
+def provision_training_activity(source_type: str, source_obj, activity_type: str):
+    """
+    Get or create TrainingSet + TrainingActivity for a content source.
+
+    Args:
+        source_type: 'lesson' | 'chapter'
+        source_obj: VideoLesson or BookChapter instance
+        activity_type: 'FLASHCARD' | 'QUIZ'
+
+    Returns:
+        (TrainingActivity, Exam | None)
+    """
+    from .models import TrainingSet, TrainingActivity, Exam
+    from django.utils.text import slugify
+
+    # Step 1: Get or create TrainingSet
+    training_set, _ = TrainingSet.objects.get_or_create(
+        **{source_type: source_obj},
+        defaults={'title': f"Luyện tập — {source_obj.title}"},
+    )
+
+    # Step 2: Get or create TrainingActivity
+    activity_order = 0 if activity_type == 'FLASHCARD' else 1
+    activity_label = 'Flashcard' if activity_type == 'FLASHCARD' else 'Quiz'
+
+    activity, _ = TrainingActivity.objects.get_or_create(
+        training_set=training_set,
+        activity_type=activity_type,
+        defaults={
+            'title': f"{activity_label} — {source_obj.title}",
+            'order': activity_order,
+            'is_active': True,
+        },
+    )
+
+    # Step 3: If QUIZ, get or create Exam
+    exam = None
+    if activity_type == 'QUIZ':
+        source_slug = getattr(source_obj, 'slug', None) or slugify(source_obj.title)
+        exam, _ = Exam.objects.get_or_create(
+            activity=activity,
+            defaults={
+                'title': f"Quiz — {source_obj.title}",
+                'slug': f"quiz-{source_slug}-{str(activity.pk)[:8]}",
+                'exam_type': 'QUIZ',
+                'passing_score': 70,
+            },
+        )
+
+    return activity, exam

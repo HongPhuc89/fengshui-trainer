@@ -107,7 +107,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
     search_fields = ('title', 'course__title')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
-    inlines = [LessonExamInline, LessonFlashcardInline]
+    inlines = []
     change_form_template = 'admin/videos/videolesson/change_form.html'
 
     fieldsets = (
@@ -193,9 +193,19 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 name='videos_videolesson_import_flashcards',
             ),
             path(
+                '<int:pk>/import-quiz/',
+                self.admin_site.admin_view(self.import_quiz_view),
+                name='videos_videolesson_import_quiz',
+            ),
+            path(
                 'export-flashcards-template/',
                 self.admin_site.admin_view(self.export_flashcards_template_view),
                 name='videos_videolesson_export_flashcards_template',
+            ),
+            path(
+                'export-quiz-template/',
+                self.admin_site.admin_view(self.export_quiz_template_view),
+                name='videos_videolesson_export_quiz_template',
             ),
         ]
         return custom + urls
@@ -237,12 +247,13 @@ class VideoLessonAdmin(admin.ModelAdmin):
     def import_flashcards_view(self, request, pk):
         lesson = get_object_or_404(VideoLesson, pk=pk)
         if request.method == 'POST':
-            from exams.utils import parse_flashcards_csv
+            from exams.utils import parse_flashcards_csv_for_activity, provision_training_activity
             csv_file = request.FILES.get('file')
             if not csv_file:
                 self.message_user(request, 'Không tìm thấy file.', level='error')
             else:
-                result = parse_flashcards_csv(csv_file, lesson)
+                activity, _ = provision_training_activity('lesson', lesson, 'FLASHCARD')
+                result = parse_flashcards_csv_for_activity(csv_file, activity)
                 msg = f'Đã import {result["created"]} flashcard.'
                 if result['skipped']:
                     msg += f' Bỏ qua {result["skipped"]} dòng.'
@@ -258,6 +269,31 @@ class VideoLessonAdmin(admin.ModelAdmin):
             'opts': self.model._meta,
         })
 
+    def import_quiz_view(self, request, pk):
+        lesson = get_object_or_404(VideoLesson, pk=pk)
+        if request.method == 'POST':
+            from exams.utils import parse_questions_csv, provision_training_activity
+            csv_file = request.FILES.get('file')
+            if not csv_file:
+                self.message_user(request, 'Không tìm thấy file.', level='error')
+            else:
+                _, exam = provision_training_activity('lesson', lesson, 'QUIZ')
+                result = parse_questions_csv(csv_file, exam)
+                msg = f'Đã import {result["created"]} câu hỏi.'
+                if result['skipped']:
+                    msg += f' Bỏ qua {result["skipped"]} dòng.'
+                self.message_user(request, msg, level='success' if result['created'] else 'warning')
+                for err in result['errors'][:10]:
+                    self.message_user(request, f'Dòng {err["row"]}: {err["error"]}', level='warning')
+            return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+
+        from django.template.response import TemplateResponse
+        return TemplateResponse(request, 'admin/videos/videolesson/import_quiz.html', {
+            'lesson': lesson,
+            'title': f'Import Quiz — {lesson.title}',
+            'opts': self.model._meta,
+        })
+
     def export_flashcards_template_view(self, request):
         from django.http import HttpResponse
         from exams.utils import FLASHCARDS_CSV_TEMPLATE
@@ -265,10 +301,19 @@ class VideoLessonAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = 'attachment; filename="flashcards_template.csv"'
         return response
 
+    def export_quiz_template_view(self, request):
+        from django.http import HttpResponse
+        from exams.utils import QUESTIONS_CSV_TEMPLATE
+        response = HttpResponse(QUESTIONS_CSV_TEMPLATE, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="quiz_template.csv"'
+        return response
+
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         extra_context['import_flashcards_url'] = reverse('admin:videos_videolesson_import_flashcards', args=[object_id])
+        extra_context['import_quiz_url'] = reverse('admin:videos_videolesson_import_quiz', args=[object_id])
         extra_context['export_flashcards_template_url'] = reverse('admin:videos_videolesson_export_flashcards_template')
+        extra_context['export_quiz_template_url'] = reverse('admin:videos_videolesson_export_quiz_template')
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
