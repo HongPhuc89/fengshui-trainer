@@ -1,13 +1,12 @@
 """
-Serializers cho Training API (§7 của detail design).
+Serializers cho Training API (§7 của detail design / feature-10 simplification).
 
-TrainingActivitySerializer  — theo §7.8: stats với prefetch, distinct due_count
+TrainingActivitySerializer  — stats: total_count only (no due_count, no SM-2)
 TrainingSetSerializer       — theo §7.1 / §7.2: source_type, source_meta, activities[]
 FlashcardForSessionSerializer — danh sách thẻ cho session
 """
 import logging
 
-from django.utils import timezone
 from rest_framework import serializers
 
 from .models import TrainingSet, TrainingActivity, Flashcard
@@ -25,10 +24,8 @@ class FlashcardForSessionSerializer(serializers.ModelSerializer):
 
 class TrainingActivitySerializer(serializers.ModelSerializer):
     """
-    Activity with per-user stats.
-    View phải prefetch activities__flashcards__reviews (filtered by user)
-    và activities__exam__questions, activities__exam__user_progresses (filtered by user).
-    Xem §7.8 và §7.1 prefetch block.
+    Activity with per-user stats (feature-10: no SM-2 due_count for FLASHCARD).
+    View phải prefetch activities__exam__questions, activities__exam__user_progresses.
     """
 
     stats = serializers.SerializerMethodField()
@@ -47,18 +44,7 @@ class TrainingActivitySerializer(serializers.ModelSerializer):
         user = self.context['request'].user
 
         if activity.activity_type == TrainingActivity.ActivityType.FLASHCARD:
-            total = activity.flashcards.count()
-            # .distinct() guards against double-count if FlashcardReview has no unique constraint
-            not_due_count = (
-                activity.flashcards.filter(
-                    reviews__user=user,
-                    reviews__next_review__gt=timezone.now(),
-                )
-                .distinct()
-                .count()
-            )
-            due = total - not_due_count
-            return {'total_count': total, 'due_count': due}
+            return {'total_count': activity.flashcards.count()}
 
         if activity.activity_type == TrainingActivity.ActivityType.QUIZ:
             exam = getattr(activity, 'exam', None)

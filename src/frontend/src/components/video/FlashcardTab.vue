@@ -1,6 +1,6 @@
 <script setup>
 /**
- * FlashcardTab — §8.6
+ * FlashcardTab — feature-10 (simplified)
  * Wrapper in VideoSidebar. Loads TrainingSet for the lesson,
  * then delegates to FlashcardSession with embedded=true.
  */
@@ -12,8 +12,6 @@ const props = defineProps({
   courseSlug: { type: String, required: true },
   lessonSlug: { type: String, required: true },
 })
-
-const emit = defineEmits(['due-count', 'go-quiz'])
 
 const activityId = ref(null)
 const loading    = ref(false)
@@ -64,8 +62,6 @@ onMounted(async () => {
       v-else-if="activityId"
       :activity-id="activityId"
       :embedded="true"
-      @due-count="emit('due-count', $event)"
-      @go-quiz="emit('go-quiz')"
     />
   </div>
 </template>

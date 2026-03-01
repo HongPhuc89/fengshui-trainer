@@ -11,7 +11,6 @@ Endpoints:
 """
 import random
 
-from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import views, status
 from rest_framework.exceptions import PermissionDenied
@@ -20,9 +19,9 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
 from books.models import BookChapter
+from books.views import _can_access_chapter
 from videos.models import VideoLesson
 from videos.views import _can_access_lesson
-from books.views import _can_access_chapter
 
 from .models import TrainingSet, TrainingActivity, Flashcard
 from .serializers_training import TrainingSetSerializer, FlashcardForSessionSerializer
@@ -122,9 +121,9 @@ class TrainingSetByChapterView(views.APIView):
 
 
 class ActivityFlashcardsView(views.APIView):
-    """GET /api/training/activities/<activity_id>/flashcards/?count=10 — §7.3
+    """GET /api/training/activities/<activity_id>/flashcards/?count=20 — §7.3 (feature-10)
 
-    Smart sampling: due cards first, then random fill up to ?count.
+    Pure random sampling — no SM-2 priority.
     """
 
     permission_classes = [IsAuthenticated]
@@ -133,38 +132,19 @@ class ActivityFlashcardsView(views.APIView):
         activity = _get_activity_or_403(request.user, activity_id)
 
         try:
-            count = int(request.query_params.get('count', 10))
+            count = int(request.query_params.get('count', 20))
             count = max(1, min(count, 100))
         except (ValueError, TypeError):
-            count = 10
+            count = 20
 
-        from django.utils import timezone
-        now = timezone.now()
-
-        all_flashcards = list(activity.flashcards.all())
-
-        # Separate due (never reviewed or next_review <= now) from not-due
-        reviewed_not_due_ids = set(
-            activity.flashcards.filter(
-                reviews__user=request.user,
-                reviews__next_review__gt=now,
-            )
-            .distinct()
-            .values_list('id', flat=True)
-        )
-        due = [fc for fc in all_flashcards if fc.id not in reviewed_not_due_ids]
-        not_due = [fc for fc in all_flashcards if fc.id in reviewed_not_due_ids]
-
-        random.shuffle(due)
-        random.shuffle(not_due)
-
-        selected = (due + not_due)[:count]
+        flashcards = list(activity.flashcards.all())
+        random.shuffle(flashcards)
+        selected = flashcards[:count]
 
         serializer = FlashcardForSessionSerializer(selected, many=True)
         return Response({
             'count': len(selected),
-            'total': len(all_flashcards),
-            'due_count': len(due),
+            'total': len(flashcards),
             'flashcards': serializer.data,
         })
 

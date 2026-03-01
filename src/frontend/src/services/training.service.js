@@ -14,7 +14,7 @@ export const trainingService = {
     return api.get(`training/chapter/${bookSlug}/${chapterOrder}/`)
   },
 
-  getFlashcards(activityId, count = 10) {
+  getFlashcards(activityId, count = 20) {
     return api.get(`training/activities/${activityId}/flashcards/`, { params: { count } })
   },
 

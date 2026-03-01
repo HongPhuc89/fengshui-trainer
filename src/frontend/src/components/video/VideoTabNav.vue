@@ -2,7 +2,6 @@
 defineProps({
   modelValue: { type: Number, required: true },
   tabs: { type: Array, required: true },  // [{ label }]
-  dueBadgeCount: { type: Number, default: 0 },
 })
 const emit = defineEmits(['update:modelValue'])
 </script>
@@ -17,9 +16,6 @@ const emit = defineEmits(['update:modelValue'])
       @click="emit('update:modelValue', i)"
     >
       {{ tab.label }}
-      <span v-if="i === 1 && dueBadgeCount > 0" class="tab-nav__badge">
-        {{ dueBadgeCount > 99 ? '99+' : dueBadgeCount }}
-      </span>
     </button>
   </nav>
 </template>
@@ -57,20 +53,5 @@ const emit = defineEmits(['update:modelValue'])
 
 .tab-nav__btn:hover:not(.tab-nav__btn--active) {
   color: rgba(255,255,255,0.75);
-}
-
-.tab-nav__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--accent-red, #C13123);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
 }
 </style>

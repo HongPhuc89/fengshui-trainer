@@ -5,15 +5,14 @@ import FlashcardTab     from './FlashcardTab.vue'
 import QuizTab          from './QuizTab.vue'
 
 defineProps({
-  lesson:        { type: Object, required: true },
-  courseSlug:    { type: String, required: true },
-  lessonSlug:    { type: String, required: true },
-  tabs:          { type: Array,  required: true },
-  modelValue:    { type: Number, required: true },
-  dueBadgeCount: { type: Number, default: 0     },
+  lesson:     { type: Object, required: true },
+  courseSlug: { type: String, required: true },
+  lessonSlug: { type: String, required: true },
+  tabs:       { type: Array,  required: true },
+  modelValue: { type: Number, required: true },
 })
 
-const emit = defineEmits(['update:modelValue', 'due-count', 'go-quiz'])
+const emit = defineEmits(['update:modelValue'])
 </script>
 
 <template>
@@ -21,7 +20,6 @@ const emit = defineEmits(['update:modelValue', 'due-count', 'go-quiz'])
     <VideoTabNav
       :model-value="modelValue"
       :tabs="tabs"
-      :due-badge-count="dueBadgeCount"
       @update:model-value="emit('update:modelValue', $event)"
     />
 
@@ -38,8 +36,6 @@ const emit = defineEmits(['update:modelValue', 'due-count', 'go-quiz'])
           v-if="modelValue === 1"
           :course-slug="courseSlug"
           :lesson-slug="lessonSlug"
-          @due-count="emit('due-count', $event)"
-          @go-quiz="emit('go-quiz')"
         />
       </keep-alive>
 

@@ -19,8 +19,7 @@ const loading = ref(true)
 const error   = ref(null)
 
 // ── Tabs ──────────────────────────────────────────────────────
-const activeTab     = ref(0)
-const dueBadgeCount = ref(0)
+const activeTab = ref(0)
 const TABS = [
   { label: 'Tóm tắt AI' },
   { label: 'Flashcards' },
@@ -178,9 +177,6 @@ function goToLesson(l) {
         :course-slug="route.params.slug"
         :lesson-slug="route.params.lessonSlug"
         :tabs="TABS"
-        :due-badge-count="dueBadgeCount"
-        @due-count="dueBadgeCount = $event"
-        @go-quiz="activeTab = 2"
       />
 
     </div>
