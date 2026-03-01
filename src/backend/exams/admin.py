@@ -27,19 +27,41 @@ class PracticeQuestionInline(admin.StackedInline):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ('title', 'lesson_link', 'exam_type', 'question_count', 'passing_score')
-    list_filter = ('exam_type',)
-    search_fields = ('title', 'lesson__title', 'slug')
+    list_display = ('title', 'source_link', 'exam_type', 'question_count', 'passing_score')
+    list_filter = ('exam_type', 'activity__training_set__lesson__course', 'activity__training_set__chapter__book')
+    search_fields = (
+        'title', 'slug',
+        'lesson__title',
+        'activity__training_set__lesson__title',
+        'activity__training_set__chapter__title',
+    )
     autocomplete_fields = ('lesson',)
     prepopulated_fields = {'slug': ('title',)}
     inlines = [PracticeQuestionInline]
 
-    def lesson_link(self, obj):
-        if obj.lesson:
-            url = reverse('admin:videos_videolesson_change', args=[obj.lesson.pk])
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'lesson',
+            'activity__training_set__lesson',
+            'activity__training_set__chapter',
+        )
+
+    def source_link(self, obj):
+        # New path: activity → training_set → lesson/chapter
+        if obj.activity_id:
+            ts = obj.activity.training_set
+            if ts.lesson_id:
+                url = reverse('admin:videos_videolesson_change', args=[ts.lesson_id])
+                return format_html('<a href="{}">[Video] {}</a>', url, ts.lesson.title)
+            if ts.chapter_id:
+                url = reverse('admin:books_bookchapter_change', args=[ts.chapter_id])
+                return format_html('<a href="{}">[Sách] {}</a>', url, ts.chapter.title)
+        # Legacy path
+        if obj.lesson_id:
+            url = reverse('admin:videos_videolesson_change', args=[obj.lesson_id])
             return format_html('<a href="{}">{}</a>', url, obj.lesson.title)
         return "—"
-    lesson_link.short_description = "Bài học"
+    source_link.short_description = "Nguồn"
 
     def question_count(self, obj):
         return obj.questions.count()
@@ -110,22 +132,51 @@ class UserExamProgressAdmin(admin.ModelAdmin):
 
 @admin.register(Flashcard)
 class FlashcardAdmin(admin.ModelAdmin):
-    list_display  = ('front_preview', 'category', 'lesson_link', 'module', 'difficulty', 'order')
-    list_filter   = ('difficulty',)
+    list_display  = ('front_preview', 'category', 'source_link', 'difficulty', 'order')
+    list_filter   = (
+        'difficulty',
+        'activity__training_set__lesson__course',
+        'activity__training_set__chapter__book',
+        'lesson__course',
+    )
     list_editable = ('order', 'category', 'difficulty')
-    search_fields = ('front', 'back', 'category', 'lesson__title')
-    ordering      = ('lesson', 'order')
+    search_fields = (
+        'front', 'back', 'category',
+        'lesson__title',
+        'activity__training_set__lesson__title',
+        'activity__training_set__chapter__title',
+    )
+    ordering = ('activity', 'lesson', 'order')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'lesson', 'module',
+            'activity__training_set__lesson',
+            'activity__training_set__chapter',
+        )
 
     def front_preview(self, obj):
         return (obj.front[:60] + '...') if len(obj.front) > 60 else obj.front
     front_preview.short_description = "Front"
 
-    def lesson_link(self, obj):
-        if obj.lesson:
-            url = reverse('admin:videos_videolesson_change', args=[obj.lesson.pk])
+    def source_link(self, obj):
+        # New path: activity → training_set → lesson/chapter
+        if obj.activity_id:
+            ts = obj.activity.training_set
+            if ts.lesson_id:
+                url = reverse('admin:videos_videolesson_change', args=[ts.lesson_id])
+                return format_html('<a href="{}">[Video] {}</a>', url, ts.lesson.title)
+            if ts.chapter_id:
+                url = reverse('admin:books_bookchapter_change', args=[ts.chapter_id])
+                return format_html('<a href="{}">[Sách] {}</a>', url, ts.chapter.title)
+        # Legacy path
+        if obj.lesson_id:
+            url = reverse('admin:videos_videolesson_change', args=[obj.lesson_id])
             return format_html('<a href="{}">{}</a>', url, obj.lesson.title)
+        if obj.module_id:
+            return str(obj.module)
         return "—"
-    lesson_link.short_description = "Lesson"
+    source_link.short_description = "Nguồn"
 
 
 @admin.register(FlashcardReview)
