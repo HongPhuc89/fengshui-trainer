@@ -30,6 +30,18 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/training/lesson/:lessonSlug',
+    name: 'TrainingLesson',
+    component: () => import('../views/TrainingView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/training/chapter/:bookSlug/:chapterOrder',
+    name: 'TrainingChapter',
+    component: () => import('../views/TrainingView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/auth',
     component: AuthLayout,
     meta: { guest: true },

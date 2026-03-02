@@ -3,7 +3,6 @@ import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
-import TrainingDrawer from '../components/training/TrainingDrawer.vue'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -37,7 +36,6 @@ const touchStartX = ref(0)
 const touchStartY = ref(0)
 const progressTrackRef = ref(null)
 const dragPercent = ref(null)
-const showTraining = ref(false)
 const currentChapterHasTraining = ref(false)
 
 // ── Computed ──────────────────────────────────────────────
@@ -393,8 +391,7 @@ function scheduleSave() {
       <button
         v-if="currentChapterHasTraining"
         class="reader__icon-btn"
-        :class="{ 'reader__icon-btn--active': showTraining }"
-        @click="showTraining = true; showZoom = false; showToc = false"
+        @click="router.push({ name: 'TrainingChapter', params: { bookSlug, chapterOrder: currentChapterOrder } })"
         aria-label="Luyện tập"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
@@ -502,15 +499,6 @@ function scheduleSave() {
       </div>
       <span class="reader__progress-label">100%</span>
     </div>
-
-    <!-- ── Training Drawer ────────────────────────────── -->
-    <TrainingDrawer
-      v-if="currentChapterHasTraining"
-      :book-slug="bookSlug"
-      :chapter-order="currentChapterOrder"
-      :open="showTraining"
-      @close="showTraining = false"
-    />
 
     <!-- ── Bottom nav ─────────────────────────────────── -->
     <div v-if="!loading && !error" class="reader__bottom-nav">
