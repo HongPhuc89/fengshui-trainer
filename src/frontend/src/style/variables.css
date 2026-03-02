@@ -1,38 +1,38 @@
 /* Thiên Thư Design System - CSS variables */
 :root {
-  /* Backgrounds */
-  --bg-page-dark: #2E1A0F;
-  --bg-page-light: #E0E0E0;
-  --bg-card: #4A2C27;
-  --bg-input: #381E19;
+  /* Backgrounds — deep navy with oriental touches */
+  --bg-page-dark: #111c21;
+  --bg-page-light: #f6f7f8;
+  --bg-card: #1A262D;
+  --bg-input: #0d1619;
 
   /* Text */
   --text-primary: #FFFFFF;
   --text-secondary: #F0F0F0;
   --text-muted: rgba(255, 255, 255, 0.85);
 
-  /* Accent & links */
-  --accent-gold: #C5A551;
-  --accent-golden: #FDBF00;
+  /* Accent & links — oriental gold */
+  --accent-gold: #D69E2E;
+  --accent-golden: #ECC94B;
 
-  /* Actions */
-  --btn-primary: #C13123;
-  --btn-primary-hover: #D20000;
+  /* Actions — primary blue */
+  --btn-primary: #1481b8;
+  --btn-primary-hover: #1a9ad4;
 
   /* Policy / notice */
-  --policy-bg: #8B2E2E;
+  --policy-bg: #7B2020;
   --policy-border: rgba(255, 255, 255, 0.1);
 
   /* App shell */
-  --header-title: #C13123;
+  --header-title: #D69E2E;
   --badge-premium-bg: #1a1a1a;
-  --badge-premium-text: #C5A551;
-  --badge-free-bg: #2e7d32;
+  --badge-premium-text: #D69E2E;
+  --badge-free-bg: #1481b8;
   --badge-free-text: #ffffff;
-  --badge-vip-bg: #c62828;
-  --badge-vip-text: #ffffff;
-  --progress-fill: #C5A551;
-  --nav-active: #C5A551;
+  --badge-vip-bg: #9B2C2C;
+  --badge-vip-text: #F6E05E;
+  --progress-fill: #1481b8;
+  --nav-active: #D69E2E;
 
   /* Borders */
   --border-input: rgba(255, 255, 255, 0.2);
