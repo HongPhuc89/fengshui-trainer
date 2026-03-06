@@ -2,7 +2,7 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.3
+- **Version**: 1.4
 - **Last Updated**: 2026-03-06
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
@@ -27,6 +27,7 @@
 | 9 | [feature-9-detail-design.md](design/feature-9-detail-design.md) | Training Architecture (TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz) | ✅ |
 | 10 | [feature-10-detail-design.md](design/feature-10-detail-design.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
 | 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
+| 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | 🔲 Pending |
 
 ---
 
@@ -231,6 +232,37 @@
 
 ---
 
+### F-K: Modern Flashcard UI (Feature 12) 🔲 NOT STARTED
+
+> **Design doc**: `md/design/feature-12-detail-design.md` (cần tạo)
+> **Idea doc**: `md/idea/modern-flashcard-ui.md`
+> **Scope**: Frontend only — chỉ sửa `FlashcardSession.vue` và scoped CSS, không đụng backend/API/migration
+
+**V1 — Low risk, high impact** (implement ngay sau khi có detail design):
+- [ ] **12.1** Progress bar thay thế dot indicators (thin 4px bar, accent-gold, hiển thị "5/20")
+- [ ] **12.2** Hover state rõ ràng cho card trên desktop (box-shadow mở rộng + translateY -4px)
+- [ ] **12.3** Back face có subtle background khác front face (gold tint hoặc tông nhạt hơn)
+- [ ] **12.4** Keyboard shortcuts: Space/Enter lật thẻ, ← → navigate (bind khi component mounted, unbind khi unmount)
+- [ ] **12.5** Swipe UP = flip card (bổ sung `touchStartY` vào touch handler hiện tại, guard `preventDefault` đúng)
+
+**V1.5 — Desktop layout** (sau khi V1 shipped, prerequisite: resolve embedded-detection mechanism):
+- [ ] **12.6** Split-panel desktop layout khi `!embedded && width >= 768px`: cột trái card (60%), cột phải card list scrollable (40%)
+- [ ] **12.7** Card list panel: số thứ tự + category badge only (không hiển thị front text), card hiện tại highlighted (accent-gold border), click để jump
+
+**V2 — Defer** (cần quyết định image_url backend trước):
+- [ ] Card stack visual (pseudo-elements peeking effect) ← V2
+- [ ] Swipe animation slide-out/in (Vue `<Transition>`) ← V2
+- [ ] Image/diagram support (markdown parse hoặc `image_url` field) ← V2, cần BE nếu dùng Option B
+- [ ] Completion screen cải tiến (hiển thị lesson/chapter name) ← V2
+
+**Điều kiện tiến tới detail design (F-K V1):**
+- [x] PO approved V1 scope (2026-03-06)
+- [ ] Quyết định font Hán tự: system-ui đủ dùng hay cần load Noto Serif SC?
+- [ ] Xác nhận emoji policy cho completion screen
+- [ ] Detail design doc tạo tại `md/design/feature-12-detail-design.md`
+
+---
+
 ### F-G: Store / Wallet Page ✅ COMPLETE
 
 - [x] **StoreView.vue** — số dư LT, trạng thái VIP, nhập voucher, gói VIP, lịch sử giao dịch, loading/error
@@ -400,7 +432,8 @@
 | F-H. Notifications (Web) | ❌ |
 | F-I. UX & Polish | 🟡 (CSS done, toast/skeleton/responsive pending) |
 | F-J. API Services | ✅ (notifications.service.js còn lại) |
+| F-K. Modern Flashcard UI (Feature 12) | 🔲 (pending detail design) |
 
 ---
 
-*Last updated: 2026-03-06 (v1.3 — cập nhật đầy đủ: thêm Design Doc 9/10/11, cập nhật status Phase 2 theo code thực tế, đổi numbering Phase 2 sang F-A..F-J để tránh conflict với design doc numbering, ghi nhận Django Jazzmin thay Vue.js admin)*
+*Last updated: 2026-03-06 (v1.4 — thêm Design Doc 12 (Modern Flashcard UI) + F-K task với V1/V1.5/V2 breakdown sau PO review)*

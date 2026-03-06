@@ -20,7 +20,9 @@ Code
 
 ## Danh sách ý tưởng
 
-*(Chưa có ý tưởng nào. Chạy `/product-ideation` để bắt đầu.)*
+| File | Tiêu đề | Ưu tiên | Effort | Status |
+|------|---------|---------|--------|--------|
+| [modern-flashcard-ui.md](modern-flashcard-ui.md) | Modern Flashcard UI — Web & Mobile | 🟡 Medium | M | Idea |
 
 ---
 
