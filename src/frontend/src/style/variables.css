@@ -50,4 +50,11 @@
   /* Bottom nav height for padding */
   --bottom-nav-height: 56px;
   --top-bar-height: 56px;
+
+  /* Typography — CJK support */
+  --font-cjk: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', serif;
+
+  /* Shadows — card elevation */
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(214, 158, 46, 0.15);
+  --shadow-card-base: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
