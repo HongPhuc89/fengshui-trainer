@@ -212,7 +212,7 @@ function motivationMsg(pct) {
       <p class="quiz__result-msg">{{ motivationMsg(result.score) }}</p>
 
       <details class="quiz__review">
-        <summary class="quiz__review-toggle">▼ Xem lại đáp án</summary>
+        <summary class="quiz__review-toggle">Xem lại đáp án</summary>
         <div class="quiz__review-list">
           <div
             v-for="(sq, i) in shuffled"
@@ -276,7 +276,7 @@ function motivationMsg(pct) {
 .quiz__binary-btn:hover { background: rgba(255,255,255,0.09); }
 .quiz__binary-btn--selected { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(197,165,81,0.1); }
 
-.quiz__nav { display: flex; gap: var(--space-sm); }
+.quiz__nav { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
 .quiz__nav-btn { flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; background: var(--bg-card); border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 600; color: var(--text-primary); transition: background 0.15s; }
 .quiz__nav-btn:hover:not(:disabled) { background: rgba(74,44,39,0.9); }
 .quiz__nav-btn:disabled { opacity: 0.3; cursor: default; }
