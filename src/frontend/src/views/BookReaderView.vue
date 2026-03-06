@@ -28,7 +28,7 @@ const watermark = ref({ display_name: '', phone_number: '' })
 const showToc = ref(false)
 const showZoom = ref(false)
 const zoomLevel = ref(1.0)
-const ZOOM_STEPS = [0.75, 1.0, 1.25, 1.5, 2.0]
+const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 const canvasRef = ref(null)
 const saveTimer = ref(null)
 const renderingTask = shallowRef(null)
@@ -353,7 +353,6 @@ function scheduleSave() {
       </button>
 
       <div class="reader__titles">
-        <span class="reader__book-title">{{ book?.title ?? '' }}</span>
         <span class="reader__chapter-title">{{ currentChapter?.title ?? '' }}</span>
       </div>
 
@@ -363,12 +362,9 @@ function scheduleSave() {
           class="reader__icon-btn reader__zoom-btn"
           :class="{ 'reader__icon-btn--active': showZoom }"
           @click="showZoom = !showZoom"
-          aria-label="Cỡ chữ"
+          aria-label="Thu phóng"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
-            <line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/>
-          </svg>
+          <span class="reader__zoom-indicator">{{ Math.round(zoomLevel * 100) }}%</span>
         </button>
         <Transition name="zoom-pop">
           <div v-if="showZoom" class="reader__zoom-panel" @click.stop>
@@ -761,7 +757,8 @@ function scheduleSave() {
 
 .reader__canvas {
   display: block;
-  width: 100%;
+  max-width: none;
+  margin: 0 auto;
 }
 
 /* ── Watermark ────────────────────────────────────────────── */
@@ -907,6 +904,15 @@ function scheduleSave() {
 .reader__zoom-wrap {
   position: relative;
   flex-shrink: 0;
+}
+
+.reader__zoom-indicator {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: inherit;
+  min-width: 36px;
+  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 .reader__zoom-panel {
