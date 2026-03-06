@@ -2,21 +2,31 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.2
-- **Last Updated**: 2026-02-24
-- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel 🆕 Planned
+- **Version**: 1.3
+- **Last Updated**: 2026-03-06
+- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
-## Backend Detail Designs (md/design/)
-| Feature | Doc | Description | Status |
+---
+
+## Design Documents (md/design/)
+
+> **Lưu ý:** Feature numbering ở đây là số thứ tự của **design doc**, không phải feature number của Phase 2 web frontend.
+
+| # | Doc | Mô tả | Status |
 | :--- | :--- | :--- | :--- |
 | 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication | ✅ |
-| **Frontend (Phase 2)** | **[frontend-detail-design.md](design/frontend-detail-design.md)** | **Design system, Auth (Login/Register), Profile, Books/Videos/Practice outlines** | ✅ |
 | 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module | ✅ |
 | 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module | ✅ |
 | 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice | ✅ |
 | 5 | [feature-5-detail-design.md](design/feature-5-detail-design.md) | Comments & Interactions | ✅ |
 | 6 | [feature-6-detail-design.md](design/feature-6-detail-design.md) | Notifications | ✅ |
 | 7 | [feature-7-detail-design.md](design/feature-7-detail-design.md) | Wallet & Payment Bridge | ✅ |
+| — | [frontend-detail-design.md](design/frontend-detail-design.md) | Frontend design system, Auth, profile, Books/Videos/Practice outlines | ✅ |
+| — | [designer-summary.md](design/designer-summary.md) | UX/UI platform overview cho designer | ✅ |
+| 8 | [feature-8-detail-design.md](design/feature-8-detail-design.md) | Vue.js Project Setup | ✅ |
+| 9 | [feature-9-detail-design.md](design/feature-9-detail-design.md) | Training Architecture (TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz) | ✅ |
+| 10 | [feature-10-detail-design.md](design/feature-10-detail-design.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
+| 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
 
 ---
 
@@ -32,51 +42,16 @@
 | Trang chủ | Hiển thị nội dung nổi bật + điều hướng | P0 |
 | Sách | List + Detail + PDF Reader (watermark) | P0 |
 | Video | List + Detail + Player (tiến trình) | P0 |
-| Luyện tập | Flashcard + Bài thi | P1 |
+| Luyện tập | Flashcard + Bài thi (embedded trong Video Player + standalone Training) | P1 |
 | Ví / Cửa hàng | Xem số dư + Nạp voucher + Mua nội dung | P0 |
 | Thông báo | Danh sách + Đánh dấu đã đọc | P2 |
 
 ### Out of Scope cho MVP
 - Mobile App (Flutter) — Phase 3
 - Push notification (FCM/APNs)
-- Bunny Stream production setup
-- Admin revenue dashboard
+- Admin revenue dashboard (Vue.js admin riêng) — dùng Django Jazzmin thay thế
 - Comment system (UI)
 - Full E2E test suite
-
----
-
-## Project Phases Overview
-
-```mermaid
-gantt
-    title Project Timeline
-    dateFormat YYYY-MM-DD
-    section Phase 1 - Backend
-    User Management       :done, 2026-02-17, 14d
-    Wallet & Voucher      :done, 7d
-    Books Module         :done, 14d
-    Videos Module        :done, 14d
-    Practice Module      :done, 14d
-    section Phase 2 - Web MVP
-    Vue.js Setup & Auth   :done, 2026-02-17, 7d
-    Store / Wallet Page   :done, 7d
-    Profile Page          :active, 2026-02-24, 3d
-    Home Page             :2026-02-27, 3d
-    Books Module Web      :2026-03-02, 7d
-    Videos Module Web     :2026-03-09, 7d
-    Practice Module Web   :2026-03-16, 7d
-    Polish & Deploy       :2026-03-23, 7d
-    section Phase 3 - Mobile
-    Flutter Setup        :2026-04-01, 7d
-    Auth & Profile       :7d
-    Books Reader         :14d
-    Video Player         :14d
-    Practice UI          :14d
-    section Phase 4 - Deploy & Test
-    Testing              :2026-05-15, 14d
-    Production Deploy    :7d
-```
 
 ---
 
@@ -86,12 +61,12 @@ gantt
 **Priority**: Critical | **Status**: ✅ Implemented
 
 - [x] **1.1 User Model & Database**
-  - [x] Create User model với custom fields (phone_number, user_type, device_id)
-  - [x] Create UserDevice model for device tracking
+  - [x] User model với custom fields (phone_number, user_type, device_id)
+  - [x] UserDevice model for device tracking
   - [x] Database migrations
-  - [x] BaseModel implementation (Private ID + Public UUID)
-  - [ ] **Multi-tier Logging setup (Daily files for Dev, Sentry for Prod)** ← còn lại
-  - [x] Admin interface configuration (with Jazzmin theme)
+  - [x] BaseModel (Private ID + Public UUID)
+  - [ ] Multi-tier Logging (Daily files Dev, Sentry Prod) ← còn lại, post-MVP
+  - [x] Admin interface (Jazzmin theme)
 
 - [x] **1.2 Authentication API**
   - [x] POST `/api/auth/register/`
@@ -99,432 +74,232 @@ gantt
   - [x] POST `/api/auth/refresh/`
   - [x] POST `/api/auth/logout/`
   - [x] Hard Device Locking logic
-  - [x] Login-integrated Reset Flow (Cooldown check + Confirmation flag)
-  - [x] Admin un-link override capability
+  - [x] Login-integrated Reset Flow (Cooldown + Confirmation flag)
+  - [x] Admin un-link override
   - [x] AdminAuditLog system
   - [ ] Hybrid monetization logic (FREE → VIP → Paid) ← chưa hoàn chỉnh
 
 - [x] **1.3 User Profile API**
-  - [x] GET `/api/users/me/`
-  - [x] PUT `/api/users/me/`
+  - [x] GET/PUT `/api/users/me/`
   - [x] GET `/api/users/me/device-status/`
   - [x] Admin interface + Audit Log dashboard
+  - [ ] POST `/api/users/me/avatar/` ← cần làm (avatar upload + Pillow resize)
 
 ---
 
 ### Feature 7: Wallet & Payment Bridge ✅ (core done)
 **Priority**: Critical | **Status**: ✅ Core | 🚧 Dashboard & Tests pending
 
-- [x] **7.1 Models & Logic**
-  - [x] Wallet model (balance tracking)
-  - [x] Voucher model (codes, values, status)
-  - [x] Transaction model (audit log for all LT movements)
-  - [x] Admin Audit Log integration
-
-- [x] **7.2 API Development**
-  - [x] GET `/api/wallet/me/`
-  - [x] POST `/api/wallet/redeem/`
-  - [x] GET `/api/wallet/history/`
-  - [x] POST `/api/payments/purchase-book/`
-  - [x] POST `/api/payments/purchase-video/`
-  - [x] POST `/api/payments/subscribe-vip/`
-
-- [x] **7.3 Admin Voucher Tool**
-  - [x] Generate bulk vouchers
-  - [x] Export vouchers to CSV
-  - [ ] Revenue estimation dashboard
-
-- [ ] **7.4 Integration**
-  - [ ] Update Book/Course detail pages với nút "Mua bằng Linh Thạch"
-  - [ ] Real-time balance update in profile header
-
+- [x] **7.1 Models & Logic** — Wallet, Voucher, Transaction, AdminAuditLog
+- [x] **7.2 API** — GET me, POST redeem, GET history, purchase-book/video/subscribe-vip
+- [x] **7.3 Admin Voucher Tool** — generate bulk, export CSV
+  - [ ] Revenue estimation dashboard (post-MVP)
+- [ ] **7.4 Integration** — nút "Mua bằng Linh Thạch" trên detail pages, real-time balance
 - [ ] **7.5 Testing** (post-MVP)
-  - [ ] Unit tests for wallet & voucher logic
-  - [ ] API endpoint tests
 
 ---
 
 ### Feature 2: Books Module ✅
-**Priority**: Critical | **Status**: ✅ Implemented
-
-- [x] **2.1 Models & Database** — BookCategory, Book, BookChapter, UserBookPurchase ✅
-- [x] **2.2 Books API** — CRUD + Permission + Watermark config ✅
-- [x] **2.3 Admin Interface** — Book management + Chapter inline editor ✅
-  - [ ] Bulk import functionality (post-MVP)
-- [ ] **2.4 Testing & Data Import** (post-MVP)
+- [x] Models: BookCategory, Book, BookChapter, UserBookPurchase
+- [x] Books API: CRUD + Permission + Watermark config
+- [x] Admin: Book management + Chapter inline editor
+  - [ ] Bulk import (post-MVP)
+- [x] **Admin Smart Import** (Feature 11): Import flashcard + quiz từ BookChapter page ✅
 
 ---
 
-### Feature 3: Videos Module ✅ (Bunny Stream pending)
-**Priority**: Critical | **Status**: ✅ Core | 🚧 Bunny Stream pending
-
-- [x] **3.1 Models & Database** — VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress ✅
-- [x] **3.2 Video API** — List, Detail, Progress tracking, Local fallback ✅
-- [ ] **3.3 Bunny Stream Setup** (production only, not MVP blocker)
-- [ ] **3.4 Testing** (post-MVP)
+### Feature 3: Videos Module ✅
+- [x] Models: VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
+- [x] API: List, Detail, Progress tracking
+- [x] **Admin Smart Import** (Feature 11): Import flashcard + quiz từ VideoLesson page ✅
+- [ ] Bunny Stream production setup (post-MVP)
 
 ---
 
 ### Feature 4: Exams & Practice Module ✅
-**Priority**: High | **Status**: ✅ Implemented
-
-- [x] **4.1 Standalone Exams** — Exam, PracticeQuestion, UserExamProgress, Submit API ✅
-- [x] **4.2 Practice Tower** — PracticeModule, Flashcard models ✅
-- [x] **4.3 Spaced Repetition (SM-2)** — FlashcardReview, SM-2 algorithm ✅
-- [ ] **4.4 Testing & Content** (post-MVP)
+- [x] **4.1 Standalone Exams** — Exam, PracticeQuestion, UserExamProgress, Submit API
+- [x] **4.2 Practice Tower** — PracticeModule, Flashcard models
+- [x] **4.3 Training Architecture** (Feature 9) — TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz
+- [x] **4.4 Simplified Flashcard** (Feature 10) — bỏ SM-2, random 20 cards, FlashcardReview model giữ nguyên schema
 
 ---
 
 ### Feature 5: Comments & Interactions ✅
-**Priority**: Medium | **Status**: ✅ Implemented
-
-- [x] Comment model với GenericForeignKey ✅
-- [x] CommentReply model ✅
-- [x] CRUD APIs với purchase verification ✅
+- [x] Comment + CommentReply model với GenericForeignKey
+- [x] CRUD APIs với purchase verification
 
 ---
 
-### Feature 6: Notifications 🚧
-**Priority**: Medium | **Status**: ✅ In-app done | 🚧 Email/Push pending
+### Feature 6: Notifications ✅ (in-app) / 🚧 (email/push)
+- [x] In-app Notification: Model + Mark read API
+- [x] EmailLog + EmailQuota model
+- [ ] Celery task email với quota check (post-MVP)
+- [ ] Push notification FCM/APNs (post-MVP)
 
-- [x] **6.1 In-app Notification** — Model + Mark read API ✅
-- [x] EmailLog + EmailQuota model ✅
-- [ ] Celery task for email với quota check (không cần cho MVP)
-- [ ] Push notification (FCM/APNs) (post-MVP)
+---
+
+### Admin Panel — Django Jazzmin ✅
+**Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
+- [x] Books, Videos, Exams admin đầy đủ
+- [x] Smart Import: Import flashcard + quiz trực tiếp từ VideoLesson/BookChapter page
+- [x] Voucher: tạo bulk, export CSV
+- [x] User management + Device unlink
+- [x] AdminAuditLog dashboard
 
 ---
 
 ## Phase 2: Vue.js Web App MVP 🚧 IN PROGRESS
 
-### Feature 8: Vue.js Project Setup ✅ COMPLETE
-**Status**: ✅ Done (2026-02-17)
-
-- [x] **8.1 Project Initialization**
-  - [x] Vite + Vue.js project
-  - [x] Pinia + Axios + Vue Router + vue-i18n
-  - [x] Project structure (`src/api`, `src/components`, `src/layouts`, `src/stores`, `src/router`, `src/style`, `src/services`, `src/composables`)
-  - [x] Pre-commit hooks (Prettier)
-
-- [x] **8.2 Core Services**
-  - [x] API client với Axios interceptor (`api/client.js`)
-  - [x] Auth interceptor (JWT auto-refresh)
-  - [x] Device fingerprinting (`composables/useDeviceId.js`)
-  - [x] Language support (Tiếng Việt + English)
-  - [x] Auth store (Pinia - `stores/auth.js`)
-  - [x] Wallet service (`services/wallet.service.js`)
-  - [ ] Watermark composable (`composables/useWatermark.js`) ← cần làm
+> **Lưu ý numbering**: Feature số bên dưới (F-A đến F-K) là tracking nội bộ Phase 2, **độc lập** với số feature design doc (1–11) ở trên.
 
 ---
 
-### Feature 9: Authentication & Profile 🚧
-**Priority**: P0 | **Status**: 🚧 Auth done, Profile cần hoàn thiện
+### F-A: Vue.js Project Setup ✅ COMPLETE
 
-- [x] **9.1 Auth Pages**
-  - [x] Login page (`LoginView.vue`) — phone/email + password + device lock handling ✅
-  - [x] Registration page (`RegisterView.vue`) — form đầy đủ + device registration ✅
-  - [x] DeviceLockModal component ✅
-  - [x] Auth store with JWT management ✅
-
-- [/] **9.2 Profile Page** ← ĐANG LÀM
-
-  **Backend — cần làm trước (chưa có):**
-  - [ ] Thêm field `avatar = ImageField(upload_to='avatars/', blank=True, null=True)` vào User model
-  - [ ] Tạo migration cho field avatar
-  - [ ] Cập nhật `UserSerializer` trả về `avatar_url` (absolute URL)
-  - [ ] Tạo endpoint riêng: `POST /api/users/me/avatar/` — nhận file ảnh đã crop
-    - Validate: chỉ chấp nhận JPEG/PNG/WEBP, tối đa 5MB
-    - Resize server-side về 400×400px (dùng Pillow — đã có trong deps)
-    - Xóa file avatar cũ trước khi lưu file mới
-    - Trả về `{ avatar_url: "..." }`
-  - [ ] Thêm route `path('me/avatar/', AvatarUploadView.as_view())` vào `users/urls.py`
-
-  **Frontend — ProfileView.vue:**
-  - [x] ProfileView.vue skeleton
-  - [ ] **Avatar section**
-    - [ ] Hiển thị avatar hiện tại (vòng tròn 96px, fallback initials nếu chưa có)
-    - [ ] Nút "Đổi ảnh" → mở file picker (`accept="image/*"`)
-    - [ ] Sau khi chọn file → mở **Crop Modal**:
-      - Dùng thư viện `vue-advanced-cropper` (hoặc `cropperjs` + Vue wrapper)
-      - Crop ratio cố định 1:1
-      - Nút "Xác nhận" → xuất blob JPEG đã crop → POST lên `/api/users/me/avatar/`
-      - Loading spinner khi đang upload
-      - Cập nhật avatar hiển thị ngay sau khi upload thành công (không cần reload)
-  - [ ] **Thông tin cơ bản**
-    - [ ] Hiển thị tên, email/phone, loại tài khoản, VIP badge
-    - [ ] Hiển thị số dư Linh Thạch (lấy từ wallet store)
-  - [ ] **Form chỉnh sửa tên**
-    - [ ] Inline edit: click vào tên → input field xuất hiện
-    - [ ] Nút "Lưu" → PUT `/api/users/me/` với `{ first_name, last_name }`
-    - [ ] Validation: tên không được để trống
-    - [ ] Cập nhật auth store sau khi lưu thành công
-  - [ ] **Device info section**
-    - [ ] Gọi GET `/api/users/me/device-status/`
-    - [ ] Hiển thị: tên thiết bị đang dùng, ngày bound, thời gian reset tiếp theo
-  - [ ] **Nút đăng xuất**
-    - [ ] Gọi POST `/api/auth/logout/` → clear store → redirect về `/login`
-  - [ ] **user.service.js** — thêm các hàm:
-    - [ ] `getProfile()` → GET `/api/users/me/`
-    - [ ] `updateProfile(data)` → PUT `/api/users/me/`
-    - [ ] `uploadAvatar(blob)` → POST `/api/users/me/avatar/` (multipart/form-data)
+- [x] Vite + Vue.js, Pinia + Axios + Vue Router + vue-i18n
+- [x] Project structure: `src/api`, `src/components`, `src/layouts`, `src/stores`, `src/router`, `src/style`, `src/services`, `src/composables`
+- [x] Pre-commit hooks (Prettier)
+- [x] API client + Axios interceptor + JWT auto-refresh
+- [x] Device fingerprinting (`composables/useDeviceId.js`)
+- [x] Language support (VI + EN)
+- [x] Auth store (Pinia)
+- [ ] Watermark composable (`composables/useWatermark.js`) ← còn lại
 
 ---
 
-### Feature 10: Home Page ← MỚI
-**Priority**: P0 | **Status**: ❌ Chỉ có skeleton
+### F-B: Authentication & Profile 🟡
 
-- [ ] **10.0 HomeView.vue** ← CẦN LÀM
-  - [ ] Header với greeting + số dư Linh Thạch
-  - [ ] Section "Sách nổi bật" (top 4 books từ API)
-  - [ ] Section "Video khóa học" (top 4 video courses từ API)
-  - [ ] Section "Luyện tập hôm nay" (flashcards due hoặc prompt luyện thi)
+- [x] **Login** (`LoginView.vue`) — phone/email + password + device lock handling
+- [x] **Register** (`RegisterView.vue`) — form đầy đủ + device registration
+- [x] **DeviceLockModal** component
+- [x] Auth store with JWT management
+
+- [🟡] **Profile** (`ProfileView.vue`) — 723 lines, có đầy đủ skeleton:
+  - [x] Hiển thị tên, email/phone, loại tài khoản, VIP badge
+  - [x] Hiển thị số dư Linh Thạch (wallet store)
+  - [x] Form chỉnh sửa tên (inline edit)
+  - [x] Device info section (GET `/api/users/me/device-status/`)
+  - [x] Nút đăng xuất
+  - [ ] Avatar section (upload + crop với `vue-advanced-cropper`) ← cần `POST /api/users/me/avatar/` (BE chưa có)
+
+- [ ] **Backend**: `POST /api/users/me/avatar/` — nhận file, Pillow resize 400×400, lưu, trả `avatar_url`
+
+---
+
+### F-C: Home Page 🟡
+
+- [🟡] **HomeView.vue** — 180 lines, có greeting + books section từ API:
+  - [x] Greeting với tên user
+  - [x] Section "Sách" từ API
+  - [ ] Section "Video khóa học" từ API
+  - [ ] Section "Luyện tập hôm nay"
   - [ ] Navigation bottom bar hoàn chỉnh
-  - [ ] Loading skeletons
-  - [ ] Xử lý lỗi khi API fail
+  - [ ] Loading skeletons + error handling đầy đủ
 
 ---
 
-### Feature 11: Books Module (Web) ← ĐỔI SỐ từ 10
-**Priority**: P0 | **Status**: 🟡 Skeleton only
+### F-D: Books Module (Web) ✅
 
-- [/] **11.1 Books List & Detail**
-  - [x] BooksView.vue skeleton
-  - [ ] Gọi API GET `/api/books/categories/` → hiển thị filter tabs
-  - [ ] Gọi API GET `/api/books/` → hiển thị danh sách sách với ảnh bìa, tên, giá
-  - [ ] Filter theo category
-  - [ ] BookDetailView.vue — Ảnh bìa + mô tả + danh sách chương + giá
-  - [ ] Nút "Mua" → gọi POST `/api/payments/purchase-book/`
-  - [ ] Hiển thị trạng thái: Demo / VIP / Đã mua / Cần mua
-
-- [ ] **11.2 Book Reader**
-  - [ ] BookReaderView.vue — hiển thị nội dung chương
-  - [ ] Gọi API GET `/api/books/{slug}/chapters/{order}/` để lấy PDF URL
-  - [ ] Nhúng PDF viewer (iframe hoặc pdf.js)
-  - [ ] Watermark overlay component (hiển thị tên user + timestamp)
-  - [ ] Chapter navigation (Prev / Next)
-  - [ ] Lưu reading progress khi chuyển chương
+- [x] **BooksView.vue** — 629 lines, danh sách sách với filter theo category, search, API thật
+- [x] **BookReaderView.vue** — 986 lines, PDF viewer, watermark, chapter navigation, reading progress
+- [ ] BookDetailView.vue (nút Mua → `POST /api/payments/purchase-book/`, trạng thái Demo/VIP/Đã mua) ← cần verify
 
 ---
 
-### Feature 12: Videos Module (Web) ← ĐỔI SỐ từ 11
-**Priority**: P0 | **Status**: 🟡 Skeleton / List đang làm
+### F-E: Videos Module (Web) ✅
 
-- [/] **12.1 Videos List & Detail**
-  - [x] VideosView.vue — danh sách khóa học với ảnh thumbnail, tên, giảng viên, giá ✅ (2026-02-24)
-  - [x] Search + filter UI trong VideosView.vue ✅
-  - [ ] Gọi API GET `/api/videos/` thật (hiện dùng dữ liệu tĩnh/fake)
-  - [ ] Filter theo category từ API
-  - [ ] VideoDetailView.vue — danh sách bài học, mô tả khóa học
-  - [ ] Hiển thị tiến độ học nếu đã mua (% hoàn thành)
-  - [ ] Nút "Mua" → gọi POST `/api/payments/purchase-video/`
-  - [ ] Hiển thị trạng thái từng bài: Preview / Locked / Completed
-
-- [ ] **12.2 Video Player**
-  - [ ] VideoPlayerView.vue
-  - [ ] Gọi API GET `/api/videos/{slug}/lessons/{lesson_slug}/` lấy video URL
-  - [ ] Nhúng HTML5 video player (hoặc Video.js)
-  - [ ] Watermark overlay (hiển thị username + timestamp ở góc ngẫu nhiên)
-  - [ ] Tự động gọi POST `/api/videos/{slug}/lessons/{lesson_slug}/progress/` mỗi 10 giây
-  - [ ] Tabs: Nội dung / Transcript / Tóm tắt
-  - [ ] Nút bài tiếp theo / bài trước
+- [x] **VideosView.vue** — danh sách khóa học, search + filter từ API
+- [x] **VideoDetailView.vue** — 569 lines, danh sách bài học, mô tả, tiến độ, nút Mua
+- [x] **VideoPlayerView.vue** — 393 lines, Bunny Stream / HTML5 player, progress tracking, tabs (Summary, Transcript), training sidebar:
+  - [x] FlashcardTab (FlashcardSession embedded, 20 cards/session, simplified)
+  - [x] QuizTab (lấy exam từ TrainingActivity)
+  - [x] VideoSidebar với danh sách bài học
+- [x] **TrainingView.vue** — standalone training page cho Flashcard/Quiz theo lesson/chapter
 
 ---
 
-### Feature 13: Practice Module (Web) ← ĐỔI SỐ từ 12
-**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
+### F-F: Practice & Training Module (Web) ✅
 
-- [ ] **13.1 Practice Navigation**
-  - [ ] PracticeView.vue — danh sách các module luyện tập
-  - [ ] Gọi API GET `/api/practice/modules/` → hiển thị Tower structure
-  - [ ] Hiển thị unlock status của từng stage
-  - [ ] PracticeModuleDetailView.vue — nội dung module (flashcards + bài thi)
+> Thay kiến trúc standalone ban đầu: Practice được tích hợp vào Training system (Feature 9/10).
 
-- [ ] **13.2 Flashcard Viewer**
-  - [ ] FlashcardView.vue — hiển thị từng flashcard
-  - [ ] Gọi API GET `/api/practice/modules/{slug}/flashcards/` (lấy cards cần ôn hôm nay)
-  - [ ] Flip animation (câu hỏi → đáp án)
-  - [ ] Nút đánh giá: Dễ / Trung bình / Khó → POST `/api/practice/flashcards/{id}/review/`
-  - [ ] Progress bar (đã ôn / tổng)
-
-- [ ] **13.3 Exam Interface**
-  - [ ] ExamView.vue — giao diện làm bài thi
-  - [ ] Gọi API GET `/api/exams/{slug}/` → hiển thị câu hỏi
-  - [ ] Multiple choice + True/False question rendering
-  - [ ] Timer (nếu có thời gian)
-  - [ ] Submit → POST `/api/exams/{slug}/submit/` → hiển thị kết quả
+- [x] **TrainingView.vue** — selector + FlashcardSession + QuizSession
+- [x] **FlashcardSession.vue** — flip cards, progress, completion (random 20, no SM-2)
+- [x] **QuizSession / QuizTab** — bài thi từ Exam gắn TrainingActivity
+- [x] Training embedded trong VideoPlayerView (FlashcardTab, QuizTab)
+- [x] Training embedded trong BookReaderView (TrainingDrawer)
+- [ ] **PracticeView.vue** (standalone practice tower/module list) ← không trong plan hiện tại
 
 ---
 
-### Feature 14: Store / Wallet Page ✅ COMPLETE
-**Priority**: P0 | **Status**: ✅ Done (2026-02-24)
+### F-G: Store / Wallet Page ✅ COMPLETE
 
-- [x] StoreView.vue
-  - [x] Hiển thị số dư Linh Thạch
-  - [x] Hiển thị trạng thái VIP
-  - [x] Form nhập voucher + nút đổi
-  - [x] Danh sách gói VIP (tháng / năm) + nút đăng ký
-  - [x] Lịch sử giao dịch
-  - [x] Loading states + error handling
+- [x] **StoreView.vue** — số dư LT, trạng thái VIP, nhập voucher, gói VIP, lịch sử giao dịch, loading/error
 
 ---
 
-### Feature 15: Notifications (Web) ← MỚI
-**Priority**: P2 | **Status**: ❌ Chưa bắt đầu
+### F-H: Notifications (Web) ❌
 
-- [ ] **15.1 Notification Center**
-  - [ ] NotificationsView.vue
-  - [ ] Gọi API GET `/api/notifications/`
-  - [ ] Danh sách thông báo (icon + nội dung + thời gian)
-  - [ ] Nút "Đánh dấu tất cả đã đọc" → POST `/api/notifications/mark-all-read/`
-  - [ ] Badge số thông báo chưa đọc trên bottom nav
+- [ ] **NotificationsView.vue** — danh sách, đánh dấu đã đọc
+- [ ] Badge số chưa đọc trên nav
+- [ ] `notifications.service.js`
 
 ---
 
-### Feature 16: UX & Polish ← MỚI
-**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
+### F-I: UX & Polish 🟡
 
-- [ ] **16.1 Global UX**
-  - [ ] Global error handler (toast notifications)
-  - [ ] Loading skeleton components (tái sử dụng)
-  - [ ] Empty state components (khi không có dữ liệu)
-  - [ ] Pull-to-refresh (cho mobile browser)
-
-- [ ] **16.2 Purchase Flow UX**
-  - [ ] Confirmation modal khi mua sách/video
-  - [ ] Success state sau khi mua thành công
-  - [ ] Insufficient balance — redirect đến Store
-
-- [ ] **16.3 Responsive Design**
-  - [ ] Kiểm tra layout trên mobile browser (375px - 428px)
-  - [ ] Kiểm tra layout trên tablet (768px)
-  - [ ] Kiểm tra layout trên desktop (>1024px)
-
-- [ ] **16.4 Security**
-  - [ ] CSS-based screenshot prevention trên book reader
-  - [ ] Disable right-click trên video player + book reader
-  - [ ] Watermark composable tái sử dụng cho cả sách và video
+- [x] CSS variables + design system (variables.css)
+- [ ] Global error handler (toast notifications)
+- [ ] Loading skeleton components (tái sử dụng)
+- [ ] Empty state components
+- [ ] Confirmation modal khi mua sách/video
+- [ ] Insufficient balance → redirect Store
+- [ ] Responsive check (375px / 768px / 1024px+)
+- [ ] Disable right-click + CSS screenshot prevention trên reader/player
+- [ ] Watermark composable (`useWatermark.js`)
 
 ---
 
-### Feature 17: Frontend API Integration Layer ← MỚI
-**Priority**: P0 | **Status**: 🚧 Một số services đã có
+### F-J: API Services Layer ✅ (mostly)
 
-- [x] `auth.service.js` — login, register, refresh token ✅
-- [x] `wallet.service.js` — balance, transactions, voucher redeem ✅
-- [x] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook ✅ (2026-02-24)
-- [x] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo ✅ (2026-02-24)
-- [ ] `practice.service.js` — getModules, getFlashcards, reviewFlashcard
-- [ ] `exams.service.js` — getExam, submitExam
+- [x] `auth.service.js` — login, register, refresh token
+- [x] `wallet.service.js` — balance, transactions, voucher redeem
+- [x] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook
+- [x] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo
+- [x] `training.service.js` — getTrainingByLesson/Chapter, getFlashcards, getExam
+- [x] `exams.service.js` — submitExam
+- [x] `user.service.js` — getProfile, updateProfile, getDeviceStatus
 - [ ] `notifications.service.js` — getNotifications, markRead, markAllRead
-- [ ] `user.service.js` — getProfile, updateProfile, getDeviceStatus
-
----
-
-### Feature 18: Admin Panel (Vue.js) — `src/admin` 🆕
-**Priority**: P1 | **Status**: ❌ Chưa bắt đầu
-**Mô tả**: Giao diện quản trị riêng biệt, xây dựng bằng Vue.js, code lưu tại `src/admin/` (tách biệt với `src/frontend/`). Giao tiếp với Django Admin API / Django REST Framework.
-
-- [ ] **18.1 Admin Project Setup** (`src/admin/`)
-  - [ ] Vite + Vue.js project mới tại `src/admin/`
-  - [ ] Pinia + Axios + Vue Router
-  - [ ] UI library: Element Plus hoặc Naive UI (phù hợp dashboard)
-  - [ ] Admin auth store (JWT, chỉ cho staff/superuser)
-  - [ ] Admin layout: Sidebar + Header + Content area
-  - [ ] Route guard: chỉ cho phép `is_staff = true`
-
-- [ ] **18.2 Dashboard Overview**
-  - [ ] Tổng số user, sách, video, doanh thu
-  - [ ] Biểu đồ giao dịch / doanh thu theo ngày (Chart.js hoặc ECharts)
-  - [ ] Thống kê voucher (đã dùng / còn lại)
-  - [ ] Recent signups + recent purchases
-
-- [ ] **18.3 User Management**
-  - [ ] Danh sách users (phân trang, search theo tên/phone/email)
-  - [ ] Xem chi tiết user: thông tin, loại tài khoản, số dư, device
-  - [ ] Admin unlink device (gọi API admin override)
-  - [ ] Thay đổi user_type (FREE → VIP)
-  - [ ] Xem lịch sử giao dịch của user
-
-- [ ] **18.4 Books Management**
-  - [ ] Danh sách sách (CRUD: thêm, sửa, xóa)
-  - [ ] Quản lý danh mục sách (BookCategory)
-  - [ ] Thêm/sửa/xóa chương sách (BookChapter inline)
-  - [ ] Upload ảnh bìa + file PDF
-
-- [ ] **18.5 Videos Management**
-  - [ ] Danh sách khóa học (CRUD)
-  - [ ] Quản lý bài học trong khóa (VideoLesson inline)
-  - [ ] Upload thumbnail + video URL (Bunny Stream ID)
-  - [ ] Cập nhật tiến trình học của user (nếu cần)
-
-- [ ] **18.6 Voucher & Revenue Management**
-  - [ ] Tạo voucher hàng loạt (nhập số lượng + giá trị)
-  - [ ] Danh sách voucher (filter: chưa dùng / đã dùng / hết hạn)
-  - [ ] Export voucher ra CSV
-  - [ ] Bảng doanh thu ước tính (số LT đã nạp × tỷ giá)
-
-- [ ] **18.7 Practice & Exams Management**
-  - [ ] Quản lý PracticeModule (thêm/sửa/xóa module)
-  - [ ] Quản lý Flashcard (CRUD theo module)
-  - [ ] Quản lý Exam + PracticeQuestion
-
-- [ ] **18.8 Notifications Management**
-  - [ ] Tạo thông báo broadcast (gửi cho tất cả users)
-  - [ ] Danh sách thông báo đã gửi
-
-- [ ] **18.9 Admin API Services** (`src/admin/src/services/`)
-  - [ ] `admin.auth.service.js` — login staff
-  - [ ] `admin.users.service.js` — CRUD users, device unlink
-  - [ ] `admin.books.service.js` — CRUD books, chapters, categories
-  - [ ] `admin.videos.service.js` — CRUD courses, lessons
-  - [ ] `admin.vouchers.service.js` — generate, list, export CSV
-  - [ ] `admin.dashboard.service.js` — stats, charts data
 
 ---
 
 ## Phase 3: Flutter Mobile App (Post-MVP)
 
-### Feature 18-22: Mobile App
 **Status**: ❌ Not started — sau khi web MVP hoàn thành
 
 - [ ] Flutter project setup
 - [ ] Auth screens
 - [ ] Books reader (PDF + watermark)
-- [ ] Video player (+ screenshot prevention FLAG_SECURE)
-- [ ] Practice module
+- [ ] Video player (+ FLAG_SECURE screenshot prevention)
+- [ ] Practice / Training module
 - [ ] Wallet & store
 
 ---
 
 ## Phase 4: Testing & Production Deployment
 
-### Feature 23: Integration Testing (Post-MVP)
+### Integration Testing (Post-MVP)
 - [ ] Backend API tests
-- [ ] E2E tests (Cypress) for web
+- [ ] E2E tests (Cypress)
 - [ ] Cross-browser testing
 - [ ] Load testing
 
-### Feature 24: Production Deployment
-- [ ] **24.1 Infrastructure**
-  - [ ] VPS provisioning (Hetzner CPX21)
-  - [ ] Docker + Nginx setup
-  - [ ] SSL certificates
-  - [ ] Domain configuration
-
-- [ ] **24.2 Backend Deploy**
-  - [ ] Deploy Django API + Gunicorn
-  - [ ] Configure Celery workers
-  - [ ] Database migration (PostgreSQL)
-  - [ ] Sentry monitoring setup
-
-- [ ] **24.3 Frontend Deploy**
-  - [ ] Build Vue.js (`npm run build`)
-  - [ ] Deploy static files via Nginx
-  - [ ] Configure environment variables
-
-- [ ] **24.4 Post-MVP: Mobile**
-  - [ ] Build release APK/AAB
-  - [ ] Build release IPA
-  - [ ] Submit to Google Play + App Store
+### Production Deployment
+- [ ] VPS provisioning (Hetzner CPX21), Docker + Nginx, SSL, domain
+- [ ] Django API + Gunicorn + Celery
+- [ ] Database migration (PostgreSQL)
+- [ ] Sentry monitoring
+- [ ] Build + deploy Vue.js static files via Nginx
+- [ ] Mobile: APK/AAB + IPA → Google Play + App Store
 
 ---
 
@@ -533,125 +308,99 @@ gantt
 - `[ ]` Not started
 - `[/]` In progress
 - `[x]` Completed
+- `[🟡]` Substantially done, chi tiết cần verify
 - `[!]` Blocked/Issues
 
 ---
 
-## Current Sprint (2026-02-24)
+## Current Sprint (2026-03-06)
 
 **Branch**: `feature/enable-video-trainer`
 
-### Đã hoàn thành
-- [x] Vue.js project setup + Vite + Pinia + Axios
-- [x] Auth flows (Login + Register + Device lock handling)
-- [x] Wallet/Store page (StoreView.vue)
-- [x] Auth store + JWT interceptor
-- [x] Device fingerprinting composable
-- [x] Language support (VI + EN)
-- [x] `books.service.js` — API service cho Books module
-- [x] `videos.service.js` — API service cho Videos module
-- [x] `VideosView.vue` — danh sách video courses với search + filter UI
-- [x] Fake data fixtures (`src/backend/fixtures/fake/`) + management command import
+### Đã hoàn thành (Phase 1 Backend)
+- [x] Auth, Books, Videos, Exams, Wallet, Notifications APIs
+- [x] Training Architecture (Feature 9) — TrainingSet, TrainingActivity
+- [x] Simplified Flashcard (Feature 10) — bỏ SM-2
+- [x] Smart Content Import (Feature 11) — admin import từ VideoLesson/BookChapter
+- [x] Admin panel (Django Jazzmin) đầy đủ
 
-### Đang làm
-- [/] Profile page (ProfileView.vue) — cần hoàn thiện form + device info
-- [/] Videos module — VideosView done, cần kết nối API thật + VideoDetailView
+### Đã hoàn thành (Phase 2 Frontend)
+- [x] Vue.js setup + Pinia + Axios + Router + i18n
+- [x] Auth flows (Login + Register + Device lock)
+- [x] StoreView.vue (Wallet + Voucher + VIP)
+- [x] BooksView.vue + BookReaderView.vue
+- [x] VideosView.vue + VideoDetailView.vue + VideoPlayerView.vue
+- [x] TrainingView.vue + FlashcardSession.vue + QuizTab
+- [x] ProfileView.vue (phần lớn — trừ avatar upload)
+- [x] Tất cả services: auth, wallet, books, videos, training, exams, user
 
-### Tiếp theo (theo thứ tự ưu tiên)
-1. Hoàn thiện Profile page (form chỉnh tên, device info, logout)
-2. Home page với content nổi bật
-3. Books list + detail + reader (books.service.js đã có)
-4. Videos detail + player (videos.service.js đã có)
-5. Practice module (flashcards + exam)
-6. Notifications badge
-7. UX polish + responsive
-8. **Admin Panel** (`src/admin/`) — Vue.js dashboard riêng cho quản trị viên
+### Còn lại (theo thứ tự ưu tiên)
+1. **HomeView.vue** — thêm section video, practice, hoàn thiện nav
+2. **Avatar upload** — BE: `POST /api/users/me/avatar/` + FE: crop modal
+3. **BookDetailView.vue** — verify nút Mua, trạng thái access
+4. **notifications.service.js** + NotificationsView.vue
+5. **UX polish** — toast errors, loading skeletons, empty states, responsive check
+6. **Watermark composable** — dùng cho cả sách và video player
+7. Purchase confirmation modal + insufficient balance redirect
 
 ---
 
 ## MVP Completion Checklist
 
-### Backend (Ready ✅)
-- [x] Auth APIs
-- [x] Books APIs
-- [x] Videos APIs
-- [x] Exams & Practice APIs
-- [x] Wallet APIs
-- [x] Notifications APIs
+### Backend ✅ Ready
+- [x] Auth, Books, Videos, Exams, Wallet, Notifications APIs
+- [x] Training API (Feature 9/10)
+- [x] Admin Smart Import (Feature 11)
+- [ ] Avatar upload endpoint
 
-### Web Frontend (In Progress 🚧)
-- [x] Project setup
-- [x] Auth (Login + Register)
-- [x] Wallet / Store page
-- [x] API services: auth, wallet, books, videos
-- [x] Videos list page (search + filter UI)
-- [ ] Profile page (edit tên + avatar upload + crop)
-- [ ] Backend: Avatar API endpoint (`POST /api/users/me/avatar/`)
-- [ ] Home page
-- [ ] Books list + detail + reader
-- [ ] Videos detail + player
-- [ ] Practice + Flashcards + Exam
-- [ ] Notification center
-- [ ] API services: practice, exams, notifications, user
-- [ ] Purchase flows end-to-end
+### Web Frontend
+- [x] Vue.js setup + Auth + Wallet + Store
+- [x] Books (list + reader)
+- [x] Videos (list + detail + player + training)
+- [x] Training (flashcard + quiz)
+- [x] Profile (phần lớn)
+- [x] All API services (trừ notifications)
+- [🟡] Home Page (partial — cần thêm video + practice sections)
+- [ ] Avatar upload UI (crop modal)
+- [ ] BookDetailView (verify/complete)
+- [ ] Notifications center
 - [ ] Watermark composable
-- [ ] UX polish (errors, loading, empty states)
+- [ ] UX polish (toast, skeletons, empty states)
 - [ ] Responsive design check
-
-### Admin Panel — `src/admin/` (Planned)
-- [ ] Vue.js project setup tại `src/admin/`
-- [ ] Dashboard tổng quan
-- [ ] User management
-- [ ] Books + Videos management
-- [ ] Voucher management + Revenue
-- [ ] Practice & Exams management
+- [ ] Purchase flows end-to-end
 
 ---
 
 ## Phase 1 Completion Summary
 
-| Feature | Backend | Status |
-|---------|---------|--------|
-| 1. User Management & Auth | Fully implemented | ✅ |
-| 2. Books Module | Fully implemented | ✅ |
-| 3. Videos Module | Implemented (Bunny Stream pending) | ✅ |
-| 4. Exams & Practice | Fully implemented | ✅ |
-| 5. Comments & Interactions | Fully implemented | ✅ |
-| 6. Notifications | In-app done, email/push pending | 🚧 |
-| 7. Wallet & Payment | Core done, dashboard pending | 🚧 |
+| Feature | Status |
+|---------|--------|
+| 1. User Management & Auth | ✅ (avatar API còn lại) |
+| 2. Books Module | ✅ |
+| 3. Videos Module | ✅ (Bunny Stream prod pending) |
+| 4. Exams & Practice + Training | ✅ |
+| 5. Comments & Interactions | ✅ |
+| 6. Notifications | ✅ in-app, 🚧 email/push post-MVP |
+| 7. Wallet & Payment | ✅ core, 🚧 revenue dashboard post-MVP |
+| 9. Training Architecture | ✅ |
+| 10. Simplified Flashcard | ✅ |
+| 11. Smart Content Import | ✅ |
 
 ## Phase 2 Progress Summary
 
-| Feature | Web Frontend | Status |
-|---------|-------------|--------|
-| 8. Vue.js Setup | Vite + Pinia + Axios + Router + i18n done | ✅ |
-| 9. Auth & Profile | Login + Register done; Profile skeleton — cần: avatar API (BE) + edit form + crop UI (FE) | 🚧 |
-| 10. Home Page | Skeleton only | ❌ |
-| 11. Books (Web) | Skeleton only | ❌ |
-| 12. Videos (Web) | VideosView.vue (list + search/filter) done; detail + player pending | 🟡 |
-| 13. Practice (Web) | Not started | ❌ |
-| 14. Store / Wallet (Web) | Fully implemented | ✅ |
-| 15. Notifications (Web) | Not started | ❌ |
-| 16. UX & Polish | Not started | ❌ |
-| 17. API Services Layer | Auth + Wallet + Books + Videos done; practice/exams/notifs pending | 🚧 |
-| 18. Admin Panel (Vue.js) | Chưa bắt đầu — `src/admin/` | ❌ |
+| Feature | Status |
+|---------|--------|
+| F-A. Vue.js Setup | ✅ |
+| F-B. Auth & Profile | 🟡 (avatar upload còn lại) |
+| F-C. Home Page | 🟡 (partial, cần video + practice sections) |
+| F-D. Books (Web) | ✅ |
+| F-E. Videos (Web) | ✅ |
+| F-F. Training/Practice (Web) | ✅ |
+| F-G. Store / Wallet (Web) | ✅ |
+| F-H. Notifications (Web) | ❌ |
+| F-I. UX & Polish | 🟡 (CSS done, toast/skeleton/responsive pending) |
+| F-J. API Services | ✅ (notifications.service.js còn lại) |
 
 ---
 
-## Risk Management
-
-### High Risk Items
-1. **Video Player** — Cần kiểm tra với local dev server trước khi kết nối Bunny Stream
-2. **PDF Viewer** — pdf.js có thể nặng; cân nhắc iframe fallback
-3. **Watermark implementation** — CSS không đủ ngăn screenshot, cần kết hợp server-side
-4. **Device Locking UX** — Người dùng dễ bị kẹt nếu flow không rõ ràng
-
-### Mitigation
-- Test video player với file local trước
-- Dùng iframe cho PDF nếu pdf.js quá phức tạp cho MVP
-- Ưu tiên UX rõ ràng hơn security hoàn hảo cho MVP
-- Thêm contact support link khi device bị lock
-
----
-
-*Last updated: 2026-02-24 (v1.2 — thêm Feature 18: Admin Panel Vue.js tại `src/admin/`; cập nhật trạng thái books.service, videos.service, VideosView; bổ sung avatar API backend + crop UI frontend vào Feature 9.2)*
+*Last updated: 2026-03-06 (v1.3 — cập nhật đầy đủ: thêm Design Doc 9/10/11, cập nhật status Phase 2 theo code thực tế, đổi numbering Phase 2 sang F-A..F-J để tránh conflict với design doc numbering, ghi nhận Django Jazzmin thay Vue.js admin)*

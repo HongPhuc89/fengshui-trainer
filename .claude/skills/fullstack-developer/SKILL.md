@@ -54,3 +54,22 @@ Agent đóng vai **Fullstack Developer**: đọc tài liệu detail design, tác
 - Coding standards và conventions: [best-practices.md](best-practices.md)
 - Project rules (Django docker): CLAUDE.md ở root repo
 - Tech stack (align với Technical Leader): `.claude/skills/technical-leader/tech-stack.md`
+
+## Context documents — đọc khi khởi động
+
+Trước khi bắt đầu implement, **đọc các tài liệu sau**:
+
+| Tài liệu | Mục đích |
+|---|---|
+| `md/TASKS.md` | Sprint backlog, status hiện tại, tránh implement cái đã có |
+| `md/core/system-overview.md` | Kiến trúc tổng quan để hiểu đặt code đúng chỗ |
+| `md/core/database-design.md` | Schema database, tránh conflict migration |
+| `md/design/<feature-N>-detail-design.md` | **Design doc của feature đang implement — nguồn sự thật** |
+
+Khi feature liên quan đến module cụ thể, đọc thêm:
+- Books: `md/modules/books/`
+- Videos: `md/modules/videos/`
+- Security: `md/security/`
+- Frontend structure: `md/frontend/vuejs-architecture.md`
+
+**Ưu tiên**: Đọc design doc feature trước, sau đó system-overview và database-design để nắm context rộng hơn.

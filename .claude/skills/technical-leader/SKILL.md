@@ -74,3 +74,20 @@ Nếu câu hỏi chỉ một tầng (ví dụ chỉ DB hoặc chỉ API), chỉ 
 ## Tài liệu tham chiếu
 
 - Convention và patterns theo stack: [tech-stack.md](tech-stack.md)
+
+## Context documents — đọc khi khởi động
+
+Trước khi đề xuất giải pháp kỹ thuật, **đọc các tài liệu sau**:
+
+| Tài liệu | Mục đích |
+|---|---|
+| `md/TASKS.md` | Trạng thái features, sprint backlog, để biết cái gì đã có |
+| `md/core/system-overview.md` | Kiến trúc tổng quan, component diagram |
+| `md/core/database-design.md` | Database schema, constraints, quan hệ giữa các model |
+| `md/core/api-specification.md` | API contract hiện tại |
+| `md/frontend/vuejs-architecture.md` | Vue.js project structure, patterns |
+
+Khi liên quan đến module cụ thể, đọc thêm:
+- Books: `md/modules/books/`
+- Videos: `md/modules/videos/`
+- Security/DRM: `md/security/`

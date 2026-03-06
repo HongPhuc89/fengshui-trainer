@@ -74,6 +74,18 @@ Xuất báo cáo bằng markdown với cấu trúc:
 - Checklist chi tiết review detail design: [reference.md](reference.md)
 - Hướng dẫn đề xuất tính năng: [feature-proposal.md](feature-proposal.md)
 
+## Context documents — đọc khi khởi động
+
+Trước khi review hoặc đề xuất tính năng, **đọc các tài liệu sau** để nắm rõ bối cảnh dự án:
+
+| Tài liệu | Mục đích |
+|---|---|
+| `md/TASKS.md` | Trạng thái hiện tại của tất cả features, sprint backlog |
+| `md/core/system-overview.md` | Tổng quan kiến trúc hệ thống |
+| `md/design/designer-summary.md` | UX/UI platform overview, business flows |
+
+Khi review một design doc cụ thể, cũng đọc các design doc liên quan (ví dụ feature training → đọc feature-9, 10, 11). Không cần đọc toàn bộ md/ folder.
+
 ---
 
 # Phần B: Đề xuất tính năng (Feature Proposal)
