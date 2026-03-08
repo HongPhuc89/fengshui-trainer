@@ -1,0 +1,19 @@
+[Unit]
+Description=Celery Worker — Fengshui Trainer
+After=network.target redis-server.service fengshui-gunicorn.service
+
+[Service]
+User=fengshui
+Group=fengshui
+WorkingDirectory=/srv/fengshui/src/backend
+EnvironmentFile=/srv/fengshui/.env
+ExecStart=/srv/fengshui/venv/bin/celery \
+    -A config worker \
+    --loglevel=info \
+    --logfile=/var/log/fengshui/celery-worker.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

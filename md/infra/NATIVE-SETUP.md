@@ -152,20 +152,76 @@ celery -A config beat -l info
 
 ---
 
-## 8. Tóm tắt lệnh (Ubuntu, Native)
+## 8. Systemd Services — Chạy tự động khi reboot VPS
 
-| Thành phần    | Lệnh / Ghi chú |
-|---------------|----------------|
-| Redis         | `sudo systemctl start redis-server` (chỉ cài Redis trên máy) |
-| Django (dev)  | `cd src/backend && python manage.py runserver 0.0.0.0:8000` |
-| Django (prod) | `cd src/backend && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2` |
-| Celery Worker | `cd src/backend && celery -A config worker -l info` |
-| Celery Beat   | `cd src/backend && celery -A config beat -l info` (nếu dùng periodic) |
-| Database      | Supabase (cloud), không chạy Postgres local |
+Cách trên (mở terminal thủ công) chỉ phù hợp khi dev. Trên **VPS production**, cần đăng ký Gunicorn và Celery như **systemd services** để:
+- Tự khởi động sau khi VPS reboot
+- Tự restart nếu process crash
+- Quản lý log tập trung qua `journalctl`
+
+### 8.1 Cài đặt nhanh bằng script
+
+Service files đã có sẵn trong repo tại `infra/systemd/`. Chạy script cài đặt:
+
+```bash
+# Trên VPS, từ thư mục gốc repo:
+sudo bash infra/install-services.sh
+```
+
+Script sẽ tự động:
+1. Tạo thư mục log `/var/log/fengshui/`
+2. Copy 3 service files vào `/etc/systemd/system/`
+3. `daemon-reload` → enable → start tất cả services
+4. In status để kiểm tra
+
+### 8.2 Service files (tham khảo)
+
+Các file nằm trong `infra/systemd/`:
+
+| File | Mô tả |
+|------|-------|
+| `fengshui-gunicorn.service` | Django WSGI server, bind `127.0.0.1:8000` |
+| `fengshui-celery-worker.service` | Celery task worker |
+| `fengshui-celery-beat.service` | Celery periodic scheduler |
+
+Tất cả đọc env từ `/srv/fengshui/.env` và chạy dưới user `fengshui`.
+
+### 8.3 Kiểm tra trạng thái
+
+```bash
+sudo systemctl status fengshui-gunicorn
+sudo systemctl status fengshui-celery-worker
+sudo systemctl status fengshui-celery-beat
+```
+
+### 8.4 Lệnh quản lý thường dùng
+
+| Mục đích | Lệnh |
+|----------|------|
+| Xem status | `sudo systemctl status fengshui-gunicorn` |
+| Restart sau deploy | `sudo systemctl restart fengshui-gunicorn fengshui-celery-worker fengshui-celery-beat` |
+| Xem log realtime | `sudo journalctl -u fengshui-gunicorn -f` |
+| Xem log file | `tail -f /var/log/fengshui/gunicorn-error.log` |
+| Stop tạm thời | `sudo systemctl stop fengshui-gunicorn` |
+| Disable auto-start | `sudo systemctl disable fengshui-gunicorn` |
 
 ---
 
-## 9. Troubleshooting
+## 9. Tóm tắt lệnh (Ubuntu, Native)
+
+| Thành phần    | Lệnh / Ghi chú |
+|---------------|----------------|
+| Redis         | `sudo systemctl start redis-server` (tự enable sẵn khi cài) |
+| Django (dev)  | `cd src/backend && python manage.py runserver 0.0.0.0:8000` |
+| Django (prod) | `sudo systemctl start fengshui-gunicorn` |
+| Celery Worker | `sudo systemctl start fengshui-celery-worker` |
+| Celery Beat   | `sudo systemctl start fengshui-celery-beat` |
+| Database      | Supabase (cloud), không chạy Postgres local |
+| Deploy mới    | `make deploy` (Ansible) hoặc git pull + `systemctl restart` thủ công |
+
+---
+
+## 10. Troubleshooting
 
 - **`connection refused` (Redis)**  
   Kiểm tra: `redis-cli ping`. Đảm bảo `REDIS_URL=redis://localhost:6379/0` trong `.env`.
@@ -181,4 +237,4 @@ celery -A config beat -l info
 
 ---
 
-*Cập nhật: 2026-02-21*
+*Cập nhật: 2026-03-08*
