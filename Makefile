@@ -31,6 +31,9 @@ makemigrations: ## Create new Django migrations
 collectstatic: ## Update admin css
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py collectstatic
 
+download_from_supabase: ## Download avatars and pdf file from Supabase and update the database
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py download_from_supabase
+
 createsuperuser: ## Create a Django superuser
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py createsuperuser
 

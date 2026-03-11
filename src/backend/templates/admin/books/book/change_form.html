@@ -1,0 +1,415 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block content_title %}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    {% if prev_url %}
+      <a href="{{ prev_url }}" title="Sách trước"
+         style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#417690;color:#fff;border-radius:4px;text-decoration:none;font-size:13px">
+        ← Trước
+      </a>
+    {% else %}
+      <span style="padding:5px 12px;background:#ccc;color:#888;border-radius:4px;font-size:13px">← Trước</span>
+    {% endif %}
+    {% if next_url %}
+      <a href="{{ next_url }}" title="Sách sau"
+         style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#417690;color:#fff;border-radius:4px;text-decoration:none;font-size:13px">
+        Sau →
+      </a>
+    {% else %}
+      <span style="padding:5px 12px;background:#ccc;color:#888;border-radius:4px;font-size:13px">Sau →</span>
+    {% endif %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+/* ── Cover upload zone (replaces default widget) ──────────── */
+.cover-zone {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.cover-zone__thumb {
+  width: 160px;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid #ccc;
+  display: block;
+}
+.cover-zone__placeholder {
+  width: 160px;
+  height: 220px;
+  border: 2px dashed #aaa;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #888;
+  font-size: 13px;
+  background: #f8f8f8;
+}
+.cover-zone__placeholder svg { opacity: .45; }
+.cover-zone__btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  background: #417690;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cover-zone__btn:hover { background: #2d5470; }
+
+/* ── Modal overlay ────────────────────────────────────────── */
+.cover-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+.cover-modal-backdrop.open { display: flex; }
+
+.cover-modal {
+  background: #fff;
+  border-radius: 8px;
+  width: 480px;
+  max-width: 96vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+.cover-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.cover-modal__close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #555;
+  line-height: 1;
+  padding: 0 4px;
+}
+.cover-modal__body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Drop zone */
+.cover-modal__drop {
+  border: 2px dashed #417690;
+  border-radius: 6px;
+  padding: 32px 16px;
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.cover-modal__drop.dragover {
+  background: #e8f4fb;
+  border-color: #205070;
+}
+.cover-modal__drop svg { opacity: .5; }
+.cover-modal__drop input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.cover-modal__paste-hint {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+}
+.cover-modal__paste-hint kbd {
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+/* Preview */
+.cover-modal__preview { display: none; flex-direction: column; align-items: center; gap: 10px; }
+.cover-modal__preview.visible { display: flex; }
+.cover-modal__preview img {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  object-fit: contain;
+}
+.cover-modal__preview-name { font-size: 12px; color: #777; }
+
+/* Footer */
+.cover-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid #e0e0e0;
+}
+.cover-modal__footer button {
+  padding: 6px 18px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-cancel { background: #eee; color: #444; }
+.btn-cancel:hover { background: #ddd; }
+.btn-confirm { background: #417690; color: #fff; }
+.btn-confirm:hover { background: #2d5470; }
+.btn-confirm:disabled { background: #a0bcc8; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+(function () {
+  'use strict';
+
+  // ── Find the cover_image field row ───────────────────────
+  const row = document.querySelector('.field-cover_image');
+  if (!row) return;
+
+  const originalInput = row.querySelector('input[type="file"]');
+  if (!originalInput) return;
+
+  // Hide the original widget controls (keep input in DOM for form submit)
+  const widgetWrap = originalInput.closest('p') || originalInput.parentElement;
+  widgetWrap.style.display = 'none';
+
+  // Get current image src if any
+  const existingImg = row.querySelector('img');
+  const currentSrc  = existingImg ? existingImg.src : null;
+
+  // ── Staged file (set when user picks/pastes/drops) ───────
+  let stagedFile = null;
+
+  // ── Convert any image File → JPEG via Canvas ─────────────
+  const JPEG_QUALITY = 0.88;
+  function toJpeg(file) {
+    return new Promise(resolve => {
+      // Already JPEG — skip conversion
+      if (file.type === 'image/jpeg') { resolve(file); return; }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          const baseName = (file.name || 'cover').replace(/\.[^.]+$/, '') || 'cover';
+          resolve(new File([blob], baseName + '.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', JPEG_QUALITY);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  // ── Build zone ───────────────────────────────────────────
+  const zone = document.createElement('div');
+  zone.className = 'cover-zone';
+
+  if (currentSrc) {
+    const img = document.createElement('img');
+    img.className = 'cover-zone__thumb';
+    img.id = 'cover-zone-thumb';
+    img.src = currentSrc;
+    img.alt = 'cover';
+    zone.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'cover-zone__placeholder';
+    placeholder.id = 'cover-zone-thumb';
+    placeholder.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9l4-4 4 4 4-4 4 4"/>
+        <circle cx="8.5" cy="13.5" r="1.5"/>
+      </svg>
+      <span>Chưa có ảnh bìa</span>`;
+    zone.appendChild(placeholder);
+  }
+
+  const changeBtn = document.createElement('button');
+  changeBtn.type = 'button';
+  changeBtn.className = 'cover-zone__btn';
+  changeBtn.textContent = currentSrc ? 'Đổi ảnh bìa' : 'Chọn ảnh bìa';
+  zone.appendChild(changeBtn);
+
+  row.querySelector('.field-box, .form-row, td.field-box') || row;
+  const helpText = row.querySelector('.help');
+  row.querySelector('div').insertBefore(zone, helpText || null);
+
+  // ── Build modal ──────────────────────────────────────────
+  const backdrop = document.createElement('div');
+  backdrop.className = 'cover-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="cover-modal">
+      <div class="cover-modal__header">
+        <span>Ảnh bìa sách</span>
+        <button type="button" class="cover-modal__close" id="cover-modal-close">×</button>
+      </div>
+      <div class="cover-modal__body">
+        <div class="cover-modal__drop" id="cover-drop-zone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Kéo thả ảnh vào đây hoặc <u>chọn file</u></span>
+          <span style="font-size:11px;color:#aaa">PNG, JPG, WEBP</span>
+          <input type="file" id="cover-modal-file" accept="image/*">
+        </div>
+        <p class="cover-modal__paste-hint">Hoặc nhấn <kbd>Ctrl</kbd>+<kbd>V</kbd> để dán ảnh từ clipboard</p>
+        <div class="cover-modal__preview" id="cover-preview">
+          <img id="cover-preview-img" src="" alt="preview">
+          <span class="cover-modal__preview-name" id="cover-preview-name"></span>
+        </div>
+      </div>
+      <div class="cover-modal__footer">
+        <button type="button" class="btn-cancel" id="cover-btn-cancel">Hủy</button>
+        <button type="button" class="btn-confirm" id="cover-btn-confirm" disabled>Xác nhận</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+
+  // ── Modal refs ───────────────────────────────────────────
+  const dropZone      = document.getElementById('cover-drop-zone');
+  const modalFileInput= document.getElementById('cover-modal-file');
+  const preview       = document.getElementById('cover-preview');
+  const previewImg    = document.getElementById('cover-preview-img');
+  const previewName   = document.getElementById('cover-preview-name');
+  const btnConfirm    = document.getElementById('cover-btn-confirm');
+  const btnCancel     = document.getElementById('cover-btn-cancel');
+  const btnClose      = document.getElementById('cover-modal-close');
+
+  // ── Open / close ─────────────────────────────────────────
+  function openModal() {
+    stagedFile = null;
+    preview.classList.remove('visible');
+    previewImg.src = '';
+    previewName.textContent = '';
+    btnConfirm.disabled = true;
+    backdrop.classList.add('open');
+  }
+  function closeModal() {
+    backdrop.classList.remove('open');
+  }
+
+  changeBtn.addEventListener('click', openModal);
+  btnCancel.addEventListener('click', closeModal);
+  btnClose.addEventListener('click',  closeModal);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
+
+  // ── Stage a file (converts to JPEG first) ────────────────
+  async function stageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    btnConfirm.disabled = true;
+    previewName.textContent = 'Đang xử lý…';
+    preview.classList.add('visible');
+    const jpeg = await toJpeg(file);
+    stagedFile = jpeg;
+    const url = URL.createObjectURL(jpeg);
+    previewImg.src = url;
+    const origKB = Math.round(file.size / 1024);
+    const jpegKB = Math.round(jpeg.size / 1024);
+    const info   = file.type !== 'image/jpeg'
+      ? `${jpeg.name}  (${origKB} KB → ${jpegKB} KB)`
+      : `${jpeg.name}  (${jpegKB} KB)`;
+    previewName.textContent = info;
+    btnConfirm.disabled = false;
+  }
+
+  // ── File input ───────────────────────────────────────────
+  modalFileInput.addEventListener('change', () => {
+    if (modalFileInput.files[0]) stageFile(modalFileInput.files[0]);
+  });
+
+  // ── Drag & drop ──────────────────────────────────────────
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) stageFile(file);
+  });
+
+  // ── Paste ────────────────────────────────────────────────
+  document.addEventListener('paste', e => {
+    if (!backdrop.classList.contains('open')) return;
+    const items = e.clipboardData?.items ?? [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const raw = item.getAsFile();
+        if (raw) {
+          // Use item.type — raw.type may be empty string in some browsers
+          const named = new File([raw], 'clipboard', { type: item.type });
+          stageFile(named);
+          break;
+        }
+      }
+    }
+  });
+
+  // ── Confirm ──────────────────────────────────────────────
+  btnConfirm.addEventListener('click', () => {
+    if (!stagedFile) return;
+
+    // Transfer staged file to the original input
+    const dt = new DataTransfer();
+    dt.items.add(stagedFile);
+    originalInput.files = dt.files;
+
+    // Update the zone preview
+    const zoneThumb = document.getElementById('cover-zone-thumb');
+    if (zoneThumb.tagName === 'IMG') {
+      zoneThumb.src = URL.createObjectURL(stagedFile);
+    } else {
+      // Replace placeholder with img
+      const img = document.createElement('img');
+      img.className = 'cover-zone__thumb';
+      img.id = 'cover-zone-thumb';
+      img.src = URL.createObjectURL(stagedFile);
+      img.alt = 'cover';
+      zoneThumb.replaceWith(img);
+    }
+    changeBtn.textContent = 'Đổi ảnh bìa';
+
+    closeModal();
+  });
+})();
+</script>
+{% endblock %}

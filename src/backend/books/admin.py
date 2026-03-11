@@ -28,6 +28,18 @@ class BookAdmin(admin.ModelAdmin):
     search_fields = ('title', 'author')
     readonly_fields = ('slug',)
     inlines = [BookChapterInline]
+    change_form_template = 'admin/books/book/change_form.html'
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        pk = int(object_id)
+        prev_obj = Book.objects.filter(pk__lt=pk).order_by('-pk').values('pk').first()
+        next_obj = Book.objects.filter(pk__gt=pk).order_by('pk').values('pk').first()
+        if prev_obj:
+            extra_context['prev_url'] = reverse('admin:books_book_change', args=[prev_obj['pk']])
+        if next_obj:
+            extra_context['next_url'] = reverse('admin:books_book_change', args=[next_obj['pk']])
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
         obj.slug = slugify(obj.title)
