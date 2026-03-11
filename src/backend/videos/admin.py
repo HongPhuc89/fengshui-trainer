@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.core.files.base import ContentFile
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -147,9 +148,11 @@ class VideoLessonAdmin(admin.ModelAdmin):
             return '—'
         url = reverse('admin:videos_videolesson_fetch_metadata', args=[obj.pk])
         return format_html(
-            '<a class="button" href="{}" style="padding:6px 12px;background:#417690;color:#fff;'
-            'border-radius:4px;text-decoration:none;font-size:13px">'
-            'Cập nhật thời lượng từ video</a>',
+            '<button type="button" data-ajax-url="{}" '
+            'style="padding:6px 12px;background:#417690;color:#fff;border:none;'
+            'border-radius:4px;cursor:pointer;font-size:13px" '
+            'onclick="adminAjaxBtn(this)">'
+            'Lấy thời lượng từ Bunny</button>',
             url,
         )
     fetch_metadata_btn.short_description = 'Thời lượng tự động'
@@ -159,9 +162,11 @@ class VideoLessonAdmin(admin.ModelAdmin):
             return '—'
         url = reverse('admin:videos_videolesson_extract_thumbnail', args=[obj.pk])
         return format_html(
-            '<a class="button" href="{}" style="padding:6px 12px;background:#417690;color:#fff;'
-            'border-radius:4px;text-decoration:none;font-size:13px">'
-            'Lấy thumbnail từ video</a>',
+            '<button type="button" data-ajax-url="{}" '
+            'style="padding:6px 12px;background:#417690;color:#fff;border:none;'
+            'border-radius:4px;cursor:pointer;font-size:13px" '
+            'onclick="adminAjaxBtn(this)">'
+            'Lấy thumbnail từ Bunny</button>',
             url,
         )
     extract_thumbnail_btn.short_description = 'Thumbnail tự động'
@@ -204,36 +209,59 @@ class VideoLessonAdmin(admin.ModelAdmin):
 
     def fetch_metadata_view(self, request, pk):
         lesson = get_object_or_404(VideoLesson, pk=pk)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         if not lesson.video_id:
-            self.message_user(request, 'Bài học chưa có video_id.', level='error')
-        else:
-            try:
-                meta = get_video_storage().get_metadata(lesson.video_id)
-                if meta.duration_seconds:
-                    lesson.duration_seconds = meta.duration_seconds
-                    lesson.save(update_fields=['duration_seconds'])
-                    self.message_user(request, f'Đã cập nhật thời lượng: {meta.duration_seconds}s.')
-                else:
-                    self.message_user(request, 'Không lấy được thời lượng từ video.', level='warning')
-            except Exception as exc:
-                self.message_user(request, f'Lỗi khi lấy metadata: {exc}', level='error')
+            msg = 'Bài học chưa có video_id.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'msg': msg}, status=400)
+            self.message_user(request, msg, level='error')
+            return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+        try:
+            meta = get_video_storage().get_metadata(lesson.video_id)
+            if meta.duration_seconds:
+                lesson.duration_seconds = meta.duration_seconds
+                lesson.save(update_fields=['duration_seconds'])
+                msg = f'Đã cập nhật thời lượng: {meta.duration_seconds}s.'
+                if is_ajax:
+                    return JsonResponse({'ok': True, 'msg': msg, 'duration_seconds': meta.duration_seconds})
+            else:
+                msg = 'Không lấy được thời lượng từ video.'
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'msg': msg}, status=400)
+        except Exception as exc:
+            msg = f'Lỗi khi lấy metadata: {exc}'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'msg': msg}, status=500)
+        self.message_user(request, msg)
         return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
 
     def extract_thumbnail_view(self, request, pk):
         lesson = get_object_or_404(VideoLesson, pk=pk)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         if not lesson.video_id:
-            self.message_user(request, 'Bài học chưa có video_id.', level='error')
-        else:
-            try:
-                data = get_video_storage().extract_thumbnail(lesson.video_id)
-                if data:
-                    filename = f'{lesson.video_id}.jpg'
-                    lesson.thumbnail.save(filename, ContentFile(data), save=True)
-                    self.message_user(request, 'Đã lấy thumbnail từ video thành công.')
-                else:
-                    self.message_user(request, 'Không thể lấy thumbnail từ video.', level='warning')
-            except Exception as exc:
-                self.message_user(request, f'Lỗi khi lấy thumbnail: {exc}', level='error')
+            msg = 'Bài học chưa có video_id.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'msg': msg}, status=400)
+            self.message_user(request, msg, level='error')
+            return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
+        try:
+            data = get_video_storage().extract_thumbnail(lesson.video_id)
+            if data:
+                filename = f'{lesson.video_id}.jpg'
+                lesson.thumbnail.save(filename, ContentFile(data), save=True)
+                thumbnail_url = lesson.thumbnail.url if lesson.thumbnail else None
+                msg = 'Đã lấy thumbnail từ video thành công.'
+                if is_ajax:
+                    return JsonResponse({'ok': True, 'msg': msg, 'thumbnail_url': thumbnail_url})
+            else:
+                msg = 'Không thể lấy thumbnail từ video.'
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'msg': msg}, status=400)
+        except Exception as exc:
+            msg = f'Lỗi khi lấy thumbnail: {exc}'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'msg': msg}, status=500)
+        self.message_user(request, msg)
         return redirect(reverse('admin:videos_videolesson_change', args=[pk]))
 
     def import_flashcards_view(self, request, pk):
@@ -317,6 +345,10 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 obj.video_id  = result.video_id
                 obj.video_url = result.video_url
                 obj.save(update_fields=['video_id', 'video_url'])
+                # Fetch duration + thumbnail after Bunny finishes transcoding
+                from .tasks import fetch_video_metadata_after_transcode
+                fetch_video_metadata_after_transcode.delay(obj.pk)
+                self.message_user(request, 'Video đã upload. Duration và thumbnail sẽ được cập nhật tự động sau khi Bunny transcode xong.')
             except Exception as exc:
                 self.message_user(request, f'Upload video thất bại: {exc}', level='error')
 

@@ -194,3 +194,67 @@
     init();
   }
 })();
+
+// ── AJAX button helper (fetch metadata / thumbnail from Bunny) ─────────────
+function adminAjaxBtn(btn) {
+  var url = btn.getAttribute('data-ajax-url');
+  if (!url) return;
+
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Đang tải...';
+  btn.style.opacity = '0.7';
+
+  var csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1] || '';
+
+  fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrf },
+  })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+    .then(function (res) {
+      var d = res.data;
+      if (d.duration_seconds !== undefined) {
+        // Update duration field in the form
+        var dur = document.getElementById('id_duration_seconds');
+        if (dur) { dur.value = d.duration_seconds; _flashField(dur); }
+      }
+      if (d.thumbnail_url) {
+        // Update thumbnail preview if present
+        var preview = document.querySelector('.field-thumbnail img, .field-extract_thumbnail_btn img');
+        if (!preview) {
+          preview = document.createElement('img');
+          preview.style.cssText = 'max-width:200px;border-radius:4px;margin-top:8px;display:block;';
+          btn.parentNode.appendChild(preview);
+        }
+        preview.src = d.thumbnail_url + '?t=' + Date.now();
+      }
+      _showBtnMsg(btn, d.msg || (res.ok ? 'Thành công' : 'Lỗi'), res.ok ? '#2d9e6b' : '#c0392b');
+    })
+    .catch(function () {
+      _showBtnMsg(btn, 'Lỗi kết nối', '#c0392b');
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = origText;
+      btn.style.opacity = '';
+    });
+}
+
+function _flashField(el) {
+  el.style.transition = 'background 0.3s';
+  el.style.background = '#e8f5e9';
+  setTimeout(function () { el.style.background = ''; }, 2000);
+}
+
+function _showBtnMsg(btn, text, color) {
+  var existing = btn.parentNode.querySelector('.ajax-btn-msg');
+  if (existing) existing.remove();
+  var span = document.createElement('span');
+  span.className = 'ajax-btn-msg';
+  span.textContent = ' ' + text;
+  span.style.cssText = 'font-size:12px;color:' + color + ';margin-left:8px;';
+  btn.parentNode.appendChild(span);
+  setTimeout(function () { if (span.parentNode) span.remove(); }, 4000);
+}

@@ -200,6 +200,18 @@ class BunnyVideoStorage(VideoStorageBackend):
     def _cdn_hostname(self) -> str:
         return getattr(settings, 'BUNNY_CDN_HOSTNAME', 'iframe.mediadelivery.net')
 
+    @property
+    def _storage_zone(self) -> str:
+        return getattr(settings, 'BUNNY_STORAGE_ZONE', '')
+
+    @property
+    def _storage_api_key(self) -> str:
+        return getattr(settings, 'BUNNY_STORAGE_API_KEY', '')
+
+    @property
+    def _storage_cdn_hostname(self) -> str:
+        return getattr(settings, 'BUNNY_STORAGE_CDN_HOSTNAME', 'storage.bunnycdn.com')
+
     def upload(self, file_obj, original_filename: str) -> VideoUploadResult:
         library_id = self._library_id
         api_key    = self._api_key
@@ -258,10 +270,28 @@ class BunnyVideoStorage(VideoStorageBackend):
         return VideoMetadata(duration_seconds=int(length) if length else None)
 
     def extract_thumbnail(self, video_id: str) -> bytes | None:
-        # Bunny auto-generates a thumbnail — download it directly from CDN
-        thumbnail_url = f'https://iframe.mediadelivery.net/{self._library_id}/{video_id}/thumbnail.jpg'
+        """
+        Download thumbnail from Bunny Storage API.
+        Stream thumbnails are stored in the connected storage zone at:
+          /{videoId}/thumbnail.jpg
+        """
         try:
-            resp = http.get(thumbnail_url, timeout=30)
+            # Get thumbnailFileName from Stream API
+            meta_resp = http.get(
+                f'{self._API_BASE}/{self._library_id}/videos/{video_id}',
+                headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+                timeout=30,
+            )
+            meta_resp.raise_for_status()
+            thumbnail_filename = meta_resp.json().get('thumbnailFileName') or 'thumbnail.jpg'
+
+            # Download from Bunny Storage API (authenticated, no CDN token needed)
+            storage_url = f'https://{self._storage_cdn_hostname}/{self._storage_zone}/{video_id}/{thumbnail_filename}'
+            resp = http.get(
+                storage_url,
+                headers={'AccessKey': self._storage_api_key},
+                timeout=30,
+            )
             resp.raise_for_status()
             logger.info('BunnyVideoStorage: fetched thumbnail for guid=%s', video_id)
             return resp.content
