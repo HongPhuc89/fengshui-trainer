@@ -17,6 +17,7 @@ class BookChapterListSerializer(serializers.ModelSerializer):
 class BookListSerializer(serializers.ModelSerializer):
     category = BookCategorySerializer(read_only=True)
     cover_image = serializers.SerializerMethodField()
+    price_lt = serializers.SerializerMethodField()
 
     def get_cover_image(self, obj):
         if not obj.cover_image:
@@ -25,6 +26,9 @@ class BookListSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.cover_image.url)
         return obj.cover_image.url
+
+    def get_price_lt(self, obj):
+        return 0 if obj.is_free else obj.price_lt
 
     class Meta:
         model = Book
@@ -39,6 +43,7 @@ class BookDetailSerializer(serializers.ModelSerializer):
     chapters = BookChapterListSerializer(many=True, read_only=True)
     cover_image = serializers.SerializerMethodField()
     final_exam_id = serializers.SerializerMethodField()
+    price_lt = serializers.SerializerMethodField()
 
     def get_cover_image(self, obj):
         if not obj.cover_image:
@@ -50,6 +55,9 @@ class BookDetailSerializer(serializers.ModelSerializer):
 
     def get_final_exam_id(self, obj):
         return str(obj.final_exam_id) if obj.final_exam_id else None
+
+    def get_price_lt(self, obj):
+        return 0 if obj.is_free else obj.price_lt
 
     class Meta:
         model = Book

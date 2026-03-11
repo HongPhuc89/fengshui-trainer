@@ -33,12 +33,12 @@ onMounted(async () => {
       booksService.getBooks({ exclude_read: 'true' }).catch(() => ({ data: { results: [] } })),
       booksService.getRecentlyRead().catch(() => ({ data: [] })),
       videosService.getRecentlyWatched().catch(() => ({ data: [] })),
-      videosService.getVideos().catch(() => ({ data: [] })),
+      videosService.getVideos({ exclude_watched: 'true' }).catch(() => ({ data: [] })),
     ])
     const list = booksRes.data?.results ?? booksRes.data ?? []
     books.value = Array.isArray(list) ? list.slice(0, 10) : []
-    recentBooks.value = Array.isArray(recentRes.data) ? recentRes.data : []
-    recentVideos.value = Array.isArray(recentVideosRes.data) ? recentVideosRes.data : []
+    recentBooks.value = Array.isArray(recentRes.data) ? recentRes.data.slice(0, 3) : []
+    recentVideos.value = Array.isArray(recentVideosRes.data) ? recentVideosRes.data.slice(0, 2) : []
     const vlist = videosRes.data?.results ?? videosRes.data ?? []
     videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 10) : []
   } catch (_) {}
@@ -90,26 +90,7 @@ function goRecentVideo(v) {
         {{ t('home.continueStudy.title') }}
       </h2>
       <div v-if="recentBooks.length || recentVideos.length" class="home-books">
-        <!-- Books first -->
-        <div
-          v-for="b in recentBooks"
-          :key="'book-' + b.slug"
-          class="home-book-card"
-          @click="goBook(b.slug)"
-        >
-          <div class="home-book-card__cover">
-            <img v-if="b.cover_image" :src="b.cover_image" :alt="b.title" />
-            <div v-else class="home-book-card__cover-placeholder"></div>
-            <span class="home-book-card__chapter-badge">
-              {{ t('home.continueStudy.chapter') }} {{ b.chapter_order }}
-            </span>
-            <div class="home-book-card__play-overlay">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>
-            </div>
-          </div>
-          <span class="home-book-card__title">{{ b.title }}</span>
-        </div>
-        <!-- Videos after -->
+        <!-- Videos first -->
         <div
           v-for="v in recentVideos"
           :key="'video-' + v.slug"
@@ -128,6 +109,25 @@ function goRecentVideo(v) {
             </div>
           </div>
           <span class="home-book-card__title">{{ v.title }}</span>
+        </div>
+        <!-- Books after -->
+        <div
+          v-for="b in recentBooks"
+          :key="'book-' + b.slug"
+          class="home-book-card"
+          @click="goBook(b.slug)"
+        >
+          <div class="home-book-card__cover">
+            <img v-if="b.cover_image" :src="b.cover_image" :alt="b.title" />
+            <div v-else class="home-book-card__cover-placeholder"></div>
+            <span class="home-book-card__chapter-badge">
+              {{ t('home.continueStudy.chapter') }} {{ b.chapter_order }}
+            </span>
+            <div class="home-book-card__play-overlay">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+          <span class="home-book-card__title">{{ b.title }}</span>
         </div>
       </div>
       <div v-else-if="!loading" class="home-recent-empty">

@@ -94,6 +94,14 @@ class VideoCourseListView(generics.ListAPIView):
         search = self.request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(title__icontains=search) | qs.filter(instructor__icontains=search)
+        if self.request.query_params.get('exclude_watched') and self.request.user.is_authenticated:
+            watched_course_ids = (
+                UserLessonProgress.objects
+                .filter(user=self.request.user)
+                .values_list('lesson__course_id', flat=True)
+                .distinct()
+            )
+            qs = qs.exclude(id__in=watched_course_ids)
         return qs.order_by('-created_at')
 
 

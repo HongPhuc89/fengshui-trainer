@@ -202,9 +202,12 @@
   const widgetWrap = originalInput.closest('p') || originalInput.parentElement;
   widgetWrap.style.display = 'none';
 
-  // Get current image src if any
-  const existingImg = row.querySelector('img');
-  const currentSrc  = existingImg ? existingImg.src : null;
+  // Get current image src if any (Django renders existing file as an <a> link, not <img>)
+  const existingImg  = row.querySelector('img');
+  const existingLink = row.querySelector('a[href]');
+  const currentSrc   = existingImg ? existingImg.src
+                     : existingLink ? existingLink.href
+                     : null;
 
   // ── Staged file (set when user picks/pastes/drops) ───────
   let stagedFile = null;
@@ -411,5 +414,26 @@
     closeModal();
   });
 })();
+
+// ── Auto-increment order for new BookChapter inline rows ──
+document.addEventListener('formset:added', function (e) {
+  const row = e.target;
+  if (!row.id || !row.id.includes('bookchapter')) return;
+
+  const inline = document.getElementById('bookchapter_set-group');
+  if (!inline) return;
+
+  const newOrderInput = row.querySelector('input[name$="-order"]');
+  if (!newOrderInput) return;
+
+  let maxOrder = 0;
+  inline.querySelectorAll('input[name$="-order"]').forEach(function (input) {
+    if (input === newOrderInput) return;
+    const val = parseInt(input.value, 10);
+    if (!isNaN(val) && val > maxOrder) maxOrder = val;
+  });
+
+  newOrderInput.value = maxOrder + 1;
+});
 </script>
 {% endblock %}

@@ -44,19 +44,20 @@ class PurchaseBookView(views.APIView):
             )
 
         wallet = get_or_create_wallet(user)
-        if wallet.balance < book.price_lt:
+        price = 0 if book.is_free else book.price_lt
+        if wallet.balance < price:
             return Response(
-                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': book.price_lt},
+                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            wallet.balance -= book.price_lt
+            wallet.balance -= price
             wallet.save(update_fields=['balance', 'updated_at'])
             balance_after = wallet.balance
             WalletTransaction.objects.create(
                 wallet=wallet,
-                amount=-book.price_lt,
+                amount=-price,
                 transaction_type='PURCHASE_BOOK',
                 reference_id=str(book.public_id),
                 description=f'Purchased book: {book.title}',
@@ -111,19 +112,20 @@ class PurchaseVideoView(views.APIView):
             )
 
         wallet = get_or_create_wallet(user)
-        if wallet.balance < video.price_lt:
+        price = 0 if video.is_free else video.price_lt
+        if wallet.balance < price:
             return Response(
-                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': video.price_lt},
+                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            wallet.balance -= video.price_lt
+            wallet.balance -= price
             wallet.save(update_fields=['balance', 'updated_at'])
             balance_after = wallet.balance
             WalletTransaction.objects.create(
                 wallet=wallet,
-                amount=-video.price_lt,
+                amount=-price,
                 transaction_type='PURCHASE_VIDEO',
                 reference_id=str(video.public_id),
                 description=f'Purchased video: {video.title}',

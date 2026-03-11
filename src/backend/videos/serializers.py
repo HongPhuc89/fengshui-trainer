@@ -19,10 +19,14 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
     category = VideoCategorySerializer(read_only=True)
     total_duration_seconds = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
+    price_lt = serializers.SerializerMethodField()
 
     def get_total_duration_seconds(self, obj):
         result = obj.lessons.aggregate(total=Sum('duration_seconds'))['total']
         return result or 0
+
+    def get_price_lt(self, obj):
+        return 0 if obj.is_free else obj.price_lt
 
     def get_cover_image(self, obj):
         if obj.cover_image:
@@ -47,9 +51,13 @@ class VideoCourseDetailSerializer(serializers.ModelSerializer):
     lessons = VideoLessonListSerializer(many=True, read_only=True)
     final_exam_id = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
+    price_lt = serializers.SerializerMethodField()
 
     def get_final_exam_id(self, obj):
         return str(obj.final_exam_id) if obj.final_exam_id else None
+
+    def get_price_lt(self, obj):
+        return 0 if obj.is_free else obj.price_lt
 
     def get_cover_image(self, obj):
         if obj.cover_image:

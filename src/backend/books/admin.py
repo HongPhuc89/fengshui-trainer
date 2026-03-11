@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Max
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.text import slugify
@@ -21,6 +22,13 @@ class BookChapterInline(admin.TabularInline):
     ordering = ('order',)
     exclude = ('slug',)
     can_delete = False
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        if obj is not None:
+            next_order = (obj.chapters.aggregate(max_order=Max('order'))['max_order'] or 0) + 1
+            formset.form.base_fields['order'].initial = next_order
+        return formset
 
 
 @admin.register(Book)
