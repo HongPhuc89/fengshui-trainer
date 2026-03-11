@@ -30,6 +30,46 @@ def _can_access_lesson(user, course, lesson):
     return lesson.is_free
 
 
+class RecentlyWatchedCoursesView(views.APIView):
+    """GET /api/videos/recently-watched/ - Courses the user recently watched, one per course."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        progresses = (
+            UserLessonProgress.objects
+            .filter(user=request.user)
+            .select_related('lesson__course')
+            .order_by('-last_watched')
+        )
+        seen = set()
+        recent = []
+        for p in progresses:
+            course_id = p.lesson.course_id
+            if course_id not in seen:
+                seen.add(course_id)
+                recent.append(p)
+                if len(recent) >= 10:
+                    break
+
+        data = []
+        for p in recent:
+            course = p.lesson.course
+            cover_url = None
+            if course.cover_image:
+                cover_url = request.build_absolute_uri(course.cover_image.url)
+            else:
+                first = course.lessons.order_by('order').exclude(thumbnail='').filter(thumbnail__isnull=False).first()
+                if first and first.thumbnail:
+                    cover_url = request.build_absolute_uri(first.thumbnail.url)
+            data.append({
+                'slug': course.slug,
+                'title': course.title,
+                'cover_image': cover_url,
+                'last_lesson_slug': p.lesson.slug,
+            })
+        return Response(data)
+
+
 class VideoCategoryListView(generics.ListAPIView):
     """GET /api/videos/categories/ - List categories."""
     permission_classes = (AllowAny,)

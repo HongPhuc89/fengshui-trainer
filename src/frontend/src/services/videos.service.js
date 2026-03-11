@@ -1,6 +1,10 @@
 import api from '../api/client'
 
 export const videosService = {
+  getRecentlyWatched() {
+    return api.get('videos/recently-watched/')
+  },
+
   getCategories() {
     return api.get('videos/categories/')
   },

@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -9,6 +10,19 @@ const props = defineProps({
 
 const emit = defineEmits(['select'])
 const router = useRouter()
+const listRef = ref(null)
+
+function scrollToActive() {
+  nextTick(() => {
+    const el = listRef.value?.querySelector('.lesson-list__item--active')
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
+}
+
+onMounted(scrollToActive)
+watch(() => props.currentLessonSlug, scrollToActive)
+
+defineExpose({ scrollToActive })
 
 function formatDuration(seconds) {
   if (!seconds) return ''
@@ -25,7 +39,7 @@ function selectLesson(lesson) {
 </script>
 
 <template>
-  <div class="lesson-list">
+  <div ref="listRef" class="lesson-list">
     <div
       v-for="lesson in lessons"
       :key="lesson.slug"

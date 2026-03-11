@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import VideoTabNav    from './VideoTabNav.vue'
 import LessonListTab  from './LessonListTab.vue'
 import FlashcardTab   from './FlashcardTab.vue'
@@ -38,6 +38,13 @@ async function loadTrainingInfo(lessonSlug) {
 onMounted(() => loadTrainingInfo(props.lessonSlug))
 watch(() => props.lessonSlug, loadTrainingInfo)
 
+const lessonListRef = ref(null)
+
+// When switching to tab 0, scroll active lesson into view
+watch(() => props.modelValue, val => {
+  if (val === 0) nextTick(() => lessonListRef.value?.scrollToActive())
+})
+
 const localTabs = computed(() =>
   props.tabs.map((tab, i) => {
     if (i === 1) return { ...tab, disabled: hasFlashcard.value === false }
@@ -58,6 +65,7 @@ const localTabs = computed(() =>
     <div class="video-sidebar__content">
       <!-- Tab 0: Lesson list -->
       <LessonListTab
+        ref="lessonListRef"
         v-show="modelValue === 0"
         :lessons="lessons"
         :current-lesson-slug="lessonSlug"
