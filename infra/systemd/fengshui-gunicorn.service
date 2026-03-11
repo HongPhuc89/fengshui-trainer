@@ -6,8 +6,8 @@ After=network.target redis-server.service
 User=fengshui
 Group=fengshui
 WorkingDirectory=/srv/fengshui/src/backend
-EnvironmentFile=/srv/fengshui/.env
-ExecStart=/srv/fengshui/venv/bin/gunicorn \
+EnvironmentFile=/srv/fengshui/src/backend/.env
+ExecStart=/srv/fengshui/.venv/bin/gunicorn \
     config.wsgi:application \
     --bind 127.0.0.1:8000 \
     --workers 3 \

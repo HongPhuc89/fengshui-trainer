@@ -6,8 +6,8 @@ After=network.target redis-server.service fengshui-gunicorn.service
 User=fengshui
 Group=fengshui
 WorkingDirectory=/srv/fengshui/src/backend
-EnvironmentFile=/srv/fengshui/.env
-ExecStart=/srv/fengshui/venv/bin/celery \
+EnvironmentFile=/srv/fengshui/src/backend/.env
+ExecStart=/srv/fengshui/.venv/bin/celery \
     -A config worker \
     --loglevel=info \
     --logfile=/var/log/fengshui/celery-worker.log
