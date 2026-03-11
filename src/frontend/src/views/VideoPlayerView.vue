@@ -105,7 +105,7 @@ function goToLesson(l) {
 
     <!-- ── Header ──────────────────────────────────────────── -->
     <header class="vp__header">
-      <button class="vp__back-btn" @click="router.back()">
+      <button class="vp__back-btn" @click="router.push({ name: 'VideoDetail', params: { slug: route.params.slug } })">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

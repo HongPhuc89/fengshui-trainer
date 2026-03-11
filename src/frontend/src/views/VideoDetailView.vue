@@ -50,10 +50,17 @@ function goToLesson(lesson) {
   router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug: lesson.slug } })
 }
 
-function startOrContinue() {
+async function startOrContinue() {
   const lessons = course.value?.lessons
   if (!lessons?.length) return
-  router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug: lessons[0].slug } })
+  try {
+    const { data } = await videosService.getLastLesson(course.value.slug)
+    const lesson = lessons.find(l => l.public_id === data.lesson_public_id)
+    const lessonSlug = lesson?.slug ?? lessons[0].slug
+    router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug } })
+  } catch {
+    router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug: lessons[0].slug } })
+  }
 }
 
 const buying   = ref(false)
@@ -106,7 +113,7 @@ function levelInfo(level) {
   <div class="vd">
     <!-- ── Back nav ───────────────────────────────────────── -->
     <div class="vd__nav">
-      <button class="vd__back-btn" @click="router.back()">
+      <button class="vd__back-btn" @click="router.push({ name: 'Videos' })">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

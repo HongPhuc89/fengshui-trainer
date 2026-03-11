@@ -318,6 +318,36 @@ class LessonProgressView(views.APIView):
         })
 
 
+class CourseLastLessonView(views.APIView):
+    """GET /api/videos/{slug}/progress/last-lesson/ - Last watched lesson in a course."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, slug):
+        try:
+            course = VideoCourse.objects.get(slug=slug)
+        except VideoCourse.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        progress = (
+            UserLessonProgress.objects
+            .filter(user=request.user, lesson__course=course)
+            .select_related('lesson')
+            .order_by('-last_watched')
+            .first()
+        )
+
+        if progress:
+            return Response({
+                'lesson_order': progress.lesson.order,
+                'lesson_public_id': str(progress.lesson.public_id),
+            })
+
+        first = course.lessons.order_by('order').first()
+        if first:
+            return Response({'lesson_order': first.order, 'lesson_public_id': str(first.public_id)})
+        return Response({'lesson_order': 1, 'lesson_public_id': None})
+
+
 class CourseProgressView(views.APIView):
     """GET /api/videos/{slug}/progress/ - Overall course progress (%)."""
     permission_classes = (IsAuthenticated,)

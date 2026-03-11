@@ -11,6 +11,7 @@ urlpatterns = [
     path('', views.VideoCourseListView.as_view(), name='video_course_list'),
     path('<slug:slug>/', views.VideoCourseDetailView.as_view(), name='video_course_detail'),
     path('<slug:slug>/progress/', views.CourseProgressView.as_view(), name='video_course_progress'),
+    path('<slug:slug>/progress/last-lesson/', views.CourseLastLessonView.as_view(), name='video_course_last_lesson'),
     path('<slug:slug>/lessons/<slug:lesson_slug>/', views.VideoLessonDetailView.as_view(), name='video_lesson_detail'),
     path('<slug:slug>/lessons/<slug:lesson_slug>/progress/', views.LessonProgressView.as_view(), name='video_lesson_progress'),
     path('<slug:slug>/lessons/<slug:lesson_slug>/flashcards/', views.LessonFlashcardsView.as_view(), name='lesson_flashcards'),

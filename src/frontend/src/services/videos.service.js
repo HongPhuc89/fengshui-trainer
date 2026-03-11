@@ -31,6 +31,10 @@ export const videosService = {
     return api.get(`videos/${courseSlug}/progress/`)
   },
 
+  getLastLesson(courseSlug) {
+    return api.get(`videos/${courseSlug}/progress/last-lesson/`)
+  },
+
   purchaseCourse(videoId) {
     return api.post('payments/purchase-video/', { video_id: videoId })
   },
