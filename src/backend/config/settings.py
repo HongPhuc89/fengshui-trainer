@@ -287,6 +287,13 @@ JAZZMIN_SETTINGS = {
     "custom_js": "admin/js/jazzmin_bs5_tabs.js",
 }
 
+# CORS
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://localhost(:\d+)?$",
+    r"^https?://.*\.hongphuc\.top$",
+    r"^https?://hongphuc\.top$",
+]
+
 # Celery
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
