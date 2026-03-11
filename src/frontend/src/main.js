@@ -4,6 +4,7 @@ import router from './router'
 import i18n from './i18n'
 import App from './App.vue'
 import './style.css'
+import 'flag-icons/css/flag-icons.min.css'
 import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)

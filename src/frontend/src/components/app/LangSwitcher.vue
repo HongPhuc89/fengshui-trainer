@@ -1,5 +1,6 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { LOCALE_FLAG } from '../../utils/flags'
 
 const { locale } = useI18n()
 
@@ -16,7 +17,7 @@ function toggle() {
     :aria-label="locale === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt'"
     @click="toggle"
   >
-    <span class="lang-switcher__flag">{{ locale === 'vi' ? '🇻🇳' : '🇬🇧' }}</span>
+    <span class="fi" :class="`fi-${LOCALE_FLAG[locale] ?? 'gb'}`" />
     <span class="lang-switcher__code">{{ locale === 'vi' ? 'VI' : 'EN' }}</span>
   </button>
 </template>
@@ -36,10 +37,6 @@ function toggle() {
 .lang-switcher:hover {
   background: var(--policy-bg);
   border-color: var(--accent-gold);
-}
-.lang-switcher__flag {
-  font-size: 0.85rem;
-  line-height: 1;
 }
 .lang-switcher__code {
   font-size: 0.7rem;
