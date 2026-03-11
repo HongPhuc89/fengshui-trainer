@@ -28,6 +28,9 @@ migrate: ## Run Django database migrations
 makemigrations: ## Create new Django migrations
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py makemigrations
 
+collectstatic: ## Update admin css
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py collectstatic
+
 createsuperuser: ## Create a Django superuser
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py createsuperuser
 

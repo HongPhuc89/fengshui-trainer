@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload --timeout 3600
     volumes:
       - ../src/backend:/app/src/backend
     ports:
@@ -49,7 +49,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=fengshui_dev
     ports:
-      - "5432:5432"
+      - "5489:5432"
 
   redis:
     image: redis:8.6-alpine

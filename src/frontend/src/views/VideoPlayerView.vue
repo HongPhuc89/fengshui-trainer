@@ -21,9 +21,9 @@ const error   = ref(null)
 // ── Tabs ──────────────────────────────────────────────────────
 const activeTab = ref(0)
 const TABS = [
-  { label: 'Tóm tắt AI' },
-  { label: 'Flashcards' },
-  { label: 'Ôn luyện'   },
+  { label: 'Danh sách bài' },
+  { label: 'Flashcards'    },
+  { label: 'Ôn luyện'      },
 ]
 
 // ── Video player ref (for triggering save on navigation) ───────
@@ -152,21 +152,6 @@ function goToLesson(l) {
           :total-count="sortedLessons.length"
         />
 
-        <!-- Luyện tập shortcut -->
-        <div v-if="lesson && !loading" class="vp__training-bar">
-          <button
-            class="vp__training-btn"
-            @click="router.push({ name: 'TrainingLesson', params: { lessonSlug: route.params.lessonSlug } })"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-            Luyện tập ngay
-          </button>
-        </div>
-
         <!-- Description -->
         <div v-if="lesson && !loading && lesson.description" class="vp__description">
           <h2 class="vp__description-title">Mô tả</h2>
@@ -189,6 +174,7 @@ function goToLesson(l) {
         v-if="lesson && !loading"
         v-model="activeTab"
         :lesson="lesson"
+        :lessons="sortedLessons"
         :course-slug="route.params.slug"
         :lesson-slug="route.params.lessonSlug"
         :tabs="TABS"
@@ -265,32 +251,6 @@ function goToLesson(l) {
   aspect-ratio: 16 / 9;
   background: rgba(255,255,255,0.07);
   animation: shimmer 1.4s infinite;
-}
-
-/* ── Training bar ─────────────────────────────────────────── */
-.vp__training-bar {
-  padding: 0 var(--space-md) var(--space-sm);
-}
-
-.vp__training-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: 12px var(--space-md);
-  background: rgba(197,165,81,0.12);
-  border: 1px solid rgba(197,165,81,0.3);
-  border-radius: var(--radius-md);
-  color: var(--accent-gold);
-  font-size: 0.9rem;
-  font-weight: 600;
-  justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.vp__training-btn:hover {
-  background: rgba(197,165,81,0.2);
-  border-color: rgba(197,165,81,0.5);
 }
 
 /* ── Description ──────────────────────────────────────────── */
