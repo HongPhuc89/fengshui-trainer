@@ -1,4 +1,5 @@
 from django.http import FileResponse, Http404
+from django.utils import timezone
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -75,7 +76,8 @@ class BookListView(generics.ListAPIView):
     queryset = Book.objects.all().select_related('category')
 
     def get_queryset(self):
-        qs = Book.objects.all().select_related('category')
+        today = timezone.now().date()
+        qs = Book.objects.filter(published_date__lte=today).select_related('category')
         category_slug = self.request.query_params.get('category')
         if category_slug:
             qs = qs.filter(category__slug=category_slug)
@@ -94,15 +96,18 @@ class BookListView(generics.ListAPIView):
                 .distinct()
             )
             qs = qs.exclude(id__in=read_book_ids)
-        return qs.order_by('-created_at')
+        return qs.order_by('-published_date')
 
 
 class BookDetailView(generics.RetrieveAPIView):
     """GET /api/books/{slug}/ - Book detail with chapters; has_purchased if auth."""
     permission_classes = (AllowAny,)
-    queryset = Book.objects.all().select_related('category').prefetch_related('chapters')
     lookup_field = 'slug'
     lookup_url_kwarg = 'slug'
+
+    def get_queryset(self):
+        today = timezone.now().date()
+        return Book.objects.filter(published_date__lte=today).select_related('category').prefetch_related('chapters')
 
     def get_serializer_class(self):
         if self.request.user.is_authenticated:
