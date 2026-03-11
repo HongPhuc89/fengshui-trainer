@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { booksService } from '../services/books.service'
+import { videosService } from '../services/videos.service'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -12,6 +13,7 @@ const router = useRouter()
 const user = ref(null)
 const books = ref([])
 const recentBooks = ref([])
+const videoCourses = ref([])
 const loading = ref(true)
 
 const greeting = computed(() => {
@@ -26,13 +28,16 @@ const greeting = computed(() => {
 onMounted(async () => {
   try {
     user.value = auth.user || (await auth.fetchMe())
-    const [booksRes, recentRes] = await Promise.all([
+    const [booksRes, recentRes, videosRes] = await Promise.all([
       booksService.getBooks({ exclude_read: 'true' }).catch(() => ({ data: { results: [] } })),
       booksService.getRecentlyRead().catch(() => ({ data: [] })),
+      videosService.getVideos().catch(() => ({ data: [] })),
     ])
     const list = booksRes.data?.results ?? booksRes.data ?? []
     books.value = Array.isArray(list) ? list.slice(0, 10) : []
     recentBooks.value = Array.isArray(recentRes.data) ? recentRes.data : []
+    const vlist = videosRes.data?.results ?? videosRes.data ?? []
+    videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 10) : []
   } catch (_) {}
   finally {
     loading.value = false
@@ -53,6 +58,10 @@ function badgeLabel(book) {
 
 function goBook(slug) {
   if (slug) router.push({ name: 'BookReader', params: { slug } })
+}
+
+function goVideo(slug) {
+  if (slug) router.push({ name: 'VideoDetail', params: { slug } })
 }
 </script>
 
@@ -121,6 +130,46 @@ function goBook(slug) {
         </div>
       </div>
     </section>
+
+    <!-- Video courses -->
+    <section v-if="videoCourses.length" class="home-section">
+      <div class="home-section__head">
+        <h2 class="home-section__title home-section__title--inline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+          </svg>
+          Khóa học video
+        </h2>
+        <RouterLink to="/videos" class="home-section__link">Xem tất cả</RouterLink>
+      </div>
+      <div class="home-videos">
+        <div
+          v-for="v in videoCourses"
+          :key="v.public_id || v.slug"
+          class="home-video-card"
+          @click="goVideo(v.slug)"
+        >
+          <div class="home-video-card__thumb">
+            <img v-if="v.cover_image" :src="v.cover_image" :alt="v.title" />
+            <div v-else class="home-video-card__thumb-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28" opacity=".35">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>
+            </div>
+            <!-- play overlay -->
+            <div class="home-video-card__play">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <!-- lesson count badge -->
+            <span v-if="v.total_lessons" class="home-video-card__count">
+              {{ v.total_lessons }} bài
+            </span>
+          </div>
+          <span class="home-video-card__title">{{ v.title }}</span>
+          <span v-if="v.category" class="home-video-card__cat">{{ v.category.title }}</span>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -148,9 +197,7 @@ function goBook(slug) {
 /* Recently read overlays */
 .home-book-card__chapter-badge {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
   color: #fff;
   font-size: 0.65rem;
@@ -160,21 +207,104 @@ function goBook(slug) {
 }
 .home-book-card__play-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 38px;
-  height: 38px;
+  width: 38px; height: 38px;
   border-radius: 50%;
-  background: rgba(197, 165, 81, 0.85);
+  background: rgba(197,165,81,0.85);
   color: #1a0a00;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
 .home-recent-empty {
   color: var(--text-muted);
   font-size: 0.9rem;
   padding: var(--space-sm) 0;
+}
+
+/* ── Video course cards ────────────────────────────────────── */
+.home-videos {
+  display: flex;
+  gap: var(--space-md);
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.home-video-card {
+  flex: 0 0 180px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.home-video-card__thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-input);
+}
+.home-video-card__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+.home-video-card:hover .home-video-card__thumb img {
+  transform: scale(1.04);
+}
+.home-video-card__thumb-placeholder {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--bg-input) 0%, var(--policy-bg) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-video-card__play {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(197,165,81,0.85);
+  color: #1a0a00;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.home-video-card:hover .home-video-card__play {
+  opacity: 1;
+}
+.home-video-card__count {
+  position: absolute;
+  bottom: 5px; right: 6px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.home-video-card__title {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.home-video-card__cat {
+  font-size: 0.72rem;
+  color: var(--accent-gold);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
