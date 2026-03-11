@@ -88,3 +88,5 @@ def _save_metadata(lesson, storage, guid):
 
     if update_fields:
         lesson.save(update_fields=update_fields)
+        if 'duration_seconds' in update_fields and lesson.course_id:
+            lesson.course.recalculate_totals()

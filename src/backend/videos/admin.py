@@ -221,6 +221,8 @@ class VideoLessonAdmin(admin.ModelAdmin):
             if meta.duration_seconds:
                 lesson.duration_seconds = meta.duration_seconds
                 lesson.save(update_fields=['duration_seconds'])
+                if lesson.course_id:
+                    lesson.course.recalculate_totals()
                 msg = f'Đã cập nhật thời lượng: {meta.duration_seconds}s.'
                 if is_ajax:
                     return JsonResponse({'ok': True, 'msg': msg, 'duration_seconds': meta.duration_seconds})
@@ -346,8 +348,8 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 obj.video_url = result.video_url
                 obj.save(update_fields=['video_id', 'video_url'])
                 # Fetch duration + thumbnail after Bunny finishes transcoding
-                from .tasks import fetch_video_metadata_after_transcode
-                fetch_video_metadata_after_transcode.delay(obj.pk)
+                # from .tasks import fetch_video_metadata_after_transcode
+                # fetch_video_metadata_after_transcode.delay(obj.pk)
                 self.message_user(request, 'Video đã upload. Duration và thumbnail sẽ được cập nhật tự động sau khi Bunny transcode xong.')
             except Exception as exc:
                 self.message_user(request, f'Upload video thất bại: {exc}', level='error')

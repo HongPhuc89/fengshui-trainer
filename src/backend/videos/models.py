@@ -69,6 +69,17 @@ class VideoCourse(BaseModel):
     def __str__(self):
         return self.title
 
+    def recalculate_totals(self):
+        """Recalculate total_duration_seconds and total_lessons from current lessons."""
+        from django.db.models import Sum, Count
+        agg = self.lessons.aggregate(
+            total_dur=Sum('duration_seconds'),
+            total_cnt=Count('id'),
+        )
+        self.total_duration_seconds = agg['total_dur'] or 0
+        self.total_lessons = agg['total_cnt'] or 0
+        self.save(update_fields=['total_duration_seconds', 'total_lessons'])
+
 
 class VideoLesson(BaseModel):
     """Lesson (clip) inside a course."""
