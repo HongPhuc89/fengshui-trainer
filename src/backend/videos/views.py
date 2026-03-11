@@ -4,6 +4,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status, views
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
@@ -154,6 +155,7 @@ class VideoUploadInitView(views.APIView):
     browser can upload the file directly to Bunny (no Django proxy).
     Only available when VIDEO_STORAGE_BACKEND=bunny.
     """
+    authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAdminUser,)
 
     def post(self, request, public_id):
@@ -184,6 +186,7 @@ class VideoUploadCompleteView(views.APIView):
     video_id and video_url on the lesson.
     Body: { "guid": "<bunny-video-guid>" }
     """
+    authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAdminUser,)
 
     def post(self, request, public_id):

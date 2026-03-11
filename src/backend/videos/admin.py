@@ -10,6 +10,7 @@ from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, 
 from .storage import get_video_storage
 
 
+
 @admin.register(VideoCategory)
 class VideoCategoryAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug')
@@ -59,18 +60,9 @@ class VideoLessonAdminForm(forms.ModelForm):
             'accept': 'video/mp4,video/quicktime,video/x-matroska,video/x-msvideo,video/webm',
         }),
     )
-    # Hidden field — lets JS know the lesson's public_id without extra API calls.
-    # Populated via __init__ for existing instances; empty on the "add" form.
-    lesson_public_id = forms.CharField(widget=forms.HiddenInput(), required=False)
-
     class Meta:
         model = VideoLesson
         fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.fields['lesson_public_id'].initial = str(self.instance.public_id)
 
 
 class LessonExamInline(admin.TabularInline):
@@ -317,11 +309,16 @@ class VideoLessonAdmin(admin.ModelAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
-        # Video upload is now handled client-side via Bunny TUS direct upload
-        # (see upload_progress.js). The video_id / video_url fields are updated
-        # by VideoUploadCompleteView after the browser finishes the TUS upload.
-        # save_model only needs to persist the other lesson fields.
         super().save_model(request, obj, form, change)
+        video_file = form.cleaned_data.get('video_upload')
+        if video_file:
+            try:
+                result = get_video_storage().upload(video_file, video_file.name)
+                obj.video_id  = result.video_id
+                obj.video_url = result.video_url
+                obj.save(update_fields=['video_id', 'video_url'])
+            except Exception as exc:
+                self.message_user(request, f'Upload video thất bại: {exc}', level='error')
 
 
 @admin.register(UserVideoPurchase)

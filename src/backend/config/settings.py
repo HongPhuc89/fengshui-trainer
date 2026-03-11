@@ -181,6 +181,10 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Allow large video file uploads (up to 5 GB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024         # 10 MB threshold → use disk
+
 # Auth User Model
 AUTH_USER_MODEL = "users.User"
 
