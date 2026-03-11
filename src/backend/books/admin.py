@@ -8,11 +8,10 @@ from .models import BookCategory, Book, BookChapter, UserBookPurchase
 @admin.register(BookCategory)
 class BookCategoryAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug')
-    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ('slug',)
 
     def save_model(self, request, obj, form, change):
-        if not obj.slug:
-            obj.slug = slugify(obj.title)
+        obj.slug = slugify(obj.title)
         super().save_model(request, obj, form, change)
 
 
@@ -27,12 +26,11 @@ class BookAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_new_release', 'published_date')
     list_filter = ('is_free', 'is_new_release', 'category')
     search_fields = ('title', 'author')
-    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ('slug',)
     inlines = [BookChapterInline]
 
     def save_model(self, request, obj, form, change):
-        if not obj.slug:
-            obj.slug = slugify(obj.title)
+        obj.slug = slugify(obj.title)
         super().save_model(request, obj, form, change)
 
 
