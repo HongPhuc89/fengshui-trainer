@@ -336,6 +336,15 @@ class VideoLessonAdmin(admin.ModelAdmin):
         extra_context['import_quiz_url'] = reverse('admin:videos_videolesson_import_quiz', args=[object_id])
         extra_context['export_flashcards_template_url'] = reverse('admin:videos_videolesson_export_flashcards_template')
         extra_context['export_quiz_template_url'] = reverse('admin:videos_videolesson_export_quiz_template')
+
+        pk = int(object_id)
+        prev_obj = VideoLesson.objects.filter(pk__lt=pk).order_by('-pk').values('pk').first()
+        next_obj = VideoLesson.objects.filter(pk__gt=pk).order_by('pk').values('pk').first()
+        if prev_obj:
+            extra_context['prev_url'] = reverse('admin:videos_videolesson_change', args=[prev_obj['pk']]) + '#video-tab'
+        if next_obj:
+            extra_context['next_url'] = reverse('admin:videos_videolesson_change', args=[next_obj['pk']]) + '#video-tab'
+
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
