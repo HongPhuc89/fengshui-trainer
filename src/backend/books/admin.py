@@ -19,6 +19,8 @@ class BookChapterInline(admin.TabularInline):
     model = BookChapter
     extra = 0
     ordering = ('order',)
+    exclude = ('slug',)
+    can_delete = False
 
 
 @admin.register(Book)
@@ -44,6 +46,14 @@ class BookAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.slug = slugify(obj.title)
         super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if not obj.slug:
+                obj.slug = slugify(obj.title)
+            obj.save()
+        formset.save_m2m()
 
 
 @admin.register(BookChapter)
