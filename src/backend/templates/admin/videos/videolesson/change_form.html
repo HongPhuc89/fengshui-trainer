@@ -1,5 +1,27 @@
 {% extends "admin/change_form.html" %}
 
+{% block content_title %}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    {% if prev_url %}
+      <a href="{{ prev_url }}" title="Bài trước"
+         style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#417690;color:#fff;border-radius:4px;text-decoration:none;font-size:13px">
+        ← Trước
+      </a>
+    {% else %}
+      <span style="padding:5px 12px;background:#ccc;color:#888;border-radius:4px;font-size:13px">← Trước</span>
+    {% endif %}
+    {% if next_url %}
+      <a href="{{ next_url }}" title="Bài sau"
+         style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#417690;color:#fff;border-radius:4px;text-decoration:none;font-size:13px">
+        Sau →
+      </a>
+    {% else %}
+      <span style="padding:5px 12px;background:#ccc;color:#888;border-radius:4px;font-size:13px">Sau →</span>
+    {% endif %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
 {% block after_related_objects %}
   {% if import_flashcards_url %}
     <div class="col-12 col-lg-9">

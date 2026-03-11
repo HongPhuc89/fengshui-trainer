@@ -270,26 +270,12 @@ class BunnyVideoStorage(VideoStorageBackend):
         return VideoMetadata(duration_seconds=int(length) if length else None)
 
     def extract_thumbnail(self, video_id: str) -> bytes | None:
-        """
-        Download thumbnail from Bunny Storage API.
-        Stream thumbnails are stored in the connected storage zone at:
-          /{videoId}/thumbnail.jpg
-        """
+        """Download thumbnail from Bunny CDN with Referer header."""
+        thumbnail_url = f'https://{self._cdn_hostname}/{video_id}/thumbnail.jpg'
         try:
-            # Get thumbnailFileName from Stream API
-            meta_resp = http.get(
-                f'{self._API_BASE}/{self._library_id}/videos/{video_id}',
-                headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
-                timeout=30,
-            )
-            meta_resp.raise_for_status()
-            thumbnail_filename = meta_resp.json().get('thumbnailFileName') or 'thumbnail.jpg'
-
-            # Download from Bunny Storage API (authenticated, no CDN token needed)
-            storage_url = f'https://{self._storage_cdn_hostname}/{self._storage_zone}/{video_id}/{thumbnail_filename}'
             resp = http.get(
-                storage_url,
-                headers={'AccessKey': self._storage_api_key},
+                thumbnail_url,
+                headers={'Referer': 'https://dash.bunny.net/'},
                 timeout=30,
             )
             resp.raise_for_status()
