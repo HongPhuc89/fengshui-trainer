@@ -7,6 +7,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    resolve: {
+      alias: {
+        'vue-i18n': 'vue-i18n/dist/vue-i18n.esm-bundler.js',
+      },
+    },
     server: {
       proxy: {
         '/api': { target: backendUrl, changeOrigin: true },
