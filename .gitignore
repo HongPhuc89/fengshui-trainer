@@ -31,6 +31,7 @@ staticfiles/
 
 # Environments
 .env
+.env_prod
 .venv
 env/
 venv/
@@ -53,3 +54,4 @@ logs/
 *.log
 inventory/
 data/
+gunicorn.ctl

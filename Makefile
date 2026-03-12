@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build pre-commit-install pre-commit-run
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -88,3 +88,6 @@ frontend-dev: ## Run frontend dev server (Vite, proxy /api to backend)
 
 frontend-build: ## Build frontend for production
 	cd $(FRONTEND) && npm run build
+
+frontend-deploy: ## Build and deploy frontend to Firebase Hosting
+	cd $(FRONTEND) && npm run deploy

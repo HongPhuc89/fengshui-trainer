@@ -9,7 +9,7 @@ WorkingDirectory=/srv/fengshui/src/backend
 EnvironmentFile=/srv/fengshui/src/backend/.env
 ExecStart=/srv/fengshui/.venv/bin/celery \
     -A config worker \
-    --loglevel=info \
+    -l info \
     --logfile=/var/log/fengshui/celery-worker.log
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure

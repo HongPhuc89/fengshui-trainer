@@ -9,9 +9,8 @@ WorkingDirectory=/srv/fengshui/src/backend
 EnvironmentFile=/srv/fengshui/src/backend/.env
 ExecStart=/srv/fengshui/.venv/bin/celery \
     -A config beat \
-    --loglevel=info \
-    --logfile=/var/log/fengshui/celery-beat.log \
-    --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    -l info \
+    --logfile=/var/log/fengshui/celery-beat.log
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5
