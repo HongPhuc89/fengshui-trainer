@@ -10,7 +10,6 @@ from books.models import Book, UserBookPurchase
 from videos.models import VideoCourse, UserVideoPurchase
 from .models import Wallet, WalletTransaction
 from .serializers import PurchaseBookSerializer, PurchaseVideoSerializer, SubscribeVipSerializer
-from .views import get_or_create_wallet
 
 # VIP subscription: LT per month (configurable)
 VIP_PRICE_PER_MONTH = 500
@@ -43,15 +42,17 @@ class PurchaseBookView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        wallet = get_or_create_wallet(user)
         price = 0 if book.is_free else book.price_lt
-        if wallet.balance < price:
-            return Response(
-                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         with transaction.atomic():
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(
+                user=user, defaults={'balance': 0, 'total_recharged': 0}
+            )
+            if wallet.balance < price:
+                return Response(
+                    {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             wallet.balance -= price
             wallet.save(update_fields=['balance', 'updated_at'])
             balance_after = wallet.balance
@@ -111,15 +112,17 @@ class PurchaseVideoView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        wallet = get_or_create_wallet(user)
         price = 0 if video.is_free else video.price_lt
-        if wallet.balance < price:
-            return Response(
-                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         with transaction.atomic():
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(
+                user=user, defaults={'balance': 0, 'total_recharged': 0}
+            )
+            if wallet.balance < price:
+                return Response(
+                    {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': price},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             wallet.balance -= price
             wallet.save(update_fields=['balance', 'updated_at'])
             balance_after = wallet.balance
@@ -167,15 +170,16 @@ class SubscribeVipView(views.APIView):
 
         total_price = VIP_PRICE_PER_MONTH * months
         user = request.user
-        wallet = get_or_create_wallet(user)
-
-        if wallet.balance < total_price:
-            return Response(
-                {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': total_price},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         with transaction.atomic():
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(
+                user=user, defaults={'balance': 0, 'total_recharged': 0}
+            )
+            if wallet.balance < total_price:
+                return Response(
+                    {'detail': 'INSUFFICIENT_FUNDS', 'balance': wallet.balance, 'required': total_price},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             wallet.balance -= total_price
             wallet.save(update_fields=['balance', 'updated_at'])
             balance_after = wallet.balance

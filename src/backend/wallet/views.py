@@ -37,25 +37,34 @@ class RedeemView(views.APIView):
         # Stored format is XXXX-XXXX-XXXX (12 chars)
         formatted = f"{raw[:4]}-{raw[4:8]}-{raw[8:12]}" if len(raw) >= 12 else raw
 
-        voucher = Voucher.objects.filter(code=formatted).first()
-        if not voucher:
+        # Pre-check without lock (fast path for obviously invalid codes)
+        if not Voucher.objects.filter(code=formatted).exists():
             return Response(
                 {'detail': 'Invalid or expired voucher code.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if voucher.is_used:
-            return Response(
-                {'detail': 'This voucher has already been used.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if voucher.expires_at and voucher.expires_at < timezone.now():
-            return Response(
-                {'detail': 'This voucher has expired.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         with transaction.atomic():
-            wallet = get_or_create_wallet(request.user)
+            # Re-fetch voucher with row lock to prevent concurrent double-redemption
+            voucher = Voucher.objects.select_for_update().filter(code=formatted).first()
+            if not voucher:
+                return Response(
+                    {'detail': 'Invalid or expired voucher code.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if voucher.is_used:
+                return Response(
+                    {'detail': 'This voucher has already been used.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if voucher.expires_at and voucher.expires_at < timezone.now():
+                return Response(
+                    {'detail': 'This voucher has expired.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(
+                user=request.user, defaults={'balance': 0, 'total_recharged': 0}
+            )
             voucher.is_used = True
             voucher.used_by = request.user
             voucher.used_at = timezone.now()
