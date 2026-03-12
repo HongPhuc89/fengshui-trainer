@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { booksService } from '../services/books.service'
 import GemIcon from '../components/icons/GemIcon.vue'
+import LockIcon from '../components/icons/LockIcon.vue'
+import ScrollIcon from '../components/icons/ScrollIcon.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -249,7 +251,8 @@ function coverGradient(book) {
               class="books__status"
               :class="book.is_free ? 'books__status--free' : 'books__status--paid'"
             >
-              <span class="books__status-dot"></span>
+              <ScrollIcon v-if="book.is_free" :size="11" style="flex-shrink:0" />
+              <LockIcon v-else :size="11" style="flex-shrink:0" />
               {{ book.is_free ? t('home.badge.free') : t('home.badge.paid') }}
             </span>
           </div>
