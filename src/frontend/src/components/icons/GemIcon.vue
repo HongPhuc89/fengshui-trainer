@@ -1,13 +1,14 @@
 <script setup>
 defineProps({
   size: { type: [Number, String], default: 16 },
+  color: { type: String, default: '#29b6f6' },
 })
 </script>
 
 <template>
   <svg
     viewBox="0 0 24 24"
-    fill="currentColor"
+    :fill="color"
     :width="size"
     :height="size"
     aria-hidden="true"
