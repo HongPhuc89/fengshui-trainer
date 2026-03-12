@@ -204,8 +204,8 @@ function coverGradient(book) {
         class="books__card"
         role="button"
         tabindex="0"
-        @click="router.push({ name: 'BookReader', params: { slug: book.slug } })"
-        @keydown.enter="router.push({ name: 'BookReader', params: { slug: book.slug } })"
+        @click="router.push({ name: 'BookDetail', params: { slug: book.slug } })"
+        @keydown.enter="router.push({ name: 'BookDetail', params: { slug: book.slug } })"
       >
         <!-- Cover -->
         <div

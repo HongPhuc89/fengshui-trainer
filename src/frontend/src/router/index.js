@@ -12,6 +12,7 @@ const routes = [
       { path: '', name: 'Home', component: () => import('../views/HomeView.vue') },
       { path: 'profile', name: 'Profile', component: () => import('../views/ProfileView.vue') },
       { path: 'books', name: 'Books', component: () => import('../views/BooksView.vue') },
+      { path: 'books/:slug', name: 'BookDetail', component: () => import('../views/BookDetailView.vue') },
       { path: 'store', name: 'Store', component: () => import('../views/StoreView.vue') },
       { path: 'videos', name: 'Videos', component: () => import('../views/VideosView.vue') },
       { path: 'videos/:slug', name: 'VideoDetail', component: () => import('../views/VideoDetailView.vue') },

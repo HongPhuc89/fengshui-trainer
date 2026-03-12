@@ -32,4 +32,8 @@ export const booksService = {
   getWatermarkConfig(bookSlug, order) {
     return api.get(`books/${bookSlug}/chapters/${order}/watermark-config/`)
   },
+
+  purchaseBook(bookId) {
+    return api.post('payments/purchase-book/', { book_id: bookId })
+  },
 }

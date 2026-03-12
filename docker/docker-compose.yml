@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      # - db
       - redis
 
   celery_worker:
@@ -40,16 +40,16 @@ services:
       - web
       - redis
 
-  db:
-    image: postgres:17
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=fengshui_dev
-    ports:
-      - "5489:5432"
+  # db:
+  #   image: postgres:17
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=fengshui_dev
+  #   ports:
+  #     - "5489:5432"
 
   redis:
     image: redis:8.6-alpine

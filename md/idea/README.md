@@ -23,6 +23,7 @@ Code
 | File | Tiêu đề | Ưu tiên | Effort | Status |
 |------|---------|---------|--------|--------|
 | [modern-flashcard-ui.md](modern-flashcard-ui.md) | Modern Flashcard UI — Web & Mobile | 🟡 Medium | M | Idea |
+| [book-purchase-flow.md](book-purchase-flow.md) | Book Purchase Flow — Mua Sách & Mở Chapter | 🔴 High | M | Idea |
 
 ---
 

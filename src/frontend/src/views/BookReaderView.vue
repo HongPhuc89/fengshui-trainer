@@ -101,7 +101,10 @@ onMounted(async () => {
 
     let startChapter = 1
     let startPage = 1
-    if (progressRes.status === 'fulfilled') {
+    const queryChapter = parseInt(route.query.chapter)
+    if (!isNaN(queryChapter) && queryChapter >= 1) {
+      startChapter = queryChapter
+    } else if (progressRes.status === 'fulfilled') {
       startChapter = progressRes.value.data.chapter_order ?? 1
       startPage = progressRes.value.data.current_page ?? 1
     }

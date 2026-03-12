@@ -84,7 +84,7 @@ function goRecentVideo(v) {
     <p class="home-view__motto">{{ t('home.motto') }}</p>
 
     <!-- Recently read / watched -->
-    <section class="home-section">
+    <section v-if="recentBooks.length || recentVideos.length" class="home-section">
       <h2 class="home-section__title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         {{ t('home.continueStudy.title') }}
@@ -129,9 +129,6 @@ function goRecentVideo(v) {
           </div>
           <span class="home-book-card__title">{{ b.title }}</span>
         </div>
-      </div>
-      <div v-else-if="!loading" class="home-recent-empty">
-        <p>{{ t('home.continueStudy.empty') }}</p>
       </div>
     </section>
 
