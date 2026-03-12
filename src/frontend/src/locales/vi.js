@@ -61,8 +61,8 @@ export default {
       error: 'Đăng ký thất bại. Vui lòng thử lại.',
     },
     policy: {
-      title: 'Chính Sách Một Thiết Bị',
-      body: 'Vì lý do bảo mật, tài khoản của bạn chỉ có thể hoạt động trên một thiết bị mà bạn đã đăng ký.',
+      title: 'Chính Sách Bảo Mật',
+      body: 'Vì lý do bảo mật, mỗi lần đăng nhập sẽ tự động đăng xuất các phiên khác. Tài khoản hỗ trợ tối đa 3 thiết bị.',
     },
     deviceLock: {
       title: 'Phát Hiện Thiết Bị Mới',

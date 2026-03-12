@@ -61,8 +61,8 @@ export default {
             error: 'Registration failed. Please try again.',
         },
         policy: {
-            title: 'One Device Policy',
-            body: 'For security, your account can only be active on one device at a time. Logging in here will disconnect other sessions.',
+            title: 'Security Policy',
+            body: 'For security, each login will automatically sign out other active sessions. Up to 3 devices are supported per account.',
         },
         deviceLock: {
             title: 'New Device Detected',

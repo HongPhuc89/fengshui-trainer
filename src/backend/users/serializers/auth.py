@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from django.utils import timezone
-from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from ..models import User, UserDevice
 from ..utils import get_client_ip, parse_device_name
+
+MAX_DEVICES = 3
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -44,7 +45,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=email,
             email=email,
             password=password,
-            is_device_locked=False,
         )
 
         UserDevice.objects.create(
@@ -66,13 +66,11 @@ class CustomLoginSerializer(serializers.Serializer):
     device_id = serializers.CharField(required=True, write_only=True)
     device_name = serializers.CharField(required=False, write_only=True, allow_blank=True)
     device_type = serializers.ChoiceField(required=True, write_only=True, choices=UserDevice.DEVICE_TYPE_CHOICES)
-    reset_device = serializers.BooleanField(required=False, default=False, write_only=True)
 
     def validate(self, attrs):
         email = attrs.get('email', '').lower()
         password = attrs.get('password')
         current_device_id = attrs.get('device_id')
-        reset_device = attrs.get('reset_device')
         device_type = attrs.get('device_type')
 
         request = self.context.get('request')
@@ -80,36 +78,16 @@ class CustomLoginSerializer(serializers.Serializer):
         device_name = parse_device_name(ua_string)
         client_ip = get_client_ip(request) if request else None
 
-        user = authenticate(request=self.context.get('request'), username=email, password=password)
+        user = authenticate(request=request, username=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
-
         if not user.is_active:
             raise serializers.ValidationError({"detail": "User account is disabled."})
 
-        # Device locking logic
-        bound_device = user.devices.filter(is_primary_bound=True, status='ACTIVE').first()
-
-        if user.is_device_locked and bound_device:
-            if bound_device.device_id != current_device_id:
-                if not reset_device:
-                    raise serializers.ValidationError({
-                        "error": "DEVICE_LOCKED",
-                        "can_reset": timezone.now() >= (user.last_device_reset + timedelta(days=365)),
-                        "last_reset_date": user.last_device_reset.isoformat(),
-                        "detail": "This account is locked to another device."
-                    })
-                else:
-                    if timezone.now() < (user.last_device_reset + timedelta(days=365)):
-                        raise serializers.ValidationError({"detail": "Cannot reset device yet. 365-day cooldown active."})
-
-                    bound_device.status = 'REVOKED'
-                    bound_device.is_primary_bound = False
-                    bound_device.save()
-
-                    user.last_device_reset = timezone.now()
-                    user.save()
-                    bound_device = None
+        # Check device limit before creating a new record
+        is_new_device = not user.devices.filter(device_id=current_device_id).exists()
+        if is_new_device and user.devices.count() >= MAX_DEVICES:
+            raise serializers.ValidationError({"detail": f"Tài khoản đã đăng ký tối đa {MAX_DEVICES} thiết bị."})
 
         device, created = UserDevice.objects.get_or_create(
             user=user,
@@ -119,26 +97,29 @@ class CustomLoginSerializer(serializers.Serializer):
                 'device_name': device_name,
                 'user_agent': ua_string,
                 'last_ip': client_ip,
-                'is_primary_bound': user.devices.filter(is_primary_bound=True).count() == 0,
-                'status': 'ACTIVE'
+                'is_primary_bound': False,
+                'status': 'ACTIVE',
             }
         )
 
         if not created:
-            device.status = 'ACTIVE'
+            device.device_type = device_type
             device.device_name = device_name
             device.user_agent = ua_string
             device.last_ip = client_ip
-            device.last_active = timezone.now()
-            if user.devices.filter(is_primary_bound=True, status='ACTIVE').count() == 0:
-                device.is_primary_bound = True
+            device.status = 'ACTIVE'
             device.save()
 
-        if device.is_primary_bound and not user.is_device_locked:
-            user.is_device_locked = True
-            user.save()
+        # Blacklist all outstanding tokens → logout all other active sessions
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
 
+        # Mark all other devices as REVOKED so DeviceJWTAuthentication rejects their tokens
+        user.devices.exclude(device_id=current_device_id).update(status='REVOKED')
+
+        # Issue new token with device_id claim embedded
         refresh = RefreshToken.for_user(user)
+        refresh['device_id'] = current_device_id
         return {
             'user': user,
             'refresh': str(refresh),

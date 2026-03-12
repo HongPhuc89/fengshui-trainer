@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
@@ -10,8 +10,6 @@ import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
 import PolicyBox from '../components/auth/PolicyBox.vue'
 import AuthLink from '../components/auth/AuthLink.vue'
-import DeviceLockModal from '../components/auth/DeviceLockModal.vue'
-
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
@@ -23,7 +21,6 @@ const password = ref('')
 const passwordVisible = ref(false)
 const loading = ref(false)
 const error = ref('')
-const deviceLock = ref(null) // { can_reset, last_reset_date }
 
 async function submit() {
   error.value = ''
@@ -44,45 +41,13 @@ async function submit() {
     router.push(redirect)
   } catch (e) {
     const res = e.response
-    if (res?.status === 400 && res?.data?.error === 'DEVICE_LOCKED') {
-      deviceLock.value = {
-        can_reset: res.data.can_reset,
-        last_reset_date: res.data.last_reset_date,
-      }
-      error.value = ''
-      return
-    }
     error.value = res?.data?.detail || res?.data?.email?.[0] || t('auth.login.errorInvalid')
   } finally {
     loading.value = false
   }
 }
 
-async function confirmDeviceReset() {
-  if (!deviceLock.value?.can_reset) return
-  loading.value = true
-  error.value = ''
-  try {
-    const { data } = await authService.loginWithDeviceReset(
-      email.value.trim(),
-      password.value,
-      deviceId.value || 'web_unknown',
-    )
-    auth.setTokens({ access: data.access, refresh: data.refresh })
-    auth.setUser(data.user)
-    deviceLock.value = null
-    router.push(route.query.redirect || '/')
-  } catch (e) {
-    error.value = e.response?.data?.detail || t('auth.login.errorInvalid')
-  } finally {
-    loading.value = false
-  }
-}
 
-function closeDeviceLockModal() {
-  deviceLock.value = null
-  error.value = t('auth.login.errorDeviceLocked')
-}
 </script>
 
 <template>
@@ -116,13 +81,6 @@ function closeDeviceLockModal() {
     </PolicyBox>
     <AuthLink to="/auth/register" :prefix="t('auth.login.noAccount')">{{ t('auth.login.registerLink') }}</AuthLink>
 
-    <DeviceLockModal
-      v-if="deviceLock"
-      :can-reset="deviceLock.can_reset"
-      :last-reset-date="deviceLock.last_reset_date"
-      @confirm="confirmDeviceReset"
-      @close="closeDeviceLockModal"
-    />
   </div>
 </template>
 
