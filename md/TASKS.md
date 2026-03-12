@@ -2,8 +2,8 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.4
-- **Last Updated**: 2026-03-06
+- **Version**: 1.5
+- **Last Updated**: 2026-03-12
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
 ---
@@ -27,7 +27,7 @@
 | 9 | [feature-9-detail-design.md](design/feature-9-detail-design.md) | Training Architecture (TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz) | ✅ |
 | 10 | [feature-10-detail-design.md](design/feature-10-detail-design.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
 | 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
-| 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | 🔲 Pending |
+| 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
 
 ---
 
@@ -183,27 +183,30 @@
   - [x] Nút đăng xuất
   - [ ] Avatar section (upload + crop với `vue-advanced-cropper`) ← cần `POST /api/users/me/avatar/` (BE chưa có)
 
-- [ ] **Backend**: `POST /api/users/me/avatar/` — nhận file, Pillow resize 400×400, lưu, trả `avatar_url`
+- [x] **Backend**: `POST /api/users/me/avatar/` — nhận file, Pillow resize 400×400, lưu, trả `avatar_url` ✅ (AvatarUploadView, validate JPEG/PNG/WEBP, max 5MB)
 
 ---
 
-### F-C: Home Page 🟡
+### F-C: Home Page ✅ COMPLETE
 
-- [🟡] **HomeView.vue** — 180 lines, có greeting + books section từ API:
-  - [x] Greeting với tên user
-  - [x] Section "Sách" từ API
-  - [ ] Section "Video khóa học" từ API
-  - [ ] Section "Luyện tập hôm nay"
-  - [ ] Navigation bottom bar hoàn chỉnh
-  - [ ] Loading skeletons + error handling đầy đủ
+- [x] **HomeView.vue** — 340 lines, đầy đủ:
+  - [x] Greeting với tên user (time-aware) + motto
+  - [x] Section "Sách mới" từ API (card grid với badge free/VIP/premium)
+  - [x] Section "Video khóa học" từ API (thumbnail, title, category, lesson count)
+  - [x] Section "Đọc/Xem gần đây" (recent books + videos với resume overlay)
+  - [x] Navigation bottom bar (5 tabs: Home/Books/Store/Videos/Profile via BottomNav.vue)
 
 ---
 
 ### F-D: Books Module (Web) ✅
 
-- [x] **BooksView.vue** — 629 lines, danh sách sách với filter theo category, search, API thật
-- [x] **BookReaderView.vue** — 986 lines, PDF viewer, watermark, chapter navigation, reading progress
-- [ ] BookDetailView.vue (nút Mua → `POST /api/payments/purchase-book/`, trạng thái Demo/VIP/Đã mua) ← cần verify
+- [x] **BooksView.vue** — 633 lines, danh sách sách với filter theo category, search, API thật
+- [x] **BookReaderView.vue** — 995 lines, PDF viewer, watermark, chapter navigation, reading progress
+- [x] **BookDetailView.vue** — 722 lines, đầy đủ:
+  - [x] Nút mua "Mở khóa với X Linh Thạch" (GemIcon)
+  - [x] Purchase modal (title, price, balance, kiểm tra đủ tiền, redirect Store nếu thiếu)
+  - [x] Chapter list với access control (lock icon, demo badge, check icon)
+  - [x] Tích hợp `booksService.purchaseBook()` + error handling
 
 ---
 
@@ -232,34 +235,35 @@
 
 ---
 
-### F-K: Modern Flashcard UI (Feature 12) 🔲 NOT STARTED
+### F-K: Modern Flashcard UI (Feature 12) ✅ V1 + V1.5 COMPLETE
 
-> **Design doc**: `md/design/feature-12-detail-design.md` (cần tạo)
+> **Design doc**: `md/design/feature-12-detail-design.md` ✅ (817 lines)
 > **Idea doc**: `md/idea/modern-flashcard-ui.md`
-> **Scope**: Frontend only — chỉ sửa `FlashcardSession.vue` và scoped CSS, không đụng backend/API/migration
+> **Scope**: Frontend only — `FlashcardSession.vue` (532 lines) + `variables.css` + `index.html`
 
-**V1 — Low risk, high impact** (implement ngay sau khi có detail design):
-- [ ] **12.1** Progress bar thay thế dot indicators (thin 4px bar, accent-gold, hiển thị "5/20")
-- [ ] **12.2** Hover state rõ ràng cho card trên desktop (box-shadow mở rộng + translateY -4px)
-- [ ] **12.3** Back face có subtle background khác front face (gold tint hoặc tông nhạt hơn)
-- [ ] **12.4** Keyboard shortcuts: Space/Enter lật thẻ, ← → navigate (bind khi component mounted, unbind khi unmount)
-- [ ] **12.5** Swipe UP = flip card (bổ sung `touchStartY` vào touch handler hiện tại, guard `preventDefault` đúng)
+**V1 — ✅ SHIPPED** (`FlashcardSession.vue`):
+- [x] **12.1** Progress bar 4px gold, animated, hiển thị "X / Y" (thay dot indicators)
+- [x] **12.2** Hover state: `translateY(-4px)` + `--shadow-card-hover` trên desktop (`@media (hover: hover)`)
+- [x] **12.3** Back face: gradient gold tint + gold left border 3px
+- [x] **12.4** Keyboard shortcuts: Space flip, ArrowLeft/ArrowRight navigate (bind onMounted, unbind onUnmounted, guard form elements)
+- [x] **12.5** Swipe UP = flip card (`deltaY < 0 && absY >= 60 && absY > absX`)
 
-**V1.5 — Desktop layout** (sau khi V1 shipped, prerequisite: resolve embedded-detection mechanism):
-- [ ] **12.6** Split-panel desktop layout khi `!embedded && width >= 768px`: cột trái card (60%), cột phải card list scrollable (40%)
-- [ ] **12.7** Card list panel: số thứ tự + category badge only (không hiển thị front text), card hiện tại highlighted (accent-gold border), click để jump
+**V1.5 — ✅ SHIPPED** (split-panel desktop layout):
+- [x] **12.6** Split-panel `!embedded && windowWidth >= 768px`: 60/40 grid (card | card list)
+- [x] **12.7** Card list panel: index + category badge only, current card gold border, click to jump, seen cards faded
+- [x] Keyboard hint bar hiển thị trong split-panel mode
+- [x] Window resize listener (onMounted / onUnmounted)
+
+**Font & CSS (prerequisites — ✅ DONE):**
+- [x] Noto Serif SC loaded via Google Fonts CDN (`index.html`)
+- [x] `--font-cjk` CSS variable + `--shadow-card-hover` / `--shadow-card-base` (`variables.css`)
+- [x] SVG icons thay emoji (checkmark, shuffle)
 
 **V2 — Defer** (cần quyết định image_url backend trước):
-- [ ] Card stack visual (pseudo-elements peeking effect) ← V2
-- [ ] Swipe animation slide-out/in (Vue `<Transition>`) ← V2
-- [ ] Image/diagram support (markdown parse hoặc `image_url` field) ← V2, cần BE nếu dùng Option B
-- [ ] Completion screen cải tiến (hiển thị lesson/chapter name) ← V2
-
-**Điều kiện tiến tới detail design (F-K V1):**
-- [x] PO approved V1 scope (2026-03-06)
-- [ ] Quyết định font Hán tự: system-ui đủ dùng hay cần load Noto Serif SC?
-- [ ] Xác nhận emoji policy cho completion screen
-- [ ] Detail design doc tạo tại `md/design/feature-12-detail-design.md`
+- [ ] Card stack visual (pseudo-elements peeking effect)
+- [ ] Swipe animation slide-out/in (Vue `<Transition>`)
+- [ ] Image/diagram support (`image_url` field — cần BE)
+- [ ] Completion screen: hiển thị lesson/chapter name
 
 ---
 
@@ -345,9 +349,9 @@
 
 ---
 
-## Current Sprint (2026-03-06)
+## Current Sprint (2026-03-12)
 
-**Branch**: `feature/enable-video-trainer`
+**Branch**: `main`
 
 ### Đã hoàn thành (Phase 1 Backend)
 - [x] Auth, Books, Videos, Exams, Wallet, Notifications APIs
@@ -355,25 +359,26 @@
 - [x] Simplified Flashcard (Feature 10) — bỏ SM-2
 - [x] Smart Content Import (Feature 11) — admin import từ VideoLesson/BookChapter
 - [x] Admin panel (Django Jazzmin) đầy đủ
+- [x] Avatar upload endpoint (`POST /api/users/me/avatar/`) — Pillow 400×400, validate JPEG/PNG/WEBP
 
 ### Đã hoàn thành (Phase 2 Frontend)
 - [x] Vue.js setup + Pinia + Axios + Router + i18n
 - [x] Auth flows (Login + Register + Device lock)
 - [x] StoreView.vue (Wallet + Voucher + VIP)
-- [x] BooksView.vue + BookReaderView.vue
+- [x] BooksView.vue + BookReaderView.vue + BookDetailView.vue (purchase modal)
 - [x] VideosView.vue + VideoDetailView.vue + VideoPlayerView.vue
-- [x] TrainingView.vue + FlashcardSession.vue + QuizTab
-- [x] ProfileView.vue (phần lớn — trừ avatar upload)
+- [x] TrainingView.vue + FlashcardSession.vue (Feature 12 V1+V1.5) + QuizTab
+- [x] HomeView.vue đầy đủ (greeting, recent content, books, videos, bottom nav)
+- [x] ProfileView.vue (phần lớn — trừ avatar crop modal)
 - [x] Tất cả services: auth, wallet, books, videos, training, exams, user
 
 ### Còn lại (theo thứ tự ưu tiên)
-1. **HomeView.vue** — thêm section video, practice, hoàn thiện nav
-2. **Avatar upload** — BE: `POST /api/users/me/avatar/` + FE: crop modal
-3. **BookDetailView.vue** — verify nút Mua, trạng thái access
-4. **notifications.service.js** + NotificationsView.vue
-5. **UX polish** — toast errors, loading skeletons, empty states, responsive check
-6. **Watermark composable** — dùng cho cả sách và video player
-7. Purchase confirmation modal + insufficient balance redirect
+1. **Avatar upload FE** — crop modal (`vue-advanced-cropper`) + `POST /api/users/me/avatar/`
+2. **notifications.service.js** + NotificationsView.vue + badge unread trên nav
+3. **UX polish** — toast errors, loading skeletons, empty states, responsive check (375/768/1024px)
+4. **Watermark composable** (`useWatermark.js`) — dùng cho BookReader + VideoPlayer
+5. Disable right-click + CSS screenshot prevention trên reader/player
+6. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
 
 ---
 
@@ -383,23 +388,21 @@
 - [x] Auth, Books, Videos, Exams, Wallet, Notifications APIs
 - [x] Training API (Feature 9/10)
 - [x] Admin Smart Import (Feature 11)
-- [ ] Avatar upload endpoint
+- [x] Avatar upload endpoint (`POST /api/users/me/avatar/`)
 
 ### Web Frontend
 - [x] Vue.js setup + Auth + Wallet + Store
-- [x] Books (list + reader)
+- [x] Books (list + reader + detail + purchase)
 - [x] Videos (list + detail + player + training)
-- [x] Training (flashcard + quiz)
+- [x] Training (flashcard V1+V1.5 + quiz)
+- [x] Home Page (greeting, recent, books, videos, bottom nav)
 - [x] Profile (phần lớn)
 - [x] All API services (trừ notifications)
-- [🟡] Home Page (partial — cần thêm video + practice sections)
-- [ ] Avatar upload UI (crop modal)
-- [ ] BookDetailView (verify/complete)
-- [ ] Notifications center
-- [ ] Watermark composable
-- [ ] UX polish (toast, skeletons, empty states)
-- [ ] Responsive design check
-- [ ] Purchase flows end-to-end
+- [ ] Avatar upload UI (crop modal — FE còn lại)
+- [ ] Notifications center (NotificationsView + notifications.service.js)
+- [ ] Watermark composable (`useWatermark.js`)
+- [ ] UX polish (toast, skeletons, empty states, responsive check)
+- [ ] Right-click prevention trên reader/player
 
 ---
 
@@ -407,7 +410,7 @@
 
 | Feature | Status |
 |---------|--------|
-| 1. User Management & Auth | ✅ (avatar API còn lại) |
+| 1. User Management & Auth | ✅ |
 | 2. Books Module | ✅ |
 | 3. Videos Module | ✅ (Bunny Stream prod pending) |
 | 4. Exams & Practice + Training | ✅ |
@@ -423,17 +426,17 @@
 | Feature | Status |
 |---------|--------|
 | F-A. Vue.js Setup | ✅ |
-| F-B. Auth & Profile | 🟡 (avatar upload còn lại) |
-| F-C. Home Page | 🟡 (partial, cần video + practice sections) |
+| F-B. Auth & Profile | 🟡 (avatar FE crop modal còn lại) |
+| F-C. Home Page | ✅ |
 | F-D. Books (Web) | ✅ |
 | F-E. Videos (Web) | ✅ |
 | F-F. Training/Practice (Web) | ✅ |
 | F-G. Store / Wallet (Web) | ✅ |
 | F-H. Notifications (Web) | ❌ |
 | F-I. UX & Polish | 🟡 (CSS done, toast/skeleton/responsive pending) |
-| F-J. API Services | ✅ (notifications.service.js còn lại) |
-| F-K. Modern Flashcard UI (Feature 12) | 🔲 (pending detail design) |
+| F-J. API Services | 🟡 (notifications.service.js còn lại) |
+| F-K. Modern Flashcard UI V1+V1.5 (Feature 12) | ✅ (V2 deferred) |
 
 ---
 
-*Last updated: 2026-03-06 (v1.4 — thêm Design Doc 12 (Modern Flashcard UI) + F-K task với V1/V1.5/V2 breakdown sau PO review)*
+*Last updated: 2026-03-12 (v1.5 — scan code thực tế: Feature 12 V1+V1.5 DONE, HomeView DONE, BookDetailView DONE, Avatar BE DONE, update sprint + summary)*

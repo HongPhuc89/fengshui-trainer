@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.utils.text import slugify
 
 from exams.models import Exam as ExamModel, Flashcard as FlashcardModel
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
@@ -22,7 +23,7 @@ class VideoLessonInline(admin.TabularInline):
     model = VideoLesson
     extra = 0
     ordering = ('order',)
-    fields = ('order', 'title', 'slug', 'is_free', 'duration_seconds', 'flashcard_count_display', 'has_exam_display')
+    fields = ('order', 'title', 'is_free', 'duration_seconds', 'flashcard_count_display', 'has_exam_display')
     readonly_fields = ('flashcard_count_display', 'has_exam_display')
     show_change_link = True
 
@@ -45,8 +46,37 @@ class VideoCourseAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'category', 'price_lt', 'level', 'total_lessons', 'published_date')
     list_filter = ('is_free', 'level', 'category')
     search_fields = ('title', 'instructor')
-    prepopulated_fields = {'slug': ('title',)}
     inlines = [VideoLessonInline]
+
+    class Media:
+        js = ('videos/js/auto_slug_course.js',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.slug:
+            base = slugify(obj.title, allow_unicode=False) or 'course'
+            slug = base
+            n = 1
+            while VideoCourse.objects.filter(slug=slug).exclude(pk=obj.pk).exists():
+                slug = f'{base}-{n}'
+                n += 1
+            obj.slug = slug
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if isinstance(obj, VideoLesson) and not obj.slug:
+                base = slugify(obj.title, allow_unicode=False) or 'lesson'
+                slug = base
+                n = 1
+                while VideoLesson.objects.filter(course=obj.course, slug=slug).exclude(pk=obj.pk).exists():
+                    slug = f'{base}-{n}'
+                    n += 1
+                obj.slug = slug
+            obj.save()
+        for obj in formset.deleted_objects:
+            obj.delete()
+        formset.save_m2m()
 
 
 # ── VideoLesson admin with file upload + flashcard/exam inlines ───────────────
@@ -93,12 +123,11 @@ class VideoLessonAdmin(admin.ModelAdmin):
     form = VideoLessonAdminForm
 
     class Media:
-        js = ('videos/js/upload_progress.js',)
+        js = ('videos/js/upload_progress.js', 'videos/js/auto_slug_course.js')
 
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'flashcard_count', 'has_exam', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
-    prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
     inlines = []
     change_form_template = 'admin/videos/videolesson/change_form.html'
@@ -348,6 +377,14 @@ class VideoLessonAdmin(admin.ModelAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
+        if not obj.slug:
+            base = slugify(obj.title, allow_unicode=False) or 'lesson'
+            slug = base
+            n = 1
+            while VideoLesson.objects.filter(course=obj.course, slug=slug).exclude(pk=obj.pk).exists():
+                slug = f'{base}-{n}'
+                n += 1
+            obj.slug = slug
         super().save_model(request, obj, form, change)
         video_file = form.cleaned_data.get('video_upload')
         if video_file:
