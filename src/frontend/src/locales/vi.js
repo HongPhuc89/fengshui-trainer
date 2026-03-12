@@ -99,7 +99,8 @@ export default {
       empty: 'Chưa có sách',
     },
     badge: {
-      free: 'MIỄN PHÍ',
+      free: 'TÀNG THƯ',
+      paid: 'MẬT THƯ',
       vip: 'VIP',
       premium: 'CAO CẤP',
     },
@@ -107,6 +108,7 @@ export default {
 
   books: {
     title: 'Thư Viện Sách',
+    priceLabel: 'KHAI MỞ',
   },
 
   store: {

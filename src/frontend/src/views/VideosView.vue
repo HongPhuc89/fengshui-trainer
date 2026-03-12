@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { videosService } from '../services/videos.service'
 import GemIcon from '../components/icons/GemIcon.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
 // ── State ────────────────────────────────────────────────────
 const courses = ref([])
@@ -86,7 +88,7 @@ const sortLabel = computed(() => {
 })
 
 function priceLabel(course) {
-  if (course.is_free) return 'Miễn phí'
+  if (course.is_free) return t('home.badge.free')
   return course.price_lt?.toLocaleString('vi-VN') ?? '0'
 }
 

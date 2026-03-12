@@ -56,7 +56,7 @@ function badgeType(book) {
 function badgeLabel(book) {
   if (book?.is_free) return t('home.badge.free')
   if (book?.is_vip) return t('home.badge.vip')
-  return t('home.badge.premium')
+  return t('home.badge.paid')
 }
 
 function goBook(slug) {

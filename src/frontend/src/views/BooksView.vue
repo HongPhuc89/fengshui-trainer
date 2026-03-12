@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { booksService } from '../services/books.service'
+import GemIcon from '../components/icons/GemIcon.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
 // ── State ────────────────────────────────────────────────────
 const books = ref([])
@@ -233,11 +236,9 @@ function coverGradient(book) {
 
           <div class="books__price-row">
             <div class="books__price-block">
-              <span class="books__price-label">GIÁ BÁN</span>
+              <span class="books__price-label">{{ t('books.priceLabel') }}</span>
               <div class="books__price">
-                <svg v-if="!book.is_free" viewBox="0 0 24 24" fill="var(--accent-gold)" width="13" height="13" style="flex-shrink:0">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                </svg>
+                <GemIcon v-if="!book.is_free" :size="13" style="flex-shrink:0;margin-bottom:1px" />
                 <span class="books__price-value" :class="{ 'books__price-value--free': book.is_free }">
                   {{ priceLabel(book) }}
                 </span>
@@ -249,7 +250,7 @@ function coverGradient(book) {
               :class="book.is_free ? 'books__status--free' : 'books__status--paid'"
             >
               <span class="books__status-dot"></span>
-              {{ book.is_free ? 'Miễn phí' : 'Trả phí' }}
+              {{ book.is_free ? t('home.badge.free') : t('home.badge.paid') }}
             </span>
           </div>
         </div>

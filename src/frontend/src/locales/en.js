@@ -99,7 +99,8 @@ export default {
             empty: 'No books yet',
         },
         badge: {
-            free: 'FREE',
+            free: 'TANG THU',
+            paid: 'MAT THU',
             vip: 'VIP',
             premium: 'PREMIUM',
         },
@@ -107,6 +108,7 @@ export default {
 
     books: {
         title: 'Book Library',
+        priceLabel: 'UNLOCK',
     },
 
     store: {
