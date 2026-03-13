@@ -43,11 +43,10 @@ Chỉ stage các file đã được xác nhận an toàn. Ưu tiên stage theo t
 
 Format:
 ```
-<type>: <mô tả ngắn gọn bằng tiếng Anh hoặc tiếng Việt>
+<type>: <mô tả ngắn gọn bằng tiếng Anh>
 
 <body tùy chọn — liệt kê các thay đổi quan trọng nếu cần>
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 **Commit types:**
@@ -69,7 +68,6 @@ type: mô tả
 - Chi tiết 1
 - Chi tiết 2
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -79,3 +77,4 @@ EOF
 Chạy `git status` sau commit để xác nhận thành công. Thông báo cho user kết quả (commit hash + message).
 
 **KHÔNG chạy `git push` trong bất kỳ trường hợp nào.**
+**Luôn viết bằng tiếng Anh**
