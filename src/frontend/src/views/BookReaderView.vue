@@ -451,7 +451,7 @@ function scheduleSave() {
   <div class="reader" @contextmenu.prevent>
     <!-- ── Top bar ─────────────────────────────────────── -->
     <div class="reader__topbar">
-      <button class="reader__icon-btn" @click="router.back()" aria-label="Quay lại">
+      <button class="reader__icon-btn" @click="router.push({ name: 'BookDetail', params: { slug: bookSlug } })" aria-label="Quay lại">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -573,7 +573,7 @@ function scheduleSave() {
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <p>{{ error }}</p>
-          <button class="reader__btn-back" @click="router.back()">Quay lại</button>
+          <button class="reader__btn-back" @click="router.push({ name: 'BookDetail', params: { slug: bookSlug } })">Quay lại</button>
         </div>
 
         <!-- PDF canvas: always in DOM so canvasRef is always available -->
