@@ -2,7 +2,7 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.5
+- **Version**: 1.6
 - **Last Updated**: 2026-03-13
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
@@ -159,17 +159,17 @@
 
 ---
 
-### Feature 15: Client-Side Caching 📝 (chưa implement)
-**Priority**: Medium | **Status**: 📝 Design done | **Effort**: S (~1 ngày)
+### Feature 15: Client-Side Caching ✅ COMPLETE
+**Priority**: Medium | **Status**: ✅ Implemented (commit a33ccf6) | **Effort**: S
 
-- [ ] **15.1** Cài `axios-cache-interceptor` + `localforage` (`npm install` trong `src/frontend/`)
-- [ ] **15.2** Tạo `src/api/cache-storage.js` — localforage adapter với `buildStorage()` (instance `thienthu-api-cache`)
-- [ ] **15.3** Update `src/api/client.js` — wrap `axiosInstance` với `setupCache()`, `ttl: 0` default, `methods: ['get']`, `staleIfError: 3_600_000`
-- [ ] **15.4** Update `src/services/books.service.js` — thêm `cache` option cho `getCategories` (12h), `getBooks` (1h), `getBookDetail` (1h), `getRecentlyRead` (5m)
-- [ ] **15.5** Update `src/services/videos.service.js` — thêm `cache` option cho `getCategories` (12h), `getVideos` (1h), `getVideoDetail` (1h), `getRecentlyWatched` (5m)
-- [ ] **15.6** Update `src/services/training.service.js` — thêm `cache` option cho `getTrainingByLesson` (15m), `getTrainingByChapter` (15m), `getFlashcards` (10m)
-- [ ] **15.7** Update `src/stores/auth.js` — import `api`, thêm `api.storage.clear()` vào `clearAuth()`
-- [ ] **15.8** Invalidate book/video cache sau purchase trong `BookDetailView.vue` + `VideoDetailView.vue`
+- [x] **15.1** Cài `axios-cache-interceptor` + `localforage` (`npm install` trong `src/frontend/`)
+- [x] **15.2** Tạo `src/api/cache-storage.js` — localforage adapter với `buildStorage()` (instance `thienthu-api-cache`)
+- [x] **15.3** Update `src/api/client.js` — wrap `axiosInstance` với `setupCache()`, `ttl: 0` default, `methods: ['get']`, `staleIfError: 3_600_000`
+- [x] **15.4** Update `src/services/books.service.js` — thêm `cache` option cho `getCategories` (12h), `getBooks` (1h), `getBookDetail` (1h), `getRecentlyRead` (5m)
+- [x] **15.5** Update `src/services/videos.service.js` — thêm `cache` option cho `getCategories` (12h), `getVideos` (1h), `getVideoDetail` (1h), `getRecentlyWatched` (5m)
+- [x] **15.6** Update `src/services/training.service.js` — thêm `cache` option cho `getTrainingByLesson` (15m), `getTrainingByChapter` (15m), `getFlashcards` (10m)
+- [x] **15.7** Update `src/stores/auth.js` — `clearApiCache()` trong `clearAuth()`
+- [x] **15.8** Invalidate book/video cache sau purchase trong `BookDetailView.vue` + `VideoDetailView.vue`
 - [ ] **15.9** Test: navigate Home → Books → Home không trigger network call (Network tab)
 - [ ] **15.10** Test: logout → login lại → fresh requests (cache đã clear)
 
@@ -404,7 +404,7 @@
 
 ---
 
-## Current Sprint (2026-03-12)
+## Current Sprint (2026-03-13)
 
 **Branch**: `main`
 
@@ -426,14 +426,18 @@
 - [x] HomeView.vue đầy đủ (greeting, recent content, books, videos, bottom nav)
 - [x] ProfileView.vue (phần lớn — trừ avatar crop modal)
 - [x] Tất cả services: auth, wallet, books, videos, training, exams, user
+- [x] **Feature 15** — Client-side caching (axios-cache-interceptor + localforage)
+- [x] **CORS fix** — `VITE_API_BASE_URL=` (empty) dùng Vite proxy thay vì bypass
 
 ### Còn lại (theo thứ tự ưu tiên)
 1. **Avatar upload FE** — crop modal (`vue-advanced-cropper`) + `POST /api/users/me/avatar/`
 2. **notifications.service.js** + NotificationsView.vue + badge unread trên nav
 3. **UX polish** — toast errors, loading skeletons, empty states, responsive check (375/768/1024px)
 4. **Watermark composable** (`useWatermark.js`) — dùng cho BookReader + VideoPlayer
-5. Disable right-click + CSS screenshot prevention trên reader/player
-6. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
+5. **Feature 14** — Firebase Analytics (design done, chưa implement)
+6. **Feature 13** — Content Sync commands (design done, chưa implement)
+7. Disable right-click + CSS screenshot prevention trên reader/player
+8. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
 
 ---
 
@@ -453,11 +457,13 @@
 - [x] Home Page (greeting, recent, books, videos, bottom nav)
 - [x] Profile (phần lớn)
 - [x] All API services (trừ notifications)
+- [x] Client-side caching (Feature 15)
 - [ ] Avatar upload UI (crop modal — FE còn lại)
 - [ ] Notifications center (NotificationsView + notifications.service.js)
 - [ ] Watermark composable (`useWatermark.js`)
 - [ ] UX polish (toast, skeletons, empty states, responsive check)
 - [ ] Right-click prevention trên reader/player
+- [ ] Firebase Analytics (Feature 14 — design done)
 
 ---
 
@@ -491,7 +497,10 @@
 | F-I. UX & Polish | 🟡 (CSS done, toast/skeleton/responsive pending) |
 | F-J. API Services | 🟡 (notifications.service.js còn lại) |
 | F-K. Modern Flashcard UI V1+V1.5 (Feature 12) | ✅ (V2 deferred) |
+| Feature 13. Content Sync Commands | 📝 Design done, chưa implement |
+| Feature 14. Firebase Analytics | 📝 Design done, chưa implement |
+| Feature 15. Client-Side Caching | ✅ |
 
 ---
 
-*Last updated: 2026-03-12 (v1.5 — scan code thực tế: Feature 12 V1+V1.5 DONE, HomeView DONE, BookDetailView DONE, Avatar BE DONE, update sprint + summary)*
+*Last updated: 2026-03-13 (v1.6 — Feature 15 caching DONE, CORS fix, design docs 13/14/15 added, sprint updated)*
