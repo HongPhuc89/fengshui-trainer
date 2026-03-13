@@ -31,6 +31,7 @@ const showZoom = ref(false)
 const zoomLevel = ref(1.0)
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 const canvasRef = ref(null)
+const contentAreaRef = ref(null)
 const saveTimer = ref(null)
 const renderingTask = shallowRef(null)
 const touchStartX = ref(0)
@@ -38,13 +39,29 @@ const touchStartY = ref(0)
 const progressTrackRef = ref(null)
 const dragPercent = ref(null)
 const currentChapterHasTraining = ref(false)
+const pageRendering = ref(false)
 
 // ── DRM & responsive ──────────────────────────────────────
 const isBlurred = ref(false)
 const { isLg: isDesktop } = useBreakpoint()
 
+// Re-render when content area is resized (handles initial layout + orientation change)
+let resizeObserver = null
+function setupResizeObserver() {
+  if (!contentAreaRef.value || !window.ResizeObserver) return
+  let lastW = 0, lastH = 0
+  resizeObserver = new ResizeObserver((entries) => {
+    const { width, height } = entries[0].contentRect
+    if (!pdfDoc.value) return
+    if (Math.abs(width - lastW) > 1 || Math.abs(height - lastH) > 1) {
+      lastW = width; lastH = height
+      renderPage(currentPage.value)
+    }
+  })
+  resizeObserver.observe(contentAreaRef.value)
+}
+
 // Re-render current page when switching between desktop/mobile
-// so fit-page vs fit-width mode is applied correctly
 watch(isDesktop, () => {
   if (pdfDoc.value) renderPage(currentPage.value)
 })
@@ -97,6 +114,7 @@ const watermarkBgImage = computed(() => {
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  setupResizeObserver()
 
   try {
     const [bookRes, progressRes] = await Promise.allSettled([
@@ -138,6 +156,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (saveTimer.value) clearTimeout(saveTimer.value)
   if (renderingTask.value) renderingTask.value.cancel()
+  if (resizeObserver) resizeObserver.disconnect()
   document.removeEventListener('keydown', onKeyDown)
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
@@ -165,12 +184,11 @@ async function loadChapter(order, page = 1) {
     const { file_url, page_count, has_training_set } = chapterRes.value.data
     chapterPageCount.value = page_count ?? 0
     currentChapterHasTraining.value = !!has_training_set
-    chapterLoading.value = false  // reveal canvas BEFORE rendering PDF
-    // Wait for Vue to update DOM, then one rAF to let the browser finish layout
-    // (needed for getBoundingClientRect to return correct height in fit-page mode)
+    // Canvas is always in DOM — wait for layout then render, hide loading only after done
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
     await loadPdf(file_url, page)
+    chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
     error.value = e?.message || 'Không thể tải chương.'
@@ -201,24 +219,23 @@ async function renderPage(num) {
     renderingTask.value = null
   }
 
+  pageRendering.value = true
   const page = await pdfDoc.value.getPage(num)
-  // canvasRef → .reader__canvas-wrap → .reader__content
-  const canvasWrap = canvasRef.value.parentElement
-  const contentArea = canvasWrap ? canvasWrap.parentElement : null
-  const containerWidth = contentArea ? contentArea.clientWidth : (canvasWrap ? canvasWrap.clientWidth : window.innerWidth)
   const defaultViewport = page.getViewport({ scale: 1 })
   const dpr = window.devicePixelRatio || 1
 
-  // On desktop: fit-page — measure the .reader__content height (not canvas-wrap which has auto height).
-  // On mobile: fit-width only.
-  const scaleByWidth = containerWidth / defaultViewport.width
+  // Use contentAreaRef dimensions; fallback to window so it's always > 0.
+  const el = contentAreaRef.value
+  const areaWidth = (el?.clientWidth > 0 ? el.clientWidth : null) ?? window.innerWidth
+  const areaHeight = (el?.clientHeight > 0 ? el.clientHeight : null) ?? window.innerHeight
+
   let baseScale
   if (isDesktop.value) {
-    const contentHeight = contentArea ? contentArea.getBoundingClientRect().height : 0
-    const scaleByHeight = contentHeight > 10 ? contentHeight / defaultViewport.height : scaleByWidth
+    const scaleByWidth = areaWidth / defaultViewport.width
+    const scaleByHeight = areaHeight / defaultViewport.height
     baseScale = Math.min(scaleByWidth, scaleByHeight)
   } else {
-    baseScale = scaleByWidth
+    baseScale = areaWidth / defaultViewport.width
   }
   const scale = baseScale * dpr * zoomLevel.value
   const viewport = page.getViewport({ scale })
@@ -231,8 +248,12 @@ async function renderPage(num) {
 
   const ctx = canvas.getContext('2d')
   renderingTask.value = page.render({ canvasContext: ctx, viewport })
-  await renderingTask.value.promise
-  renderingTask.value = null
+  try {
+    await renderingTask.value.promise
+  } finally {
+    renderingTask.value = null
+    pageRendering.value = false
+  }
 }
 
 // ── Navigation ────────────────────────────────────────────
@@ -534,19 +555,20 @@ function scheduleSave() {
 
       <!-- ── Main content ──────────────────────────────── -->
       <div
+        ref="contentAreaRef"
         class="reader__content"
         @touchstart.passive="onTouchStart"
         @touchend.passive="onTouchEnd"
         @click="showZoom && (showZoom = false)"
       >
-        <!-- Loading state -->
-        <div v-if="loading || chapterLoading" class="reader__loading">
+        <!-- Loading overlay: absolute, covers canvas until render is done -->
+        <div v-if="loading || chapterLoading || pageRendering" class="reader__loading reader__loading--overlay">
           <div class="reader__spinner"></div>
-          <span>{{ loading ? 'Đang tải sách...' : 'Đang tải chương...' }}</span>
+          <span>{{ loading ? 'Đang tải sách...' : chapterLoading ? 'Đang tải chương...' : '' }}</span>
         </div>
 
         <!-- Error state -->
-        <div v-else-if="error" class="reader__error">
+        <div v-if="error && !loading && !chapterLoading" class="reader__error">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
@@ -554,9 +576,8 @@ function scheduleSave() {
           <button class="reader__btn-back" @click="router.back()">Quay lại</button>
         </div>
 
-        <!-- PDF canvas -->
+        <!-- PDF canvas: always in DOM so canvasRef is always available -->
         <div
-          v-else
           class="reader__canvas-wrap"
           :class="{ 'reader__canvas-wrap--blurred': isBlurred }"
         >
@@ -807,10 +828,18 @@ function scheduleSave() {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  position: relative;
   align-items: center;
   justify-content: center;
   background: #1a2035;
   min-height: 0;
+}
+
+.reader__loading--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: #1a2035;
 }
 
 .reader__loading,
@@ -848,6 +877,7 @@ function scheduleSave() {
 
 /* ── Canvas wrapper ───────────────────────────────────────── */
 .reader__canvas-wrap {
+  margin-top: 10px;
   position: relative;
   width: 100%;
   background: #fff;
