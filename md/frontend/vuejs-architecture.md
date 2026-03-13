@@ -3,8 +3,8 @@
 ## Document Information
 - **Project**: Thiên Thư Web Application
 - **Framework**: Vue.js 3 + Vite
-- **Version**: 1.0
-- **Last Updated**: 2026-02-17
+- **Version**: 1.2
+- **Last Updated**: 2026-03-13
 
 ---
 
@@ -12,628 +12,258 @@
 
 ```
 src/
-├── main.ts
+├── main.js
 ├── App.vue
+├── i18n.js
+├── style.css
 ├── router/
-│   └── index.ts
+│   └── index.js
 ├── stores/
-│   ├── auth.ts
-│   ├── books.ts
-│   ├── videos.ts
-│   └── practice.ts
+│   └── auth.js           ← single Pinia store (auth only; no separate books/videos stores)
 ├── api/
-│   ├── client.ts
-│   ├── endpoints.ts
-│   └── interceptors.ts
-├── types/
-│   ├── user.ts
-│   ├── book.ts
-│   ├── video.ts
-│   └── practice.ts
+│   ├── client.js         ← axios + setupCache (axios-cache-interceptor)
+│   └── cache-storage.js  ← localforage adapter for cache storage
+├── services/             ← all API calls live here (not in stores)
+│   ├── auth.service.js
+│   ├── books.service.js
+│   ├── videos.service.js
+│   ├── training.service.js
+│   ├── exams.service.js
+│   ├── user.service.js
+│   └── wallet.service.js
 ├── composables/
-│   ├── useAuth.ts
-│   ├── useDevice.ts
-│   └── useWatermark.ts
+│   └── useDeviceId.js    ← FingerprintJS device ID helper
 ├── views/
-│   ├── auth/
-│   ├── books/
-│   ├── videos/
-│   ├── practice/
-│   └── profile/
+│   ├── HomeView.vue
+│   ├── LoginView.vue
+│   ├── RegisterView.vue
+│   ├── ProfileView.vue
+│   ├── BooksView.vue
+│   ├── BookDetailView.vue
+│   ├── BookReaderView.vue
+│   ├── StoreView.vue
+│   ├── VideosView.vue
+│   ├── VideoDetailView.vue
+│   ├── VideoPlayerView.vue
+│   ├── TrainingView.vue
+│   └── CommunityView.vue
 ├── components/
-│   ├── common/
-│   ├── books/
-│   ├── videos/
-│   └── practice/
-└── assets/
-    ├── styles/
-    └── images/
+│   ├── app/              ← AppHeader, BottomNav, LangSwitcher
+│   ├── auth/             ← DeviceLockModal, FormInput, PrimaryButton, etc.
+│   ├── training/         ← FlashcardSession, QuizSession, TrainingDrawer, TrainingModeSelector, ActivityCard
+│   └── video/            ← VideoPlayerArea, VideoSidebar, FlashcardTab, QuizTab, VideoTabNav, etc.
+├── layouts/
+│   ├── AppLayout.vue
+│   └── AuthLayout.vue
+├── locales/
+│   ├── en.js
+│   └── vi.js
+└── utils/
+    └── flags.js
 ```
 
 ---
 
 ## State Management (Pinia)
 
-### Auth Store
+There is **one Pinia store**: `auth.js`. There are no separate books/videos/practice stores — all data fetching is handled by the services layer directly inside views.
 
-```typescript
-// src/stores/auth.ts
-import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import type { User, LoginCredentials } from '@/types/user';
-import { authApi } from '@/api/endpoints';
+### Auth Store (`src/stores/auth.js`)
 
-export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null);
-  const accessToken = ref<string | null>(null);
-  const refreshToken = ref<string | null>(null);
-  
-  const isAuthenticated = computed(() => !!user.value);
-  const isVIP = computed(() => user.value?.userType === 'VIP');
-  
-  async function login(credentials: LoginCredentials) {
-    try {
-      const response = await authApi.login(credentials);
-      
-      user.value = response.user;
-      accessToken.value = response.tokens.access;
-      refreshToken.value = response.tokens.refresh;
-      
-      // Store tokens
-      localStorage.setItem('access_token', response.tokens.access);
-      localStorage.setItem('refresh_token', response.tokens.refresh);
-      
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-  
-  async function logout() {
-    user.value = null;
-    accessToken.value = null;
-    refreshToken.value = null;
-    
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-  }
-  
-  async function loadUser() {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-    
-    try {
-      const userData = await authApi.getCurrentUser();
-      user.value = userData;
-    } catch (error) {
-      await logout();
-    }
-  }
-  
-  return {
-    user,
-    isAuthenticated,
-    isVIP,
-    login,
-    logout,
-    loadUser,
-  };
-}, {
-  persist: true,
-});
-```
+Key responsibilities:
+- `access` / `refresh` / `user` refs, persisted to `localStorage` (keys: `access`, `refresh`, `thienthu_user`)
+- `isAuthenticated` computed: `!!access && !!user`
+- `setTokens()`, `setUser()`, `clearAuth()` — `clearAuth()` also calls `clearApiCache()` to prevent stale purchase data leaking to the next user session
+- `startAutoRefresh()` / `scheduleTokenRefresh()` — JWT expiry decoded from payload, refresh scheduled 5 min before expiry
+- `fetchMe()` — calls `authService.getMe()`, updates user ref
 
-### Books Store
-
-```typescript
-// src/stores/books.ts
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import type { Book, BookCategory } from '@/types/book';
-import { booksApi } from '@/api/endpoints';
-
-export const useBooksStore = defineStore('books', () => {
-  const books = ref<Book[]>([]);
-  const categories = ref<BookCategory[]>([]);
-  const currentBook = ref<Book | null>(null);
-  const loading = ref(false);
-  
-  async function fetchBooks(categorySlug?: string) {
-    loading.value = true;
-    try {
-      books.value = await booksApi.getBooks({ category: categorySlug });
-    } finally {
-      loading.value = false;
-    }
-  }
-  
-  async function fetchBookDetail(slug: string) {
-    loading.value = true;
-    try {
-      currentBook.value = await booksApi.getBookDetail(slug);
-      return currentBook.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-  
-  async function fetchCategories() {
-    categories.value = await booksApi.getCategories();
-  }
-  
-  return {
-    books,
-    categories,
-    currentBook,
-    loading,
-    fetchBooks,
-    fetchBookDetail,
-    fetchCategories,
-  };
-});
-```
+> Note: No `pinia-plugin-persistedstate` package — persistence is done manually via `localStorage` in store methods.
 
 ---
 
-## API Client
+## API Layer (`src/api/`)
 
-```typescript
-// src/api/client.ts
-import axios, { type AxiosInstance } from 'axios';
-import { authInterceptor, errorInterceptor } from './interceptors';
+### `client.js` — Axios + Cache wrapper
 
-class ApiClient {
-  private client: AxiosInstance;
-  
-  constructor() {
-    this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    this.client.interceptors.request.use(authInterceptor);
-    this.client.interceptors.response.use(
-      (response) => response,
-      errorInterceptor
-    );
-  }
-  
-  async get<T>(url: string, params?: any): Promise<T> {
-    const response = await this.client.get<T>(url, { params });
-    return response.data;
-  }
-  
-  async post<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.post<T>(url, data);
-    return response.data;
-  }
-  
-  async put<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.put<T>(url, data);
-    return response.data;
-  }
-  
-  async delete<T>(url: string): Promise<T> {
-    const response = await this.client.delete<T>(url);
-    return response.data;
-  }
-}
-
-export const apiClient = new ApiClient();
+```
+axios instance → setupCache(axiosInstance, { storage: localforageStorage, ttl: 0, methods: ['get'], staleIfError: 3_600_000 })
 ```
 
-### Interceptors
+- `ttl: 0` = caching is **opt-in per request** (default no cache)
+- Only GET requests are cached
+- `staleIfError: 3_600_000` — on server 5xx, serve stale cache up to 1 hour (offline resilience)
+- Request interceptor: attaches `Authorization: Bearer <token>` from `localStorage.getItem('access')`
+- Response interceptor: on 401, attempts token refresh once (`_retry` flag), then retries; on second failure dispatches `auth:logout` event
 
-```typescript
-// src/api/interceptors.ts
-import type { InternalAxiosRequestConfig, AxiosError } from 'axios';
-import { useAuthStore } from '@/stores/auth';
+### `cache-storage.js` — localforage adapter
 
-export function authInterceptor(config: InternalAxiosRequestConfig) {
-  const token = localStorage.getItem('access_token');
-  
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  
-  return config;
-}
-
-export async function errorInterceptor(error: AxiosError) {
-  if (error.response?.status === 401) {
-    // Try to refresh token
-    const refreshToken = localStorage.getItem('refresh_token');
-    
-    if (refreshToken) {
-      try {
-        const response = await axios.post('/api/auth/refresh/', {
-          refresh: refreshToken,
-        });
-        
-        localStorage.setItem('access_token', response.data.access);
-        
-        // Retry original request
-        if (error.config) {
-          error.config.headers.Authorization = `Bearer ${response.data.access}`;
-          return axios(error.config);
-        }
-      } catch (refreshError) {
-        // Refresh failed, logout
-        const authStore = useAuthStore();
-        await authStore.logout();
-        window.location.href = '/login';
-      }
-    }
-  }
-  
-  return Promise.reject(error);
-}
 ```
+localforage.createInstance({ name: 'thienthu-api-cache', storeName: 'api_cache' })
+```
+
+Implements `buildStorage({ find, set, remove })` adapter for `axios-cache-interceptor`.
+`clearApiCache()` — exported function, called by auth store on logout.
+
+### Per-service cache TTLs
+
+| Service | Method | TTL |
+|---------|--------|-----|
+| `books.service.js` | getCategories | 12h |
+| | getBooks | 1h |
+| | getBookDetail | 1h |
+| | getRecentlyRead | 5m |
+| `videos.service.js` | getCategories | 12h |
+| | getVideos | 1h |
+| | getVideoDetail | 1h |
+| | getRecentlyWatched | 5m |
+| `training.service.js` | getTrainingByLesson | 15m |
+| | getTrainingByChapter | 15m |
+| | getFlashcards | 10m |
+
+Book/video cache is invalidated after purchase in `BookDetailView.vue` / `VideoDetailView.vue`.
 
 ---
 
-## Router Configuration
+## Router Configuration (`src/router/index.js`)
 
-```typescript
-// src/router/index.ts
-import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
+All routes under `/` use `AppLayout` with `meta: { requiresAuth: true }`. Auth routes under `/auth` use `AuthLayout` with `meta: { guest: true }` (redirects to Home if already authenticated).
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'home',
-      component: () => import('@/views/HomeView.vue'),
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/auth/LoginView.vue'),
-    },
-    {
-      path: '/books',
-      name: 'books',
-      component: () => import('@/views/books/BooksListView.vue'),
-    },
-    {
-      path: '/books/:slug',
-      name: 'book-detail',
-      component: () => import('@/views/books/BookDetailView.vue'),
-    },
-    {
-      path: '/books/:slug/read/:chapter',
-      name: 'book-reader',
-      component: () => import('@/views/books/BookReaderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/videos',
-      name: 'videos',
-      component: () => import('@/views/videos/VideosListView.vue'),
-    },
-    {
-      path: '/videos/:slug',
-      name: 'video-player',
-      component: () => import('@/views/videos/VideoPlayerView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/practice',
-      name: 'practice',
-      component: () => import('@/views/practice/PracticeView.vue'),
-      meta: { requiresAuth: true },
-    },
-  ],
-});
-
-// Navigation guard
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
-  
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } });
-  } else {
-    next();
-  }
-});
-
-export default router;
 ```
+AppLayout (requiresAuth):
+  /                    → HomeView
+  /profile             → ProfileView
+  /books               → BooksView
+  /books/:slug         → BookDetailView
+  /store               → StoreView
+  /videos              → VideosView
+  /videos/:slug        → VideoDetailView
+
+Standalone (requiresAuth):
+  /videos/:slug/lessons/:lessonSlug   → VideoPlayerView
+  /books/:slug/read                   → BookReaderView
+  /training/lesson/:lessonSlug        → TrainingView
+  /training/chapter/:bookSlug/:chapterOrder → TrainingView
+
+AuthLayout (guest):
+  /auth/login          → LoginView
+  /auth/register       → RegisterView
+
+Catch-all: redirect → /
+```
+
+Navigation guard: unauthenticated → redirect to Login with `?redirect=<path>`; already-authenticated guest route → redirect to Home.
 
 ---
 
 ## Views
 
-### Book Reader View
+All views are plain `.vue` files (not TypeScript, no Vuetify components). Key views:
 
-```vue
-<!-- src/views/books/BookReaderView.vue -->
-<template>
-  <div class="book-reader">
-    <div v-if="loading" class="loading">
-      <v-progress-circular indeterminate />
-    </div>
-    
-    <div v-else-if="chapter" class="reader-content">
-      <div class="chapter-header">
-        <h1>{{ chapter.title }}</h1>
-      </div>
-      
-      <div class="chapter-body" v-html="chapter.content"></div>
-      
-      <!-- Watermark -->
-      <Watermark v-if="chapter.watermark" :config="chapter.watermark" />
-    </div>
-    
-    <div v-else class="error">
-      <p>Không thể tải nội dung</p>
-    </div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { booksApi } from '@/api/endpoints';
-import Watermark from '@/components/common/Watermark.vue';
-import type { BookChapter } from '@/types/book';
-
-const route = useRoute();
-const chapter = ref<BookChapter | null>(null);
-const loading = ref(true);
-
-onMounted(async () => {
-  try {
-    const slug = route.params.slug as string;
-    const chapterOrder = parseInt(route.params.chapter as string);
-    
-    chapter.value = await booksApi.getChapter(slug, chapterOrder);
-  } catch (error) {
-    console.error('Failed to load chapter:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-</script>
-
-<style scoped>
-.book-reader {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  position: relative;
-}
-
-.chapter-body {
-  line-height: 1.8;
-  font-size: 1.1rem;
-}
-</style>
-```
-
-### Video Player View
-
-```vue
-<!-- src/views/videos/VideoPlayerView.vue -->
-<template>
-  <div class="video-player-page">
-    <div v-if="loading" class="loading">
-      <v-progress-circular indeterminate />
-    </div>
-    
-    <div v-else-if="video" class="player-container">
-      <video
-        ref="videoElement"
-        :src="video.videoUrl"
-        controls
-        @timeupdate="handleProgress"
-        class="video-element"
-      />
-      
-      <!-- Video Watermark -->
-      <VideoWatermark v-if="video.watermark" :config="video.watermark" />
-      
-      <div class="video-info">
-        <h1>{{ video.title }}</h1>
-        <p>{{ video.description }}</p>
-        
-        <!-- Tabs -->
-        <v-tabs v-model="activeTab">
-          <v-tab value="transcript">Transcript</v-tab>
-          <v-tab value="summary">Tóm tắt</v-tab>
-          <v-tab value="quiz">Quiz</v-tab>
-        </v-tabs>
-        
-        <v-window v-model="activeTab">
-          <v-window-item value="transcript">
-            <div class="transcript">{{ video.transcript }}</div>
-          </v-window-item>
-          
-          <v-window-item value="summary">
-            <div class="summary">{{ video.summary }}</div>
-          </v-window-item>
-          
-          <v-window-item value="quiz">
-            <QuizSection :quizzes="video.quizzes" />
-          </v-window-item>
-        </v-window>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { videosApi } from '@/api/endpoints';
-import VideoWatermark from '@/components/videos/VideoWatermark.vue';
-import QuizSection from '@/components/videos/QuizSection.vue';
-import type { Video } from '@/types/video';
-
-const route = useRoute();
-const video = ref<Video | null>(null);
-const videoElement = ref<HTMLVideoElement | null>(null);
-const loading = ref(true);
-const activeTab = ref('transcript');
-
-let progressInterval: number;
-
-onMounted(async () => {
-  try {
-    const slug = route.params.slug as string;
-    video.value = await videosApi.getVideoDetail(slug);
-    
-    // Start progress tracking
-    progressInterval = setInterval(saveProgress, 10000);
-  } catch (error) {
-    console.error('Failed to load video:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-onUnmounted(() => {
-  clearInterval(progressInterval);
-  saveProgress();
-});
-
-function handleProgress() {
-  // Progress is saved periodically
-}
-
-async function saveProgress() {
-  if (!videoElement.value || !video.value) return;
-  
-  const progressSeconds = Math.floor(videoElement.value.currentTime);
-  await videosApi.updateProgress(video.value.slug, progressSeconds);
-}
-</script>
-```
+| View | Notes |
+|------|-------|
+| `HomeView.vue` | Greeting, recent books/videos, bottom nav |
+| `LoginView.vue` / `RegisterView.vue` | Device lock flow via `DeviceLockModal` |
+| `ProfileView.vue` | Name edit, wallet balance, device status; avatar upload (FE pending) |
+| `BooksView.vue` | Category filter + search |
+| `BookDetailView.vue` | Purchase modal with Linh Thạch balance check |
+| `BookReaderView.vue` | PDF viewer via `pdfjs-dist`, watermark, chapter nav, `TrainingDrawer` |
+| `StoreView.vue` | Wallet balance, voucher redeem, VIP packages, transaction history |
+| `VideosView.vue` | Category filter + search |
+| `VideoDetailView.vue` | Purchase modal, lesson list with progress |
+| `VideoPlayerView.vue` | Bunny Stream / HTML5 player, `VideoSidebar`, `FlashcardTab`, `QuizTab` |
+| `TrainingView.vue` | `TrainingModeSelector` + `FlashcardSession` + `QuizSession` (standalone) |
+| `CommunityView.vue` | Placeholder |
 
 ---
 
 ## Components
 
-### Watermark Component
+### `src/components/app/`
+- `AppHeader.vue` — top header bar
+- `BottomNav.vue` — mobile bottom navigation (5 tabs: Home / Books / Store / Videos / Profile)
+- `LangSwitcher.vue` — VI/EN language toggle
 
-```vue
-<!-- src/components/common/Watermark.vue -->
-<template>
-  <div
-    class="watermark"
-    :style="watermarkStyle"
-  >
-    {{ config.text }}
-  </div>
-</template>
+### `src/components/auth/`
+- `DeviceLockModal.vue` — device lock / reset flow UI
+- `FormInput.vue`, `PrimaryButton.vue`, `AppLogo.vue`, `AuthLink.vue`, `PolicyBox.vue`
 
-<script setup lang="ts">
-import { computed } from 'vue';
-import type { WatermarkConfig } from '@/types/common';
+### `src/components/training/`
+- `FlashcardSession.vue` — flip cards, progress bar, keyboard shortcuts, swipe-up-to-flip, split-panel desktop layout (Feature 12 V1+V1.5)
+- `QuizSession.vue` — exam-based quiz
+- `TrainingDrawer.vue` — drawer wrapper used in `BookReaderView`
+- `TrainingModeSelector.vue` — selector for Flashcard vs Quiz mode
+- `ActivityCard.vue` — card showing training activity stats
 
-const props = defineProps<{
-  config: WatermarkConfig;
-}>();
-
-const watermarkStyle = computed(() => ({
-  position: 'fixed',
-  [props.config.position.includes('top') ? 'top' : 'bottom']: '20px',
-  [props.config.position.includes('left') ? 'left' : 'right']: '20px',
-  opacity: props.config.opacity,
-  transform: `rotate(${props.config.rotation}deg)`,
-  fontSize: `${props.config.fontSize}px`,
-  color: props.config.color,
-  pointerEvents: 'none',
-  userSelect: 'none',
-  textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-  zIndex: 9999,
-}));
-</script>
-```
+### `src/components/video/`
+- `VideoPlayerArea.vue` — Bunny Stream / HTML5 player wrapper
+- `VideoSidebar.vue` — lesson list sidebar
+- `FlashcardTab.vue` — embeds `FlashcardSession` in video player tabs
+- `QuizTab.vue` — embeds `QuizSession` in video player tabs
+- `VideoTabNav.vue` — tab navigation bar (Summary / Transcript / Flashcard / Quiz)
+- `LessonListTab.vue`, `LessonMeta.vue`, `LessonNav.vue`, `LessonSummaryTab.vue`, `FullscreenIcon.vue`
 
 ---
 
 ## Composables
 
-### useDevice
+### `useDeviceId.js` (`src/composables/useDeviceId.js`)
 
-```typescript
-// src/composables/useDevice.ts
-import { ref } from 'vue';
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
-import UAParser from 'ua-parser-js';
+Uses `@fingerprintjs/fingerprintjs` to generate a stable browser device ID. Exposed to login/register forms to attach `device_id` to auth requests.
 
-export function useDevice() {
-  const deviceId = ref<string>('');
-  const deviceName = ref<string>('');
-  
-  async function getDeviceId() {
-    const fp = await FingerprintJS.load();
-    const result = await fp.get();
-    deviceId.value = result.visitorId;
-    return deviceId.value;
-  }
-  
-  function getDeviceName() {
-    const parser = new UAParser();
-    const result = parser.getResult();
-    deviceName.value = `${result.browser.name} on ${result.os.name}`;
-    return deviceName.value;
-  }
-  
-  return {
-    deviceId,
-    deviceName,
-    getDeviceId,
-    getDeviceName,
-  };
-}
-```
+> Note: `ua-parser-js` is NOT a dependency. There is no `useWatermark.js` yet (planned, not implemented).
+
+---
+
+## Internationalization
+
+`vue-i18n` v11 with two locales: `src/locales/en.js` and `src/locales/vi.js`. Config in `src/i18n.js`. Language switcher via `LangSwitcher.vue` + `flag-icons` CSS package.
 
 ---
 
 ## Environment Configuration
 
 ```env
-# .env.development
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_APP_NAME=Thiên Thư
+# .env.development (Vite proxy mode — recommended)
+VITE_API_BASE_URL=          # empty → api client falls back to /api, Vite proxy handles it
 
 # .env.production
 VITE_API_BASE_URL=https://api.fengshui-trainer.com/api
-VITE_APP_NAME=Thiên Thư
 ```
 
 ---
 
 ## Dependencies
 
+Actual `package.json` (`src/frontend/package.json`):
+
 ```json
 {
-  "name": "fengshui-trainer-web",
-  "version": "1.0.0",
+  "name": "thienthu-frontend",
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.0",
-    "pinia": "^2.1.0",
-    "pinia-plugin-persistedstate": "^3.2.0",
-    "axios": "^1.6.0",
-    "vuetify": "^3.5.0",
-    "@fingerprintjs/fingerprintjs": "^4.2.0",
-    "ua-parser-js": "^1.0.0",
-    "video.js": "^8.10.0"
+    "@fingerprintjs/fingerprintjs": "^5.0.1",
+    "axios": "^1.7.7",
+    "axios-cache-interceptor": "^1.12.0",
+    "flag-icons": "^7.5.0",
+    "localforage": "^1.10.0",
+    "pdfjs-dist": "^4.10.38",
+    "pinia": "^2.2.4",
+    "vue": "^3.5.25",
+    "vue-advanced-cropper": "^2.8.9",
+    "vue-i18n": "^11.2.8",
+    "vue-router": "^4.4.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
-    "typescript": "^5.3.0",
-    "vite": "^5.0.0",
-    "vitest": "^1.2.0",
-    "@vue/test-utils": "^2.4.0"
+    "@vitejs/plugin-vue": "^6.0.2",
+    "prettier": "^3.3.3",
+    "vite": "^7.3.1"
   }
 }
 ```
+
+**Notable differences from original design:**
+- No TypeScript, no Vuetify, no video.js, no pinia-plugin-persistedstate, no ua-parser-js
+- Added: `axios-cache-interceptor` + `localforage` (client-side caching, Feature 15)
+- Added: `pdfjs-dist` (PDF reader in BookReaderView)
+- Added: `vue-i18n` + `flag-icons` (i18n, VI/EN)
+- Added: `vue-advanced-cropper` (avatar upload modal — FE implementation pending)
+- `@fingerprintjs/fingerprintjs` upgraded to v5 (was v4 in original design)

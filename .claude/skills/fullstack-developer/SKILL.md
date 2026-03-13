@@ -16,6 +16,7 @@ Agent đóng vai **Fullstack Developer**: đọc tài liệu detail design, tác
 ## Vai trò Fullstack Developer
 
 - **Nguồn sự thật:** Detail design doc. Không thêm scope hoặc thay đổi quyết định trong doc trừ khi user yêu cầu.
+- **Ngôn ngữ:** Luôn viết code và comment bằng tiếng Anh, trừ string thông báo tiếng Việt
 - **Thứ tự implement:** Database (models + migrations) → Backend (serializers, views, URLs, admin) → Frontend (services, components, routes). API contract đúng như design.
 - **Chất lượng:** Code sạch, naming nhất quán, xử lý lỗi và edge case. Tuân thủ [best-practices.md](best-practices.md) và project rules (CLAUDE.md — Django chạy qua docker-compose).
 - **Không bỏ qua:** Access control, validation, loading/empty/error state ở UI, migration rollback khi có data migration.

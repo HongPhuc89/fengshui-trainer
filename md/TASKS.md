@@ -219,6 +219,7 @@
 - [x] Device fingerprinting (`composables/useDeviceId.js`)
 - [x] Language support (VI + EN)
 - [x] Auth store (Pinia)
+- [x] `axios-cache-interceptor` + `localforage` installed (Feature 15 caching layer)
 - [ ] Watermark composable (`composables/useWatermark.js`) ← còn lại
 
 ---
@@ -354,9 +355,9 @@
 
 - [x] `auth.service.js` — login, register, refresh token
 - [x] `wallet.service.js` — balance, transactions, voucher redeem
-- [x] `books.service.js` — getCategories, getBooks, getBookDetail, getChapter, purchaseBook
-- [x] `videos.service.js` — getVideos, getVideoDetail, getLesson, updateProgress, purchaseVideo
-- [x] `training.service.js` — getTrainingByLesson/Chapter, getFlashcards, getExam
+- [x] `books.service.js` — getCategories (cache 12h), getBooks (cache 1h), getBookDetail (cache 1h), getChapter, getRecentlyRead (cache 5m), purchaseBook
+- [x] `videos.service.js` — getVideos (cache 1h), getVideoDetail (cache 1h), getLesson, getCategories (cache 12h), getRecentlyWatched (cache 5m), updateProgress, purchaseVideo
+- [x] `training.service.js` — getTrainingByLesson (cache 15m), getTrainingByChapter (cache 15m), getFlashcards (cache 10m), getExam
 - [x] `exams.service.js` — submitExam
 - [x] `user.service.js` — getProfile, updateProfile, getDeviceStatus
 - [ ] `notifications.service.js` — getNotifications, markRead, markAllRead

@@ -2,9 +2,9 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.0
-- **Last Updated**: 2026-02-16
-- **Status**: Design Phase
+- **Version**: 1.1
+- **Last Updated**: 2026-03-13
+- **Status**: Phase 1 Backend Complete | Phase 2 Web MVP In Progress
 
 ---
 
@@ -40,17 +40,21 @@ Key Packages:
 
 #### Web Application
 ```yaml
-Framework: Vue.js 3
+Framework: Vue.js 3 (Composition API, <script setup>)
 Build Tool: Vite
-Language: TypeScript
-State Management: Pinia
-UI Framework: Vuetify 3 / Element Plus
+Language: JavaScript (not TypeScript)
+State Management: Pinia (single auth store; no separate books/videos stores)
+UI Framework: None (custom CSS via variables.css design system)
 Key Libraries:
   - axios: HTTP client
+  - axios-cache-interceptor: Client-side GET caching (opt-in per endpoint)
+  - localforage: IndexedDB/localStorage cache storage adapter
   - vue-router: Routing
-  - pinia-plugin-persistedstate: State persistence
-  - video.js: Video player
-  - fingerprintjs: Browser fingerprinting
+  - vue-i18n: Internationalization (VI + EN)
+  - pdfjs-dist: PDF rendering (BookReaderView)
+  - vue-advanced-cropper: Avatar image crop (pending FE implementation)
+  - flag-icons: Language switcher flag icons
+  - @fingerprintjs/fingerprintjs v5: Browser device fingerprinting
 ```
 
 ### Backend API
@@ -444,10 +448,11 @@ graph LR
 ```
 
 **Cache Layers**:
-1. **Browser Cache**: Static assets (images, CSS, JS)
-2. **CDN Cache**: Videos, large media files
-3. **Redis Cache**: API responses, user sessions
-4. **Database Query Cache**: Frequently accessed data
+1. **Client-Side API Cache**: `axios-cache-interceptor` + `localforage` (IndexedDB) — GET responses cached per-endpoint with TTL (books 1h, videos 1h, categories 12h, training 10-15m). Cache cleared on logout and on purchase.
+2. **Browser Cache**: Static assets (images, CSS, JS)
+3. **CDN Cache**: Videos, large media files
+4. **Redis Cache**: API responses (server-side), user sessions
+5. **Database Query Cache**: Frequently accessed data
 
 **Cache TTL Strategy**:
 ```python
