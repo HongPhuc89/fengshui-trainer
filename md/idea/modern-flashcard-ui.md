@@ -266,7 +266,7 @@ Màn hình kết thúc session hiện tại quá đơn giản. Đề xuất:
 
 1. **PO review**: Xác nhận scope V1 (5 items nhỏ) vs V1.5 (split-panel)
 2. **Design mockup** (nếu cần): Wireframe split-panel desktop trong Figma trước khi implement
-3. **Tạo design doc**: `md/design/feature-12-detail-design.md` nếu PO approve
+3. **Tạo design doc**: `md/design/feature-12-flashcard-ui.md` nếu PO approve
 4. **Implement**: Tất cả thay đổi V1 chỉ cần sửa `FlashcardSession.vue` (và CSS scoped bên trong), không đụng backend
 
 **Prerequisite:** Không có — feature này hoàn toàn frontend, không phụ thuộc sprint hiện tại.

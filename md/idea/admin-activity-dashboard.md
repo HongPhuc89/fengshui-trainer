@@ -154,5 +154,5 @@ Sau khi V1 ổn định và admin đã quen dùng, PO nên xem xét bổ sung:
 
 - [ ] PO review và approve scope V1 (đặc biệt: có cần LT → VND conversion không, timezone preference)
 - [ ] Xác nhận: Dashboard tích hợp Jazzmin hay build trang Vue.js riêng (recommendation: Jazzmin để giữ effort thấp ở V1)
-- [ ] Viết detail design → `md/design/feature-13-detail-design.md`
+- [ ] Viết detail design → `md/design/feature-13-content-sync.md`
 - [ ] Estimate: Backend queries (~2 ngày) + Frontend charts trong Jazzmin (~1.5 ngày) + Testing (~0.5 ngày) = ~4 ngày tổng

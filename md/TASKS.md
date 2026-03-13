@@ -14,23 +14,23 @@
 
 | # | Doc | Mô tả | Status |
 | :--- | :--- | :--- | :--- |
-| 1 | [feature-1-detail-design.md](design/feature-1-detail-design.md) | User Management & Authentication | ✅ |
-| 2 | [feature-2-detail-design.md](design/feature-2-detail-design.md) | Books Module | ✅ |
-| 3 | [feature-3-detail-design.md](design/feature-3-detail-design.md) | Videos Module | ✅ |
-| 4 | [feature-4-detail-design.md](design/feature-4-detail-design.md) | Exams & Practice | ✅ |
-| 5 | [feature-5-detail-design.md](design/feature-5-detail-design.md) | Comments & Interactions | ✅ |
-| 6 | [feature-6-detail-design.md](design/feature-6-detail-design.md) | Notifications | ✅ |
-| 7 | [feature-7-detail-design.md](design/feature-7-detail-design.md) | Wallet & Payment Bridge | ✅ |
+| 1 | [feature-1-auth.md](design/feature-1-auth.md) | User Management & Authentication | ✅ |
+| 2 | [feature-2-books.md](design/feature-2-books.md) | Books Module | ✅ |
+| 3 | [feature-3-videos.md](design/feature-3-videos.md) | Videos Module | ✅ |
+| 4 | [feature-4-exams.md](design/feature-4-exams.md) | Exams & Practice | ✅ |
+| 5 | [feature-5-comments.md](design/feature-5-comments.md) | Comments & Interactions | ✅ |
+| 6 | [feature-6-notifications.md](design/feature-6-notifications.md) | Notifications | ✅ |
+| 7 | [feature-7-wallet.md](design/feature-7-wallet.md) | Wallet & Payment Bridge | ✅ |
 | — | [frontend-detail-design.md](design/frontend-detail-design.md) | Frontend design system, Auth, profile, Books/Videos/Practice outlines | ✅ |
 | — | [designer-summary.md](design/designer-summary.md) | UX/UI platform overview cho designer | ✅ |
-| 8 | [feature-8-detail-design.md](design/feature-8-detail-design.md) | Vue.js Project Setup | ✅ |
-| 9 | [feature-9-detail-design.md](design/feature-9-detail-design.md) | Training Architecture (TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz) | ✅ |
-| 10 | [feature-10-detail-design.md](design/feature-10-detail-design.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
-| 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
-| 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
-| 13 | [feature-13-detail-design.md](design/feature-13-detail-design.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
-| 14 | [feature-14-detail-design.md](design/feature-14-detail-design.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
-| 15 | [feature-15-detail-design.md](design/feature-15-detail-design.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
+| 8 | [feature-8-vue-setup.md](design/feature-8-vue-setup.md) | Vue.js Project Setup | ✅ |
+| 9 | [feature-9-training-architecture.md](design/feature-9-training-architecture.md) | Training Architecture (TrainingSet, TrainingActivity, Activity-based Flashcard/Quiz) | ✅ |
+| 10 | [feature-10-simplified-flashcard.md](design/feature-10-simplified-flashcard.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
+| 11 | [feature-11-smart-import.md](design/feature-11-smart-import.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
+| 12 | [feature-12-flashcard-ui.md](design/feature-12-flashcard-ui.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
+| 13 | [feature-13-content-sync.md](design/feature-13-content-sync.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
+| 14 | [feature-14-firebase-analytics.md](design/feature-14-firebase-analytics.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
+| 15 | [feature-15-client-caching.md](design/feature-15-client-caching.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
 
 ---
 
@@ -154,7 +154,7 @@
 - [ ] **14.7** Verify events trên Firebase DebugView
 - [ ] **14.8** (V2) Track chapter/lesson progress + flashcard session
 
-> **Design doc**: `md/design/feature-14-detail-design.md`
+> **Design doc**: `md/design/feature-14-firebase-analytics.md`
 > **Frontend only** — không cần backend changes
 
 ---
@@ -173,7 +173,7 @@
 - [ ] **15.9** Test: navigate Home → Books → Home không trigger network call (Network tab)
 - [ ] **15.10** Test: logout → login lại → fresh requests (cache đã clear)
 
-> **Design doc**: `md/design/feature-15-detail-design.md`
+> **Design doc**: `md/design/feature-15-client-caching.md`
 > **Frontend only** — không cần backend changes
 
 ---
@@ -189,7 +189,7 @@
   - `--dry-run` flag (preview không ghi DB)
 - [ ] **13.3** Test thủ công: export staging → import local → verify
 
-> **Design doc**: `md/design/feature-13-detail-design.md`
+> **Design doc**: `md/design/feature-13-content-sync.md`
 > **Không cần sync files** — PDF/thumbnail/video đã trên Supabase bucket + Bunny library (shared giữa environments)
 
 ---
@@ -292,7 +292,7 @@
 
 ### F-K: Modern Flashcard UI (Feature 12) ✅ V1 + V1.5 COMPLETE
 
-> **Design doc**: `md/design/feature-12-detail-design.md` ✅ (817 lines)
+> **Design doc**: `md/design/feature-12-flashcard-ui.md` ✅ (817 lines)
 > **Idea doc**: `md/idea/modern-flashcard-ui.md`
 > **Scope**: Frontend only — `FlashcardSession.vue` (532 lines) + `variables.css` + `index.html`
 

@@ -139,5 +139,5 @@ Click chapter is_demo=False, has_purchased=false:
 ## Bước tiếp theo
 
 - [ ] Chuyển sang PO review → `/project-owner-detail-design-review`
-- [ ] Viết detail design → `md/design/feature-13-detail-design.md`
+- [ ] Viết detail design → `md/design/feature-13-content-sync.md`
 - [ ] **Implement ngay backend fix** (select_for_update) — critical bug, không cần design doc riêng
