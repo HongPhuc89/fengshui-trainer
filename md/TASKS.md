@@ -28,6 +28,7 @@
 | 10 | [feature-10-detail-design.md](design/feature-10-detail-design.md) | Simplified Flashcard (bỏ SM-2, random 20 cards/session) | ✅ |
 | 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
 | 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
+| 13 | [feature-13-detail-design.md](design/feature-13-detail-design.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
 
 ---
 
@@ -136,6 +137,22 @@
 - [x] EmailLog + EmailQuota model
 - [ ] Celery task email với quota check (post-MVP)
 - [ ] Push notification FCM/APNs (post-MVP)
+
+---
+
+### Feature 13: Content Sync Commands 📝 (chưa implement)
+**Priority**: Medium | **Status**: 📝 Design done
+
+- [ ] **13.1** `sync_content_export` — export BookCategory/Book/BookChapter + VideoCategory/VideoCourse/VideoLesson → JSON portable
+  - `--output` flag (default: `content_export.json`)
+  - `--models books|videos|all` flag
+- [ ] **13.2** `sync_content_import` — import JSON với `update_or_create` theo slug
+  - `--input` flag (required)
+  - `--dry-run` flag (preview không ghi DB)
+- [ ] **13.3** Test thủ công: export staging → import local → verify
+
+> **Design doc**: `md/design/feature-13-detail-design.md`
+> **Không cần sync files** — PDF/thumbnail/video đã trên Supabase bucket + Bunny library (shared giữa environments)
 
 ---
 

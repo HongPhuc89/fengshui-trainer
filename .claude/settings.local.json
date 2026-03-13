@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(du -sh /Users/phucnh/projects/fengshui-trainer/src/backend/media/* 2>/dev/null)",
+      "Bash(find /Users/phucnh/projects/fengshui-trainer/src/backend -name \"models*.py\" -not -path \"*/.venv/*\" | xargs ls; find /Users/phucnh/projects/fengshui-trainer/src/backend/users -type f -name \"*.py\" -not -path \"*/.venv/*\"; find /Users/phucnh/projects/fengshui-trainer/src/backend/wallet -type f -name \"*.py\" -not -path \"*/.venv/*\")",
+      "Bash(git add:*)"
     ]
   }
 }
