@@ -3,7 +3,7 @@
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
 - **Version**: 1.5
-- **Last Updated**: 2026-03-12
+- **Last Updated**: 2026-03-13
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
 ---
@@ -30,6 +30,7 @@
 | 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
 | 13 | [feature-13-detail-design.md](design/feature-13-detail-design.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
 | 14 | [feature-14-detail-design.md](design/feature-14-detail-design.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
+| 15 | [feature-15-detail-design.md](design/feature-15-detail-design.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
 
 ---
 
@@ -154,6 +155,25 @@
 - [ ] **14.8** (V2) Track chapter/lesson progress + flashcard session
 
 > **Design doc**: `md/design/feature-14-detail-design.md`
+> **Frontend only** — không cần backend changes
+
+---
+
+### Feature 15: Client-Side Caching 📝 (chưa implement)
+**Priority**: Medium | **Status**: 📝 Design done | **Effort**: S (~1 ngày)
+
+- [ ] **15.1** Cài `axios-cache-interceptor` + `localforage` (`npm install` trong `src/frontend/`)
+- [ ] **15.2** Tạo `src/api/cache-storage.js` — localforage adapter với `buildStorage()` (instance `thienthu-api-cache`)
+- [ ] **15.3** Update `src/api/client.js` — wrap `axiosInstance` với `setupCache()`, `ttl: 0` default, `methods: ['get']`, `staleIfError: 3_600_000`
+- [ ] **15.4** Update `src/services/books.service.js` — thêm `cache` option cho `getCategories` (12h), `getBooks` (1h), `getBookDetail` (1h), `getRecentlyRead` (5m)
+- [ ] **15.5** Update `src/services/videos.service.js` — thêm `cache` option cho `getCategories` (12h), `getVideos` (1h), `getVideoDetail` (1h), `getRecentlyWatched` (5m)
+- [ ] **15.6** Update `src/services/training.service.js` — thêm `cache` option cho `getTrainingByLesson` (15m), `getTrainingByChapter` (15m), `getFlashcards` (10m)
+- [ ] **15.7** Update `src/stores/auth.js` — import `api`, thêm `api.storage.clear()` vào `clearAuth()`
+- [ ] **15.8** Invalidate book/video cache sau purchase trong `BookDetailView.vue` + `VideoDetailView.vue`
+- [ ] **15.9** Test: navigate Home → Books → Home không trigger network call (Network tab)
+- [ ] **15.10** Test: logout → login lại → fresh requests (cache đã clear)
+
+> **Design doc**: `md/design/feature-15-detail-design.md`
 > **Frontend only** — không cần backend changes
 
 ---
