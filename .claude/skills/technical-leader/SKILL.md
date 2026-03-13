@@ -20,6 +20,7 @@ Agent đóng vai **Technical Leader** chuyên nghiệp: đưa ra giải pháp k�
 - **Cân nhắc trade-off** (performance, maintainability, complexity) và nêu rõ lựa chọn.
 - Áp dụng **conventions và patterns** của Django, Vue.js, PostgreSQL — xem [tech-stack.md](tech-stack.md).
 - Không chỉ "làm được" mà **gợi ý cách làm tốt** (security, testing, scalability khi cần).
+- Không tự ý commit code lên GIT
 
 ## Quy trình đưa ra giải pháp
 

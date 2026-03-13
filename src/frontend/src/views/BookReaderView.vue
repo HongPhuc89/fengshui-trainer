@@ -1,8 +1,9 @@
 <script setup>
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
+import { useBreakpoint } from '../composables/useBreakpoint'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -37,6 +38,16 @@ const touchStartY = ref(0)
 const progressTrackRef = ref(null)
 const dragPercent = ref(null)
 const currentChapterHasTraining = ref(false)
+
+// ── DRM & responsive ──────────────────────────────────────
+const isBlurred = ref(false)
+const { isLg: isDesktop } = useBreakpoint()
+
+// Re-render current page when switching between desktop/mobile
+// so fit-page vs fit-width mode is applied correctly
+watch(isDesktop, () => {
+  if (pdfDoc.value) renderPage(currentPage.value)
+})
 
 // ── Computed ──────────────────────────────────────────────
 const currentChapter = computed(() =>
@@ -84,6 +95,9 @@ const watermarkBgImage = computed(() => {
 
 // ── Init ──────────────────────────────────────────────────
 onMounted(async () => {
+  document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
   try {
     const [bookRes, progressRes] = await Promise.allSettled([
       booksService.getBookDetail(bookSlug),
@@ -112,6 +126,7 @@ onMounted(async () => {
     currentChapterOrder.value = startChapter
     loading.value = false   // reveal canvas BEFORE loading PDF
     await nextTick()
+    await new Promise(resolve => requestAnimationFrame(resolve))
     await loadChapter(startChapter, startPage)
   } catch (e) {
     console.error('[BookReader] load error:', e)
@@ -123,6 +138,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (saveTimer.value) clearTimeout(saveTimer.value)
   if (renderingTask.value) renderingTask.value.cancel()
+  document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 // ── Chapter / PDF loading ─────────────────────────────────
@@ -149,7 +166,10 @@ async function loadChapter(order, page = 1) {
     chapterPageCount.value = page_count ?? 0
     currentChapterHasTraining.value = !!has_training_set
     chapterLoading.value = false  // reveal canvas BEFORE rendering PDF
+    // Wait for Vue to update DOM, then one rAF to let the browser finish layout
+    // (needed for getBoundingClientRect to return correct height in fit-page mode)
     await nextTick()
+    await new Promise(resolve => requestAnimationFrame(resolve))
     await loadPdf(file_url, page)
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
@@ -182,11 +202,25 @@ async function renderPage(num) {
   }
 
   const page = await pdfDoc.value.getPage(num)
-  const container = canvasRef.value.parentElement
-  const containerWidth = container ? container.clientWidth : window.innerWidth
+  // canvasRef → .reader__canvas-wrap → .reader__content
+  const canvasWrap = canvasRef.value.parentElement
+  const contentArea = canvasWrap ? canvasWrap.parentElement : null
+  const containerWidth = contentArea ? contentArea.clientWidth : (canvasWrap ? canvasWrap.clientWidth : window.innerWidth)
   const defaultViewport = page.getViewport({ scale: 1 })
   const dpr = window.devicePixelRatio || 1
-  const scale = (containerWidth / defaultViewport.width) * dpr * zoomLevel.value
+
+  // On desktop: fit-page — measure the .reader__content height (not canvas-wrap which has auto height).
+  // On mobile: fit-width only.
+  const scaleByWidth = containerWidth / defaultViewport.width
+  let baseScale
+  if (isDesktop.value) {
+    const contentHeight = contentArea ? contentArea.getBoundingClientRect().height : 0
+    const scaleByHeight = contentHeight > 10 ? contentHeight / defaultViewport.height : scaleByWidth
+    baseScale = Math.min(scaleByWidth, scaleByHeight)
+  } else {
+    baseScale = scaleByWidth
+  }
+  const scale = baseScale * dpr * zoomLevel.value
   const viewport = page.getViewport({ scale })
 
   const canvas = canvasRef.value
@@ -272,6 +306,53 @@ function onTouchEnd(e) {
   }
 }
 
+// ── Keyboard shortcuts ────────────────────────────────────
+function onKeyDown(e) {
+  // Guard 1: skip when user is typing in an input element
+  const tag = document.activeElement?.tagName?.toLowerCase()
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+
+  switch (e.key) {
+    case 'ArrowLeft':
+      e.preventDefault()
+      prevPage()
+      break
+    case 'ArrowRight':
+      e.preventDefault()
+      nextPage()
+      break
+    case ' ':
+      e.preventDefault()
+      if (e.shiftKey) prevPage()
+      else nextPage()
+      break
+    case '+':
+    case '=':
+      e.preventDefault()
+      zoomIn()
+      break
+    case '-':
+      e.preventDefault()
+      zoomOut()
+      break
+    case 't':
+    case 'T':
+      e.preventDefault()
+      showToc.value = !showToc.value
+      showZoom.value = false
+      break
+    case 'Escape':
+      if (showToc.value) showToc.value = false
+      else if (showZoom.value) showZoom.value = false
+      break
+  }
+}
+
+// ── DRM: blur canvas when tab loses focus ─────────────────
+function onVisibilityChange() {
+  isBlurred.value = document.hidden
+}
+
 // ── Progress track drag ───────────────────────────────────
 function calcPctFromPointer(e) {
   const track = progressTrackRef.value
@@ -346,7 +427,7 @@ function scheduleSave() {
 </script>
 
 <template>
-  <div class="reader">
+  <div class="reader" @contextmenu.prevent>
     <!-- ── Top bar ─────────────────────────────────────── -->
     <div class="reader__topbar">
       <button class="reader__icon-btn" @click="router.back()" aria-label="Quay lại">
@@ -414,75 +495,89 @@ function scheduleSave() {
       </button>
     </div>
 
-    <!-- ── Table of contents ──────────────────────────── -->
-    <Transition name="toc">
-      <div v-if="showToc" class="reader__toc" @click.self="showToc = false">
-        <div class="reader__toc-panel">
-          <div class="reader__toc-header">
-            <span>Mục lục</span>
-            <button class="reader__icon-btn" @click="showToc = false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <div class="reader__toc-list">
-            <button
-              v-for="ch in chapters"
-              :key="ch.order"
-              class="reader__toc-item"
-              :class="{ 'reader__toc-item--active': ch.order === currentChapterOrder }"
-              @click="goToChapter(ch.order)"
-            >
-              <span class="reader__toc-order">{{ ch.order }}</span>
-              <span class="reader__toc-name">{{ ch.title }}</span>
-              <span v-if="ch.is_demo" class="reader__toc-demo">Demo</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <!-- ── Body (TOC sidebar + content, flex-row on desktop) ── -->
+    <div class="reader__body" :class="{ 'reader__body--desktop': isDesktop }">
 
-    <!-- ── Main content ───────────────────────────────── -->
-    <div
-      class="reader__content"
-      @touchstart.passive="onTouchStart"
-      @touchend.passive="onTouchEnd"
-      @click="showZoom && (showZoom = false)"
-    >
-      <!-- Loading state -->
-      <div v-if="loading || chapterLoading" class="reader__loading">
-        <div class="reader__spinner"></div>
-        <span>{{ loading ? 'Đang tải sách...' : 'Đang tải chương...' }}</span>
-      </div>
-
-      <!-- Error state -->
-      <div v-else-if="error" class="reader__error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <p>{{ error }}</p>
-        <button class="reader__btn-back" @click="router.back()">Quay lại</button>
-      </div>
-
-      <!-- PDF canvas -->
-      <div v-else class="reader__canvas-wrap">
-        <canvas ref="canvasRef" class="reader__canvas"></canvas>
-
-        <!-- Watermark overlay -->
+      <!-- ── Table of contents ────────────────────────── -->
+      <Transition :name="isDesktop ? '' : 'toc'">
         <div
-          v-if="watermarkText"
-          class="reader__watermark"
-          :style="{ backgroundImage: watermarkBgImage }"
-          aria-hidden="true"
-        ></div>
+          v-if="showToc || isDesktop"
+          class="reader__toc"
+          :class="{ 'reader__toc--desktop': isDesktop }"
+          @click.self="!isDesktop && (showToc = false)"
+        >
+          <div class="reader__toc-panel">
+            <div class="reader__toc-header">
+              <span>Mục lục</span>
+              <button v-if="!isDesktop" class="reader__icon-btn" @click="showToc = false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div class="reader__toc-list">
+              <button
+                v-for="ch in chapters"
+                :key="ch.order"
+                class="reader__toc-item"
+                :class="{ 'reader__toc-item--active': ch.order === currentChapterOrder }"
+                @click="goToChapter(ch.order)"
+              >
+                <span class="reader__toc-order">{{ ch.order }}</span>
+                <span class="reader__toc-name">{{ ch.title }}</span>
+                <span v-if="ch.is_demo" class="reader__toc-demo">Demo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
-        <!-- Page footer -->
-        <div class="reader__page-footer">
-          <span class="reader__page-num">TRANG {{ currentPage }}</span>
-          <span class="reader__page-user">{{ watermark.display_name?.toUpperCase() }}</span>
+      <!-- ── Main content ──────────────────────────────── -->
+      <div
+        class="reader__content"
+        @touchstart.passive="onTouchStart"
+        @touchend.passive="onTouchEnd"
+        @click="showZoom && (showZoom = false)"
+      >
+        <!-- Loading state -->
+        <div v-if="loading || chapterLoading" class="reader__loading">
+          <div class="reader__spinner"></div>
+          <span>{{ loading ? 'Đang tải sách...' : 'Đang tải chương...' }}</span>
+        </div>
+
+        <!-- Error state -->
+        <div v-else-if="error" class="reader__error">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p>{{ error }}</p>
+          <button class="reader__btn-back" @click="router.back()">Quay lại</button>
+        </div>
+
+        <!-- PDF canvas -->
+        <div
+          v-else
+          class="reader__canvas-wrap"
+          :class="{ 'reader__canvas-wrap--blurred': isBlurred }"
+        >
+          <canvas ref="canvasRef" class="reader__canvas"></canvas>
+
+          <!-- Watermark overlay -->
+          <div
+            v-if="watermarkText"
+            class="reader__watermark"
+            :style="{ backgroundImage: watermarkBgImage }"
+            aria-hidden="true"
+          ></div>
+
+          <!-- Page footer -->
+          <div class="reader__page-footer">
+            <span class="reader__page-num">TRANG {{ currentPage }}</span>
+            <span class="reader__page-user">{{ watermark.display_name?.toUpperCase() }}</span>
+          </div>
         </div>
       </div>
+
     </div>
 
     <!-- ── Progress bar ───────────────────────────────── -->
@@ -756,6 +851,8 @@ function scheduleSave() {
   position: relative;
   width: 100%;
   background: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 .reader__canvas {
@@ -991,5 +1088,58 @@ function scheduleSave() {
 .toc-enter-from .reader__toc-panel,
 .toc-leave-to .reader__toc-panel {
   transform: translateX(100%);
+}
+
+/* ── Body row (TOC sidebar + content) ────────────────────── */
+.reader__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.reader__body--desktop {
+  flex-direction: row;
+}
+
+/* ── TOC desktop sidebar mode ─────────────────────────────── */
+.reader__toc--desktop {
+  position: static;
+  background: transparent;
+  z-index: auto;
+  width: 260px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  order: 1;
+}
+
+.reader__toc--desktop .reader__toc-panel {
+  width: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reader__toc--desktop .reader__toc-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Content stays on the left (order: 0 is default, explicit for clarity) */
+.reader__body--desktop .reader__content {
+  flex: 1;
+  min-width: 0;
+  order: 0;
+}
+
+/* ── DRM: blur canvas when tab loses focus ────────────────── */
+.reader__canvas-wrap--blurred canvas {
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.reader__canvas-wrap {
+  user-select: none;
 }
 </style>

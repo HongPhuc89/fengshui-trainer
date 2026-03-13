@@ -10,6 +10,7 @@
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trainingService } from '../../services/training.service'
+import { useBreakpoint } from '../../composables/useBreakpoint'
 
 const props = defineProps({
   activityId: { type: String, required: true },
@@ -24,7 +25,8 @@ const isFlipped   = ref(false)
 const loading     = ref(false)
 const error       = ref(null)
 const sessionDone = ref(false)
-const windowWidth = ref(window.innerWidth)
+
+const { isMd } = useBreakpoint()
 
 const currentCard    = computed(() => flashcards.value[index.value] ?? null)
 const progressPercent = computed(() =>
@@ -33,8 +35,8 @@ const progressPercent = computed(() =>
     : 0
 )
 
-// Split-panel: chỉ bật khi không embedded và viewport đủ rộng
-const isSplitPanel = computed(() => !props.embedded && windowWidth.value >= 768)
+// Split-panel: only when not embedded and viewport is wide enough
+const isSplitPanel = computed(() => !props.embedded && isMd.value)
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function loadCards() {
@@ -134,21 +136,14 @@ function onTouchEnd(e) {
   else prev()
 }
 
-// ── Window resize ─────────────────────────────────────────────────────────────
-function onResize() {
-  windowWidth.value = window.innerWidth
-}
-
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   loadCards()
   window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('resize', onResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('resize', onResize)
 })
 </script>
 

@@ -4,14 +4,14 @@
 **Status:** 📝 Design
 **Priority:** Medium
 **Effort ước tính:** S (~2 ngày)
-**Stack:** Frontend only — `BookReaderView.vue` only, không cần backend changes
+**Stack:** Frontend only — `BookReaderView.vue` + new composable `useBreakpoint.js`
 **Idea doc:** `md/idea/pdf-reading-experience.md`
 
 ---
 
 ## Mục tiêu
 
-Cải thiện trải nghiệm đọc sách trên desktop (keyboard shortcuts, split-panel layout) và tăng cường bảo vệ bản quyền nội dung (blur khi mất focus, chặn right-click) — toàn bộ thay đổi frontend-only trong `BookReaderView.vue`.
+Cải thiện trải nghiệm đọc sách trên desktop (keyboard shortcuts, split-panel layout) và tăng cường bảo vệ bản quyền nội dung (blur khi mất focus, chặn right-click) — toàn bộ thay đổi frontend-only.
 
 ---
 
@@ -42,6 +42,7 @@ currentChapterOrder ref(1)         — order của chương đang đọc
 showToc           ref(false)       — toggle TOC panel
 showZoom          ref(false)       — toggle zoom popup
 zoomLevel         ref(1.0)         — zoom hiện tại
+isTrainingOpen    ref(false)       — toggle Training Drawer (quan trọng cho keyboard guard)
 ZOOM_STEPS        [0.5,0.75,1.0,1.25,1.5,2.0]  — các mức zoom
 canvasRef         ref(null)        — canvas element
 hasPrev           computed         — còn trang/chương trước không
@@ -81,6 +82,70 @@ zoomOut()         — giảm zoom theo ZOOM_STEPS
 
 ---
 
+## New Composable: `useBreakpoint.js`
+
+### Vấn đề hiện tại
+
+`FlashcardSession.vue` và `BookReaderView.vue` (sau Feature 16) đều cần detect viewport width để switch layout. Hiện tại `FlashcardSession.vue` đã inline `windowWidth` + `onResize`. Cần tách ra composable để reuse.
+
+### File mới: `src/frontend/src/composables/useBreakpoint.js`
+
+```js
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+
+/**
+ * Composable để detect viewport breakpoints.
+ * Reusable across components that need responsive layout switching.
+ *
+ * Breakpoints (consistent with Tailwind defaults):
+ *   sm  >= 640px
+ *   md  >= 768px
+ *   lg  >= 1024px
+ *   xl  >= 1280px
+ */
+export function useBreakpoint() {
+  const windowWidth = ref(window.innerWidth)
+
+  function onResize() {
+    windowWidth.value = window.innerWidth
+  }
+
+  onMounted(() => window.addEventListener('resize', onResize))
+  onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+
+  return {
+    windowWidth,
+    isSm:  computed(() => windowWidth.value >= 640),
+    isMd:  computed(() => windowWidth.value >= 768),
+    isLg:  computed(() => windowWidth.value >= 1024),
+    isXl:  computed(() => windowWidth.value >= 1280),
+  }
+}
+```
+
+### Cách dùng
+
+**BookReaderView.vue:**
+```js
+import { useBreakpoint } from '../composables/useBreakpoint'
+const { isLg: isDesktop } = useBreakpoint()
+// isDesktop thay thế windowWidth + computed isDesktop inline
+```
+
+**FlashcardSession.vue** (refactor cùng lúc):
+```js
+import { useBreakpoint } from '../../composables/useBreakpoint'
+const { isMd } = useBreakpoint()
+// isSplitPanel = computed(() => !props.embedded && isMd.value)
+// Xóa windowWidth ref + onResize function + resize listener trong lifecycle
+```
+
+### Lưu ý
+- `onMounted` / `onBeforeUnmount` nằm trong composable — mỗi component gọi `useBreakpoint()` sẽ có listener riêng, không share state. Đây là behavior đúng (Vue composable pattern).
+- `window.innerWidth` được đọc lại khi `resize` fire — không debounce vì resize handler nhẹ, không cần optimize ở mức này.
+
+---
+
 ## Implementation
 
 ### 1. Keyboard Shortcuts
@@ -98,20 +163,24 @@ zoomOut()         — giảm zoom theo ZOOM_STEPS
 | `t` hoặc `T` | Toggle TOC | `showToc.value = !showToc.value` |
 | `Escape` | Đóng TOC (nếu mở), hoặc đóng zoom popup | logic inline |
 
-#### Code snippet — thêm vào `onMounted` / `onBeforeUnmount`
+#### Code snippet
 
 ```js
-// Thêm vào onMounted (sau phần load hiện tại):
+// Thêm vào onMounted:
 document.addEventListener('keydown', onKeyDown)
 
-// Thêm vào onBeforeUnmount (sau clearTimeout/cancel hiện tại):
+// Thêm vào onBeforeUnmount:
 document.removeEventListener('keydown', onKeyDown)
 
-// Function mới — thêm sau phần Touch/swipe:
+// Function — thêm sau phần Touch/swipe:
 function onKeyDown(e) {
-  // Guard: không trigger khi user đang focus vào input / textarea / select
+  // Guard 1: không trigger khi user đang focus vào input / textarea / select
   const tag = document.activeElement?.tagName?.toLowerCase()
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+
+  // Guard 2: không trigger khi Training Drawer đang mở
+  // (FlashcardSession.vue có keyboard handler riêng; tránh conflict ArrowLeft/Right)
+  if (isTrainingOpen.value) return
 
   switch (e.key) {
     case 'ArrowLeft':
@@ -151,6 +220,7 @@ function onKeyDown(e) {
 ```
 
 #### Notes
+- Guard `isTrainingOpen.value` ngăn conflict với `FlashcardSession.vue` keyboard handler khi TrainingDrawer mở
 - Guard `document.activeElement.tagName` là chuẩn — reuse pattern từ `FlashcardSession.vue`
 - `Space` cần `e.preventDefault()` để ngăn scroll trang
 - `ArrowLeft/Right` cần `e.preventDefault()` để ngăn scroll horizontal
@@ -166,81 +236,19 @@ TOC hiện tại là **overlay** (`position: fixed; inset: 0; z-index: 200`) —
 
 **Chọn bên phải** vì TOC panel hiện tại slide từ phải — consistent với behavior mobile/tablet, không cần thay đổi animation.
 
-#### State mới cần thêm
+#### State — dùng `useBreakpoint` composable
 
 ```js
-// Thêm vào phần State (sau touchStartY):
-const windowWidth = ref(window.innerWidth)
+import { useBreakpoint } from '../composables/useBreakpoint'
 
-// Computed mới:
-const isDesktop = computed(() => windowWidth.value >= 1024)
-
-// Functions mới — thêm sau onTouchEnd:
-function onWindowResize() {
-  windowWidth.value = window.innerWidth
-}
-```
-
-#### onMounted / onBeforeUnmount
-
-```js
-// Thêm vào onMounted:
-window.addEventListener('resize', onWindowResize)
-
-// Thêm vào onBeforeUnmount:
-window.removeEventListener('resize', onWindowResize)
+// Thêm vào script setup (thay thế windowWidth + computed isDesktop inline):
+const { isLg: isDesktop } = useBreakpoint()
+// Không cần windowWidth ref, onWindowResize function, hoặc resize listener riêng
 ```
 
 #### Template changes
 
-**Điều kiện hiển thị TOC** — trên desktop, TOC luôn visible (không cần `v-if="showToc"`):
-
-```html
-<!-- BEFORE -->
-<Transition name="toc">
-  <div v-if="showToc" class="reader__toc" @click.self="showToc = false">
-    ...
-  </div>
-</Transition>
-
-<!-- AFTER -->
-<Transition name="toc">
-  <div
-    v-if="showToc || isDesktop"
-    class="reader__toc"
-    :class="{ 'reader__toc--desktop': isDesktop }"
-    @click.self="!isDesktop && (showToc = false)"
-  >
-    <div class="reader__toc-panel">
-      <div class="reader__toc-header">
-        <span>Mục lục</span>
-        <!-- Ẩn nút đóng trên desktop vì không có overlay -->
-        <button v-if="!isDesktop" class="reader__icon-btn" @click="showToc = false">
-          <!-- X icon -->
-        </button>
-      </div>
-      <!-- toc-list giữ nguyên -->
-    </div>
-  </div>
-</Transition>
-```
-
-**Main content area** — dùng grid khi desktop:
-
-```html
-<!-- BEFORE -->
-<div class="reader__content" ...>
-
-<!-- AFTER -->
-<div class="reader__body" :class="{ 'reader__body--desktop': isDesktop }">
-  <div class="reader__content" ...>
-    ...
-  </div>
-  <!-- TOC được move ra ngoài reader__content, render trong reader__body -->
-</div>
-```
-
-**Lưu ý quan trọng về cấu trúc:** TOC panel hiện nằm trong Transition riêng, không trong `reader__content`. Cần tái cấu trúc nhẹ để có một "body row" bao quanh cả `reader__content` và TOC:
+**Cấu trúc mới:** Bọc `reader__content` và TOC trong `reader__body` — một "body row" để flex-direction thay đổi theo breakpoint:
 
 ```html
 <!-- Cấu trúc mới: -->
@@ -251,8 +259,8 @@ window.removeEventListener('resize', onWindowResize)
   <!-- body: flex-row trên desktop, flex-col trên mobile -->
   <div class="reader__body" :class="{ 'reader__body--desktop': isDesktop }">
 
-    <!-- TOC (di chuyển vào đây, không còn position:fixed) -->
-    <Transition name="toc">
+    <!-- TOC: di chuyển vào đây, không còn position:fixed trên desktop -->
+    <Transition :name="isDesktop ? '' : 'toc'">
       <div
         v-if="showToc || isDesktop"
         class="reader__toc"
@@ -262,6 +270,7 @@ window.removeEventListener('resize', onWindowResize)
         <div class="reader__toc-panel">
           <div class="reader__toc-header">
             <span>Mục lục</span>
+            <!-- Ẩn nút đóng trên desktop: sidebar cố định, không cần dismiss -->
             <button v-if="!isDesktop" class="reader__icon-btn" @click="showToc = false">
               <!-- X icon -->
             </button>
@@ -281,6 +290,8 @@ window.removeEventListener('resize', onWindowResize)
 </div>
 ```
 
+**Lưu ý quan trọng về Transition:** Dùng `:name="isDesktop ? '' : 'toc'"` để **tắt animation khi desktop mode** — khi resize sang desktop, TOC xuất hiện ngay không slide-in (không phù hợp với sidebar). Trên mobile/tablet thì vẫn slide bình thường.
+
 #### CSS changes
 
 ```css
@@ -299,25 +310,26 @@ window.removeEventListener('resize', onWindowResize)
 
 /* ── TOC — desktop mode (không còn position:fixed) ──────── */
 .reader__toc--desktop {
-  position: static;        /* ghi đè position: fixed */
-  background: transparent; /* bỏ backdrop */
+  position: static;          /* ghi đè position: fixed */
+  background: transparent;   /* bỏ backdrop rgba(0,0,0,0.6) */
+  z-index: auto;             /* reset z-index: 200 */
   width: 260px;
   flex-shrink: 0;
   height: 100%;
   overflow: hidden;
   display: flex;
+  order: 1;                  /* TOC bên phải, content bên trái */
 }
 
+/* Override width: min(320px, 85vw) của panel trên desktop */
 .reader__toc--desktop .reader__toc-panel {
-  width: 100%;             /* fill 260px */
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Desktop TOC: ẩn header (không cần "Mục lục" title khi sidebar cố định) */
-/* Hoặc giữ header nhưng bỏ nút X — đã handle qua v-if="!isDesktop" */
-
-/* TOC content chiếm full height trong sidebar */
+/* TOC list chiếm full height trong sidebar */
 .reader__toc--desktop .reader__toc-list {
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -325,40 +337,39 @@ window.removeEventListener('resize', onWindowResize)
 .reader__body--desktop .reader__content {
   flex: 1;
   min-width: 0;
+  order: 0;                  /* content bên trái */
 }
 ```
+
+**Lưu ý về `order`:** Dùng `order: 0` (content) và `order: 1` (TOC) để đảm bảo content luôn bên trái, TOC bên phải — không phụ thuộc vào thứ tự render trong DOM (TOC được render trước content trong template để Transition hoạt động đúng).
 
 #### Behavior chi tiết
 
 | State | Layout |
 |---|---|
-| `windowWidth < 1024px` | TOC là overlay (behavior hiện tại, `showToc` toggle) |
-| `windowWidth >= 1024px` | TOC là sidebar cố định bên phải, luôn visible, `isDesktop = true` |
-| Resize từ desktop → mobile | TOC sidebar ẩn, chuyển về overlay mode |
-| Resize từ mobile → desktop | TOC sidebar hiện lại tự động (vì `isDesktop` computed thay đổi) |
+| `windowWidth < 1024px` | TOC là overlay (behavior hiện tại, `showToc` toggle, có Transition `toc`) |
+| `windowWidth >= 1024px` | TOC là sidebar cố định bên phải, luôn visible, không có Transition |
+| Resize từ desktop → mobile | TOC sidebar ẩn (nếu `showToc = false`), chuyển về overlay mode |
+| Resize từ mobile → desktop | TOC sidebar hiện lại tự động, không animation |
 
 #### Notes
-- TOC width desktop: **260px** (tăng nhẹ từ gợi ý 240px để TOC title không bị truncate)
-- Nút toggle TOC trong topbar vẫn giữ — hữu ích trên tablet (768-1023px), không cần thêm logic ẩn
+- TOC width desktop: **260px** (đủ để title không bị truncate)
+- Nút toggle TOC trong topbar vẫn giữ nguyên — hữu ích trên tablet (768–1023px), không cần thêm logic ẩn
 - `reader__content` đã có `overflow-y: auto` — giữ nguyên
-- TOC panel trên desktop đặt bên **phải** (consistent với slide animation hiện tại)
-- Transition `toc` vẫn hoạt động bình thường — khi `isDesktop` thay đổi, slide in/out
 
 ---
 
 ### 3. DRM Protection — Blur + Right-click Prevention
 
-#### 3a. State mới
+#### State mới
 
 ```js
-// Thêm vào phần State:
 const isBlurred = ref(false)
 ```
 
-#### 3b. visibilitychange listener
+#### visibilitychange listener
 
 ```js
-// Function mới — thêm sau onWindowResize:
 function onVisibilityChange() {
   isBlurred.value = document.hidden
 }
@@ -370,53 +381,46 @@ document.addEventListener('visibilitychange', onVisibilityChange)
 document.removeEventListener('visibilitychange', onVisibilityChange)
 ```
 
-#### 3c. Template — class binding và contextmenu
+#### Template — class binding và contextmenu
 
 ```html
-<!-- reader__canvas-wrap: thêm blur class + contextmenu prevent -->
+<!-- Root reader: thêm @contextmenu.prevent để cover cả topbar, bottom nav -->
+<div class="reader" @contextmenu.prevent>
+
+<!-- reader__canvas-wrap: thêm blur class -->
 <div
   v-else
   class="reader__canvas-wrap"
   :class="{ 'reader__canvas-wrap--blurred': isBlurred }"
-  @contextmenu.prevent
 >
 ```
 
-#### 3d. CSS
+**`@contextmenu.prevent` đặt trên root `.reader`** — cover toàn bộ reader view, kể cả khi canvas chưa load xong.
+
+#### CSS
 
 ```css
 /* ── DRM blur ─────────────────────────────────────────────── */
 .reader__canvas-wrap--blurred canvas {
   filter: blur(14px);
   pointer-events: none;
-  user-select: none;
 }
 
-/* User-select: none trên toàn canvas wrap (ngăn text selection nếu có text layer sau này) */
+/* Ngăn text selection trên canvas wrap (phòng TextLayer tương lai) */
 .reader__canvas-wrap {
   /* thêm vào rule hiện tại: */
   user-select: none;
 }
 ```
 
-#### 3e. Right-click prevention
-
-`@contextmenu.prevent` đã thêm vào `reader__canvas-wrap` ở trên — không cần thêm nơi khác.
-
-Nếu muốn cover toàn reader (bao gồm topbar), có thể thêm vào `reader` root:
-
-```html
-<div class="reader" @contextmenu.prevent>
-```
-
-**Khuyến nghị:** Thêm vào root `.reader` để cover tất cả, kể cả khi canvas chưa load.
+**Lưu ý về `user-select: none`:** V1 add lên canvas-wrap. Khi V2 implement TextLayer (cho phép copy text), cần bỏ `user-select: none` và dùng approach khác (chỉ allow select trong text layer element).
 
 #### Notes
-- `document.hidden` là `true` khi: tab bị ẩn, window bị minimize, hoặc màn hình khóa
+- `document.hidden = true` khi: tab bị ẩn, window minimize, màn hình khóa
 - Blur **chỉ apply lên canvas** — topbar, bottom nav, progress bar vẫn hiện bình thường
-- Khi tab active lại, `document.hidden = false` → `isBlurred = false` → canvas hiện ngay (không cần user action)
-- `filter: blur(14px)` đủ để obscure nội dung nhưng user vẫn biết context (chương nào, trang nào)
-- Không show "đang xem ở tab khác" overlay — đơn giản hơn, blur đã đủ effect
+- Khi tab active lại, `document.hidden = false` → `isBlurred = false` → canvas clear ngay
+- `filter: blur(14px)` đủ để obscure nội dung nhưng user vẫn biết đang ở chương/trang nào
+- `visibilitychange` cũng fire khi mobile browser bị background — behavior đúng, không cần guard
 
 ---
 
@@ -424,72 +428,78 @@ Nếu muốn cover toàn reader (bao gồm topbar), có thể thêm vào `reader
 
 | File | Action | Nội dung thay đổi |
 |---|---|---|
-| `src/frontend/src/views/BookReaderView.vue` | MODIFY | Tất cả: keyboard handler, resize listener, visibilitychange, isDesktop layout, blur class, contextmenu prevent, CSS mới |
-
-**Không tạo file mới** — toàn bộ thay đổi trong 1 file duy nhất.
+| `src/frontend/src/composables/useBreakpoint.js` | CREATE | Composable reactive breakpoints (sm/md/lg/xl) |
+| `src/frontend/src/views/BookReaderView.vue` | MODIFY | Keyboard handler, `useBreakpoint`, visibilitychange, isDesktop layout, blur class, contextmenu prevent, CSS mới |
+| `src/frontend/src/components/training/FlashcardSession.vue` | MODIFY | Refactor: thay inline `windowWidth` + `onResize` bằng `useBreakpoint()` |
 
 ---
 
 ## Checklist implement
 
-### 1. Keyboard shortcuts
-- [ ] Thêm `const onKeyDown = (e) => { ... }` function với switch/case
-- [ ] Bind `document.addEventListener('keydown', onKeyDown)` trong `onMounted`
-- [ ] Unbind `document.removeEventListener('keydown', onKeyDown)` trong `onBeforeUnmount`
-- [ ] Guard: skip nếu `activeElement` là input/textarea/select
+### 0. Composable `useBreakpoint.js` (làm trước)
+- [ ] Tạo `src/frontend/src/composables/useBreakpoint.js`
+- [ ] Export `useBreakpoint()` trả về `{ windowWidth, isSm, isMd, isLg, isXl }`
+- [ ] `onMounted` / `onBeforeUnmount` quản lý resize listener bên trong composable
 
-### 2. Desktop split-panel
-- [ ] Thêm `const windowWidth = ref(window.innerWidth)` vào State section
-- [ ] Thêm `const isDesktop = computed(() => windowWidth.value >= 1024)` vào Computed section
-- [ ] Thêm `onWindowResize()` function
-- [ ] Bind/unbind `resize` listener trong `onMounted` / `onBeforeUnmount`
+### 1. Keyboard shortcuts (BookReaderView.vue)
+- [ ] Thêm `onKeyDown(e)` function với switch/case đầy đủ
+- [ ] Guard 1: skip nếu `activeElement` là input/textarea/select
+- [ ] Guard 2: skip nếu `isTrainingOpen.value === true`
+- [ ] Bind `document.addEventListener('keydown', onKeyDown)` trong `onMounted`
+- [ ] Unbind trong `onBeforeUnmount`
+
+### 2. Desktop split-panel (BookReaderView.vue)
+- [ ] Import và dùng `useBreakpoint`: `const { isLg: isDesktop } = useBreakpoint()`
+- [ ] Xóa `windowWidth ref` + `onWindowResize` function + `resize listener` nếu có (dùng composable thay)
 - [ ] Wrap `reader__content` và TOC trong `reader__body` div
 - [ ] TOC: đổi `v-if="showToc"` → `v-if="showToc || isDesktop"`
+- [ ] TOC: đổi `<Transition name="toc">` → `<Transition :name="isDesktop ? '' : 'toc'">`
 - [ ] TOC: thêm `:class="{ 'reader__toc--desktop': isDesktop }"`
-- [ ] TOC backdrop click: thêm guard `!isDesktop &&` trước `showToc = false`
+- [ ] TOC backdrop click: guard `!isDesktop && (showToc = false)`
 - [ ] TOC close button: thêm `v-if="!isDesktop"`
-- [ ] Thêm CSS: `.reader__body`, `.reader__body--desktop`, `.reader__toc--desktop`, `.reader__toc--desktop .reader__toc-panel`
+- [ ] Thêm CSS: `.reader__body`, `.reader__body--desktop`, `.reader__toc--desktop` (và sub-selectors), `order` values
 
-### 3. DRM protection
-- [ ] Thêm `const isBlurred = ref(false)` vào State section
+### 3. DRM protection (BookReaderView.vue)
+- [ ] Thêm `const isBlurred = ref(false)`
 - [ ] Thêm `onVisibilityChange()` function
-- [ ] Bind `document.addEventListener('visibilitychange', onVisibilityChange)` trong `onMounted`
-- [ ] Unbind trong `onBeforeUnmount`
-- [ ] Thêm `:class="{ 'reader__canvas-wrap--blurred': isBlurred }"` vào `reader__canvas-wrap`
+- [ ] Bind `visibilitychange` listener trong `onMounted`, unbind trong `onBeforeUnmount`
 - [ ] Thêm `@contextmenu.prevent` vào root `.reader` div
-- [ ] Thêm CSS: `.reader__canvas-wrap--blurred canvas { filter: blur(14px); ... }`
-- [ ] Thêm `user-select: none` vào `.reader__canvas-wrap` CSS rule
+- [ ] Thêm `:class="{ 'reader__canvas-wrap--blurred': isBlurred }"` vào `reader__canvas-wrap`
+- [ ] Thêm CSS: `.reader__canvas-wrap--blurred canvas`, `user-select: none` vào `.reader__canvas-wrap`
+
+### 4. Refactor FlashcardSession.vue
+- [ ] Import `useBreakpoint` từ `'../../composables/useBreakpoint'`
+- [ ] Thêm `const { isMd } = useBreakpoint()`
+- [ ] Đổi `isSplitPanel` computed: `!props.embedded && isMd.value`
+- [ ] Xóa `windowWidth` ref, `onResize` function, và `resize` event listener trong lifecycle hooks
 
 ### Testing
 - [ ] Keyboard: ArrowLeft/Right chuyển trang đúng, Space đúng
 - [ ] Keyboard: +/= zoom in, - zoom out
 - [ ] Keyboard: T toggle TOC, Escape đóng TOC/zoom
-- [ ] Keyboard guard: không fire khi focus vào input (nếu có input nào trong view)
-- [ ] Resize desktop → mobile: TOC chuyển về overlay
-- [ ] Resize mobile → desktop: TOC sidebar hiện lại
+- [ ] Keyboard guard 1: không fire khi focus vào input (nếu có)
+- [ ] Keyboard guard 2: không fire khi TrainingDrawer đang mở
+- [ ] Resize desktop → mobile: TOC chuyển về overlay (có slide animation)
+- [ ] Resize mobile → desktop: TOC sidebar hiện lại không animation
 - [ ] Desktop layout: TOC sidebar cố định bên phải, content chiếm phần còn lại
 - [ ] Minimize/switch tab: canvas bị blur
 - [ ] Tab active lại: canvas clear ngay
-- [ ] Right-click trên canvas: context menu không hiện
-- [ ] Right-click trên topbar: context menu không hiện (nếu thêm vào root)
-- [ ] Test Chrome + Firefox + Safari (keydown behavior khác nhau với Space)
+- [ ] Right-click trên toàn reader: context menu không hiện
+- [ ] FlashcardSession split-panel vẫn hoạt động đúng (isMd ≥ 768px)
+- [ ] Test Chrome + Firefox + Safari (keydown behavior khác với Space)
 
 ---
 
 ## Trade-off & lưu ý khi implement
 
-1. **TOC position trong DOM**: TOC hiện là sibling của `reader__content` (ngoài `reader__content`). Khi thêm `reader__body` wrapper, cần chắc chắn không break flexbox của `.reader` (đã là `flex-direction: column` — `reader__body` sẽ là child flex item, `flex: 1` để chiếm toàn bộ space còn lại giữa topbar và bottom nav).
+1. **`useBreakpoint` mỗi component có listener riêng**: Mỗi component gọi `useBreakpoint()` sẽ tạo một `resize` listener riêng. Ở quy mô hiện tại (vài component), không phải vấn đề. Nếu sau này nhiều component dùng cùng lúc, có thể convert sang singleton pattern (module-level ref + one listener).
 
-2. **TOC Transition khi isDesktop**: Khi resize sang desktop, `v-if="showToc || isDesktop"` từ `false` → `true` sẽ trigger Transition `toc`. Transition hiện tại là slide từ phải — trên desktop không muốn animation này. Giải pháp: disable transition trên desktop bằng `<Transition :name="isDesktop ? '' : 'toc'">`.
+2. **TOC `order` vs DOM order**: Dùng CSS `order` để đảm bảo content (order: 0) luôn bên trái, TOC (order: 1) bên phải trong flex row — không cần đổi thứ tự DOM. Điều này giữ Transition logic đơn giản.
 
-3. **TOC overlay backdrop vs sidebar**: `reader__toc` hiện có `background: rgba(0,0,0,0.6)` làm backdrop. Trên desktop mode (`.reader__toc--desktop`), cần override thành `background: transparent` và `position: static` để không phủ lên content.
+3. **TOC Transition tắt trên desktop**: `:name="isDesktop ? '' : 'toc'"` — khi `isDesktop` thay đổi (resize), TOC appear/disappear không có animation. Đây là UX đúng vì sidebar xuất hiện là layout change, không phải panel toggle.
 
-4. **z-index của TOC overlay**: `reader__toc` hiện có `z-index: 200`. Trên desktop mode, `z-index` không cần thiết (static position) — không cần xử lý thêm vì `z-index` chỉ áp dụng cho positioned elements.
+4. **blur và `user-select` với TextLayer tương lai**: V1 add `user-select: none` lên canvas-wrap. Khi V2 implement TextLayer, cần revisit — canvas natively không có text selection nhưng TextLayer overlay thì có.
 
-5. **blur và visibilitychange trên mobile**: `visibilitychange` cũng fire khi mobile browser bị background — behavior đúng và mong muốn. Không cần guard riêng cho mobile.
+5. **Right-click `@contextmenu.prevent` trên root**: Chặn hoàn toàn context menu trong reader view. Không phải silver bullet (devtools vẫn bypass), nhưng đủ cho casual user. Nhất quán với DRM approach của platform.
 
-6. **Right-click `@contextmenu.prevent` trên root**: Chặn context menu của browser hoàn toàn trong reader view. User vẫn có thể dùng devtools → không phải silver bullet, nhưng đủ cho casual user. Consistent với pattern F-I backlog.
-
-7. **`user-select: none` vs text layer tương lai**: V1 add `user-select: none` lên canvas-wrap (canvas không có text selection natively). Khi V2 implement TextLayer, cần bỏ `user-select: none` và thay bằng logic phức tạp hơn (chỉ allow select trong text layer, block ở canvas).
-
-8. **`isDesktop` threshold 1024px**: Consistent với breakpoint thường dùng trong codebase (mention trong F-I: `1024px+`). Không dùng CSS media query thuần vì cần Vue reactivity để điều khiển `v-if`.
+6. **`isTrainingOpen` guard trong keyboard**: Ref này đã tồn tại trong `BookReaderView.vue` để control `TrainingDrawer`. Không cần thêm state mới, chỉ cần reference đúng tên ref.

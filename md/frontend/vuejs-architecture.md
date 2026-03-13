@@ -210,6 +210,10 @@ All views are plain `.vue` files (not TypeScript, no Vuetify components). Key vi
 
 Uses `@fingerprintjs/fingerprintjs` to generate a stable browser device ID. Exposed to login/register forms to attach `device_id` to auth requests.
 
+### `useBreakpoint.js` (`src/composables/useBreakpoint.js`)
+
+Reactive viewport breakpoint detection. Returns `{ windowWidth, isSm, isMd, isLg, isXl }` computed booleans (thresholds: 640/768/1024/1280px). Manages its own `resize` listener via `onMounted`/`onBeforeUnmount`. Used by `BookReaderView.vue` (desktop split-panel TOC) and `FlashcardSession.vue` (split-panel layout). Replaces inline `windowWidth` + `onResize` pattern.
+
 > Note: `ua-parser-js` is NOT a dependency. There is no `useWatermark.js` yet (planned, not implemented).
 
 ---
