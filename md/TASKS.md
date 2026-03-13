@@ -29,6 +29,7 @@
 | 11 | [feature-11-detail-design.md](design/feature-11-detail-design.md) | Smart Content Import (admin import flashcard + quiz từ VideoLesson/BookChapter) | ✅ |
 | 12 | [feature-12-detail-design.md](design/feature-12-detail-design.md) | Modern Flashcard UI — V1 (progress bar, hover state, back face styling, keyboard shortcuts, swipe-UP-to-flip) + V1.5 (split-panel desktop layout) | ✅ |
 | 13 | [feature-13-detail-design.md](design/feature-13-detail-design.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
+| 14 | [feature-14-detail-design.md](design/feature-14-detail-design.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
 
 ---
 
@@ -137,6 +138,23 @@
 - [x] EmailLog + EmailQuota model
 - [ ] Celery task email với quota check (post-MVP)
 - [ ] Push notification FCM/APNs (post-MVP)
+
+---
+
+### Feature 14: Firebase Analytics 📝 (chưa implement)
+**Priority**: Medium | **Status**: 📝 Design done | **Effort**: S (~1 ngày)
+
+- [ ] **14.1** Cài `firebase` package, tạo `src/plugins/analytics.js` (init + track/identifyUser/clearUser)
+- [ ] **14.2** Update `main.js` (use plugin) + `router/index.js` (afterEach → page_view)
+- [ ] **14.3** Update `auth.js` — identifyUser sau login, clearUser khi logout
+- [ ] **14.4** Track `purchase` trong `BookDetailView.vue` + `VideoDetailView.vue`
+- [ ] **14.5** Track `voucher_redeemed` trong `StoreView.vue`
+- [ ] **14.6** Thêm `VITE_FIREBASE_*` vào `.env.example`
+- [ ] **14.7** Verify events trên Firebase DebugView
+- [ ] **14.8** (V2) Track chapter/lesson progress + flashcard session
+
+> **Design doc**: `md/design/feature-14-detail-design.md`
+> **Frontend only** — không cần backend changes
 
 ---
 
