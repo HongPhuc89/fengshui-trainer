@@ -142,7 +142,7 @@ function closeModal() {
 <template>
   <div class="book-detail">
     <!-- ── Back nav ───────────────────────────────────────── -->
-    <button class="book-detail__back" @click="router.back()">
+    <button class="book-detail__back" @click="router.push({ name: 'Books' })">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
         <polyline points="15 18 9 12 15 6" />
       </svg>
@@ -170,7 +170,7 @@ function closeModal() {
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <p>{{ error }}</p>
-      <button class="btn-ghost" @click="router.back()">Quay lại</button>
+      <button class="btn-ghost" @click="router.push({ name: 'Books' })">Quay lại</button>
     </div>
 
     <!-- ── Content ───────────────────────────────────────── -->

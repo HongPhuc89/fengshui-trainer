@@ -578,6 +578,7 @@ function scheduleSave() {
 
         <!-- PDF canvas: always in DOM so canvasRef is always available -->
         <div
+          v-show="!error"
           class="reader__canvas-wrap"
           :class="{ 'reader__canvas-wrap--blurred': isBlurred }"
         >
