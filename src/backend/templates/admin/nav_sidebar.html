@@ -1,0 +1,24 @@
+{% load i18n %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  <input type="search" id="nav-filter"
+         placeholder="{% translate 'Start typing to filter…' %}"
+         aria-label="{% translate 'Filter navigation items' %}">
+
+  <div class="app-{{ app_label }} module{% if current_url == '/admin/stats/activity/' %} current-app{% endif %}">
+    <table>
+      <caption>
+        <a href="{% url 'admin:admin-stats-activity' %}" class="section{% if current_url == '/admin/stats/activity/' %} selected{% endif %}">
+          Thống kê
+        </a>
+      </caption>
+      <tr class="model-row{% if current_url == '/admin/stats/activity/' %} selected{% endif %}">
+        <th scope="row">
+          <a href="{% url 'admin:admin-stats-activity' %}">Hoạt động &amp; Linh Thạch</a>
+        </th>
+      </tr>
+    </table>
+  </div>
+
+  {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
+</nav>

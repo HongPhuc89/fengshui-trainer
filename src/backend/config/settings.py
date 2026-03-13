@@ -247,6 +247,7 @@ JAZZMIN_SETTINGS = {
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Activity Stats", "url": "/admin/stats/activity/", "permissions": ["auth.view_user"]},
     ],
     "show_sidebar": True,
     "navigation_expanded": True,

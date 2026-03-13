@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/videos/', include('videos.urls')),
     path('api/comments/', include('comments.urls')),
     path('api/notifications/', include('notifications.urls')),
+    path('api/admin/stats/', include('users.urls_admin_stats')),
 ]
 
 if settings.DEBUG:

@@ -2,7 +2,7 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.6
+- **Version**: 1.7
 - **Last Updated**: 2026-03-13
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
@@ -32,6 +32,7 @@
 | 14 | [feature-14-firebase-analytics.md](design/feature-14-firebase-analytics.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
 | 15 | [feature-15-client-caching.md](design/feature-15-client-caching.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
 | 16 | [feature-16-pdf-reader-v1.md](design/feature-16-pdf-reader-v1.md) | PDF Reader V1 — Keyboard shortcuts, desktop split-panel TOC sidebar, blur DRM + right-click prevention | 📝 |
+| 17 | [feature-17-admin-activity-dashboard.md](design/feature-17-admin-activity-dashboard.md) | Admin Activity Dashboard — DAU & Linh Thạch theo ngày (date range picker, KPI tiles, charts, table) | 📝 |
 
 ---
 
@@ -475,6 +476,7 @@
 5. **Feature 14** — Firebase Analytics (design done, chưa implement)
 6. **Feature 13** — Content Sync commands (design done, chưa implement)
 7. **Feature 16** — PDF Reader V1 (keyboard shortcuts + desktop split-panel + blur/right-click DRM, design done)
+8. **Feature 17** — Admin Activity Dashboard (DAU + LT theo ngày, design done)
 8. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
 
 ---
@@ -539,7 +541,8 @@
 | Feature 14. Firebase Analytics | 📝 Design done, chưa implement |
 | Feature 15. Client-Side Caching | ✅ |
 | Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
+| Feature 17. Admin Activity Dashboard | 📝 Design done, chưa implement |
 
 ---
 
-*Last updated: 2026-03-13 (v1.6 — Feature 15 caching DONE, CORS fix, design docs 13/14/15 added, sprint updated)*
+*Last updated: 2026-03-13 (v1.7 — Feature 17 Admin Activity Dashboard design doc added)*

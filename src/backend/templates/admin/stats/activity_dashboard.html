@@ -1,0 +1,224 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Thống kê hoạt động — Django Admin{% endblock %}
+
+{% block content_title %}<h1>Thống kê hoạt động</h1>{% endblock %}
+
+{% block content %}
+<style>
+  .stats-filter-form {
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .stats-filter-form label {
+    font-weight: bold;
+    margin-right: 4px;
+  }
+  .stats-filter-form input[type="date"] {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  .stats-filter-form .btn-submit {
+    background: #417690;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .stats-filter-form .btn-submit:hover {
+    background: #2c5270;
+  }
+  .preset-links {
+    display: flex;
+    gap: 8px;
+    margin-left: 8px;
+  }
+  .preset-links a {
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    text-decoration: none;
+    color: #417690;
+    background: #fff;
+  }
+  .preset-links a:hover {
+    background: #eee;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .kpi-card .kpi-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .kpi-card .kpi-value {
+    font-size: 26px;
+    font-weight: bold;
+    color: #212121;
+  }
+
+  .stats-table-wrapper {
+    overflow-x: auto;
+  }
+  .stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .stats-table th {
+    background: #417690;
+    color: #fff;
+    padding: 8px 10px;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 2px solid #2c5270;
+  }
+  .stats-table th:first-child {
+    text-align: left;
+  }
+  .stats-table td {
+    padding: 7px 10px;
+    text-align: right;
+    border-bottom: 1px solid #e8e8e8;
+    white-space: nowrap;
+  }
+  .stats-table td:first-child {
+    text-align: left;
+    font-weight: bold;
+    color: #333;
+  }
+  .stats-table tbody tr:hover {
+    background: #f3f8fb;
+  }
+  .stats-table .empty-row td {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+  }
+  .section-heading {
+    font-size: 14px;
+    font-weight: bold;
+    color: #417690;
+    margin: 24px 0 10px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #c8dce8;
+  }
+</style>
+
+<!-- Date range filter form -->
+<div class="stats-filter-form">
+  <form method="get" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
+    <span>
+      <label for="id_start_date">Từ:</label>
+      <input type="date" id="id_start_date" name="start_date" value="{{ start_date }}">
+    </span>
+    <span>
+      <label for="id_end_date">Đến:</label>
+      <input type="date" id="id_end_date" name="end_date" value="{{ end_date }}">
+    </span>
+    <button type="submit" class="btn-submit">Xem</button>
+  </form>
+  <div class="preset-links">
+    <a href="?start_date={{ preset_7_start }}&end_date={{ end_date }}">7 ngày</a>
+    <a href="?start_date={{ preset_30_start }}&end_date={{ end_date }}">30 ngày</a>
+    <a href="?start_date={{ preset_90_start }}&end_date={{ end_date }}">90 ngày</a>
+  </div>
+</div>
+
+<!-- KPI Summary cards -->
+<p class="section-heading">Tổng kết kỳ {{ start_date }} → {{ end_date }}</p>
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">DAU tổng</div>
+    <div class="kpi-value">{{ activity_summary.total_dau }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Đăng ký mới</div>
+    <div class="kpi-value">{{ activity_summary.total_registrations }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Mua nội dung</div>
+    <div class="kpi-value">{{ activity_summary.total_purchases }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">LT nạp</div>
+    <div class="kpi-value">{{ revenue_summary.total_lt_recharged }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">LT tiêu</div>
+    <div class="kpi-value">{{ revenue_summary.total_lt_spent }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Voucher dùng</div>
+    <div class="kpi-value">{{ revenue_summary.total_vouchers_redeemed }}</div>
+  </div>
+</div>
+
+<!-- Raw daily data table -->
+<p class="section-heading">Chi tiết theo ngày</p>
+<div class="stats-table-wrapper">
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>Ngày</th>
+        <th>DAU</th>
+        <th>Đăng ký mới</th>
+        <th>Mua mới</th>
+        <th>LT nạp</th>
+        <th>LT tiêu</th>
+        <th>Voucher</th>
+        <th>Chi sách</th>
+        <th>Chi video</th>
+        <th>Chi VIP</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in daily_rows %}
+      <tr>
+        <td>{{ row.date }}</td>
+        <td>{{ row.dau }}</td>
+        <td>{{ row.new_registrations }}</td>
+        <td>{{ row.new_purchases }}</td>
+        <td>{{ row.lt_recharged }}</td>
+        <td>{{ row.lt_spent }}</td>
+        <td>{{ row.vouchers_redeemed }}</td>
+        <td>{{ row.book_spend }}</td>
+        <td>{{ row.video_spend }}</td>
+        <td>{{ row.vip_spend }}</td>
+      </tr>
+      {% empty %}
+      <tr class="empty-row">
+        <td colspan="10">Không có dữ liệu trong khoảng thời gian này.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
