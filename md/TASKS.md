@@ -31,6 +31,7 @@
 | 13 | [feature-13-content-sync.md](design/feature-13-content-sync.md) | Content Sync — Django management commands export/import books+videos giữa environments | 📝 |
 | 14 | [feature-14-firebase-analytics.md](design/feature-14-firebase-analytics.md) | Firebase Analytics — User activity tracking (page_view, purchase, voucher, flashcard, book/video progress) | 📝 |
 | 15 | [feature-15-client-caching.md](design/feature-15-client-caching.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
+| 16 | [feature-16-pdf-reader-v1.md](design/feature-16-pdf-reader-v1.md) | PDF Reader V1 — Keyboard shortcuts, desktop split-panel TOC sidebar, blur DRM + right-click prevention | 📝 |
 
 ---
 
@@ -175,6 +176,42 @@
 
 > **Design doc**: `md/design/feature-15-client-caching.md`
 > **Frontend only** — không cần backend changes
+
+---
+
+### Feature 16: PDF Reader V1 — UX & DRM Improvements 📝 (chưa implement)
+**Priority:** Medium | **Status:** 📝 Design done | **Effort:** S (~2 ngày)
+
+- [ ] **16.1 Keyboard shortcuts**
+  - [ ] Thêm `onKeyDown` handler với switch/case (ArrowLeft, ArrowRight, Space, Shift+Space, +/=, -, T, Escape)
+  - [ ] Guard: skip khi `activeElement` là input/textarea/select
+  - [ ] Bind `document.addEventListener('keydown', onKeyDown)` trong `onMounted`
+  - [ ] Unbind trong `onBeforeUnmount`
+
+- [ ] **16.2 Desktop split-panel layout (≥1024px)**
+  - [ ] Thêm `windowWidth` ref + `onWindowResize` function + resize listener
+  - [ ] Thêm `isDesktop` computed (`windowWidth >= 1024`)
+  - [ ] Wrap `reader__content` + TOC trong `reader__body` div
+  - [ ] TOC: `v-if="showToc || isDesktop"` + `isDesktop` class + guard backdrop click
+  - [ ] Ẩn TOC close button khi desktop (`v-if="!isDesktop"`)
+  - [ ] Disable Transition khi desktop (`:name="isDesktop ? '' : 'toc'"`)
+  - [ ] CSS: `.reader__body`, `.reader__body--desktop`, `.reader__toc--desktop`
+
+- [ ] **16.3 DRM protection — blur + right-click prevention**
+  - [ ] Thêm `isBlurred` ref + `onVisibilityChange` function
+  - [ ] Bind/unbind `visibilitychange` listener
+  - [ ] Thêm `:class="{ 'reader__canvas-wrap--blurred': isBlurred }"` vào canvas-wrap
+  - [ ] Thêm `@contextmenu.prevent` vào root `.reader` div
+  - [ ] CSS: `.reader__canvas-wrap--blurred canvas { filter: blur(14px); }` + `user-select: none`
+
+- [ ] **16.4 Testing**
+  - [ ] Keyboard Chrome + Firefox + Safari
+  - [ ] Resize desktop ↔ mobile (TOC overlay vs sidebar)
+  - [ ] Minimize/switch tab → canvas blur → tab active → clear
+  - [ ] Right-click prevention trên canvas + topbar
+
+> **Design doc**: `md/design/feature-16-pdf-reader-v1.md`
+> **Frontend only** — `BookReaderView.vue` only, không cần backend changes
 
 ---
 
@@ -437,7 +474,7 @@
 4. **Watermark composable** (`useWatermark.js`) — dùng cho BookReader + VideoPlayer
 5. **Feature 14** — Firebase Analytics (design done, chưa implement)
 6. **Feature 13** — Content Sync commands (design done, chưa implement)
-7. Disable right-click + CSS screenshot prevention trên reader/player
+7. **Feature 16** — PDF Reader V1 (keyboard shortcuts + desktop split-panel + blur/right-click DRM, design done)
 8. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
 
 ---
@@ -501,6 +538,7 @@
 | Feature 13. Content Sync Commands | 📝 Design done, chưa implement |
 | Feature 14. Firebase Analytics | 📝 Design done, chưa implement |
 | Feature 15. Client-Side Caching | ✅ |
+| Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
 
 ---
 
