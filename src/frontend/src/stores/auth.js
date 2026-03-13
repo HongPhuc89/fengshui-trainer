@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import { authService } from '../services/auth.service'
+import { clearApiCache } from '../api/cache-storage'
 
 const ACCESS_KEY = 'access'
 const REFRESH_KEY = 'refresh'
@@ -46,6 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(ACCESS_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_KEY)
+    // Clear API cache on logout — prevents stale is_purchased data leaking to next user
+    clearApiCache()
   }
 
   async function doRefresh() {

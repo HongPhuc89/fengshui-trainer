@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { videosService } from '../services/videos.service'
 import GemIcon from '../components/icons/GemIcon.vue'
+import { clearApiCache } from '../api/cache-storage'
 
 const route  = useRoute()
 const router = useRouter()
@@ -73,6 +74,8 @@ async function handleBuy() {
   try {
     await videosService.purchaseCourse(course.value.public_id)
     course.value.has_purchased = true
+    // Invalidate video catalogue cache so is_purchased reflects correctly on next visit
+    clearApiCache()
   } catch (err) {
     const detail = err.response?.data?.detail
     if (detail === 'INSUFFICIENT_FUNDS') {

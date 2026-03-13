@@ -1,22 +1,27 @@
 import api from '../api/client'
 
+const CACHE_12H = { ttl: 12 * 60 * 60 * 1000 }
+const CACHE_1H = { ttl: 60 * 60 * 1000 }
+const CACHE_5M = { ttl: 5 * 60 * 1000 }
+
 export const videosService = {
   getRecentlyWatched() {
-    return api.get('videos/recently-watched/')
+    return api.get('videos/recently-watched/', { cache: CACHE_5M })
   },
 
   getCategories() {
-    return api.get('videos/categories/')
+    return api.get('videos/categories/', { cache: CACHE_12H })
   },
 
   getVideos(params = {}) {
-    return api.get('videos/', { params })
+    return api.get('videos/', { params, cache: CACHE_1H })
   },
 
   getVideoDetail(slug) {
-    return api.get(`videos/${slug}/`)
+    return api.get(`videos/${slug}/`, { cache: CACHE_1H })
   },
 
+  // No cache: lesson content with access control must be fresh
   getLesson(courseSlug, lessonSlug) {
     return api.get(`videos/${courseSlug}/lessons/${lessonSlug}/`)
   },
@@ -27,10 +32,12 @@ export const videosService = {
     })
   },
 
+  // No cache: real-time progress tracking
   getCourseProgress(courseSlug) {
     return api.get(`videos/${courseSlug}/progress/`)
   },
 
+  // No cache: needs accurate last-lesson for navigation
   getLastLesson(courseSlug) {
     return api.get(`videos/${courseSlug}/progress/last-lesson/`)
   },

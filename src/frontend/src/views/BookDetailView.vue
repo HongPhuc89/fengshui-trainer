@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { booksService } from '../services/books.service'
 import { walletService } from '../services/wallet.service'
+import { clearApiCache } from '../api/cache-storage'
 import GemIcon from '../components/icons/GemIcon.vue'
 import LockIcon from '../components/icons/LockIcon.vue'
 
@@ -102,6 +103,8 @@ async function confirmPurchase() {
     // Case 1 — VIP user: update local state, use server balance
     book.value.has_purchased = true
     balance.value = res.data.balance
+    // Invalidate book catalogue cache so is_purchased reflects correctly on next visit
+    clearApiCache()
     showModal.value = false
     router.push({
       name: 'BookReader',

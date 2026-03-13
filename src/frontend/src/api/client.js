@@ -1,10 +1,19 @@
 import axios from 'axios'
+import { setupCache } from 'axios-cache-interceptor'
+import { localforageStorage } from './cache-storage'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
-export const api = axios.create({
+const axiosInstance = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
+})
+
+export const api = setupCache(axiosInstance, {
+  storage: localforageStorage,
+  ttl: 0, // default: no cache — opt-in per request
+  methods: ['get'], // only cache GET requests, never POST/PUT/DELETE
+  staleIfError: 3_600_000, // on server 5xx: serve stale cache up to 1h (offline resilience)
 })
 
 api.interceptors.request.use((config) => {
