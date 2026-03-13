@@ -11,7 +11,7 @@ Mỗi file = 1 ý tưởng. Dùng skill `/product-ideation` để sinh ý tưở
 ```
 md/idea/<tên>.md          ← ý tưởng thô từ product-ideation
     ↓ PO review (/project-owner-detail-design-review)
-md/design/feature-N-detail-design.md   ← đủ để implement
+md/design/feature-N-<name>.md   ← đủ để implement
     ↓ /fullstack-developer
 Code
 ```
@@ -22,11 +22,7 @@ Code
 
 | File | Tiêu đề | Ưu tiên | Effort | Status |
 |------|---------|---------|--------|--------|
-| [modern-flashcard-ui.md](modern-flashcard-ui.md) | Modern Flashcard UI — Web & Mobile | 🟡 Medium | M | Idea |
-| [book-purchase-flow.md](book-purchase-flow.md) | Book Purchase Flow — Mua Sách & Mở Chapter | 🔴 High | M | Idea |
 | [admin-activity-dashboard.md](admin-activity-dashboard.md) | Admin User Activity Dashboard — DAU & Linh Thạch theo ngày | 🔴 High | M | Idea |
-| [pdf-reading-experience.md](pdf-reading-experience.md) | PDF Reading Experience — Cải thiện trải nghiệm đọc sách | 🔴 High | M→L | Idea |
-| [client-side-caching.md](client-side-caching.md) | Client-Side Caching — Giảm API calls với axios-cache-interceptor + localforage | 🔴 High | M | Idea |
 
 ---
 
