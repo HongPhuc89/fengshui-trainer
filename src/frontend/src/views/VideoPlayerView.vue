@@ -29,6 +29,20 @@ const TABS = [
 // ── Video player ref (for triggering save on navigation) ───────
 const playerAreaRef = ref(null)
 
+// ── Access control ─────────────────────────────────────────────
+const canAccess = computed(() => {
+  if (!course.value) return false
+  if (course.value.is_free) return true
+  if (auth.user?.user_type === 'VIP') return true
+  if (course.value.has_purchased) return true
+  return false
+})
+
+function canAccessLesson(lesson) {
+  if (lesson.is_free) return true
+  return canAccess.value
+}
+
 // ── Watermark ─────────────────────────────────────────────────
 const watermarkText = computed(() => auth.user?.email ?? '')
 
@@ -178,6 +192,7 @@ function goToLesson(l) {
         :course-slug="route.params.slug"
         :lesson-slug="route.params.lessonSlug"
         :tabs="TABS"
+        :can-access-lesson="canAccessLesson"
       />
 
     </div>

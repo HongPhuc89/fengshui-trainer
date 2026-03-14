@@ -7,12 +7,13 @@ import QuizTab        from './QuizTab.vue'
 import { trainingService } from '../../services/training.service'
 
 const props = defineProps({
-  lesson:     { type: Object, required: true },
-  lessons:    { type: Array,  default: () => [] },
-  courseSlug: { type: String, required: true },
-  lessonSlug: { type: String, required: true },
-  tabs:       { type: Array,  required: true },
-  modelValue: { type: Number, required: true },
+  lesson:           { type: Object,    required: true },
+  lessons:          { type: Array,     default: () => [] },
+  courseSlug:       { type: String,    required: true },
+  lessonSlug:       { type: String,    required: true },
+  tabs:             { type: Array,     required: true },
+  modelValue:       { type: Number,    required: true },
+  canAccessLesson:  { type: Function,  default: () => true },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -70,6 +71,7 @@ const localTabs = computed(() =>
         :lessons="lessons"
         :current-lesson-slug="lessonSlug"
         :course-slug="courseSlug"
+        :can-access-lesson="canAccessLesson"
       />
 
       <!-- Tab 1: Flashcards (lazy, keep-alive) -->

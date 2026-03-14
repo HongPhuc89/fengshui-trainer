@@ -3,9 +3,10 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
-  lessons:           { type: Array,  required: true },
-  currentLessonSlug: { type: String, required: true },
-  courseSlug:        { type: String, required: true },
+  lessons:           { type: Array,    required: true },
+  currentLessonSlug: { type: String,   required: true },
+  courseSlug:        { type: String,   required: true },
+  canAccessLesson:   { type: Function, default: () => true },
 })
 
 const emit = defineEmits(['select'])
@@ -33,6 +34,7 @@ function formatDuration(seconds) {
 
 function selectLesson(lesson) {
   if (lesson.slug === props.currentLessonSlug) return
+  if (!props.canAccessLesson(lesson)) return
   emit('select', lesson)
   router.push({ name: 'VideoPlayer', params: { slug: props.courseSlug, lessonSlug: lesson.slug } })
 }
@@ -44,13 +46,24 @@ function selectLesson(lesson) {
       v-for="lesson in lessons"
       :key="lesson.slug"
       class="lesson-list__item"
-      :class="{ 'lesson-list__item--active': lesson.slug === currentLessonSlug }"
+      :class="{
+        'lesson-list__item--active':  lesson.slug === currentLessonSlug,
+        'lesson-list__item--locked':  !canAccessLesson(lesson),
+      }"
       @click="selectLesson(lesson)"
     >
-      <!-- Active indicator -->
+      <!-- Active indicator / lock icon -->
       <span class="lesson-list__indicator">
         <svg
-          v-if="lesson.slug === currentLessonSlug"
+          v-if="!canAccessLesson(lesson)"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"
+          class="lesson-list__lock-icon"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <svg
+          v-else-if="lesson.slug === currentLessonSlug"
           viewBox="0 0 24 24" fill="currentColor" width="12" height="12"
         >
           <polygon points="5,3 19,12 5,21"/>
@@ -172,5 +185,19 @@ function selectLesson(lesson) {
 .lesson-list__duration {
   font-size: 0.72rem;
   color: rgba(255,255,255,0.35);
+}
+
+/* Locked state */
+.lesson-list__item--locked {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.lesson-list__item--locked:hover:not(.lesson-list__item--active) {
+  background: none;
+}
+
+.lesson-list__lock-icon {
+  color: rgba(255,255,255,0.4);
 }
 </style>
