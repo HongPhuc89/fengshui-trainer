@@ -294,6 +294,15 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://.*\.hongphuc\.top$",
     r"^https?://hongphuc\.top$",
 ]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "cache-control",
+]
 
 # Celery
 CELERY_BROKER_URL = REDIS_URL
