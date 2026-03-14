@@ -47,9 +47,50 @@ class VideoCourseAdmin(admin.ModelAdmin):
     list_filter = ('is_free', 'level', 'category')
     search_fields = ('title', 'instructor')
     inlines = [VideoLessonInline]
+    readonly_fields = ('recalculate_totals_btn',)
 
     class Media:
         js = ('videos/js/auto_slug_course.js',)
+
+    def recalculate_totals_btn(self, obj):
+        if not obj or not obj.pk:
+            return '—'
+        url = reverse('admin:videos_videocourse_recalculate_totals', args=[obj.pk])
+        return format_html(
+            '<a href="{}" class="button" '
+            'style="padding:6px 14px;background:#417690;color:#fff;border-radius:4px;'
+            'text-decoration:none;font-size:13px;display:inline-block">'
+            '⟳ Tính lại tổng duration &amp; số video</a>'
+            '<span style="margin-left:10px;color:#888;font-size:12px">'
+            'Hiện tại: {} video — {} giây</span>',
+            url,
+            obj.total_lessons,
+            obj.total_duration_seconds,
+        )
+    recalculate_totals_btn.short_description = 'Tính lại tổng'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<int:pk>/recalculate-totals/',
+                self.admin_site.admin_view(self.recalculate_totals_view),
+                name='videos_videocourse_recalculate_totals',
+            ),
+        ]
+        return custom + urls
+
+    def recalculate_totals_view(self, request, pk):
+        course = get_object_or_404(VideoCourse, pk=pk)
+        old_lessons = course.total_lessons
+        old_duration = course.total_duration_seconds
+        course.recalculate_totals()
+        self.message_user(
+            request,
+            f'Đã cập nhật: {old_lessons} → {course.total_lessons} video, '
+            f'{old_duration}s → {course.total_duration_seconds}s tổng thời lượng.',
+        )
+        return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
     def save_model(self, request, obj, form, change):
         if not obj.slug:
