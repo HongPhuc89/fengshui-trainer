@@ -1,8 +1,13 @@
+import base64
+
 from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import UserRateThrottle
+from django.http import StreamingHttpResponse
 
 from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapterProgress
 from .serializers import (
@@ -10,6 +15,7 @@ from .serializers import (
     BookDetailWithPurchaseSerializer, BookChapterListSerializer,
     BookChapterContentSerializer,
 )
+from .services.pdf_encryption import derive_chapter_key
 
 
 def _can_access_chapter(user, book, chapter):
@@ -148,6 +154,7 @@ class BookChapterDetailView(views.APIView):
             'file_url': file_url,
             'file_path': chapter.file_path.name if chapter.file_path else None,
             'page_count': chapter.page_count,
+            'encrypted_cdn_url': chapter.encrypted_cdn_url,
             # has_training_set needs the actual model instance, so pass chapter via context
         })
         # Override has_training_set using the model instance directly
@@ -214,3 +221,78 @@ class BookChapterProgressUpdateView(views.APIView):
             'current_page': progress.current_page,
             'completed': progress.completed,
         })
+
+
+class DecryptKeyThrottle(UserRateThrottle):
+    """60 requests/hour per user — enough for a normal reading session."""
+    rate = '60/hour'
+
+
+class ChapterDecryptKeyView(views.APIView):
+    """
+    GET /api/books/{slug}/chapters/{order}/decrypt-key/
+
+    Returns (key_b64, iv_b64) so the frontend can decrypt the encrypted PDF.
+    - Demo chapters: anonymous access allowed (public content).
+    - Non-demo: requires JWT + purchase/VIP.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [DecryptKeyThrottle]
+
+    def get(self, request, slug, order):
+        chapter = get_object_or_404(BookChapter, book__slug=slug, order=order)
+
+        if not chapter.is_demo:
+            if not request.user.is_authenticated:
+                return Response({'detail': 'Yêu cầu đăng nhập.'}, status=401)
+            if not _can_access_chapter(request.user, chapter.book, chapter):
+                return Response({'detail': 'Không có quyền truy cập.'}, status=403)
+
+        if not chapter.encrypted_cdn_url:
+            return Response(
+                {'detail': 'Chương đang được xử lý, vui lòng thử lại sau vài phút.'},
+                status=503,
+            )
+
+        key, iv = derive_chapter_key(chapter.id, version=chapter.encryption_version)
+        return Response({
+            'key_b64': base64.b64encode(key).decode(),
+            'iv_b64':  base64.b64encode(iv).decode(),
+        })
+
+
+class ChapterEncryptedFileView(views.APIView):
+    """
+    GET /api/books/{slug}/chapters/{order}/encrypted-file/
+
+    Fallback endpoint: serves the encrypted file from local storage when Supabase CDN is down.
+    Encrypts on-the-fly using the same (key, iv) as the CDN file → same ciphertext → frontend
+    can use the same decrypt key without any extra coordination.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug, order):
+        chapter = get_object_or_404(BookChapter, book__slug=slug, order=order)
+
+        if not chapter.is_demo:
+            if not request.user.is_authenticated:
+                return Response({'detail': 'Yêu cầu đăng nhập.'}, status=401)
+            if not _can_access_chapter(request.user, chapter.book, chapter):
+                return Response({'detail': 'Không có quyền truy cập.'}, status=403)
+
+        if not chapter.file_path:
+            return Response({'detail': 'File không tồn tại.'}, status=404)
+
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        with chapter.file_path.open('rb') as f:
+            pdf_bytes = f.read()
+
+        key, iv = derive_chapter_key(chapter.id, version=chapter.encryption_version)
+        encrypted = AESGCM(key).encrypt(iv, pdf_bytes, associated_data=None)
+
+        return StreamingHttpResponse(
+            iter([encrypted]),
+            content_type='application/octet-stream',
+            headers={'Cache-Control': 'private, no-store'},
+        )

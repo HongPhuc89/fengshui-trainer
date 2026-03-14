@@ -17,3 +17,4 @@ gunicorn
 sentry-sdk
 requests
 boto3
+cryptography

@@ -10,6 +10,7 @@ Chuẩn coding khi implement từ detail design. Áp dụng cho mọi thay đổ
 - **Frontend:** `src/frontend/src/` — Vue 3 app (views, components, router, services).
 - **Docker:** `docker/docker-compose.yml`, service `web` cho Django. Mọi lệnh Django chạy qua:
   `docker-compose -f docker/docker-compose.yml exec web python manage.py <command>`.
+- Code và comment bằng tiếng Anh
 
 ---
 
@@ -20,6 +21,7 @@ Chuẩn coding khi implement từ detail design. Áp dụng cho mọi thay đổ
 - Ràng buộc: `UniqueConstraint`, `Meta.constraints`; logic phức tạp trong `clean()` và gọi `full_clean()` trước `save()` khi cần.
 - Kế thừa base (ví dụ `BaseModel`) nếu dự án có (id, timestamps). UUID cho PK public: `UUIDField(primary_key=True, default=uuid.uuid4, editable=False)` hoặc field `public_id` tùy design.
 - **Không** xóa field đang dùng trong một migration; dùng migration tách: schema → data → cleanup.
+- Các hàm dài tối đa 50 dòng
 
 ### Migrations
 - `makemigrations` chỉ chạy sau khi đã sửa model. Tên migration mô tả ngắn (ví dụ `add_training_set_and_activity`).

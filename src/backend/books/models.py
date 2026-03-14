@@ -2,6 +2,7 @@ import os
 
 from django.conf import settings
 from django.db import models
+from django.db.models import F
 from PyPDF2 import PdfReader
 
 from users.models import BaseModel
@@ -79,6 +80,14 @@ class BookChapter(BaseModel):
     file_size = models.PositiveIntegerField(null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
     is_demo = models.BooleanField(default=False)
+    encrypted_cdn_url = models.URLField(
+        blank=True, null=True,
+        help_text="Public URL of the AES-256-GCM encrypted PDF on Supabase CDN. Null if not yet encrypted.",
+    )
+    encryption_version = models.PositiveIntegerField(
+        default=1,
+        help_text="Incremented on every re-upload. Included in IV derivation to prevent GCM nonce reuse.",
+    )
 
     class Meta:
         verbose_name = "Book Chapter"
@@ -123,6 +132,16 @@ class BookChapter(BaseModel):
 
         if updates:
             BookChapter.objects.filter(pk=self.pk).update(**updates)
+
+        if file_changed:
+            # Reset encrypted_cdn_url and bump version so the Celery task derives a fresh IV.
+            # Use UPDATE (not save) to avoid recursively triggering save().
+            BookChapter.objects.filter(pk=self.pk).update(
+                encrypted_cdn_url=None,
+                encryption_version=F('encryption_version') + 1,
+            )
+            from books.tasks import encrypt_and_upload_chapter_pdf  # noqa: PLC0415 (avoid circular import)
+            encrypt_and_upload_chapter_pdf.delay(self.pk)
 
     def __str__(self):
         return f"{self.book.title} - {self.title}"

@@ -5,6 +5,8 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
 import { useBreakpoint } from '../composables/useBreakpoint'
 import { useWatermark } from '../composables/useWatermark'
+import { usePdfDecryption } from '../composables/usePdfDecryption'
+import { api } from '../api/client'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -95,6 +97,7 @@ const hasNext = computed(
 )
 
 const { watermarkText, watermarkBgImage } = useWatermark()
+const { loadEncryptedPdf } = usePdfDecryption()
 
 // ── Init ──────────────────────────────────────────────────
 onMounted(async () => {
@@ -160,27 +163,41 @@ async function loadChapter(order, page = 1) {
       return
     }
 
-    const { file_url, page_count, has_training_set } = chapterRes.data
+    const { encrypted_cdn_url, page_count, has_training_set } = chapterRes.data
     chapterPageCount.value = page_count ?? 0
     currentChapterHasTraining.value = !!has_training_set
+
     // Canvas is always in DOM — wait for layout then render, hide loading only after done
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
-    await loadPdf(file_url, page)
+    await loadPdf(encrypted_cdn_url, order, page)
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
-    error.value = e?.message || 'Không thể tải chương.'
+    if (e?.response?.status === 503) {
+      error.value = 'Chương đang được xử lý, vui lòng thử lại sau vài phút.'
+    } else if (e?.response?.status === 401) {
+      error.value = 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.'
+    } else {
+      error.value = 'Không thể tải chương, vui lòng thử lại.'
+    }
     chapterLoading.value = false
   }
 }
 
-async function loadPdf(url, targetPage = 1) {
+async function loadPdf(encryptedCdnUrl, order, targetPage = 1) {
   if (renderingTask.value) {
     renderingTask.value.cancel()
     renderingTask.value = null
   }
-  pdfDoc.value = await pdfjsLib.getDocument({ url }).promise
+
+  pdfDoc.value = await loadEncryptedPdf(
+    encryptedCdnUrl,
+    `books/${bookSlug}/chapters/${order}/decrypt-key/`,
+    `books/${bookSlug}/chapters/${order}/encrypted-file/`,
+    api,
+  )
+
   chapterPageCount.value = pdfDoc.value.numPages
 
   // Sync real page count back into chapters array so totalBookPages stays accurate

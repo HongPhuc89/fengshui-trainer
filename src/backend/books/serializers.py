@@ -88,6 +88,7 @@ class BookChapterContentSerializer(serializers.Serializer):
     file_url = serializers.CharField(allow_null=True)
     file_path = serializers.CharField(allow_null=True)
     page_count = serializers.IntegerField()
+    encrypted_cdn_url = serializers.URLField(allow_null=True, required=False)
     has_training_set = serializers.SerializerMethodField()
 
     def get_has_training_set(self, chapter):

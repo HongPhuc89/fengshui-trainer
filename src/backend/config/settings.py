@@ -171,6 +171,9 @@ SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="media")
 SUPABASE_REGION = env("SUPABASE_REGION", default="ap-southeast-1")
 SUPABASE_URL_EXPIRY = 3600  # pre-signed URL valid for 1 hour
 
+# PDF encryption — generate with: openssl rand -hex 32
+PDF_MASTER_KEY = env("PDF_MASTER_KEY", default="")
+
 STORAGES = {
     "default": {"BACKEND": "config.storage.LocalFirstSupabaseStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
