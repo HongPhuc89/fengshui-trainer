@@ -1,18 +1,18 @@
 import * as pdfjsLib from 'pdfjs-dist'
 
 /**
- * Load and decrypt a PDF from Supabase CDN (with fallback to backend).
+ * Load and decrypt a PDF from Supabase Storage (with fallback to backend).
  *
  * Flow:
- *   1. GET /decrypt-key/  → { key_b64, iv_b64 }
- *   2. fetch CDN URL      → encrypted bytes  (fallback: GET /encrypted-file/)
+ *   1. GET /decrypt-key/  → { key_b64, iv_b64, file_url }  (pre-signed URL)
+ *   2. fetch file_url     → encrypted bytes  (fallback: GET /encrypted-file/)
  *   3. crypto.subtle.decrypt (AES-256-GCM) → plaintext ArrayBuffer
  *   4. pdfjsLib.getDocument({ data: new Uint8Array(buf) }) → PDFDocumentProxy
  */
 export function usePdfDecryption() {
 
-  async function loadEncryptedPdf(encryptedCdnUrl, decryptKeyUrl, fallbackFileUrl, apiClient) {
-    // 1. Fetch decrypt key from backend (access check enforced server-side)
+  async function loadEncryptedPdf(decryptKeyUrl, fallbackFileUrl, apiClient) {
+    // 1. Fetch decrypt key + pre-signed file URL from backend (access check enforced server-side)
     const { data: keyData } = await apiClient.get(decryptKeyUrl)
 
     const cryptoKey = await crypto.subtle.importKey(
@@ -24,11 +24,11 @@ export function usePdfDecryption() {
     )
     const iv = _b64ToBytes(keyData.iv_b64)
 
-    // 2. Fetch encrypted file — CDN first, fallback to backend if CDN is unavailable
+    // 2. Fetch encrypted file — pre-signed Supabase URL first, fallback to backend if unavailable
     let encryptedBuffer
     try {
-      const response = await fetch(encryptedCdnUrl)
-      if (!response.ok) throw new Error(`CDN responded ${response.status}`)
+      const response = await fetch(keyData.file_url)
+      if (!response.ok) throw new Error(`Supabase responded ${response.status}`)
       encryptedBuffer = await response.arrayBuffer()
     } catch {
       const fallback = await apiClient.get(fallbackFileUrl, { responseType: 'arraybuffer' })

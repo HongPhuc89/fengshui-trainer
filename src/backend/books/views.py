@@ -15,7 +15,7 @@ from .serializers import (
     BookDetailWithPurchaseSerializer, BookChapterListSerializer,
     BookChapterContentSerializer,
 )
-from .services.pdf_encryption import derive_chapter_key
+from .services.pdf_encryption import derive_chapter_key, get_presigned_encrypted_url
 
 
 def _can_access_chapter(user, book, chapter):
@@ -255,9 +255,11 @@ class ChapterDecryptKeyView(views.APIView):
             )
 
         key, iv = derive_chapter_key(chapter.id, version=chapter.encryption_version)
+        file_url = get_presigned_encrypted_url(chapter.id, version=chapter.encryption_version)
         return Response({
-            'key_b64': base64.b64encode(key).decode(),
-            'iv_b64':  base64.b64encode(iv).decode(),
+            'key_b64':  base64.b64encode(key).decode(),
+            'iv_b64':   base64.b64encode(iv).decode(),
+            'file_url': file_url,
         })
 
 

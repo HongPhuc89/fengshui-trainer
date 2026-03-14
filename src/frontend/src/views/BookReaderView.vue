@@ -163,14 +163,14 @@ async function loadChapter(order, page = 1) {
       return
     }
 
-    const { encrypted_cdn_url, page_count, has_training_set } = chapterRes.data
+    const { page_count, has_training_set } = chapterRes.data
     chapterPageCount.value = page_count ?? 0
     currentChapterHasTraining.value = !!has_training_set
 
     // Canvas is always in DOM — wait for layout then render, hide loading only after done
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
-    await loadPdf(encrypted_cdn_url, order, page)
+    await loadPdf(order, page)
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
@@ -185,14 +185,13 @@ async function loadChapter(order, page = 1) {
   }
 }
 
-async function loadPdf(encryptedCdnUrl, order, targetPage = 1) {
+async function loadPdf(order, targetPage = 1) {
   if (renderingTask.value) {
     renderingTask.value.cancel()
     renderingTask.value = null
   }
 
   pdfDoc.value = await loadEncryptedPdf(
-    encryptedCdnUrl,
     `books/${bookSlug}/chapters/${order}/decrypt-key/`,
     `books/${bookSlug}/chapters/${order}/encrypted-file/`,
     api,

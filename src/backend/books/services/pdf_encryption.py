@@ -31,14 +31,28 @@ def get_s3_client():
 
 
 def encrypted_cdn_path(chapter_id: int, version: int) -> str:
-    """S3 key for the encrypted file. Version in path to bypass CDN immutable cache on re-encrypt."""
+    """S3 key for the encrypted file. Version in path to bust CDN cache on re-encrypt."""
     return f"encrypt_book/v{version}/{chapter_id}.bin"
 
 
 def build_encrypted_cdn_url(chapter_id: int, version: int) -> str:
-    """Public URL of the encrypted file on Supabase CDN."""
+    """
+    Canonical marker URL stored in DB to indicate the file exists on Supabase.
+    NOT used directly for fetching (bucket is private) — generate a pre-signed URL instead.
+    """
     path = encrypted_cdn_path(chapter_id, version)
     return (
         f"https://{settings.SUPABASE_PROJECT_REF}.supabase.co"
-        f"/storage/v1/object/public/{settings.SUPABASE_STORAGE_BUCKET}/{path}"
+        f"/storage/v1/object/{settings.SUPABASE_STORAGE_BUCKET}/{path}"
+    )
+
+
+def get_presigned_encrypted_url(chapter_id: int, version: int) -> str:
+    """Generate a time-limited pre-signed URL for the encrypted file (private bucket)."""
+    path = encrypted_cdn_path(chapter_id, version)
+    expiry = getattr(settings, "SUPABASE_URL_EXPIRY", 3600)
+    return get_s3_client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.SUPABASE_STORAGE_BUCKET, "Key": path},
+        ExpiresIn=expiry,
     )
