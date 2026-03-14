@@ -84,7 +84,8 @@ class VideoCourseListView(generics.ListAPIView):
     queryset = VideoCourse.objects.all().select_related('category')
 
     def get_queryset(self):
-        qs = VideoCourse.objects.all().select_related('category')
+        today = timezone.now().date()
+        qs = VideoCourse.objects.filter(published_date__lte=today).select_related('category')
         category_slug = self.request.query_params.get('category')
         if category_slug:
             qs = qs.filter(category__slug=category_slug)
@@ -108,7 +109,10 @@ class VideoCourseListView(generics.ListAPIView):
 class VideoCourseDetailView(generics.RetrieveAPIView):
     """GET /api/videos/{slug}/ - Course detail with lessons; has_purchased if auth."""
     permission_classes = (AllowAny,)
-    queryset = VideoCourse.objects.all().select_related('category').prefetch_related('lessons')
+
+    def get_queryset(self):
+        today = timezone.now().date()
+        return VideoCourse.objects.filter(published_date__lte=today).select_related('category').prefetch_related('lessons')
     lookup_field = 'slug'
     lookup_url_kwarg = 'slug'
 
