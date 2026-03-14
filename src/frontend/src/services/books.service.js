@@ -35,11 +35,6 @@ export const booksService = {
     return api.post(`books/${bookSlug}/chapters/${order}/progress/`, data)
   },
 
-  // No cache: security config must be fresh
-  getWatermarkConfig(bookSlug, order) {
-    return api.get(`books/${bookSlug}/chapters/${order}/watermark-config/`)
-  },
-
   purchaseBook(bookId) {
     return api.post('payments/purchase-book/', { book_id: bookId })
   },

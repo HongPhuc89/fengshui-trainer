@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
 import { booksService } from '../services/books.service'
 import { useBreakpoint } from '../composables/useBreakpoint'
+import { useWatermark } from '../composables/useWatermark'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -25,7 +26,6 @@ const chapterPageCount = ref(0)
 const loading = ref(true)
 const chapterLoading = ref(false)
 const error = ref(null)
-const watermark = ref({ display_name: '', phone_number: '' })
 const showToc = ref(false)
 const showZoom = ref(false)
 const zoomLevel = ref(1.0)
@@ -94,21 +94,7 @@ const hasNext = computed(
     currentChapterOrder.value < chapters.value.length,
 )
 
-const watermarkText = computed(() => {
-  const { display_name, phone_number } = watermark.value
-  if (!display_name) return ''
-  return phone_number ? `${display_name} - ${phone_number}` : display_name
-})
-
-const watermarkBgImage = computed(() => {
-  if (!watermarkText.value) return 'none'
-  const text = watermarkText.value
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="280" height="120">
-    <text x="140" y="70" fill="rgba(0,0,0,0.6)" font-size="13" text-anchor="middle"
-      transform="rotate(-30,140,70)" font-family="sans-serif" font-weight="600">${text}</text>
-  </svg>`
-  return `url("data:image/svg+xml;charset=utf8,${encodeURIComponent(svg)}")`
-})
+const { watermarkText, watermarkBgImage } = useWatermark()
 
 // ── Init ──────────────────────────────────────────────────
 onMounted(async () => {
@@ -166,22 +152,15 @@ async function loadChapter(order, page = 1) {
   chapterLoading.value = true
   error.value = null
   try {
-    const [chapterRes, watermarkRes] = await Promise.allSettled([
-      booksService.getChapter(bookSlug, order),
-      booksService.getWatermarkConfig(bookSlug, order),
-    ])
+    const chapterRes = await booksService.getChapter(bookSlug, order).catch(() => null)
 
-    if (chapterRes.status !== 'fulfilled') {
+    if (!chapterRes) {
       error.value = 'Không có quyền truy cập chương này.'
       chapterLoading.value = false
       return
     }
 
-    if (watermarkRes.status === 'fulfilled') {
-      watermark.value = watermarkRes.value.data
-    }
-
-    const { file_url, page_count, has_training_set } = chapterRes.value.data
+    const { file_url, page_count, has_training_set } = chapterRes.data
     chapterPageCount.value = page_count ?? 0
     currentChapterHasTraining.value = !!has_training_set
     // Canvas is always in DOM — wait for layout then render, hide loading only after done
@@ -595,7 +574,7 @@ function scheduleSave() {
           <!-- Page footer -->
           <div class="reader__page-footer">
             <span class="reader__page-num">TRANG {{ currentPage }}</span>
-            <span class="reader__page-user">{{ watermark.display_name?.toUpperCase() }}</span>
+            <span class="reader__page-user">{{ watermarkText.toUpperCase() }}</span>
           </div>
         </div>
       </div>

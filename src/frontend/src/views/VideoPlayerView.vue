@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useWatermark } from '../composables/useWatermark'
 import { videosService } from '../services/videos.service'
 import VideoPlayerArea from '../components/video/VideoPlayerArea.vue'
 import LessonMeta      from '../components/video/LessonMeta.vue'
@@ -44,7 +45,7 @@ function canAccessLesson(lesson) {
 }
 
 // ── Watermark ─────────────────────────────────────────────────
-const watermarkText = computed(() => auth.user?.email ?? '')
+const { watermarkText } = useWatermark()
 
 // ── Video type detection ───────────────────────────────────────
 const isEmbedUrl = computed(() => {

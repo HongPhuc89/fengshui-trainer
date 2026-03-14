@@ -81,11 +81,6 @@ class BookDetailWithPurchaseSerializer(BookDetailSerializer):
         fields = BookDetailSerializer.Meta.fields + ('has_purchased',)
 
 
-class WatermarkConfigSerializer(serializers.Serializer):
-    display_name = serializers.CharField()
-    phone_number = serializers.CharField()
-
-
 class BookChapterContentSerializer(serializers.Serializer):
     public_id = serializers.UUIDField()
     title = serializers.CharField()

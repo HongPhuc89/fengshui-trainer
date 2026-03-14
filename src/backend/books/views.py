@@ -8,7 +8,7 @@ from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapt
 from .serializers import (
     BookCategorySerializer, BookListSerializer, BookDetailSerializer,
     BookDetailWithPurchaseSerializer, BookChapterListSerializer,
-    WatermarkConfigSerializer, BookChapterContentSerializer,
+    BookChapterContentSerializer,
 )
 
 
@@ -214,26 +214,3 @@ class BookChapterProgressUpdateView(views.APIView):
             'current_page': progress.current_page,
             'completed': progress.completed,
         })
-
-
-class BookChapterWatermarkConfigView(views.APIView):
-    """GET /api/books/{slug}/chapters/{order}/watermark-config/ - Watermark for client overlay."""
-    permission_classes = (IsAuthenticated,)
-    serializer_class = WatermarkConfigSerializer
-
-    def get(self, request, slug, order):
-        try:
-            book = Book.objects.get(slug=slug)
-            chapter = BookChapter.objects.get(book=book, order=order)
-        except (Book.DoesNotExist, BookChapter.DoesNotExist):
-            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if not _can_access_chapter(request.user, book, chapter):
-            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-        name = (request.user.get_full_name() or request.user.username or '').strip() or 'User'
-        phone = (request.user.phone_number or '').strip() or (request.user.email or '').strip()
-        return Response(WatermarkConfigSerializer({
-            'display_name': name,
-            'phone_number': phone,
-        }).data)
