@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { booksService } from '../services/books.service'
+import { clearApiCache } from '../api/cache-storage'
 import GemIcon from '../components/icons/GemIcon.vue'
 import LockIcon from '../components/icons/LockIcon.vue'
 import ScrollIcon from '../components/icons/ScrollIcon.vue'
@@ -15,10 +16,20 @@ const books = ref([])
 const categories = ref([])
 const loading = ref(true)
 const error = ref(null)
+const readingSet = ref(new Set()) // slugs of books user is currently reading
 
 const searchQuery = ref('')
 const activeCategory = ref('all')
 const sortOrder = ref('newest') // newest | price_asc | price_desc
+
+// ── Load reading progress badges ─────────────────────────────
+async function loadReadingSet() {
+  try {
+    const res = await booksService.getRecentlyRead()
+    const list = Array.isArray(res.data) ? res.data : []
+    readingSet.value = new Set(list.map(b => b.slug))
+  } catch { /* badge is non-critical, silently ignore */ }
+}
 
 // ── Load data ────────────────────────────────────────────────
 onMounted(async () => {
@@ -35,6 +46,13 @@ onMounted(async () => {
     error.value = 'Không thể tải danh sách sách.'
   }
   loading.value = false
+  loadReadingSet() // non-blocking, badge loads independently
+})
+
+// Refresh "Đang đọc" badges when returning from BookReader
+onActivated(() => {
+  clearApiCache()
+  loadReadingSet()
 })
 
 // Re-fetch khi đổi category
@@ -215,6 +233,7 @@ function coverGradient(book) {
             : `background:${coverGradient(book)}`"
         >
           <span v-if="book.is_new_release" class="books__badge-hot">Mới</span>
+          <span v-if="readingSet.has(book.slug)" class="books__badge-reading">Đang đọc</span>
           <div v-if="!book.cover_image" class="books__cover-initial">
             {{ book.title?.charAt(0) }}
           </div>
@@ -439,6 +458,18 @@ function coverGradient(book) {
   border-radius: 4px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+.books__badge-reading {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: rgba(234, 179, 8, 0.9);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
 }
 
 /* ── Info ────────────────────────────────────────────────── */

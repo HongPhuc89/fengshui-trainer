@@ -7,6 +7,8 @@ import { walletService } from '../services/wallet.service'
 import { clearApiCache } from '../api/cache-storage'
 import GemIcon from '../components/icons/GemIcon.vue'
 import LockIcon from '../components/icons/LockIcon.vue'
+import BookOpenIcon from '../components/icons/BookOpenIcon.vue'
+import CheckIcon from '../components/icons/CheckIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +21,7 @@ const book = ref(null)
 const balance = ref(0)
 const loading = ref(true)
 const error = ref(null)
+const currentProgress = ref(null) // { chapter_order, current_page }
 
 // Purchase modal
 const showModal = ref(false)
@@ -62,7 +65,21 @@ onMounted(async () => {
     balance.value = walletRes.value.data?.balance ?? 0
   }
   loading.value = false
+
+  // Only fetch reading progress if user has access (avoids 403 for unowned books)
+  if (isUnlocked.value) {
+    booksService.getBookProgress(bookSlug)
+      .then(res => { currentProgress.value = res.data })
+      .catch(() => {})
+  }
 })
+
+// ── Chapter progress helpers ───────────────────────────────
+function isCurrentChapter(chapter) {
+  return isUnlocked.value
+    && currentProgress.value
+    && chapter.order === currentProgress.value.chapter_order
+}
 
 // ── Chapter access ────────────────────────────────────────
 function canAccessChapter(chapter) {
@@ -252,7 +269,10 @@ function closeModal() {
           v-for="chapter in sortedChapters"
           :key="chapter.order"
           class="book-detail__chapter-row"
-          :class="{ 'book-detail__chapter-row--locked': !canAccessChapter(chapter) }"
+          :class="{
+            'book-detail__chapter-row--locked': !canAccessChapter(chapter),
+            'book-detail__chapter-row--reading': isCurrentChapter(chapter),
+          }"
           role="button"
           tabindex="0"
           @click="onChapterClick(chapter)"
@@ -262,24 +282,31 @@ function closeModal() {
             <span class="book-detail__chapter-num">{{ chapter.order }}</span>
             <span class="book-detail__chapter-title">{{ chapter.title }}</span>
             <span v-if="chapter.is_demo" class="badge badge--demo">Đọc thử</span>
+            <!-- Reading progress badge: shows current page -->
+            <span v-if="isCurrentChapter(chapter)" class="badge badge--reading">
+              Trang {{ currentProgress.current_page }}
+            </span>
           </div>
 
           <div class="book-detail__chapter-right">
-            <!-- Locked icon -->
+            <!-- Locked -->
             <LockIcon
               v-if="!canAccessChapter(chapter)"
               :size="14"
               class="book-detail__chapter-lock"
             />
-            <!-- Unlocked checkmark -->
-            <svg
+            <!-- Currently reading: open book icon -->
+            <BookOpenIcon
+              v-else-if="isCurrentChapter(chapter)"
+              :size="14"
+              class="book-detail__chapter-reading-icon"
+            />
+            <!-- Other unlocked chapters: checkmark -->
+            <CheckIcon
               v-else-if="isUnlocked"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" width="14" height="14"
+              :size="14"
               class="book-detail__chapter-check"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            />
           </div>
         </div>
       </div>
@@ -571,6 +598,26 @@ function closeModal() {
 }
 .book-detail__chapter-lock  { color: rgba(255,255,255,.35); }
 .book-detail__chapter-check { color: var(--accent-gold); }
+.book-detail__chapter-reading-icon { color: #f59e0b; }
+
+/* Highlight row currently being read */
+.book-detail__chapter-row--reading {
+  background: rgba(234, 179, 8, 0.08);
+  border-left: 3px solid #f59e0b;
+  padding-left: calc(var(--space-md) - 3px);
+}
+.book-detail__chapter-row--reading:hover {
+  background: rgba(234, 179, 8, 0.14);
+}
+
+/* Badges */
+.badge--reading {
+  background: rgba(234, 179, 8, 0.15);
+  color: #92400e;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
 
 /* ── Error ───────────────────────────────────────────────── */
 .book-detail__error {
