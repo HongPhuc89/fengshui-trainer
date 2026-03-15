@@ -33,7 +33,10 @@ echo "==> [4/4] Django collectstatic..."
 echo "==> Reload services..."
 sudo systemctl reload-or-restart fengshui-gunicorn
 sudo systemctl reload-or-restart fengshui-celery-worker
-sudo systemctl reload-or-restart fengshui-celery-beat
+
+sudo systemctl stop fengshui-celery-beat
+rm -f "$APP_DIR/celerybeat.pid"
+sudo systemctl start fengshui-celery-beat
 
 echo "============================================"
 echo " Backend deploy hoàn tất!"
