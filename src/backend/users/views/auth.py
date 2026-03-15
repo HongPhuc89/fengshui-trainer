@@ -21,9 +21,11 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        device_id = serializer.validated_data.get('device_id', '')
         user = serializer.save()
 
         refresh = RefreshToken.for_user(user)
+        refresh['device_id'] = device_id
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
