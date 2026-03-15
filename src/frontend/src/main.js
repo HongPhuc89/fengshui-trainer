@@ -6,6 +6,7 @@ import App from './App.vue'
 import './style.css'
 import 'flag-icons/css/flag-icons.min.css'
 import { useAuthStore } from './stores/auth'
+import { setAuthStore } from './api/client'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -16,8 +17,9 @@ app.use(i18n)
 app.mount('#app')
 
 const auth = useAuthStore()
+setAuthStore(auth)
 auth.startAutoRefresh()
 
-window.addEventListener('auth:logout', () => {
+globalThis.addEventListener('auth:logout', () => {
   router.push({ name: 'Login' })
 })

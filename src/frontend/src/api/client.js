@@ -7,6 +7,12 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Injected by main.js after Pinia is initialized — avoids circular dependency
+let _authStore = null
+export function setAuthStore(store) {
+  _authStore = store
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access')
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -19,23 +25,19 @@ api.interceptors.response.use(
     const original = err.config
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
-      const refresh = localStorage.getItem('refresh')
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${baseURL.replace(/\/$/, '')}/auth/refresh/`, { refresh })
-          localStorage.setItem('access', data.access)
-          if (data.refresh) localStorage.setItem('refresh', data.refresh)
-          original.headers.Authorization = `Bearer ${data.access}`
+      if (_authStore) {
+        // doRefresh() is a singleton promise — safe to call concurrently
+        const newAccess = await _authStore.doRefresh()
+        if (newAccess) {
+          original.headers.Authorization = `Bearer ${newAccess}`
           return api(original)
-        } catch (_) {
-          localStorage.removeItem('access')
-          localStorage.removeItem('refresh')
-          window.dispatchEvent(new Event('auth:logout'))
         }
+      } else {
+        globalThis.dispatchEvent(new Event('auth:logout'))
       }
     }
-    return Promise.reject(err)
-  }
+    throw err
+  },
 )
 
 export default api

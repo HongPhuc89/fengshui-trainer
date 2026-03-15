@@ -23,6 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refresh = ref(localStorage.getItem(REFRESH_KEY))
   const user = ref(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
   let refreshTimer = null
+  let _refreshPromise = null
 
   const isAuthenticated = computed(() => !!access.value && !!user.value)
 
@@ -52,21 +53,33 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function doRefresh() {
-    const refreshToken = refresh.value || localStorage.getItem(REFRESH_KEY)
-    if (!refreshToken) return
+    if (_refreshPromise) return _refreshPromise
 
-    try {
-      const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
-      const { data } = await axios.post(
-        `${baseURL.replace(/\/$/, '')}/auth/refresh/`,
-        { refresh: refreshToken },
-      )
-      setTokens({ access: data.access, refresh: data.refresh || refreshToken })
-      scheduleTokenRefresh()
-    } catch {
+    const refreshToken = refresh.value || localStorage.getItem(REFRESH_KEY)
+    if (!refreshToken) {
       clearAuth()
-      window.dispatchEvent(new Event('auth:logout'))
+      globalThis.dispatchEvent(new Event('auth:logout'))
+      return null
     }
+
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+    _refreshPromise = axios
+      .post(`${baseURL.replace(/\/$/, '')}/auth/refresh/`, { refresh: refreshToken })
+      .then(({ data }) => {
+        setTokens({ access: data.access, refresh: data.refresh || refreshToken })
+        scheduleTokenRefresh()
+        return data.access
+      })
+      .catch(() => {
+        clearAuth()
+        globalThis.dispatchEvent(new Event('auth:logout'))
+        return null
+      })
+      .finally(() => {
+        _refreshPromise = null
+      })
+
+    return _refreshPromise
   }
 
   function scheduleTokenRefresh() {
@@ -112,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     setUser,
     clearAuth,
     fetchMe,
+    doRefresh,
     startAutoRefresh,
     stopAutoRefresh,
   }
