@@ -221,7 +221,7 @@ function levelInfo(level) {
             :current-lesson-slug="null"
             :course-slug="course.slug"
             :can-access-lesson="canAccessLesson"
-            :show-free-badge="true"
+            :show-free-badge="!canAccess"
           />
         </div>
       </div>

@@ -61,6 +61,7 @@ async function loadLesson() {
   try {
     const res    = await videosService.getLesson(route.params.slug, route.params.lessonSlug)
     lesson.value = res.data
+    videosService.setLastLesson(route.params.slug, route.params.lessonSlug).catch(() => {})
   } catch {
     error.value = 'Không thể tải bài học.'
   }
@@ -74,6 +75,7 @@ onMounted(async () => {
   ])
   if (lessonRes.status === 'fulfilled') {
     lesson.value = lessonRes.value.data
+    videosService.setLastLesson(route.params.slug, route.params.lessonSlug).catch(() => {})
   } else {
     error.value = 'Không thể tải bài học.'
   }
@@ -83,10 +85,25 @@ onMounted(async () => {
   loading.value = false
 })
 
-// Reload lesson when navigating between lessons in the same course
-watch(() => route.params.lessonSlug, loadLesson)
+// Mark current lesson as completed (used when navigating away)
+async function markCurrentLessonCompleted() {
+  const l = lesson.value
+  if (!l?.duration_seconds || !route.params.slug) return
+  try {
+    await videosService.updateProgress(route.params.slug, l.slug, l.duration_seconds)
+  } catch { /* silently ignore */ }
+}
 
-onBeforeUnmount(() => playerAreaRef.value?.saveProgress())
+// Reload lesson when navigating between lessons in the same course
+// Mark the previous lesson completed before loading the new one
+watch(() => route.params.lessonSlug, async () => {
+  await markCurrentLessonCompleted()
+  loadLesson()
+})
+
+onBeforeUnmount(async () => {
+  await markCurrentLessonCompleted()
+})
 
 // ── Lesson navigation ──────────────────────────────────────────
 const sortedLessons = computed(() =>
@@ -109,7 +126,6 @@ const nextLesson = computed(() => {
 
 function goToLesson(l) {
   if (!l) return
-  playerAreaRef.value?.saveProgress()
   activeTab.value = 0
   router.replace({ name: 'VideoPlayer', params: { slug: route.params.slug, lessonSlug: l.slug } })
 }
