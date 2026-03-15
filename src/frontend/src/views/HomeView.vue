@@ -19,6 +19,10 @@ const videoCourses = ref([])
 const loading = ref(true)
 const navigatingVideoSlug = ref(null) // tracks which video card is fetching last-lesson
 
+const recentSlugs = computed(() => new Set(recentItems.value.map(i => i.slug)))
+const newBooks    = computed(() => books.value.filter(b => !recentSlugs.value.has(b.slug)).slice(0, 5))
+const newVideos   = computed(() => videoCourses.value.filter(v => !recentSlugs.value.has(v.slug)).slice(0, 5))
+
 const greeting = computed(() => {
   const hour = new Date().getHours()
   let period = t('home.greeting.morning')
@@ -28,7 +32,7 @@ const greeting = computed(() => {
   return `${period}, ${t('home.greeting.scholar')} ${name}.`
 })
 
-// Build combined recently-read + recently-watched list, sorted by recency, max 5
+// Build combined recently-watched videos (max 2) + recently-read books (max 3), videos first
 async function loadRecentItems() {
   const [recentBooksRes, recentVideosRes] = await Promise.allSettled([
     booksService.getRecentlyRead(),
@@ -38,29 +42,27 @@ async function loadRecentItems() {
   const recentBooks = (recentBooksRes.status === 'fulfilled'
     ? (Array.isArray(recentBooksRes.value.data) ? recentBooksRes.value.data : [])
     : []
-  ).map(b => ({ ...b, type: 'book', recency: new Date(b.last_read) }))
+  ).map(b => ({ ...b, type: 'book' })).slice(0, 3)
 
   const recentVideos = (recentVideosRes.status === 'fulfilled'
     ? (Array.isArray(recentVideosRes.value.data) ? recentVideosRes.value.data : [])
     : []
-  ).map(v => ({ ...v, type: 'video', recency: new Date(v.last_watched) }))
+  ).map(v => ({ ...v, type: 'video' })).slice(0, 2)
 
-  recentItems.value = [...recentBooks, ...recentVideos]
-    .sort((a, b) => b.recency - a.recency)
-    .slice(0, 5)
+  recentItems.value = [...recentVideos, ...recentBooks]
 }
 
 onMounted(async () => {
   try {
     user.value = auth.user || (await auth.fetchMe())
     const [booksRes, videosRes] = await Promise.all([
-      booksService.getBooks({ exclude_read: 'true' }).catch(() => ({ data: { results: [] } })),
-      videosService.getVideos({ exclude_watched: 'true' }).catch(() => ({ data: [] })),
+      booksService.getBooks().catch(() => ({ data: { results: [] } })),
+      videosService.getVideos().catch(() => ({ data: [] })),
     ])
     const list = booksRes.data?.results ?? booksRes.data ?? []
-    books.value = Array.isArray(list) ? list.slice(0, 10) : []
+    books.value = Array.isArray(list) ? list.slice(0, 15) : []
     const vlist = videosRes.data?.results ?? videosRes.data ?? []
-    videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 10) : []
+    videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 15) : []
     await loadRecentItems()
   } catch (_) {}
   finally {
@@ -188,7 +190,7 @@ function prefetchLastLesson(item) {
       </div>
       <div class="home-books">
         <div
-          v-for="b in books"
+          v-for="b in newBooks"
           :key="b.public_id || b.slug || b.id"
           class="home-book-card"
           @click="goBook(b.slug)"
@@ -203,14 +205,14 @@ function prefetchLastLesson(item) {
           </div>
           <span class="home-book-card__title">{{ b.title }}</span>
         </div>
-        <div v-if="!books.length && !loading" class="home-book-card home-book-card--empty">
+        <div v-if="!newBooks.length && !loading" class="home-book-card home-book-card--empty">
           <span>{{ t('home.newBooks.empty') }}</span>
         </div>
       </div>
     </section>
 
     <!-- Video courses -->
-    <section v-if="videoCourses.length" class="home-section">
+    <section v-if="newVideos.length" class="home-section">
       <div class="home-section__head">
         <h2 class="home-section__title home-section__title--inline">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
@@ -222,7 +224,7 @@ function prefetchLastLesson(item) {
       </div>
       <div class="home-videos">
         <div
-          v-for="v in videoCourses"
+          v-for="v in newVideos"
           :key="v.public_id || v.slug"
           class="home-video-card"
           @click="goVideo(v.slug)"

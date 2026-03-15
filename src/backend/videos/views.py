@@ -35,25 +35,16 @@ class RecentlyWatchedCoursesView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        progresses = (
-            UserLessonProgress.objects
+        course_progresses = (
+            UserCourseProgress.objects
             .filter(user=request.user)
-            .select_related('lesson__course')
-            .order_by('-last_watched')
+            .select_related('course', 'last_lesson')
+            .order_by('-updated_at')[:2]
         )
-        seen = set()
-        recent = []
-        for p in progresses:
-            course_id = p.lesson.course_id
-            if course_id not in seen:
-                seen.add(course_id)
-                recent.append(p)
-                if len(recent) >= 10:
-                    break
 
         data = []
-        for p in recent:
-            course = p.lesson.course
+        for cp in course_progresses:
+            course = cp.course
             cover_url = None
             if course.cover_image:
                 cover_url = request.build_absolute_uri(course.cover_image.url)
@@ -65,7 +56,8 @@ class RecentlyWatchedCoursesView(views.APIView):
                 'slug': course.slug,
                 'title': course.title,
                 'cover_image': cover_url,
-                'last_lesson_slug': p.lesson.slug,
+                'last_lesson_slug': cp.last_lesson.slug if cp.last_lesson else None,
+                'last_watched': cp.updated_at,
             })
         return Response(data)
 
