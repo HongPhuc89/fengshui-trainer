@@ -245,6 +245,10 @@ async function renderPage(num) {
   renderingTask.value = page.render({ canvasContext: ctx, viewport })
   try {
     await renderingTask.value.promise
+  } catch (e) {
+    // RenderingCancelledException is expected when the user navigates quickly
+    // and the previous render is cancelled — not a real error, safe to ignore.
+    if (e?.name !== 'RenderingCancelledException') throw e
   } finally {
     renderingTask.value = null
     pageRendering.value = false

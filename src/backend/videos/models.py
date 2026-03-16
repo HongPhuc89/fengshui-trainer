@@ -130,6 +130,32 @@ class UserVideoPurchase(BaseModel):
         ordering = ['-created_at']
 
 
+class UserCourseProgress(BaseModel):
+    """Tracks the last lesson the user navigated to in a course."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='course_progresses',
+    )
+    course = models.ForeignKey(
+        VideoCourse,
+        on_delete=models.CASCADE,
+        related_name='user_progresses',
+    )
+    last_lesson = models.ForeignKey(
+        'VideoLesson',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        verbose_name = "User Course Progress"
+        verbose_name_plural = "User Course Progresses"
+        unique_together = [['user', 'course']]
+
+
 class UserLessonProgress(BaseModel):
     """Watch progress per lesson."""
     user = models.ForeignKey(

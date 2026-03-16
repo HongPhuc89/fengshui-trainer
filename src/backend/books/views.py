@@ -1,5 +1,6 @@
 import base64
 
+from django.db.models import OuterRef, Subquery
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -36,22 +37,18 @@ class RecentlyReadBooksView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        progresses = (
+        latest_per_book = (
             UserChapterProgress.objects
-            .filter(user=request.user)
-            .select_related('chapter__book')
-            .order_by('chapter__book_id', '-last_read')
+            .filter(user=request.user, chapter__book_id=OuterRef('chapter__book_id'))
+            .order_by('-last_read')
+            .values('id')[:1]
         )
-        seen = set()
-        recent = []
-        for p in progresses:
-            book_id = p.chapter.book_id
-            if book_id not in seen:
-                seen.add(book_id)
-                recent.append(p)
-                if len(recent) >= 10:
-                    break
-        recent.sort(key=lambda p: p.last_read, reverse=True)
+        recent = (
+            UserChapterProgress.objects
+            .filter(user=request.user, id=Subquery(latest_per_book))
+            .select_related('chapter__book')
+            .order_by('-last_read')[:3]
+        )
         data = []
         for p in recent:
             book = p.chapter.book

@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { videosService } from '../services/videos.service'
+import { clearApiCache } from '../api/cache-storage'
 import GemIcon from '../components/icons/GemIcon.vue'
 
 const router = useRouter()
@@ -13,10 +14,22 @@ const courses = ref([])
 const categories = ref([])
 const loading = ref(true)
 const error = ref(null)
+const watchProgressMap = ref({}) // { [slug]: progress_percent }
 
 const searchQuery = ref('')
 const activeCategory = ref('all')
 const sortOrder = ref('newest') // newest | price_asc | price_desc | duration_desc
+
+// ── Load watch progress badges ────────────────────────────────
+async function loadWatchProgress() {
+  try {
+    const res = await videosService.getRecentlyWatched()
+    const list = Array.isArray(res.data) ? res.data : []
+    const map = {}
+    list.forEach(v => { map[v.slug] = v.progress_percent ?? 0 })
+    watchProgressMap.value = map
+  } catch { /* badge is non-critical, silently ignore */ }
+}
 
 // ── Load data ────────────────────────────────────────────────
 onMounted(async () => {
@@ -33,6 +46,13 @@ onMounted(async () => {
     error.value = 'Không thể tải danh sách khóa học.'
   }
   loading.value = false
+  loadWatchProgress() // non-blocking, progress bar loads independently
+})
+
+// Refresh progress bars when returning from VideoPlayer
+onActivated(() => {
+  clearApiCache()
+  loadWatchProgress()
 })
 
 watch(activeCategory, async (slug) => {
@@ -259,6 +279,20 @@ function coverGradient(course) {
             <span class="videos__instructor-dot"></span>
             {{ course.instructor }}
           </span>
+
+          <!-- Watch progress: bar (in-progress) or done badge (100%) -->
+          <template v-if="watchProgressMap[course.slug] > 0">
+            <span v-if="watchProgressMap[course.slug] >= 100" class="videos__badge-done">
+              ✓ Hoàn thành
+            </span>
+            <div
+              v-else
+              class="videos__progress-bar"
+              :style="`--pct: ${watchProgressMap[course.slug]}%`"
+            >
+              <div class="videos__progress-fill"></div>
+            </div>
+          </template>
 
           <!-- Lessons + Level + Price -->
           <div class="videos__tags">
@@ -491,6 +525,30 @@ function coverGradient(course) {
   border-radius: 50%;
   background: #7c4dff;
   flex-shrink: 0;
+}
+
+/* ── Watch progress ──────────────────────────────────────── */
+.videos__badge-done {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-block;
+}
+.videos__progress-bar {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.videos__progress-fill {
+  height: 100%;
+  width: var(--pct);
+  background: #f59e0b;
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }
 
 /* ── Tags row (lessons + level) ──────────────────────────── */

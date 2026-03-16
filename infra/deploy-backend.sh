@@ -31,13 +31,16 @@ echo "==> [4/4] Django collectstatic..."
 "$VENV/bin/python" manage.py collectstatic --noinput --clear
 
 echo "==> Reload services..."
-systemctl reload-or-restart fengshui-gunicorn
-systemctl reload-or-restart fengshui-celery-worker
-systemctl reload-or-restart fengshui-celery-beat
+sudo systemctl reload-or-restart fengshui-gunicorn
+sudo systemctl reload-or-restart fengshui-celery-worker
+
+sudo systemctl stop fengshui-celery-beat
+rm -f "$APP_DIR/celerybeat.pid"
+sudo systemctl start fengshui-celery-beat
 
 echo "============================================"
 echo " Backend deploy hoàn tất!"
-echo " Gunicorn : $(systemctl is-active fengshui-gunicorn)"
-echo " Celery   : $(systemctl is-active fengshui-celery-worker)"
-echo " Beat     : $(systemctl is-active fengshui-celery-beat)"
+echo " Gunicorn : $(sudo systemctl is-active fengshui-gunicorn)"
+echo " Celery   : $(sudo systemctl is-active fengshui-celery-worker)"
+echo " Beat     : $(sudo systemctl is-active fengshui-celery-beat)"
 echo "============================================"

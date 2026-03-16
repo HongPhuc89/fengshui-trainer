@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from .models import (
     VideoCategory, VideoCourse, VideoLesson,
-    UserVideoPurchase, UserLessonProgress,
+    UserVideoPurchase, UserLessonProgress, UserCourseProgress,
 )
 from .serializers import (
     VideoCategorySerializer, VideoCourseListSerializer, VideoCourseDetailSerializer,
@@ -35,25 +35,16 @@ class RecentlyWatchedCoursesView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        progresses = (
-            UserLessonProgress.objects
+        course_progresses = (
+            UserCourseProgress.objects
             .filter(user=request.user)
-            .select_related('lesson__course')
-            .order_by('-last_watched')
+            .select_related('course', 'last_lesson')
+            .order_by('-updated_at')[:2]
         )
-        seen = set()
-        recent = []
-        for p in progresses:
-            course_id = p.lesson.course_id
-            if course_id not in seen:
-                seen.add(course_id)
-                recent.append(p)
-                if len(recent) >= 10:
-                    break
 
         data = []
-        for p in recent:
-            course = p.lesson.course
+        for cp in course_progresses:
+            course = cp.course
             cover_url = None
             if course.cover_image:
                 cover_url = request.build_absolute_uri(course.cover_image.url)
@@ -65,7 +56,8 @@ class RecentlyWatchedCoursesView(views.APIView):
                 'slug': course.slug,
                 'title': course.title,
                 'cover_image': cover_url,
-                'last_lesson_slug': p.lesson.slug,
+                'last_lesson_slug': cp.last_lesson.slug if cp.last_lesson else None,
+                'last_watched': cp.updated_at,
             })
         return Response(data)
 
@@ -311,8 +303,10 @@ class LessonProgressView(views.APIView):
             lesson=lesson,
             defaults={'progress_seconds': 0},
         )
-        progress.progress_seconds = progress_seconds
-        progress.completed = (lesson.duration_seconds and progress_seconds >= lesson.duration_seconds) or progress_seconds >= (lesson.duration_seconds or 0)
+        # Only move progress forward; progress_seconds=0 acts as a "touch" (updates last_watched only)
+        if progress_seconds > progress.progress_seconds:
+            progress.progress_seconds = progress_seconds
+            progress.completed = bool(lesson.duration_seconds and progress_seconds >= lesson.duration_seconds)
         progress.last_watched = timezone.now()
         progress.save()
 
@@ -323,7 +317,10 @@ class LessonProgressView(views.APIView):
 
 
 class CourseLastLessonView(views.APIView):
-    """GET /api/videos/{slug}/progress/last-lesson/ - Last watched lesson in a course."""
+    """
+    GET  /api/videos/{slug}/progress/last-lesson/ – Return last lesson the user navigated to.
+    POST /api/videos/{slug}/progress/last-lesson/ – Set the last lesson (body: {lesson_slug}).
+    """
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, slug):
@@ -332,24 +329,33 @@ class CourseLastLessonView(views.APIView):
         except VideoCourse.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        progress = (
-            UserLessonProgress.objects
-            .filter(user=request.user, lesson__course=course)
-            .select_related('lesson')
-            .order_by('-last_watched')
-            .first()
+        cp = UserCourseProgress.objects.filter(user=request.user, course=course).select_related('last_lesson').first()
+        lesson = cp.last_lesson if cp else None
+
+        if not lesson:
+            lesson = course.lessons.order_by('order').first()
+        if not lesson:
+            return Response({'lesson_order': 1, 'lesson_public_id': None})
+        return Response({'lesson_order': lesson.order, 'lesson_public_id': str(lesson.public_id)})
+
+    def post(self, request, slug):
+        try:
+            course = VideoCourse.objects.get(slug=slug)
+        except VideoCourse.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        lesson_slug = request.data.get('lesson_slug')
+        try:
+            lesson = VideoLesson.objects.get(course=course, slug=lesson_slug)
+        except VideoLesson.DoesNotExist:
+            return Response({'detail': 'Lesson not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        UserCourseProgress.objects.update_or_create(
+            user=request.user,
+            course=course,
+            defaults={'last_lesson': lesson},
         )
-
-        if progress:
-            return Response({
-                'lesson_order': progress.lesson.order,
-                'lesson_public_id': str(progress.lesson.public_id),
-            })
-
-        first = course.lessons.order_by('order').first()
-        if first:
-            return Response({'lesson_order': first.order, 'lesson_public_id': str(first.public_id)})
-        return Response({'lesson_order': 1, 'lesson_public_id': None})
+        return Response({'lesson_slug': lesson.slug})
 
 
 class CourseProgressView(views.APIView):

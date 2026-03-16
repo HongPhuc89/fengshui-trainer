@@ -12,6 +12,7 @@ jobs:
   deploy:
     name: Deploy Backend to VPS
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Deploy via SSH

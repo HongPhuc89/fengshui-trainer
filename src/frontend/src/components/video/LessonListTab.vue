@@ -1,12 +1,16 @@
 <script setup>
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import LockIcon from '../icons/LockIcon.vue'
+import PlayIcon from '../icons/PlayIcon.vue'
+import VideoPlaceholderIcon from '../icons/VideoPlaceholderIcon.vue'
 
 const props = defineProps({
   lessons:           { type: Array,    required: true },
-  currentLessonSlug: { type: String,   required: true },
+  currentLessonSlug: { type: String,   default: null },
   courseSlug:        { type: String,   required: true },
   canAccessLesson:   { type: Function, default: () => true },
+  showFreeBadge:     { type: Boolean,  default: false },
 })
 
 const emit = defineEmits(['select'])
@@ -54,20 +58,15 @@ function selectLesson(lesson) {
     >
       <!-- Active indicator / lock icon -->
       <span class="lesson-list__indicator">
-        <svg
+        <LockIcon
           v-if="!canAccessLesson(lesson)"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"
+          :size="13"
           class="lesson-list__lock-icon"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        <svg
+        />
+        <PlayIcon
           v-else-if="lesson.slug === currentLessonSlug"
-          viewBox="0 0 24 24" fill="currentColor" width="12" height="12"
-        >
-          <polygon points="5,3 19,12 5,21"/>
-        </svg>
+          :size="12"
+        />
         <span v-else class="lesson-list__order">{{ lesson.order }}</span>
       </span>
 
@@ -79,18 +78,20 @@ function selectLesson(lesson) {
         :alt="lesson.title"
       />
       <div v-else class="lesson-list__thumb lesson-list__thumb--empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20" opacity=".4">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <path d="M8 21h8M12 17v4"/>
-        </svg>
+        <VideoPlaceholderIcon :size="20" />
       </div>
 
       <!-- Info -->
       <div class="lesson-list__info">
         <p class="lesson-list__title">{{ lesson.title }}</p>
-        <span v-if="lesson.duration_seconds" class="lesson-list__duration">
-          {{ formatDuration(lesson.duration_seconds) }}
-        </span>
+        <div class="lesson-list__meta">
+          <span v-if="lesson.duration_seconds" class="lesson-list__duration">
+            {{ formatDuration(lesson.duration_seconds) }}
+          </span>
+          <span v-if="showFreeBadge && lesson.is_free" class="lesson-list__free-badge">
+            Miễn phí
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -182,9 +183,24 @@ function selectLesson(lesson) {
   font-weight: 600;
 }
 
+.lesson-list__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .lesson-list__duration {
   font-size: 0.72rem;
   color: rgba(255,255,255,0.35);
+}
+
+.lesson-list__free-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #66bb6a;
+  background: rgba(102,187,106,0.12);
+  border-radius: 3px;
+  padding: 1px 5px;
 }
 
 /* Locked state */

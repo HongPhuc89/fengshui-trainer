@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { videosService } from '../services/videos.service'
 import GemIcon from '../components/icons/GemIcon.vue'
 import { clearApiCache } from '../api/cache-storage'
+import LessonListTab from '../components/video/LessonListTab.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -46,11 +47,6 @@ function canAccessLesson(lesson) {
 }
 
 // ── Navigation ────────────────────────────────────────────────
-function goToLesson(lesson) {
-  if (!canAccessLesson(lesson)) return
-  router.push({ name: 'VideoPlayer', params: { slug: course.value.slug, lessonSlug: lesson.slug } })
-}
-
 async function startOrContinue() {
   const lessons = course.value?.lessons
   if (!lessons?.length) return
@@ -217,52 +213,16 @@ function levelInfo(level) {
           </button>
         </div>
 
-        <!-- Lessons list -->
+        <!-- Lessons list — reuse LessonListTab (same component as VideoPlayerView sidebar) -->
         <div class="vd__lessons">
           <h2 class="vd__lessons-title">Danh sách bài học</h2>
-          <div
-            v-for="lesson in course.lessons"
-            :key="lesson.slug"
-            class="vd__lesson"
-            :class="{
-              'vd__lesson--accessible': canAccessLesson(lesson),
-              'vd__lesson--locked': !canAccessLesson(lesson),
-            }"
-            @click="goToLesson(lesson)"
-          >
-            <!-- Thumbnail or order number -->
-            <div class="vd__lesson-thumb">
-              <img
-                v-if="lesson.thumbnail"
-                :src="lesson.thumbnail"
-                class="vd__lesson-thumb-img"
-                :alt="lesson.title"
-                loading="lazy"
-              />
-              <span v-else class="vd__lesson-order">{{ lesson.order }}</span>
-            </div>
-
-            <!-- Info -->
-            <div class="vd__lesson-info">
-              <p class="vd__lesson-title">{{ lesson.title }}</p>
-              <div class="vd__lesson-meta">
-                <span v-if="lesson.duration_seconds" class="vd__lesson-dur">
-                  {{ formatDuration(lesson.duration_seconds) }}
-                </span>
-                <span v-if="lesson.is_free" class="vd__lesson-free">Miễn phí</span>
-              </div>
-            </div>
-
-            <!-- Lock / play icon -->
-            <div class="vd__lesson-icon">
-              <svg v-if="!canAccessLesson(lesson)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style="opacity:.5">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-            </div>
-          </div>
+          <LessonListTab
+            :lessons="course.lessons"
+            :current-lesson-slug="null"
+            :course-slug="course.slug"
+            :can-access-lesson="canAccessLesson"
+            :show-free-badge="!canAccess"
+          />
         </div>
       </div>
     </template>
@@ -438,7 +398,6 @@ function levelInfo(level) {
 .vd__lessons {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   margin-top: var(--space-xs);
 }
 .vd__lessons-title {
@@ -448,90 +407,6 @@ function levelInfo(level) {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   margin-bottom: var(--space-xs);
-}
-.vd__lesson {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  transition: background 0.15s;
-  min-height: 58px;
-}
-.vd__lesson--accessible { cursor: pointer; }
-.vd__lesson--accessible:hover { background: rgba(74,44,39,0.9); }
-.vd__lesson--locked { opacity: 0.55; cursor: default; }
-
-.vd__lesson-thumb {
-  width: 72px;
-  min-width: 72px;
-  height: 48px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: rgba(255,255,255,0.07);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.vd__lesson-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.vd__lesson-order {
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: rgba(255,255,255,0.5);
-  flex-shrink: 0;
-}
-.vd__lesson-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.vd__lesson-title {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.vd__lesson-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-.vd__lesson-dur {
-  font-size: 0.72rem;
-  color: rgba(255,255,255,0.4);
-}
-.vd__lesson-free {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #66bb6a;
-  background: rgba(102,187,106,0.12);
-  border-radius: 3px;
-  padding: 1px 6px;
-}
-.vd__lesson-icon {
-  flex-shrink: 0;
-  color: rgba(255,255,255,0.35);
 }
 
 /* ── Skeleton ──────────────────────────────────────────────── */

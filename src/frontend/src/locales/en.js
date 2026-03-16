@@ -35,7 +35,7 @@ export default {
             phoneLabel: 'Phone Number',
             phonePlaceholder: '+84...',
             emailLabel: 'Email Address',
-            emailPlaceholder: 'scholar@thienthu.vn',
+            emailPlaceholder: "scholar{'@'}thienthu.vn",
             passwordLabel: 'Password',
             passwordPlaceholder: '••••••••',
             confirmPasswordLabel: 'Confirm Password',

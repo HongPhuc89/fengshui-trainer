@@ -42,6 +42,34 @@ async function onEnded() {
   }
 }
 
+// ── Embed (iframe) progress tracking ─────────────────────────
+// Cross-origin iframes don't emit timeupdate/ended events, so we track
+// elapsed wall-clock time as a proxy for watch time.
+const embedStartedAt = ref(0)
+const embedTimerId   = ref(null)
+
+async function saveEmbedProgress() {
+  const elapsed = Math.floor((Date.now() - embedStartedAt.value) / 1000)
+  if (elapsed <= 0) return
+  try {
+    await videosService.updateProgress(props.courseSlug, props.lessonSlug, elapsed)
+  } catch {
+    // silently ignore
+  }
+}
+
+function startEmbedTimer() {
+  embedStartedAt.value = Date.now()
+  embedTimerId.value = setInterval(saveEmbedProgress, SAVE_INTERVAL)
+}
+
+function stopEmbedTimer() {
+  if (embedTimerId.value) {
+    clearInterval(embedTimerId.value)
+    embedTimerId.value = null
+  }
+}
+
 // ── Fullscreen ────────────────────────────────────────────────
 // Use a custom overlay button instead of the native iframe/video fullscreen button.
 // Reason: requestFullscreen() must be called DIRECTLY from a user gesture.
@@ -60,9 +88,17 @@ function onFullscreenChange() {
   isFullscreen.value = !!document.fullscreenElement
 }
 
-onMounted(() => document.addEventListener('fullscreenchange', onFullscreenChange))
+onMounted(() => {
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  if (props.isEmbedUrl) startEmbedTimer()
+})
 onBeforeUnmount(() => {
-  saveProgress()
+  if (props.isEmbedUrl) {
+    stopEmbedTimer()
+    saveEmbedProgress()
+  } else {
+    saveProgress()
+  }
   document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 

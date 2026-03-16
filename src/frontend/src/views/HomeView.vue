@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { booksService } from '../services/books.service'
 import { videosService } from '../services/videos.service'
+import { clearApiCache } from '../api/cache-storage'
+import PlayIcon from '../components/icons/PlayIcon.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -12,10 +14,14 @@ const router = useRouter()
 
 const user = ref(null)
 const books = ref([])
-const recentBooks = ref([])
-const recentVideos = ref([])
+const recentItems = ref([]) // combined books + videos, sorted by recency, max 5
 const videoCourses = ref([])
 const loading = ref(true)
+const navigatingVideoSlug = ref(null) // tracks which video card is fetching last-lesson
+
+const recentSlugs = computed(() => new Set(recentItems.value.map(i => i.slug)))
+const newBooks    = computed(() => books.value.filter(b => !recentSlugs.value.has(b.slug)).slice(0, 5))
+const newVideos   = computed(() => videoCourses.value.filter(v => !recentSlugs.value.has(v.slug)).slice(0, 5))
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -26,25 +32,48 @@ const greeting = computed(() => {
   return `${period}, ${t('home.greeting.scholar')} ${name}.`
 })
 
+// Build combined recently-watched videos (max 2) + recently-read books (max 3), videos first
+async function loadRecentItems() {
+  const [recentBooksRes, recentVideosRes] = await Promise.allSettled([
+    booksService.getRecentlyRead(),
+    videosService.getRecentlyWatched(),
+  ])
+
+  const recentBooks = (recentBooksRes.status === 'fulfilled'
+    ? (Array.isArray(recentBooksRes.value.data) ? recentBooksRes.value.data : [])
+    : []
+  ).map(b => ({ ...b, type: 'book' })).slice(0, 3)
+
+  const recentVideos = (recentVideosRes.status === 'fulfilled'
+    ? (Array.isArray(recentVideosRes.value.data) ? recentVideosRes.value.data : [])
+    : []
+  ).map(v => ({ ...v, type: 'video' })).slice(0, 2)
+
+  recentItems.value = [...recentVideos, ...recentBooks]
+}
+
 onMounted(async () => {
   try {
     user.value = auth.user || (await auth.fetchMe())
-    const [booksRes, recentRes, recentVideosRes, videosRes] = await Promise.all([
-      booksService.getBooks({ exclude_read: 'true' }).catch(() => ({ data: { results: [] } })),
-      booksService.getRecentlyRead().catch(() => ({ data: [] })),
-      videosService.getRecentlyWatched().catch(() => ({ data: [] })),
-      videosService.getVideos({ exclude_watched: 'true' }).catch(() => ({ data: [] })),
+    const [booksRes, videosRes] = await Promise.all([
+      booksService.getBooks().catch(() => ({ data: { results: [] } })),
+      videosService.getVideos().catch(() => ({ data: [] })),
     ])
     const list = booksRes.data?.results ?? booksRes.data ?? []
-    books.value = Array.isArray(list) ? list.slice(0, 10) : []
-    recentBooks.value = Array.isArray(recentRes.data) ? recentRes.data.slice(0, 3) : []
-    recentVideos.value = Array.isArray(recentVideosRes.data) ? recentVideosRes.data.slice(0, 2) : []
+    books.value = Array.isArray(list) ? list.slice(0, 15) : []
     const vlist = videosRes.data?.results ?? videosRes.data ?? []
-    videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 10) : []
+    videoCourses.value = Array.isArray(vlist) ? vlist.slice(0, 15) : []
+    await loadRecentItems()
   } catch (_) {}
   finally {
     loading.value = false
   }
+})
+
+// Refresh recent items when returning to HomeView after reading/watching
+onActivated(async () => {
+  clearApiCache()
+  await loadRecentItems()
 })
 
 function badgeType(book) {
@@ -67,12 +96,39 @@ function goVideo(slug) {
   if (slug) router.push({ name: 'VideoDetail', params: { slug } })
 }
 
-function goRecentVideo(v) {
-  if (!v?.slug) return
-  if (v.last_lesson_slug) {
-    router.push({ name: 'VideoPlayer', params: { slug: v.slug, lessonSlug: v.last_lesson_slug } })
-  } else {
-    router.push({ name: 'VideoDetail', params: { slug: v.slug } })
+// Navigate to the correct resume position for books or videos
+async function goRecentItem(item) {
+  if (item.type === 'book') {
+    // BookReaderView auto-resumes from last chapter/page via getBookProgress in onMounted
+    router.push({ name: 'BookReader', params: { slug: item.slug } })
+    return
+  }
+
+  // Video: always fetch last lesson to navigate directly, skipping course detail
+  if (navigatingVideoSlug.value) return
+  navigatingVideoSlug.value = item.slug
+
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), 5000),
+  )
+  try {
+    const { data } = await Promise.race([videosService.getLastLesson(item.slug), timeout])
+    if (data.lesson_slug) {
+      router.push({ name: 'VideoPlayer', params: { slug: item.slug, lessonSlug: data.lesson_slug } })
+    } else {
+      router.push({ name: 'VideoDetail', params: { slug: item.slug } })
+    }
+  } catch {
+    router.push({ name: 'VideoDetail', params: { slug: item.slug } })
+  } finally {
+    navigatingVideoSlug.value = null
+  }
+}
+
+// Pre-fetch last lesson on hover (desktop only) to reduce click latency
+function prefetchLastLesson(item) {
+  if (item.type === 'video' && window.matchMedia('(hover: hover)').matches) {
+    videosService.getLastLesson(item.slug).catch(() => {})
   }
 }
 </script>
@@ -83,51 +139,45 @@ function goRecentVideo(v) {
     <p class="home-view__greeting">{{ greeting }}</p>
     <p class="home-view__motto">{{ t('home.motto') }}</p>
 
-    <!-- Recently read / watched -->
-    <section v-if="recentBooks.length || recentVideos.length" class="home-section">
+    <!-- Recently read / watched — max 5 items, sorted by recency -->
+    <section v-if="recentItems.length" class="home-section">
       <h2 class="home-section__title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         {{ t('home.continueStudy.title') }}
       </h2>
-      <div v-if="recentBooks.length || recentVideos.length" class="home-books">
-        <!-- Videos first -->
+      <div class="home-books">
         <div
-          v-for="v in recentVideos"
-          :key="'video-' + v.slug"
+          v-for="item in recentItems"
+          :key="item.type + '-' + item.slug"
           class="home-book-card"
-          @click="goRecentVideo(v)"
+          @click="goRecentItem(item)"
+          @mouseenter="prefetchLastLesson(item)"
         >
           <div class="home-book-card__cover">
-            <img v-if="v.cover_image" :src="v.cover_image" :alt="v.title" />
+            <img v-if="item.cover_image" :src="item.cover_image" :alt="item.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
+
+            <!-- Badge: chapter number for books, progress % for videos -->
             <span class="home-book-card__chapter-badge">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="display:inline;vertical-align:middle;margin-right:3px"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-              Video
+              <PlayIcon v-if="item.type === 'video'" :size="9" style="display:inline;vertical-align:middle;margin-right:3px" />
+              <template v-if="item.type === 'video'">
+                {{ item.progress_percent ? item.progress_percent + '%' : 'Video' }}
+              </template>
+              <template v-else>
+                {{ t('home.continueStudy.chapter') }} {{ item.chapter_order }}
+              </template>
             </span>
+
+            <!-- Loading overlay while fetching last lesson for video items -->
+            <div v-if="navigatingVideoSlug === item.slug" class="home-book-card__nav-loading">
+              <div class="home-book-card__spinner"></div>
+            </div>
+
             <div class="home-book-card__play-overlay">
               <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>
             </div>
           </div>
-          <span class="home-book-card__title">{{ v.title }}</span>
-        </div>
-        <!-- Books after -->
-        <div
-          v-for="b in recentBooks"
-          :key="'book-' + b.slug"
-          class="home-book-card"
-          @click="goBook(b.slug)"
-        >
-          <div class="home-book-card__cover">
-            <img v-if="b.cover_image" :src="b.cover_image" :alt="b.title" />
-            <div v-else class="home-book-card__cover-placeholder"></div>
-            <span class="home-book-card__chapter-badge">
-              {{ t('home.continueStudy.chapter') }} {{ b.chapter_order }}
-            </span>
-            <div class="home-book-card__play-overlay">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>
-            </div>
-          </div>
-          <span class="home-book-card__title">{{ b.title }}</span>
+          <span class="home-book-card__title">{{ item.title }}</span>
         </div>
       </div>
     </section>
@@ -140,7 +190,7 @@ function goRecentVideo(v) {
       </div>
       <div class="home-books">
         <div
-          v-for="b in books"
+          v-for="b in newBooks"
           :key="b.public_id || b.slug || b.id"
           class="home-book-card"
           @click="goBook(b.slug)"
@@ -155,14 +205,14 @@ function goRecentVideo(v) {
           </div>
           <span class="home-book-card__title">{{ b.title }}</span>
         </div>
-        <div v-if="!books.length && !loading" class="home-book-card home-book-card--empty">
+        <div v-if="!newBooks.length && !loading" class="home-book-card home-book-card--empty">
           <span>{{ t('home.newBooks.empty') }}</span>
         </div>
       </div>
     </section>
 
     <!-- Video courses -->
-    <section v-if="videoCourses.length" class="home-section">
+    <section v-if="newVideos.length" class="home-section">
       <div class="home-section__head">
         <h2 class="home-section__title home-section__title--inline">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
@@ -174,7 +224,7 @@ function goRecentVideo(v) {
       </div>
       <div class="home-videos">
         <div
-          v-for="v in videoCourses"
+          v-for="v in newVideos"
           :key="v.public_id || v.slug"
           class="home-video-card"
           @click="goVideo(v.slug)"
@@ -250,6 +300,27 @@ function goRecentVideo(v) {
   font-size: 0.9rem;
   padding: var(--space-sm) 0;
 }
+
+/* Loading overlay while navigating to last video lesson */
+.home-book-card__nav-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  z-index: 2;
+}
+.home-book-card__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin-home 0.7s linear infinite;
+}
+@keyframes spin-home { to { transform: rotate(360deg); } }
 
 /* ── Video course cards ────────────────────────────────────── */
 .home-videos {
