@@ -296,6 +296,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://localhost(:\d+)?$",
     r"^https?://.*\.hongphuc\.top$",
     r"^https?://hongphuc\.top$",
+    r"^https?://.*\.huyenhoc\.pro$",
+    r"^https?://huyenhoc\.pro$",
 ]
 CORS_ALLOW_HEADERS = [
     "accept",
