@@ -7,9 +7,25 @@ import './style.css'
 import 'flag-icons/css/flag-icons.min.css'
 import { useAuthStore } from './stores/auth'
 import { setAuthStore } from './api/client'
+import * as Sentry from '@sentry/vue'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+Sentry.init({
+    app,
+    dsn: 'https://1984e26259654c3c91ae8ccb8b17bc85@o212840.ingest.us.sentry.io/5720762',
+    integrations: [
+        Sentry.replayIntegration({
+            maskAllText: true,
+            blockAllMedia: false,
+        })
+    ],
+
+    replaysSessionSampleRate: 0.0,
+    replaysOnErrorSampleRate: 1.0,
+})
+
 app.use(pinia)
 app.use(router)
 app.use(i18n)
