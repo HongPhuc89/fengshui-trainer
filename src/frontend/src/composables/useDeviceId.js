@@ -1,8 +1,8 @@
 import { ref, onMounted } from 'vue'
 import FingerprintJS from '@fingerprintjs/fingerprintjs'
 
-const DEVICE_ID_KEY = 'thienthu_device_id'
-const UUID_KEY = 'thienthu_device_uuid'
+const DEVICE_ID_KEY = 'fengshui_device_id'
+const UUID_KEY = 'fengshui_device_uuid'
 
 // Generate a unique UUID
 function generateUUID() {

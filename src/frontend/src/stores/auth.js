@@ -6,7 +6,7 @@ import { clearApiCache } from '../api/cache-storage'
 
 const ACCESS_KEY = 'access'
 const REFRESH_KEY = 'refresh'
-const USER_KEY = 'thienthu_user'
+const USER_KEY = 'fengshui_user'
 const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000 // refresh 5 min trước khi hết hạn
 
 function decodeJwtExpiry(token) {

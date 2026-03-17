@@ -35,7 +35,7 @@ export default {
       phoneLabel: 'Số Điện Thoại',
       phonePlaceholder: '+84...',
       emailLabel: 'Địa Chỉ Email',
-      emailPlaceholder: "scholar{'@'}thienthu.vn",
+      emailPlaceholder: "scholar{'@'}huyenhoc.pro",
       passwordLabel: 'Mật khẩu',
       passwordPlaceholder: '••••••••',
       confirmPasswordLabel: 'Xác Nhận Mật Khẩu',

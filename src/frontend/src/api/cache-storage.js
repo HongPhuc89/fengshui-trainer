@@ -3,7 +3,7 @@ import localforage from 'localforage'
 
 // Separate instance to avoid conflicts with auth tokens in localStorage
 const store = localforage.createInstance({
-  name: 'thienthu-api-cache',
+  name: 'fengshui-api-cache',
   storeName: 'api_cache',
 })
 

@@ -6,7 +6,7 @@ import GemIcon from '../components/icons/GemIcon.vue'
 
 const { t } = useI18n()
 
-const ADMIN_EMAIL = 'admin@thienthu.vn'
+const ADMIN_EMAIL = 'admin@huyenhoc.pro'
 
 const balance = ref(0)
 const transactions = ref([])
