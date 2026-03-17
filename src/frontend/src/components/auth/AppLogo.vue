@@ -8,9 +8,9 @@ defineProps({
 <template>
   <div class="app-logo" :class="[`app-logo--${variant}`]">
     <div class="app-logo__icon">
-      <img src="/favicon.svg" alt="Thiên Thư Logo" />
+      <img src="/favicon.svg" alt="Huyền Học Logo" />
     </div>
-    <h1 class="app-logo__title">THIÊN THƯ</h1>
+    <h1 class="app-logo__title">HUYỀN HỌC</h1>
     <p v-if="subtitle || variant === 'login'" class="app-logo__subtitle">
       {{ subtitle || (variant === 'login' ? 'ANCIENT WISDOM ARCHIVES' : '') }}
     </p>

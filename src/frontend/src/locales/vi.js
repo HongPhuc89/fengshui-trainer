@@ -8,7 +8,7 @@ export default {
   },
 
   header: {
-    subtitle: 'MINH TRIẾT CỔ ĐIỂN',
+    subtitle: 'HỆ THỐNG TU LUYỆN HUYỀN HỌC',
     menuAriaLabel: 'Menu',
     notificationsAriaLabel: 'Thông báo',
   },

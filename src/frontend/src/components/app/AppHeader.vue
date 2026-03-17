@@ -19,7 +19,7 @@ function goHome() {
     <!-- TODO: menu drawer – ẩn tạm -->
     <span class="app-header__btn-placeholder"></span>
     <div class="app-header__brand" @click="goHome">
-      <span class="app-header__title">THIÊN THƯ</span>
+      <span class="app-header__title">HUYỀN HỌC</span>
       <span class="app-header__subtitle">{{ t('header.subtitle') }}</span>
     </div>
     <div class="app-header__right">

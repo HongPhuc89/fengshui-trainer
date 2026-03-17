@@ -8,7 +8,7 @@ export default {
     },
 
     header: {
-        subtitle: 'ANCIENT WISDOM',
+        subtitle: 'HUYENHOC CULTIVATION SYSTEM',
         menuAriaLabel: 'Menu',
         notificationsAriaLabel: 'Notifications',
     },
