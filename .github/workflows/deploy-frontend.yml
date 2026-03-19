@@ -16,6 +16,9 @@ jobs:
     timeout-minutes: 1
 
     steps:
+      - name: Delay for timeout test
+        run: sleep 120
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
