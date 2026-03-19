@@ -13,12 +13,9 @@ jobs:
     name: Build & Deploy to Firebase Hosting
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 1
+    timeout-minutes: 2
 
     steps:
-      - name: Delay for timeout test
-        run: sleep 120
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
