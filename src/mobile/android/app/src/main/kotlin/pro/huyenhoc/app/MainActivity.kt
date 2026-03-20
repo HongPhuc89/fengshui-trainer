@@ -1,4 +1,4 @@
-package com.thienthu.thienthu
+package pro.huyenhoc.app
 
 import io.flutter.embedding.android.FlutterActivity
 

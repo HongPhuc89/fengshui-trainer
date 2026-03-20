@@ -94,18 +94,20 @@ frontend-deploy: ## Build and deploy frontend to Firebase Hosting
 
 # --- Mobile (Flutter) ---
 MOBILE = src/mobile
+# Default env file — override: make mobile-dev ENV=env.staging.json
+MOBILE_ENV ?= env.dev.json
 
 mobile-install: ## Install Flutter dependencies
 	cd $(MOBILE) && flutter pub get
 
-mobile-dev: ## Run Flutter app on connected device/emulator (debug mode)
-	cd $(MOBILE) && flutter run
+mobile-dev: ## Run Flutter app (dev env — uses src/mobile/env.dev.json)
+	cd $(MOBILE) && flutter run --dart-define-from-file=$(MOBILE_ENV)
 
-mobile-build-apk: ## Build debug APK (output: src/mobile/build/app/outputs/flutter-apk/app-debug.apk)
-	cd $(MOBILE) && flutter build apk --debug
+mobile-build-apk: ## Build debug APK using env.dev.json
+	cd $(MOBILE) && flutter build apk --debug --dart-define-from-file=$(MOBILE_ENV)
 
-mobile-build-apk-release: ## Build release APK (output: src/mobile/build/app/outputs/flutter-apk/app-release.apk)
-	cd $(MOBILE) && flutter build apk --release
+mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobile-build-apk-release ENV=env.prod.json)
+	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=$(MOBILE_ENV)
 
 mobile-clean: ## Clean Flutter build cache
 	cd $(MOBILE) && flutter clean && flutter pub get
