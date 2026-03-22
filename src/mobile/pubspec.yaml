@@ -1,0 +1,73 @@
+name: huyenhoc
+description: "Huyền Học — Fengshui Learning Platform"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # DI
+  get_it: ^8.0.0
+  injectable: ^2.4.4
+
+  # HTTP
+  dio: ^5.7.0
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # Storage
+  hive_flutter: ^1.1.0
+  flutter_secure_storage: ^10.0.0
+
+  # PDF
+  pdfx: ^2.8.0
+
+  # Crypto (AES-256-GCM)
+  pointycastle: ^3.9.1
+
+  # Video
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+
+  # Images
+  flutter_svg: ^2.0.0
+  cached_network_image: ^3.3.1
+  image_cropper: ^11.0.0
+  image_picker: ^1.1.2
+
+  # Device
+  device_info_plus: ^10.1.2
+  screen_protector: ^1.5.1
+  uuid: ^4.4.0
+
+  # Utils
+  intl: ^0.20.2
+  logger: ^2.4.0
+  dartz: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  injectable_generator: ^2.6.2
+  build_runner: ^2.4.13
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/images/

@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-clean mobile-analyze
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -91,3 +91,26 @@ frontend-build: ## Build frontend for production
 
 frontend-deploy: ## Build and deploy frontend to Firebase Hosting
 	cd $(FRONTEND) && npm run deploy
+
+# --- Mobile (Flutter) ---
+MOBILE = src/mobile
+# Default env file — override: make mobile-dev ENV=env.staging.json
+MOBILE_ENV ?= env.dev.json
+
+mobile-install: ## Install Flutter dependencies
+	cd $(MOBILE) && flutter pub get
+
+mobile-dev: ## Run Flutter app (dev env — uses src/mobile/env.dev.json)
+	cd $(MOBILE) && flutter run --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-build-apk: ## Build debug APK using env.dev.json
+	cd $(MOBILE) && flutter build apk --debug --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobile-build-apk-release ENV=env.prod.json)
+	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-clean: ## Clean Flutter build cache
+	cd $(MOBILE) && flutter clean && flutter pub get
+
+mobile-analyze: ## Run Flutter static analysis
+	cd $(MOBILE) && flutter analyze --no-fatal-infos
