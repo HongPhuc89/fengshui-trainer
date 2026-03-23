@@ -38,7 +38,7 @@ class OwnedVideoInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'phone_number', 'email', 'first_name', 'last_name', 'user_type', 'is_device_locked', 'is_staff')
+    list_display = ('id', 'username', 'phone_number', 'email', 'first_name', 'last_name', 'user_type', 'is_device_locked', 'is_staff')
     list_filter = ('user_type', 'is_device_locked', 'is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone_number', 'public_id')
     ordering = ('-created_at',)
