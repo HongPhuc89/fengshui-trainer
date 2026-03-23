@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     "exams",
     "comments",
     "notifications",
+    "core",
 ]
 
 MIDDLEWARE = [
@@ -168,6 +169,7 @@ SUPABASE_PROJECT_REF = env("SUPABASE_PROJECT_REF", default="")
 SUPABASE_S3_ACCESS_KEY_ID = env("SUPABASE_S3_ACCESS_KEY_ID", default="")
 SUPABASE_S3_SECRET_ACCESS_KEY = env("SUPABASE_S3_SECRET_ACCESS_KEY", default="")
 SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="media")
+SUPABASE_BACKUP_BUCKET = env("SUPABASE_BACKUP_BUCKET", default="db-backups")
 SUPABASE_REGION = env("SUPABASE_REGION", default="ap-southeast-1")
 SUPABASE_URL_EXPIRY = 3600  # pre-signed URL valid for 1 hour
 

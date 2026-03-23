@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>Database Backup</h1>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert" style="padding:10px 15px;margin-bottom:1rem;border-radius:4px;background:{% if message.tags == 'success' %}#dff0d8{% else %}#f2dede{% endif %};color:{% if message.tags == 'success' %}#3c763d{% else %}#a94442{% endif %};">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div style="margin-bottom:1.5rem;">
+  <p>Backup tự động chạy lúc <strong>0h UTC</strong> (7h ICT) và <strong>12h UTC</strong> (19h ICT) mỗi ngày.</p>
+  <p>Backup được lưu trên Supabase Storage bucket <code>db-backups</code>, giữ tối đa 30 ngày.</p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" name="trigger_backup"
+    style="background:#417690;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px;">
+    ▶ Backup Now
+  </button>
+</form>
+
+<p style="margin-top:1rem;color:#666;font-size:13px;">
+  Backup chạy async trong Celery Worker. Kiểm tra Celery log hoặc Sentry để xem kết quả.
+</p>
+{% endblock %}
