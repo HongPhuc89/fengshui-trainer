@@ -94,7 +94,7 @@ class UserAdmin(BaseUserAdmin):
             AdminAuditLog.objects.create(
                 staff=request.user,
                 target_user=user,
-                action_category='CONTENT',
+                action_category='CONTENT_GRANT',
                 action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
                 change_log={'book_id': str(book.public_id), 'book_title': book.title},
                 ip_address=self._get_client_ip(request),
@@ -143,7 +143,7 @@ class UserAdmin(BaseUserAdmin):
             AdminAuditLog.objects.create(
                 staff=request.user,
                 target_user=user,
-                action_category='CONTENT',
+                action_category='CONTENT_GRANT',
                 action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
                 change_log={'video_id': str(video.public_id), 'video_title': video.title},
                 ip_address=self._get_client_ip(request),
@@ -170,6 +170,13 @@ class UserAdmin(BaseUserAdmin):
         extra_context['grant_book_url'] = reverse('admin:users_user_grant_book', args=[pk])
         extra_context['grant_video_url'] = reverse('admin:users_user_grant_video', args=[pk])
         return super().change_view(request, object_id, form_url, extra_context)
+
+    @staticmethod
+    def _get_client_ip(request):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR')
 
 
 @admin.register(UserDevice)
