@@ -1,9 +1,24 @@
 from django.contrib import admin
+from django.db import transaction
 from django.db.models import Max
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.text import slugify
 from .models import BookCategory, Book, BookChapter, UserBookPurchase
+
+
+class UserBookPurchaseInline(admin.TabularInline):
+    model = UserBookPurchase
+    extra = 0
+    fields = ('user', 'pdf_ready', 'created_at')
+    readonly_fields = ('pdf_ready', 'created_at')
+    raw_id_fields = ('user',)
+    can_delete = False
+    verbose_name = 'Người dùng sở hữu'
+    verbose_name_plural = 'Người dùng sở hữu'
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(BookCategory)
@@ -37,8 +52,75 @@ class BookAdmin(admin.ModelAdmin):
     list_filter = ('is_free', 'is_new_release', 'category')
     search_fields = ('title', 'author')
     readonly_fields = ('slug',)
-    inlines = [BookChapterInline]
+    inlines = [BookChapterInline, UserBookPurchaseInline]
     change_form_template = 'admin/books/book/change_form.html'
+
+    @staticmethod
+    def _get_client_ip(request):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<int:pk>/grant-access/',
+                self.admin_site.admin_view(self.grant_access_view),
+                name='books_book_grant_access',
+            ),
+        ]
+        return custom + urls
+
+    def grant_access_view(self, request, pk):
+        from users.models import User, AdminAuditLog
+
+        book = get_object_or_404(Book, pk=pk)
+
+        if request.method != 'POST':
+            return redirect(reverse('admin:books_book_change', args=[pk]))
+
+        user_id = request.POST.get('user_id')
+        if not user_id:
+            self.message_user(request, 'Vui lòng nhập ID người dùng.', level='error')
+            return redirect(reverse('admin:books_book_change', args=[pk]))
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            self.message_user(request, 'Không tìm thấy người dùng.', level='error')
+            return redirect(reverse('admin:books_book_change', args=[pk]))
+
+        if UserBookPurchase.objects.filter(user=user, book=book).exists():
+            self.message_user(request, f'Người dùng "{user}" đã sở hữu sách "{book.title}".', level='error')
+            return redirect(reverse('admin:books_book_change', args=[pk]))
+
+        with transaction.atomic():
+            UserBookPurchase.objects.create(user=user, book=book)
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=user,
+                action_category='CONTENT',
+                action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
+                change_log={'book_id': str(book.public_id), 'book_title': book.title},
+                ip_address=self._get_client_ip(request),
+            )
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title='Sách đã được kích hoạt',
+                    body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
+                    notification_type='PURCHASE',
+                    related_object_type='book',
+                    related_object_id=str(book.public_id),
+                )
+            except Exception:
+                pass
+
+        self.message_user(request, f'✅ Đã kích hoạt sách "{book.title}" cho {user}.')
+        return redirect(reverse('admin:books_book_change', args=[pk]))
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
@@ -49,6 +131,7 @@ class BookAdmin(admin.ModelAdmin):
             extra_context['prev_url'] = reverse('admin:books_book_change', args=[prev_obj['pk']])
         if next_obj:
             extra_context['next_url'] = reverse('admin:books_book_change', args=[next_obj['pk']])
+        extra_context['grant_access_url'] = reverse('admin:books_book_grant_access', args=[pk])
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):

@@ -185,6 +185,25 @@
 </style>
 {% endblock %}
 
+{% block after_related_objects %}
+{{ block.super }}
+{% if grant_access_url %}
+<div style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+  <h3 style="margin-top: 0">Kích hoạt cho người dùng mới</h3>
+  <form method="post" action="{{ grant_access_url }}">
+    {% csrf_token %}
+    <label for="grant_user_id">ID người dùng:</label>
+    <input type="number" name="user_id" id="grant_user_id" placeholder="Nhập user ID" required
+           style="margin: 0 8px; padding: 4px 8px;">
+    <button type="submit" class="button default">Kích hoạt</button>
+    <span style="margin-left: 12px; color: #888; font-size: 12px;">
+      Tra cứu ID tại: <a href="{% url 'admin:users_user_changelist' %}" target="_blank">Danh sách người dùng</a>
+    </span>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
+
 {% block admin_change_form_document_ready %}
 {{ block.super }}
 <script>

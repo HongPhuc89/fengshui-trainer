@@ -1,0 +1,38 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if grant_book_url %}
+<div style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+  <h3 style="margin-top: 0">Kích hoạt sách cho người dùng này</h3>
+  <form method="post" action="{{ grant_book_url }}">
+    {% csrf_token %}
+    <label for="grant_book_id">ID sách:</label>
+    <input type="number" name="book_id" id="grant_book_id" placeholder="Nhập book ID" required
+           style="margin: 0 8px; padding: 4px 8px;">
+    <button type="submit" class="button default">Kích hoạt</button>
+    <span style="margin-left: 12px; color: #888; font-size: 12px;">
+      Tra cứu tại: <a href="{% url 'admin:books_book_changelist' %}" target="_blank">Danh sách sách</a>
+    </span>
+  </form>
+</div>
+{% endif %}
+
+{% if grant_video_url %}
+<div style="margin-top: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+  <h3 style="margin-top: 0">Kích hoạt khoá học cho người dùng này</h3>
+  <form method="post" action="{{ grant_video_url }}">
+    {% csrf_token %}
+    <label for="grant_video_id">ID khoá học:</label>
+    <input type="number" name="video_id" id="grant_video_id" placeholder="Nhập course ID" required
+           style="margin: 0 8px; padding: 4px 8px;">
+    <button type="submit" class="button default">Kích hoạt</button>
+    <span style="margin-left: 12px; color: #888; font-size: 12px;">
+      Tra cứu tại: <a href="{% url 'admin:videos_videocourse_changelist' %}" target="_blank">Danh sách khoá học</a>
+    </span>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}

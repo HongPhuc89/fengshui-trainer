@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.core.files.base import ContentFile
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
@@ -11,6 +12,20 @@ from exams.models import Exam as ExamModel, Flashcard as FlashcardModel
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
 from .storage import get_video_storage
 
+
+
+class UserVideoPurchaseInline(admin.TabularInline):
+    model = UserVideoPurchase
+    extra = 0
+    fields = ('user', 'created_at')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('user',)
+    can_delete = False
+    verbose_name = 'Người dùng sở hữu'
+    verbose_name_plural = 'Người dùng sở hữu'
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(VideoCategory)
@@ -46,11 +61,19 @@ class VideoCourseAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'category', 'price_lt', 'level', 'total_lessons', 'published_date')
     list_filter = ('is_free', 'level', 'category')
     search_fields = ('title', 'instructor')
-    inlines = [VideoLessonInline]
+    inlines = [VideoLessonInline, UserVideoPurchaseInline]
     readonly_fields = ('recalculate_totals_btn',)
+    change_form_template = 'admin/videos/videocourse/change_form.html'
 
     class Media:
         js = ('videos/js/auto_slug_course.js',)
+
+    @staticmethod
+    def _get_client_ip(request):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR')
 
     def recalculate_totals_btn(self, obj):
         if not obj or not obj.pk:
@@ -77,8 +100,62 @@ class VideoCourseAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.recalculate_totals_view),
                 name='videos_videocourse_recalculate_totals',
             ),
+            path(
+                '<int:pk>/grant-access/',
+                self.admin_site.admin_view(self.grant_access_view),
+                name='videos_videocourse_grant_access',
+            ),
         ]
         return custom + urls
+
+    def grant_access_view(self, request, pk):
+        from users.models import User, AdminAuditLog
+
+        video = get_object_or_404(VideoCourse, pk=pk)
+
+        if request.method != 'POST':
+            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        user_id = request.POST.get('user_id')
+        if not user_id:
+            self.message_user(request, 'Vui lòng nhập ID người dùng.', level='error')
+            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            self.message_user(request, 'Không tìm thấy người dùng.', level='error')
+            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        if UserVideoPurchase.objects.filter(user=user, video=video).exists():
+            self.message_user(request, f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".', level='error')
+            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        with transaction.atomic():
+            UserVideoPurchase.objects.create(user=user, video=video)
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=user,
+                action_category='CONTENT',
+                action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
+                change_log={'video_id': str(video.public_id), 'video_title': video.title},
+                ip_address=self._get_client_ip(request),
+            )
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title='Khoá học đã được kích hoạt',
+                    body=f'Khoá học "{video.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 🎬',
+                    notification_type='PURCHASE',
+                    related_object_type='videocourse',
+                    related_object_id=str(video.public_id),
+                )
+            except Exception:
+                pass
+
+        self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
+        return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
     def recalculate_totals_view(self, request, pk):
         course = get_object_or_404(VideoCourse, pk=pk)
@@ -118,6 +195,12 @@ class VideoCourseAdmin(admin.ModelAdmin):
         for obj in formset.deleted_objects:
             obj.delete()
         formset.save_m2m()
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        pk = int(object_id)
+        extra_context['grant_access_url'] = reverse('admin:videos_videocourse_grant_access', args=[pk])
+        return super().change_view(request, object_id, form_url, extra_context)
 
 
 # ── VideoLesson admin with file upload + flashcard/exam inlines ───────────────
