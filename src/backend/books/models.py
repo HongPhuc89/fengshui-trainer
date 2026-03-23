@@ -190,3 +190,6 @@ class UserChapterProgress(BaseModel):
         verbose_name = "User Chapter Progress"
         verbose_name_plural = "User Chapter Progresses"
         unique_together = [['user', 'chapter']]
+        indexes = [
+            models.Index(fields=['user', 'last_read'], name='idx_ucp_user_last_read'),
+        ]

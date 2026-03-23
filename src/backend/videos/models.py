@@ -176,3 +176,6 @@ class UserLessonProgress(BaseModel):
         verbose_name = "User Lesson Progress"
         verbose_name_plural = "User Lesson Progresses"
         unique_together = [['user', 'lesson']]
+        indexes = [
+            models.Index(fields=['user', 'last_watched'], name='idx_ulp_user_last_watched'),
+        ]

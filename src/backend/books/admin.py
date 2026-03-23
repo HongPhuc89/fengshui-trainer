@@ -3,8 +3,9 @@ from django.db import transaction
 from django.db.models import Max
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
+from django.utils.html import format_html
 from django.utils.text import slugify
-from .models import BookCategory, Book, BookChapter, UserBookPurchase
+from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapterProgress
 
 
 class UserBookPurchaseInline(admin.TabularInline):
@@ -48,7 +49,7 @@ class BookChapterInline(admin.TabularInline):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_new_release', 'published_date')
+    list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_new_release', 'published_date', 'reader_progress_link')
     list_filter = ('is_free', 'is_new_release', 'category')
     search_fields = ('title', 'author')
     readonly_fields = ('slug',)
@@ -61,6 +62,11 @@ class BookAdmin(admin.ModelAdmin):
         if xff:
             return xff.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
+
+    def reader_progress_link(self, obj):
+        url = reverse('admin:books_userchapterprogress_changelist') + f'?chapter__book__id__exact={obj.pk}'
+        return format_html('<a href="{}">Xem tiến độ</a>', url)
+    reader_progress_link.short_description = 'Tiến độ đọc'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -259,3 +265,34 @@ class UserBookPurchaseAdmin(admin.ModelAdmin):
     list_display = ('user', 'book', 'pdf_ready', 'created_at')
     list_filter = ('created_at', 'pdf_ready')
     raw_id_fields = ('user', 'book')
+
+
+@admin.register(UserChapterProgress)
+class UserChapterProgressAdmin(admin.ModelAdmin):
+    list_display = ('user_link', 'book_title', 'chapter_title', 'current_page', 'completed', 'last_read')
+    list_filter = ('completed', ('chapter__book', admin.RelatedFieldListFilter))
+    search_fields = ('user__username', 'user__phone_number', 'chapter__title', 'chapter__book__title')
+    date_hierarchy = 'last_read'
+    raw_id_fields = ('user', 'chapter')
+    ordering = ('-last_read',)
+    show_full_result_count = False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'chapter', 'chapter__book')
+
+    def user_link(self, obj):
+        url = reverse('admin:users_user_change', args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.username)
+    user_link.short_description = 'User'
+    user_link.admin_order_field = 'user__username'
+
+    def book_title(self, obj):
+        url = reverse('admin:books_book_change', args=[obj.chapter.book_id])
+        return format_html('<a href="{}">{}</a>', url, obj.chapter.book.title)
+    book_title.short_description = 'Sách'
+    book_title.admin_order_field = 'chapter__book__title'
+
+    def chapter_title(self, obj):
+        return f"#{obj.chapter.order} {obj.chapter.title}"
+    chapter_title.short_description = 'Chương'
+    chapter_title.admin_order_field = 'chapter__order'

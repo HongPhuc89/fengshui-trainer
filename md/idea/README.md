@@ -23,6 +23,7 @@ Code
 | File | Tiêu đề | Ưu tiên | Effort | Status |
 |------|---------|---------|--------|--------|
 | [admin-activity-dashboard.md](admin-activity-dashboard.md) | Admin User Activity Dashboard — DAU & Linh Thạch theo ngày | 🔴 High | M | Idea |
+| [video-watch-tracking.md](video-watch-tracking.md) | Video Watch Tracking & Learning Analytics — trace user xem video, completion rate, course funnel | 🔴 High | M | Idea |
 
 ---
 

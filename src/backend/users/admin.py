@@ -169,6 +169,9 @@ class UserAdmin(BaseUserAdmin):
         pk = int(object_id)
         extra_context['grant_book_url'] = reverse('admin:users_user_grant_book', args=[pk])
         extra_context['grant_video_url'] = reverse('admin:users_user_grant_video', args=[pk])
+        from users.admin_progress import get_user_video_summary, get_user_book_summary
+        extra_context['video_progress'] = get_user_video_summary(pk)
+        extra_context['book_progress'] = get_user_book_summary(pk)
         return super().change_view(request, object_id, form_url, extra_context)
 
     @staticmethod

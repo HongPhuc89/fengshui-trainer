@@ -35,4 +35,60 @@
 </div>
 {% endif %}
 
+{% if video_progress %}
+<div class="module" style="margin-top: 20px;">
+  <h2 style="padding: 8px 12px; background: #417690; color: #fff; margin: 0 0 0 0; font-size: 14px;">Tiến độ Video</h2>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f8f8;">
+        <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd;">Khoá học</th>
+        <th style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #ddd;">Đã xem / Tổng bài</th>
+        <th style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #ddd;">Hoàn thành</th>
+        <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd;">Lần cuối xem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in video_progress %}
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ row.video.title }}</td>
+        <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #eee;">{{ row.watched_count }} / {{ row.video.total_lessons }}</td>
+        <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #eee;">{{ row.completed_count }}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ row.last_watched|date:"d/m/Y H:i"|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="padding: 8px 12px; color: #888;">Chưa có tiến độ nào.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if book_progress %}
+<div class="module" style="margin-top: 16px;">
+  <h2 style="padding: 8px 12px; background: #417690; color: #fff; margin: 0 0 0 0; font-size: 14px;">Tiến độ Sách</h2>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f8f8;">
+        <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd;">Sách</th>
+        <th style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #ddd;">Đã đọc / Tổng chương</th>
+        <th style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #ddd;">Hoàn thành</th>
+        <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd;">Lần cuối đọc</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in book_progress %}
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ row.book.title }}</td>
+        <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #eee;">{{ row.read_count }} / {{ row.total_chapters }}</td>
+        <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #eee;">{{ row.completed_count }}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ row.last_read|date:"d/m/Y H:i"|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="padding: 8px 12px; color: #888;">Chưa có tiến độ nào.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 {% endblock %}

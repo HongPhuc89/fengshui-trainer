@@ -58,7 +58,7 @@ class VideoLessonInline(admin.TabularInline):
 
 @admin.register(VideoCourse)
 class VideoCourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'category', 'price_lt', 'level', 'total_lessons', 'published_date')
+    list_display = ('title', 'slug', 'category', 'price_lt', 'level', 'total_lessons', 'published_date', 'learner_progress_link')
     list_filter = ('is_free', 'level', 'category')
     search_fields = ('title', 'instructor')
     inlines = [VideoLessonInline, UserVideoPurchaseInline]
@@ -91,6 +91,11 @@ class VideoCourseAdmin(admin.ModelAdmin):
             obj.total_duration_seconds,
         )
     recalculate_totals_btn.short_description = 'Tính lại tổng'
+
+    def learner_progress_link(self, obj):
+        url = reverse('admin:videos_userlessonprogress_changelist') + f'?lesson__course__id__exact={obj.pk}'
+        return format_html('<a href="{}">Xem tiến độ</a>', url)
+    learner_progress_link.short_description = 'Tiến độ học viên'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -531,6 +536,53 @@ class UserVideoPurchaseAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
 
 
+class CourseCompletionFilter(admin.SimpleListFilter):
+    title = 'Mức hoàn thành'
+    parameter_name = 'completion'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('completed', 'Đã hoàn thành'),
+            ('in_progress', 'Đang học'),
+            ('just_started', 'Mới bắt đầu (< 60s)'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'completed':
+            return queryset.filter(completed=True)
+        if self.value() == 'in_progress':
+            return queryset.filter(completed=False, progress_seconds__gt=0)
+        if self.value() == 'just_started':
+            return queryset.filter(progress_seconds__lt=60)
+        return queryset
+
+
 @admin.register(UserLessonProgress)
 class UserLessonProgressAdmin(admin.ModelAdmin):
-    list_display = ('user', 'lesson', 'progress_seconds', 'completed', 'last_watched')
+    list_display = ('user_link', 'course_title', 'lesson_title', 'progress_seconds', 'completed', 'last_watched')
+    list_filter = ('completed', ('lesson__course', admin.RelatedFieldListFilter), CourseCompletionFilter)
+    search_fields = ('user__username', 'user__phone_number', 'lesson__title', 'lesson__course__title')
+    date_hierarchy = 'last_watched'
+    raw_id_fields = ('user', 'lesson')
+    ordering = ('-last_watched',)
+    show_full_result_count = False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'lesson', 'lesson__course')
+
+    def user_link(self, obj):
+        url = reverse('admin:users_user_change', args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.username)
+    user_link.short_description = 'User'
+    user_link.admin_order_field = 'user__username'
+
+    def course_title(self, obj):
+        url = reverse('admin:videos_videocourse_change', args=[obj.lesson.course_id])
+        return format_html('<a href="{}">{}</a>', url, obj.lesson.course.title)
+    course_title.short_description = 'Khoá học'
+    course_title.admin_order_field = 'lesson__course__title'
+
+    def lesson_title(self, obj):
+        return f"#{obj.lesson.order} {obj.lesson.title}"
+    lesson_title.short_description = 'Bài học'
+    lesson_title.admin_order_field = 'lesson__order'
