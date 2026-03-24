@@ -7,6 +7,7 @@ import { useBreakpoint } from '../composables/useBreakpoint'
 import { useWatermark } from '../composables/useWatermark'
 import { usePdfDecryption } from '../composables/usePdfDecryption'
 import { api } from '../api/client'
+import * as Sentry from '@sentry/vue'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -137,6 +138,12 @@ onMounted(async () => {
     await loadChapter(startChapter, startPage)
   } catch (e) {
     console.error('[BookReader] load error:', e)
+    Sentry.withScope(scope => {
+      scope.setTag('feature', 'pdf_reader')
+      scope.setTag('error_phase', 'book_info_load')
+      scope.setContext('book', { slug: bookSlug })
+      Sentry.captureException(e)
+    })
     error.value = e?.message || 'Đã xảy ra lỗi khi mở sách.'
     loading.value = false
   }
@@ -174,9 +181,22 @@ async function loadChapter(order, page = 1) {
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
-    if (e?.response?.status === 503) {
+    const status = e?.response?.status
+    if (status !== 401 && status !== 403) {
+      Sentry.withScope(scope => {
+        scope.setTag('feature', 'pdf_reader')
+        scope.setTag('error_phase', e._sentryPhase ?? 'chapter_load')
+        scope.setContext('book', {
+          slug: bookSlug,
+          chapter_order: order,
+          http_status: status ?? null,
+        })
+        Sentry.captureException(e)
+      })
+    }
+    if (status === 503) {
       error.value = 'Chương đang được xử lý, vui lòng thử lại sau vài phút.'
-    } else if (e?.response?.status === 401) {
+    } else if (status === 401) {
       error.value = 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.'
     } else {
       error.value = 'Không thể tải chương, vui lòng thử lại.'
@@ -248,7 +268,19 @@ async function renderPage(num) {
   } catch (e) {
     // RenderingCancelledException is expected when the user navigates quickly
     // and the previous render is cancelled — not a real error, safe to ignore.
-    if (e?.name !== 'RenderingCancelledException') throw e
+    if (e?.name !== 'RenderingCancelledException') {
+      Sentry.withScope(scope => {
+        scope.setTag('feature', 'pdf_reader')
+        scope.setTag('error_phase', 'pdf_render')
+        scope.setContext('book', {
+          slug: bookSlug,
+          chapter_order: currentChapterOrder.value,
+          page: num,
+        })
+        Sentry.captureException(e)
+      })
+      throw e
+    }
   } finally {
     renderingTask.value = null
     pageRendering.value = false

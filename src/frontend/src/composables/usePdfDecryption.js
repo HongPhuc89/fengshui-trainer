@@ -13,7 +13,14 @@ export function usePdfDecryption() {
 
   async function loadEncryptedPdf(decryptKeyUrl, fallbackFileUrl, apiClient) {
     // 1. Fetch decrypt key + pre-signed file URL from backend (access check enforced server-side)
-    const { data: keyData } = await apiClient.get(decryptKeyUrl)
+    let keyData
+    try {
+      const res = await apiClient.get(decryptKeyUrl)
+      keyData = res.data
+    } catch (e) {
+      e._sentryPhase = 'pdf_key_fetch'
+      throw e
+    }
 
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
@@ -31,19 +38,35 @@ export function usePdfDecryption() {
       if (!response.ok) throw new Error(`Supabase responded ${response.status}`)
       encryptedBuffer = await response.arrayBuffer()
     } catch {
-      const fallback = await apiClient.get(fallbackFileUrl, { responseType: 'arraybuffer' })
-      encryptedBuffer = fallback.data
+      try {
+        const fallback = await apiClient.get(fallbackFileUrl, { responseType: 'arraybuffer' })
+        encryptedBuffer = fallback.data
+      } catch (e) {
+        e._sentryPhase = 'pdf_file_fetch'
+        throw e
+      }
     }
 
     // 3. AES-256-GCM decrypt
-    const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      cryptoKey,
-      encryptedBuffer,
-    )
+    let decryptedBuffer
+    try {
+      decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        encryptedBuffer,
+      )
+    } catch (e) {
+      e._sentryPhase = 'pdf_decrypt'
+      throw e
+    }
 
     // 4. PDF.js requires a TypedArray (Uint8Array), not a raw ArrayBuffer
-    return await pdfjsLib.getDocument({ data: new Uint8Array(decryptedBuffer) }).promise
+    try {
+      return await pdfjsLib.getDocument({ data: new Uint8Array(decryptedBuffer) }).promise
+    } catch (e) {
+      e._sentryPhase = 'pdf_parse'
+      throw e
+    }
   }
 
   /**
