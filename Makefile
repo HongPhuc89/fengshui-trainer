@@ -34,6 +34,12 @@ collectstatic: ## Update admin css
 download_from_supabase: ## Download avatars and pdf file from Supabase and update the database
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py download_from_supabase
 
+encrypt-chapters: ## Encrypt chapters that have file_path but no encrypted_cdn_url
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py encrypt_chapters
+
+encrypt-chapters-force: ## Re-encrypt ALL chapters (increments encryption_version)
+	docker-compose -f $(COMPOSE_FILE) exec web python manage.py encrypt_chapters --force
+
 createsuperuser: ## Create a Django superuser
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py createsuperuser
 
