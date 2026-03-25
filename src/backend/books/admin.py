@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import admin
 from django.db import transaction
 from django.db.models import Max
@@ -6,6 +8,8 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.text import slugify
 from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapterProgress
+
+logger = logging.getLogger(__name__)
 
 
 class UserBookPurchaseInline(admin.TabularInline):
@@ -80,53 +84,54 @@ class BookAdmin(admin.ModelAdmin):
         return custom + urls
 
     def grant_access_view(self, request, pk):
+        from django.http import JsonResponse
         from users.models import User, AdminAuditLog
-
-        book = get_object_or_404(Book, pk=pk)
 
         if request.method != 'POST':
             return redirect(reverse('admin:books_book_change', args=[pk]))
 
+        book = get_object_or_404(Book, pk=pk)
         user_id = request.POST.get('user_id')
+
         if not user_id:
-            self.message_user(request, 'Vui lòng nhập ID người dùng.', level='error')
-            return redirect(reverse('admin:books_book_change', args=[pk]))
+            return JsonResponse({'ok': False, 'message': 'Vui lòng nhập ID người dùng.'})
 
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            self.message_user(request, 'Không tìm thấy người dùng.', level='error')
-            return redirect(reverse('admin:books_book_change', args=[pk]))
+            return JsonResponse({'ok': False, 'message': f'Không tìm thấy người dùng ID={user_id}.'})
 
         if UserBookPurchase.objects.filter(user=user, book=book).exists():
-            self.message_user(request, f'Người dùng "{user}" đã sở hữu sách "{book.title}".', level='error')
-            return redirect(reverse('admin:books_book_change', args=[pk]))
+            return JsonResponse({'ok': False, 'message': f'"{user}" đã sở hữu sách này rồi.'})
 
-        with transaction.atomic():
-            UserBookPurchase.objects.create(user=user, book=book)
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=user,
-                action_category='CONTENT_GRANT',
-                action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
-                change_log={'book_id': str(book.public_id), 'book_title': book.title},
-                ip_address=self._get_client_ip(request),
-            )
-            try:
-                from notifications.models import Notification
-                Notification.objects.create(
-                    user=user,
-                    title='Sách đã được kích hoạt',
-                    body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
-                    notification_type='PURCHASE',
-                    related_object_type='book',
-                    related_object_id=str(book.public_id),
+        try:
+            with transaction.atomic():
+                UserBookPurchase.objects.create(user=user, book=book)
+                AdminAuditLog.objects.create(
+                    staff=request.user,
+                    target_user=user,
+                    action_category='CONTENT_GRANT',
+                    action_detail=f'Admin kich hoat sach "{book.title}" cho "{user}"',
+                    change_log={'book_id': str(book.public_id), 'book_title': book.title},
+                    ip_address=self._get_client_ip(request),
                 )
-            except Exception:
-                pass
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        user=user,
+                        title='Sách đã được kích hoạt',
+                        body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
+                        notification_type='PURCHASE',
+                        related_object_type='book',
+                        related_object_id=str(book.public_id),
+                    )
+                except Exception:
+                    logger.exception('grant_access: tao notification that bai (user=%s, book=%s)', user.pk, pk)
+        except Exception:
+            logger.exception('grant_access: that bai (user=%s, book=%s)', user_id, pk)
+            return JsonResponse({'ok': False, 'message': 'Lỗi server, vui lòng kiểm tra log.'})
 
-        self.message_user(request, f'✅ Đã kích hoạt sách "{book.title}" cho {user}.')
-        return redirect(reverse('admin:books_book_change', args=[pk]))
+        return JsonResponse({'ok': True, 'message': f'✅ Đã kích hoạt sách "{book.title}" cho {user}.'})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
