@@ -107,7 +107,7 @@ class BookAdmin(admin.ModelAdmin):
             AdminAuditLog.objects.create(
                 staff=request.user,
                 target_user=user,
-                action_category='CONTENT',
+                action_category='CONTENT_GRANT',
                 action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
                 change_log={'book_id': str(book.public_id), 'book_title': book.title},
                 ip_address=self._get_client_ip(request),
