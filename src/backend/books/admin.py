@@ -36,7 +36,7 @@ class BookChapterInline(admin.TabularInline):
     model = BookChapter
     extra = 0
     ordering = ('order',)
-    exclude = ('slug',)
+    exclude = ('slug', 'file_size', 'page_count', 'encrypted_cdn_url', 'encryption_version')
     can_delete = False
 
     def get_formset(self, request, obj=None, **kwargs):
