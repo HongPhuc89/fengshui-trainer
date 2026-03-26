@@ -27,8 +27,7 @@ def _delete_old_backups(retention_days: int = 30):
     """Delete backups older than retention_days from Supabase Storage."""
     s3 = _s3_client()
     bucket = settings.SUPABASE_BACKUP_BUCKET
-
-    resp = s3.list_objects_v2(Bucket=bucket, Prefix="backup_")
+    resp = s3.list_objects_v2(Bucket=bucket, Prefix="db-backups/")
     objects = resp.get("Contents", [])
     if not objects:
         return
@@ -55,8 +54,9 @@ def backup_database(self):
         logger.info("Skipping backup: APP_ENV is not production.")
         return {"skipped": True, "reason": "not production"}
 
+    app_env = getattr(settings, "APP_ENV", "development")
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"backup_{timestamp}.sql.gz"
+    filename = f"db-backups/{app_env}/backup_{timestamp}.sql.gz"
     database_url = os.environ.get("DATABASE_URL", "")
     tmp_path = None
     compressed = None
