@@ -64,13 +64,23 @@ class ExamSubmitView(views.APIView):
         serializer.is_valid(raise_exception=True)
         answers = {item['question_id']: item['answer'] for item in serializer.validated_data['answers']}
 
+        # §2.3: single loop — score calculation + question_results (avoid double DB iteration)
+        question_results = []
         total_score = 0
         max_score = 0
         for q in exam.questions.all():
             max_score += q.points
             ans = answers.get(str(q.public_id))
-            if ans and str(ans).strip().lower() == str(q.correct_answer).strip().lower():
+            is_correct = bool(
+                ans and str(ans).strip().lower() == str(q.correct_answer).strip().lower()
+            )
+            if is_correct:
                 total_score += q.points
+            question_results.append({
+                'question_id': str(q.public_id),
+                'correct_answer': q.correct_answer,
+                'is_correct': is_correct,
+            })
 
         score_pct = round((total_score / max_score * 100) if max_score else 0)
         is_passed = score_pct >= exam.passing_score
@@ -94,6 +104,7 @@ class ExamSubmitView(views.APIView):
             'is_passed': is_passed,
             'passing_score': exam.passing_score,
             'attempts': progress.attempts,
+            'question_results': question_results,  # used by frontend review screen
         })
 
 

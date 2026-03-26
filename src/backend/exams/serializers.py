@@ -9,10 +9,18 @@ class PracticeModuleSerializer(serializers.ModelSerializer):
 
 
 class PracticeQuestionListSerializer(serializers.ModelSerializer):
-    """Without correct_answer for exam detail."""
+    """Without correct_answer — used for FINAL_EXAM detail (security: hide answer)."""
     class Meta:
         model = PracticeQuestion
         fields = ('public_id', 'question_type', 'question_text', 'options', 'points', 'order', 'difficulty')
+
+
+class PracticeQuestionWithAnswerSerializer(serializers.ModelSerializer):
+    """With correct_answer — used for PRACTICE/QUIZ exam detail (immediate feedback)."""
+    class Meta:
+        model = PracticeQuestion
+        fields = ('public_id', 'question_type', 'question_text', 'options',
+                  'correct_answer', 'points', 'order', 'difficulty')
 
 
 class UserExamProgressSerializer(serializers.ModelSerializer):
@@ -28,9 +36,18 @@ class ExamListSerializer(serializers.ModelSerializer):
 
 
 class ExamDetailSerializer(serializers.ModelSerializer):
-    questions = PracticeQuestionListSerializer(many=True, read_only=True)
+    # §2.2: questions field varies by exam_type — see get_questions()
+    questions = serializers.SerializerMethodField()
     total_questions = serializers.SerializerMethodField()
     user_progress = serializers.SerializerMethodField()
+
+    def get_questions(self, obj):
+        """Return correct_answer for PRACTICE/QUIZ (immediate feedback UX).
+        Hide correct_answer for FINAL_EXAM (security)."""
+        qs = obj.questions.all().order_by('order')
+        if obj.exam_type in ('PRACTICE', 'QUIZ'):
+            return PracticeQuestionWithAnswerSerializer(qs, many=True).data
+        return PracticeQuestionListSerializer(qs, many=True).data
 
     def get_total_questions(self, obj):
         return obj.questions.count()

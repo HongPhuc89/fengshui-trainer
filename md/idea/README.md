@@ -24,6 +24,7 @@ Code
 |------|---------|---------|--------|--------|
 | [admin-activity-dashboard.md](admin-activity-dashboard.md) | Admin User Activity Dashboard — DAU & Linh Thạch theo ngày | 🔴 High | M | Idea |
 | [video-watch-tracking.md](video-watch-tracking.md) | Video Watch Tracking & Learning Analytics — trace user xem video, completion rate, course funnel | 🔴 High | M | Idea |
+| [quiz-result-summary-screen.md](quiz-result-summary-screen.md) | Quiz Result & Summary Screen V2 — score ring animation, stats breakdown, per-question review với explanation, answer highlight | 🔴 High | M | Idea |
 
 ---
 

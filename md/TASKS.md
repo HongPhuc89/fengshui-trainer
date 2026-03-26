@@ -33,6 +33,7 @@
 | 15 | [feature-15-client-caching.md](design/feature-15-client-caching.md) | Client-Side Caching — axios-cache-interceptor + localforage, TTL per endpoint, cache invalidation on logout/purchase | 📝 |
 | 16 | [feature-16-pdf-reader-v1.md](design/feature-16-pdf-reader-v1.md) | PDF Reader V1 — Keyboard shortcuts, desktop split-panel TOC sidebar, blur DRM + right-click prevention | 📝 |
 | 17 | [feature-17-admin-activity-dashboard.md](design/feature-17-admin-activity-dashboard.md) | Admin Activity Dashboard — DAU & Linh Thạch theo ngày (date range picker, KPI tiles, charts, table) | 📝 |
+| 24 | [feature-24-quiz-session-v2.md](design/feature-24-quiz-session-v2.md) | Quiz Session V2 — Immediate per-question feedback, score ring animation, answer review với highlight đúng/sai | 📝 |
 
 ---
 
