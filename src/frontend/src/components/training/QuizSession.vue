@@ -432,7 +432,7 @@ function formatDate(iso) {
               class="quiz__review-opt"
               :class="reviewOptClass(sq, opt)"
             >
-              <span class="quiz__review-opt-id">{{ opt.id.toUpperCase() }}</span>
+              <span v-if="sq.question_type === 'MULTIPLE_CHOICE'" class="quiz__review-opt-id">{{ opt.id.toUpperCase() }}</span>
               <span>{{ opt.text }}</span>
               <span v-if="opt.id === getCorrectAnswerId(sq)"
                 class="quiz__review-opt-tag quiz__review-opt-tag--correct">đúng</span>
