@@ -49,7 +49,12 @@ def backup_database(self):
     """
     Dump PostgreSQL database, gzip compress, upload to Supabase Storage.
     Deletes backups older than 30 days after upload.
+    Only runs in production (APP_ENV=production).
     """
+    if getattr(settings, "APP_ENV", "development") != "production":
+        logger.info("Skipping backup: APP_ENV is not production.")
+        return {"skipped": True, "reason": "not production"}
+
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"backup_{timestamp}.sql.gz"
     database_url = os.environ.get("DATABASE_URL", "")
