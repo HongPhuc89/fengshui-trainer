@@ -65,11 +65,22 @@ class CustomLoginSerializer(serializers.Serializer):
         device_name = parse_device_name(ua_string)
         client_ip = get_client_ip(request) if request else None
 
+        # authenticate() rejects inactive users (returns None) before we can check is_active.
+        # So first look up the user manually to distinguish "wrong password" from "inactive account".
+        try:
+            user_obj = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Invalid email or password."})
+
+        if not user_obj.check_password(password):
+            raise serializers.ValidationError({"detail": "Invalid email or password."})
+
+        if not user_obj.is_active:
+            raise serializers.ValidationError({"detail": "Tài khoản của bạn đang chờ admin kích hoạt. Vui lòng liên hệ admin@huyenhoc.pro để được hỗ trợ."})
+
         user = authenticate(request=request, username=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
-        if not user.is_active:
-            raise serializers.ValidationError({"detail": "Tài khoản của bạn đang chờ admin kích hoạt. Vui lòng liên hệ admin để được hỗ trợ."})
 
         # Check device limit before creating a new record
         is_new_device = not user.devices.filter(device_id=current_device_id).exists()
