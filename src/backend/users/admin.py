@@ -240,6 +240,20 @@ class UserAdmin(BaseUserAdmin):
         self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
         return redirect(reverse('admin:users_user_change', args=[pk]))
 
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request)
+        if obj.book_purchases.exists():
+            return False
+        if obj.video_purchases.exists():
+            return False
+        try:
+            if obj.wallet.balance > 0:
+                return False
+        except Exception:
+            pass
+        return super().has_delete_permission(request)
+
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         pk = int(object_id)
