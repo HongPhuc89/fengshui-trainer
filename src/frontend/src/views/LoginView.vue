@@ -21,6 +21,8 @@ const password = ref('')
 const passwordVisible = ref(false)
 const loading = ref(false)
 const error = ref('')
+const pendingApproval = ref(false)
+const pendingEmail = ref('')
 
 async function submit() {
   error.value = ''
@@ -41,7 +43,18 @@ async function submit() {
     router.push(redirect)
   } catch (e) {
     const res = e.response
-    error.value = res?.data?.detail || res?.data?.email?.[0] || t('auth.login.errorInvalid')
+    if (res?.status === 429) {
+      const retryAfter = res.headers?.['retry-after']
+      error.value = retryAfter
+        ? t('auth.login.rateLimitExceededSeconds', { seconds: retryAfter })
+        : t('auth.login.rateLimitExceeded')
+    } else if (res?.data?.detail?.includes('chờ admin kích hoạt')) {
+      // Account exists but is inactive — show pending approval screen
+      pendingApproval.value = true
+      pendingEmail.value = email.value.trim()
+    } else {
+      error.value = res?.data?.detail || res?.data?.email?.[0] || t('auth.login.errorInvalid')
+    }
   } finally {
     loading.value = false
   }
@@ -53,6 +66,15 @@ async function submit() {
 <template>
   <div class="login-view">
     <AppLogo variant="login" />
+
+    <div v-if="pendingApproval" class="login-view__pending">
+      <div class="login-view__pending-icon">⏳</div>
+      <h2 class="login-view__pending-title">{{ t('auth.register.successTitle') }}</h2>
+      <p class="login-view__pending-body">{{ t('auth.register.pendingApproval', { email: pendingEmail }) }}</p>
+      <p class="login-view__pending-hint">{{ t('auth.register.pendingHint') }}</p>
+    </div>
+
+    <template v-else>
     <h2 class="login-view__heading">{{ t('auth.login.heading') }}</h2>
     <form class="login-view__form" @submit.prevent="submit">
       <FormInput
@@ -80,6 +102,7 @@ async function submit() {
       {{ t('auth.policy.body') }}
     </PolicyBox>
     <AuthLink to="/auth/register" :prefix="t('auth.login.noAccount')">{{ t('auth.login.registerLink') }}</AuthLink>
+    </template>
 
   </div>
 </template>
@@ -89,5 +112,10 @@ async function submit() {
 .login-view__form { margin-top: var(--space-md); }
 .login-view__forgot { text-align: right; margin-top: -8px; margin-bottom: var(--space-md); }
 .login-view__forgot-link { color: var(--accent-gold); font-size: 0.85rem; }
+.login-view__pending { text-align: center; padding: var(--space-lg) 0; }
+.login-view__pending-icon { font-size: 3rem; margin-bottom: var(--space-md); }
+.login-view__pending-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-sm); }
+.login-view__pending-body { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: var(--space-sm); }
+.login-view__pending-hint { font-size: 0.8rem; color: var(--text-muted); }
 </style>
 

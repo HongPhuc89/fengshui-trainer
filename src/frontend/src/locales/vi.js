@@ -27,6 +27,8 @@ export default {
       errorEmpty: 'Vui lòng nhập email và mật khẩu.',
       errorInvalid: 'Email hoặc mật khẩu không đúng.',
       errorDeviceLocked: 'Tài khoản này đã bị khóa với thiết bị khác.',
+      rateLimitExceeded: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.',
+      rateLimitExceededSeconds: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau {seconds} giây.',
     },
     register: {
       subtitle: 'ĐĂNG KÝ HỌC GIẢ',
@@ -59,6 +61,12 @@ export default {
         termsRequired: 'Bạn phải đồng ý với điều khoản.',
       },
       error: 'Đăng ký thất bại. Vui lòng thử lại.',
+      successTitle: 'Đăng Ký Thành Công',
+      pendingApproval: 'Tài khoản đã được tạo với email {email}. Vui lòng chờ admin phê duyệt trước khi đăng nhập.',
+      pendingHint: 'Quá trình xét duyệt thường mất 1–2 ngày làm việc. Nếu cần hỗ trợ, vui lòng liên hệ admin@huyenhoc.pro.',
+      emailAlreadyPendingHint: 'Email này đã đăng ký và đang chờ duyệt, vui lòng liên hệ admin@huyenhoc.pro.',
+      rateLimitExceeded: 'Bạn đã thử đăng ký quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+      rateLimitExceededSeconds: 'Bạn đã thử đăng ký quá nhiều lần. Vui lòng thử lại sau {seconds} giây.',
     },
     policy: {
       title: 'Chính Sách Bảo Mật',

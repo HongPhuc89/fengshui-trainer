@@ -193,6 +193,10 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024         # 10 MB threshold → use
 # Auth User Model
 AUTH_USER_MODEL = "users.User"
 
+# Tell DRF to trust 1 proxy (nginx) when reading X-Forwarded-For for rate limiting.
+# Without this, all requests appear to come from the same IP (the proxy), breaking throttling.
+NUM_PROXIES = 1
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -202,6 +206,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [],  # Not applied globally; set per-view
+    "DEFAULT_THROTTLE_RATES": {
+        "register": "5/hour",   # Max 5 registration attempts per IP per hour
+        "login": "30/hour",     # Max 30 login attempts per IP per hour (accommodates mobile token refresh)
+    },
 }
 
 # Spectacular Settings

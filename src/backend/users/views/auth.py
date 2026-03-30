@@ -7,6 +7,7 @@ from django.db import transaction
 
 from ..models import User
 from ..serializers import UserSerializer, RegisterSerializer, CustomLoginSerializer
+from ..throttles import RegisterRateThrottle, LoginRateThrottle
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -16,26 +17,24 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
+    throttle_classes = [RegisterRateThrottle]
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        device_id = serializer.validated_data.get('device_id', '')
         user = serializer.save()
-
-        refresh = RefreshToken.for_user(user)
-        refresh['device_id'] = device_id
+        # Do not issue JWT tokens — account is inactive until admin activates it
         return Response({
-            'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'message': 'Tài khoản đã được tạo thành công. Vui lòng chờ admin kích hoạt tài khoản.',
+            'email': user.email,
         }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(generics.GenericAPIView):
     permission_classes = (AllowAny,)
     serializer_class = CustomLoginSerializer
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={'request': request})
