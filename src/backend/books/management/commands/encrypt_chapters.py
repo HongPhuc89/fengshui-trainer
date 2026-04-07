@@ -5,15 +5,30 @@ from django.db.models import F
 
 from books.models import BookChapter
 from books.services.pdf_encryption import (
+    build_bunny_cdn_url,
     build_encrypted_cdn_url,
     derive_chapter_key,
     encrypted_cdn_path,
     get_s3_client,
+    upload_bin_to_bunny,
 )
 
 
-def _encrypt_and_upload(chapter: BookChapter, s3) -> str:
-    """Encrypt chapter PDF and upload to Supabase. Returns the public CDN URL."""
+def _encrypt_and_upload_to_bunny(chapter: BookChapter) -> str:
+    """Encrypt chapter PDF and upload to Bunny Storage Zone. Returns the public CDN URL."""
+    with chapter.file_path.open("rb") as f:
+        pdf_bytes = f.read()
+
+    version = chapter.encryption_version
+    key, iv = derive_chapter_key(chapter.id, version)
+    encrypted = AESGCM(key).encrypt(iv, pdf_bytes, associated_data=None)
+
+    upload_bin_to_bunny(chapter.id, version, encrypted)
+    return build_bunny_cdn_url(chapter.id, version)
+
+
+def _encrypt_and_upload_to_supabase(chapter: BookChapter, s3) -> str:
+    """Encrypt chapter PDF and upload to Supabase. Returns the Supabase CDN URL (for rollback)."""
     with chapter.file_path.open("rb") as f:
         pdf_bytes = f.read()
 
@@ -33,7 +48,10 @@ def _encrypt_and_upload(chapter: BookChapter, s3) -> str:
 
 
 class Command(BaseCommand):
-    help = "Encrypt chapter PDFs and upload to Supabase CDN (encrypt_book/ subfolder)."
+    help = (
+        "Encrypt chapter PDFs and upload to Bunny Storage Zone (default) or Supabase "
+        "(--target=supabase for rollback). Uploads to encrypt_book/v{version}/{id}.bin."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -47,10 +65,18 @@ class Command(BaseCommand):
             dest="chapter_id",
             help="Encrypt a single chapter by ID.",
         )
+        parser.add_argument(
+            "--target",
+            choices=["bunny", "supabase"],
+            default="bunny",
+            help="Storage target for the encrypted .bin upload (default: bunny). "
+                 "Use --target=supabase to roll back to Supabase-hosted files.",
+        )
 
     def handle(self, *args, **options):
         force = options["force"]
         chapter_id = options.get("chapter_id")
+        target = options["target"]
 
         qs = BookChapter.objects.filter(file_path__isnull=False).exclude(file_path="")
         if chapter_id:
@@ -67,15 +93,15 @@ class Command(BaseCommand):
             # Increment version before encrypting so a fresh IV is derived for each chapter
             qs.update(encryption_version=F("encryption_version") + 1, encrypted_cdn_url=None)
             # Re-query to pick up the updated encryption_version values
-            qs = BookChapter.objects.filter(
-                file_path__isnull=False
-            ).exclude(file_path="")
+            qs = BookChapter.objects.filter(file_path__isnull=False).exclude(file_path="")
             if chapter_id:
                 qs = qs.filter(id=chapter_id)
 
-        label_suffix = "  [--force]" if force else ""
+        label_suffix = f"  [--force] [--target={target}]" if force else f"  [--target={target}]"
         self.stdout.write(f"Encrypting {total} chapter(s){label_suffix}...")
-        s3 = get_s3_client()
+
+        # Only initialise the S3 client when uploading to Supabase
+        s3 = get_s3_client() if target == "supabase" else None
         ok, failed = 0, []
 
         for chapter in qs.select_related("book").iterator():
@@ -84,7 +110,11 @@ class Command(BaseCommand):
                 f"(id={chapter.id}, v{chapter.encryption_version})]"
             )
             try:
-                url = _encrypt_and_upload(chapter, s3)
+                if target == "bunny":
+                    url = _encrypt_and_upload_to_bunny(chapter)
+                else:
+                    url = _encrypt_and_upload_to_supabase(chapter, s3)
+
                 BookChapter.objects.filter(pk=chapter.id).update(encrypted_cdn_url=url)
                 ok += 1
                 self.stdout.write(f"  OK  {label}")

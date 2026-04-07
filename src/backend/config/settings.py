@@ -239,6 +239,16 @@ BUNNY_LIBRARY_ID = env('BUNNY_LIBRARY_ID', default='')
 BUNNY_API_KEY = env('BUNNY_API_KEY', default='')
 BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net')
 
+# Bunny Storage Zone — for encrypted .bin chapter files (Feature 26)
+# Create a Storage Zone + Pull Zone at: https://dash.bunny.net/storage
+BUNNY_STORAGE_ZONE = env('BUNNY_STORAGE_ZONE', default='')
+BUNNY_STORAGE_API_KEY = env('BUNNY_STORAGE_API_KEY', default='')
+BUNNY_STORAGE_CDN_HOSTNAME = env('BUNNY_STORAGE_CDN_HOSTNAME', default='')
+# Region for Storage API endpoint. Recommended: sg (Singapore) for SEA users.
+# Options: de (Frankfurt), ny (New York), la (Los Angeles), sg (Singapore),
+#          syd (Sydney), br (São Paulo), jh (Johannesburg)
+BUNNY_STORAGE_REGION = env('BUNNY_STORAGE_REGION', default='sg')
+
 # SimpleJWT Configuration
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=4),
