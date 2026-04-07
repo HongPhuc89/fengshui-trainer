@@ -3,6 +3,8 @@ from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.db import transaction
 
 from ..models import User
@@ -11,6 +13,31 @@ from ..throttles import RegisterRateThrottle, LoginRateThrottle
 from logging import getLogger
 
 logger = getLogger(__name__)
+
+
+class DeviceTokenRefreshView(TokenRefreshView):
+    """
+    Extends TokenRefreshView to forward the device_id claim from the refresh
+    token into the newly issued access token, so DeviceJWTAuthentication can
+    still validate the device session after a token refresh.
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        refresh = RefreshToken(request.data['refresh'])
+        device_id = refresh.get('device_id')
+
+        access = refresh.access_token
+        if device_id:
+            access['device_id'] = device_id
+
+        return Response({'access': str(access)})
 
 
 class RegisterView(generics.CreateAPIView):
