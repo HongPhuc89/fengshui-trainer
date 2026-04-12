@@ -165,7 +165,6 @@ async function submitQuiz() {
     // Refresh exam to update user_progress displayed on idle screen next time
     const refreshed = await trainingService.getExam(props.activityId)
     exam.value = refreshed.data
-    if (props.embedded) emit('complete')
   } catch {
     error.value = 'Nộp bài thất bại. Thử lại?'
   } finally {

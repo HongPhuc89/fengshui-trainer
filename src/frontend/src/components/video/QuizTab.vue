@@ -13,6 +13,8 @@ const props = defineProps({
   lessonSlug: { type: String, required: true },
 })
 
+const emit = defineEmits(['complete'])
+
 const loading    = ref(false)
 const error      = ref(null)
 const activityId = ref(null)
@@ -64,6 +66,7 @@ onMounted(async () => {
       v-else-if="activityId"
       :activity-id="activityId"
       :embedded="true"
+      @complete="emit('complete')"
     />
   </div>
 </template>

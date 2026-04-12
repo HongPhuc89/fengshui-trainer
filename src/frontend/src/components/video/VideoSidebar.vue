@@ -89,6 +89,7 @@ const localTabs = computed(() =>
           v-if="modelValue === 2"
           :course-slug="courseSlug"
           :lesson-slug="lessonSlug"
+          @complete="emit('update:modelValue', 0)"
         />
       </keep-alive>
     </div>

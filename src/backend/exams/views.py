@@ -64,11 +64,20 @@ class ExamSubmitView(views.APIView):
         serializer.is_valid(raise_exception=True)
         answers = {item['question_id']: item['answer'] for item in serializer.validated_data['answers']}
 
-        # §2.3: single loop — score calculation + question_results (avoid double DB iteration)
+        # §2.3: score only submitted questions (supports QUIZ random 10-question subset)
+        from uuid import UUID
+        submitted_ids = []
+        for qid in answers:
+            try:
+                submitted_ids.append(UUID(qid))
+            except ValueError:
+                pass
+        questions_qs = exam.questions.filter(public_id__in=submitted_ids) if submitted_ids else exam.questions.none()
+
         question_results = []
         total_score = 0
         max_score = 0
-        for q in exam.questions.all():
+        for q in questions_qs:
             max_score += q.points
             ans = answers.get(str(q.public_id))
             is_correct = bool(
