@@ -1,13 +1,19 @@
 from django.contrib import admin
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from .forms import PracticeQuestionForm
 from .models import (
-    PracticeModule, Exam, PracticeQuestion, UserExamProgress,
-    Flashcard, FlashcardReview, TrainingSet, TrainingActivity,
+    Exam, Flashcard, FlashcardReview, PracticeModule,
+    PracticeQuestion, TrainingActivity, TrainingSet, UserExamProgress,
 )
 
+
+# ---------------------------------------------------------------------------
+# PracticeModule
+# ---------------------------------------------------------------------------
 
 @admin.register(PracticeModule)
 class PracticeModuleAdmin(admin.ModelAdmin):
@@ -16,19 +22,191 @@ class PracticeModuleAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
 
 
-class PracticeQuestionInline(admin.StackedInline):
+# ---------------------------------------------------------------------------
+# Helpers shared by ExamAdmin and PracticeQuestionAdmin
+# ---------------------------------------------------------------------------
+
+class DifficultyFilter(admin.SimpleListFilter):
+    """Fixed-choice filter for difficulty CharField (avoids showing raw DB values)."""
+
+    title = "Độ khó"
+    parameter_name = "difficulty"
+
+    def lookups(self, request, model_admin):
+        return [
+            ('EASY', 'Dễ'),
+            ('MEDIUM', 'Trung bình'),
+            ('HARD', 'Khó'),
+            ('', 'Chưa phân loại'),
+        ]
+
+    def queryset(self, request, queryset):
+        # self.value() is None when "All" is selected, "" when "Chưa phân loại"
+        if self.value() is not None:
+            return queryset.filter(difficulty=self.value())
+        return queryset
+
+
+# ---------------------------------------------------------------------------
+# PracticeQuestion — inline (lightweight, no options/correct_answer editing)
+# ---------------------------------------------------------------------------
+
+class PracticeQuestionInline(admin.TabularInline):
+    """Compact inline for Exam change page.
+
+    Intentionally excludes `options` and `correct_answer` fields — those are
+    edited on the dedicated PracticeQuestionAdmin change page (show_change_link).
+    This avoids OptionsWidget layout conflicts inside a TabularInline.
+    """
+
     model = PracticeQuestion
     extra = 0
-    fields = ('order', 'question_type', 'question_text', 'options',
-              'correct_answer', 'explanation', 'points', 'difficulty')
+    fields = ('order', 'question_type', 'question_preview_text', 'difficulty', 'points')
+    readonly_fields = ('question_preview_text',)
+    show_change_link = True
     ordering = ('order',)
-    classes = ('collapse',)
 
+    def question_preview_text(self, obj):
+        return (obj.question_text[:60] + '…') if len(obj.question_text) > 60 else obj.question_text
+    question_preview_text.short_description = "Câu hỏi"
+
+
+# ---------------------------------------------------------------------------
+# PracticeQuestion — standalone admin (the main new screen)
+# ---------------------------------------------------------------------------
+
+@admin.register(PracticeQuestion)
+class PracticeQuestionAdmin(admin.ModelAdmin):
+    """Standalone admin to browse/edit questions across all exams.
+
+    Key design decisions:
+    - select_related across 5 paths to eliminate N+1 on list page.
+    - DifficultyFilter avoids raw DB value pollution.
+    - list_display_links only on question_preview (source_link contains <a> tags).
+    - form uses PracticeQuestionForm with OptionsWidget + HiddenInput for correct_answer.
+    """
+
+    form = PracticeQuestionForm
+    list_display = (
+        'question_preview', 'exam_link', 'source_link',
+        'question_type', 'difficulty', 'points', 'order',
+    )
+    list_display_links = ('question_preview',)
+    list_filter = (
+        'question_type',
+        DifficultyFilter,
+        'exam__exam_type',
+        'exam__activity__training_set__lesson__course',
+        'exam__activity__training_set__chapter__book',
+    )
+    search_fields = (
+        'question_text',
+        'exam__title',
+        'exam__activity__training_set__lesson__title',
+        'exam__activity__training_set__chapter__title',
+    )
+    list_per_page = 50
+    ordering = ('exam', 'order')
+
+    def get_queryset(self, request):
+        return (
+            super().get_queryset(request)
+            .select_related(
+                'exam',                                              # exam_link needs exam.title
+                'exam__activity__training_set__lesson',             # source_link needs lesson.title
+                'exam__activity__training_set__lesson__course',     # filter by Course
+                'exam__activity__training_set__chapter',            # source_link needs chapter.title
+                'exam__activity__training_set__chapter__book',      # filter by Book
+            )
+        )
+
+    def question_preview(self, obj):
+        text = obj.question_text
+        return (text[:80] + '…') if len(text) > 80 else text
+    question_preview.short_description = "Câu hỏi"
+
+    def exam_link(self, obj):
+        url = reverse('admin:exams_exam_change', args=[obj.exam_id])
+        return format_html('<a href="{}">{}</a>', url, obj.exam.title)
+    exam_link.short_description = "Bộ Quiz"
+
+    def source_link(self, obj):
+        """Resolve source via TrainingActivity → TrainingSet → lesson/chapter.
+
+        Legacy exams (activity_id=None) return "—" safely.
+        """
+        if not obj.exam.activity_id:
+            return "—"
+        ts = obj.exam.activity.training_set
+        if ts.lesson_id:
+            url = reverse('admin:videos_videolesson_change', args=[ts.lesson_id])
+            return format_html('<a href="{}">[Video] {}</a>', url, ts.lesson.title)
+        if ts.chapter_id:
+            url = reverse('admin:books_bookchapter_change', args=[ts.chapter_id])
+            return format_html('<a href="{}">[Sách] {}</a>', url, ts.chapter.title)
+        return "—"
+    source_link.short_description = "Nguồn"
+
+
+# ---------------------------------------------------------------------------
+# Exam actions
+# ---------------------------------------------------------------------------
+
+@admin.action(description="Nhân bản Exam đã chọn")
+def duplicate_exam(modeladmin, request, queryset):
+    """Clone selected exams + all their questions.
+
+    S3 fix: slug collision handled — appends incrementing suffix.
+    C1 fix: exam.activity set to None before save to avoid OneToOne IntegrityError.
+    The cloned exam has activity=None and won't appear in frontend Training flow
+    until an admin manually assigns a TrainingActivity.
+    """
+    count = queryset.count()  # capture before loop to avoid re-evaluation
+
+    for exam in queryset.prefetch_related('questions'):
+        questions = list(exam.questions.all())
+
+        # --- S3: slug collision fix ---
+        base_slug = exam.slug + '-copy'
+        candidate = base_slug
+        counter = 1
+        while Exam.objects.filter(slug=candidate).exists():
+            candidate = f"{base_slug}-{counter}"
+            counter += 1
+
+        exam.pk = None
+        exam.uuid = None
+        exam.slug = candidate
+        exam.title = exam.title + ' (Copy)'
+        exam.activity = None  # C1 fix: prevent IntegrityError on OneToOneField
+        exam.save()
+
+        for q in questions:
+            q.pk = None
+            q.uuid = None
+            q.exam = exam
+            q.save()
+
+    modeladmin.message_user(
+        request,
+        f"Đã nhân bản {count} exam. "
+        "Exam mới chưa gắn TrainingActivity — cần gắn thủ công trước khi publish.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Exam
+# ---------------------------------------------------------------------------
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ('title', 'source_link', 'exam_type', 'question_count', 'passing_score')
-    list_filter = ('exam_type', 'activity__training_set__lesson__course', 'activity__training_set__chapter__book')
+    list_display = ('title', 'source_link', 'exam_type', 'question_count_badge', 'passing_score')
+    list_display_links = ('title',)
+    list_filter = (
+        'exam_type',
+        'activity__training_set__lesson__course',
+        'activity__training_set__chapter__book',
+    )
     search_fields = (
         'title', 'slug',
         'lesson__title',
@@ -38,12 +216,17 @@ class ExamAdmin(admin.ModelAdmin):
     autocomplete_fields = ('lesson',)
     prepopulated_fields = {'slug': ('title',)}
     inlines = [PracticeQuestionInline]
+    actions = [duplicate_exam]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'lesson',
-            'activity__training_set__lesson',
-            'activity__training_set__chapter',
+        return (
+            super().get_queryset(request)
+            .select_related(
+                'lesson',
+                'activity__training_set__lesson',
+                'activity__training_set__chapter',
+            )
+            .annotate(_question_count=Count('questions'))
         )
 
     def source_link(self, obj):
@@ -63,9 +246,17 @@ class ExamAdmin(admin.ModelAdmin):
         return "—"
     source_link.short_description = "Nguồn"
 
-    def question_count(self, obj):
-        return obj.questions.count()
-    question_count.short_description = "Số câu"
+    def question_count_badge(self, obj):
+        count = obj._question_count
+        if count == 0:
+            return format_html(
+                '<span style="color:#c0392b;font-weight:700">{} câu</span>', count
+            )
+        return format_html(
+            '<span style="color:#27ae60;font-weight:600">{} câu</span>', count
+        )
+    question_count_badge.short_description = "Số câu"
+    question_count_badge.admin_order_field = '_question_count'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -121,6 +312,10 @@ class ExamAdmin(admin.ModelAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
 
+# ---------------------------------------------------------------------------
+# UserExamProgress
+# ---------------------------------------------------------------------------
+
 @admin.register(UserExamProgress)
 class UserExamProgressAdmin(admin.ModelAdmin):
     list_display = ('user', 'exam', 'score', 'is_passed', 'attempts', 'last_attempt')
@@ -129,6 +324,10 @@ class UserExamProgressAdmin(admin.ModelAdmin):
     raw_id_fields = ('user', 'exam')
     readonly_fields = ('score', 'attempts', 'last_attempt', 'answers_snapshot')
 
+
+# ---------------------------------------------------------------------------
+# Flashcard
+# ---------------------------------------------------------------------------
 
 @admin.register(Flashcard)
 class FlashcardAdmin(admin.ModelAdmin):
@@ -179,6 +378,10 @@ class FlashcardAdmin(admin.ModelAdmin):
     source_link.short_description = "Nguồn"
 
 
+# ---------------------------------------------------------------------------
+# FlashcardReview
+# ---------------------------------------------------------------------------
+
 @admin.register(FlashcardReview)
 class FlashcardReviewAdmin(admin.ModelAdmin):
     list_display = ('user', 'flashcard', 'next_review', 'interval', 'repetitions')
@@ -186,7 +389,7 @@ class FlashcardReviewAdmin(admin.ModelAdmin):
 
 
 # ---------------------------------------------------------------------------
-# Training admin (§6.3)
+# Training admin
 # ---------------------------------------------------------------------------
 
 class TrainingActivityInline(admin.TabularInline):
@@ -206,7 +409,6 @@ class TrainingSetAdmin(admin.ModelAdmin):
     inlines = [TrainingActivityInline]
 
     def get_queryset(self, request):
-        # prefetch activities to avoid N+1 in activity_summary (§T5)
         return super().get_queryset(request).prefetch_related('activities')
 
     def get_source_name(self, obj):

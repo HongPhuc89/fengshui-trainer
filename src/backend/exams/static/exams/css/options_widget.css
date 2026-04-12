@@ -1,0 +1,80 @@
+/* OptionsWidget — admin table for PracticeQuestion options */
+
+.options-widget-container {
+    max-width: 640px;
+}
+
+.options-widget-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    font-size: 13px;
+}
+
+.options-widget-table thead tr {
+    background: #f8f8f8;
+}
+
+.options-widget-table th {
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 1px solid #ddd;
+}
+
+.options-widget-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.options-widget-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.options-widget-table tbody tr:hover {
+    background: #fafafa;
+}
+
+/* Correct answer radio cell */
+.options-widget-radio {
+    text-align: center;
+}
+
+.options-radio {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #417690;
+}
+
+/* Option id label */
+.options-widget-id {
+    font-weight: 700;
+    color: #417690;
+    text-align: center;
+    width: 40px;
+}
+
+/* Text input fills available space */
+.options-text-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Hidden rows (YES_NO / TRUE_FALSE) */
+.options-widget-row.hidden {
+    display: none;
+}
+
+/* Highlight row of correct answer */
+.options-widget-row.is-correct {
+    background: #f0f7f0;
+}
+
+.options-widget-row.is-correct .options-widget-id {
+    color: #2e7d32;
+}
