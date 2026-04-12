@@ -10,7 +10,7 @@
  *   activityId  — TrainingActivity public_id
  *   embedded    — true → hide header nav, emit @complete on submit
  */
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { trainingService } from '../../services/training.service'
 import { examsService } from '../../services/exams.service'
@@ -43,6 +43,32 @@ const submitResults = ref({})
 
 const result     = ref(null)
 const submitting = ref(false)
+
+// Auto-advance timer (PRACTICE/QUIZ immediate-feedback mode)
+const AUTO_ADVANCE_MS = 3000
+let autoAdvanceTimer = null
+const autoAdvanceCountdown = ref(0)  // seconds remaining, shown in UI
+
+function clearAutoAdvance() {
+  if (autoAdvanceTimer) {
+    clearInterval(autoAdvanceTimer)
+    autoAdvanceTimer = null
+  }
+  autoAdvanceCountdown.value = 0
+}
+
+function startAutoAdvance() {
+  clearAutoAdvance()
+  if (isLastQ.value) return  // last question: let user submit manually
+  autoAdvanceCountdown.value = Math.ceil(AUTO_ADVANCE_MS / 1000)
+  autoAdvanceTimer = setInterval(() => {
+    autoAdvanceCountdown.value--
+    if (autoAdvanceCountdown.value <= 0) {
+      clearAutoAdvance()
+      nextQ()
+    }
+  }, 1000)
+}
 
 // score ring + count-up animation state
 const CIRCUMFERENCE = 251.2  // 2π × 40
@@ -109,11 +135,13 @@ async function load() {
 }
 
 onMounted(load)
+onUnmounted(clearAutoAdvance)
 
 // ─── quiz flow ────────────────────────────────────────────────────────────────
 
 /** Start (or restart) quiz — always reshuffles to prevent memorization. */
 function startQuiz() {
+  clearAutoAdvance()
   shuffled.value = [...(exam.value?.questions ?? [])].sort(() => Math.random() - 0.5)
   answered.value = {}
   submitResults.value = {}
@@ -132,17 +160,20 @@ function selectAnswer(optionId) {
   answered.value[qid] = { chosen: optionId, revealed: false }
   if (isImmediateFeedback.value) {
     answered.value[qid].revealed = true
+    startAutoAdvance()
   }
 }
 
 function nextQ() {
   if (isLastQ.value) return
+  clearAutoAdvance()
   slideDir.value = 'slide-left'
   qIndex.value++
 }
 
 function prevQ() {
   if (qIndex.value === 0) return
+  clearAutoAdvance()
   slideDir.value = 'slide-right'
   qIndex.value--
 }
@@ -348,6 +379,7 @@ function formatDate(iso) {
           :disabled="!canAdvance"
           @click="nextQ"
         >
+          <span v-if="autoAdvanceCountdown > 0" class="quiz__nav-countdown">({{ autoAdvanceCountdown }}s)</span>
           Câu tiếp
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
@@ -616,6 +648,7 @@ function formatDate(iso) {
 
 /* Navigation */
 .quiz__nav { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+.quiz__nav-countdown { font-size: 0.75rem; opacity: 0.65; }
 .quiz__nav-btn {
   flex: 1;
   height: 44px;
