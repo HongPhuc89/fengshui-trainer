@@ -2,11 +2,16 @@
  * options_widget.js
  *
  * Responsibilities:
- * 1. On page load: pre-select the radio that matches id_correct_answer value.
- * 2. On radio change: sync selected value → id_correct_answer hidden input.
- * 3. On form submit: serialize text inputs → options JSON → id_options hidden input.
- * 4. On question_type change: hide/show rows c & d for YES_NO / TRUE_FALSE.
- * 5. Highlight the currently-selected correct-answer row.
+ * 1. On radio change: sync selected value → id_correct_answer hidden input + update highlights.
+ * 2. On form submit: serialize text inputs → options JSON → options hidden input.
+ * 3. On question_type change: hide/show rows c & d for YES_NO / TRUE_FALSE.
+ * 4. On load: sync id_correct_answer hidden input from the pre-checked radio
+ *    (radio is already checked server-side by OptionsWidget.render — this just
+ *    ensures the hidden input value matches in case of any inconsistency).
+ *
+ * NOTE: Radio pre-selection is done server-side in OptionsWidget.render() via
+ * PracticeQuestionForm.__init__ injecting data-correct-answer into widget attrs.
+ * This JS does NOT need to drive initial radio state — it only handles interactions.
  */
 
 (function () {
@@ -22,38 +27,37 @@
     const questionTypeSelect = document.getElementById('id_question_type');
 
     // -----------------------------------------------------------------------
-    // 1. Pre-select radio from existing correct_answer value
+    // 1. Sync hidden input from whichever radio is already checked (server-rendered)
+    //    and update row highlights to match.
     // -----------------------------------------------------------------------
-    function syncRadioFromHidden() {
-      const current = correctAnswerInput ? correctAnswerInput.value : '';
+    function syncHiddenFromCheckedRadio() {
       radios.forEach(function (radio) {
-        radio.checked = (radio.value === current);
+        if (radio.checked) {
+          if (correctAnswerInput) correctAnswerInput.value = radio.value;
+          updateRowHighlights(radio.value);
+        }
       });
-      updateRowHighlights();
     }
 
     // -----------------------------------------------------------------------
-    // 2. Sync radio → hidden correct_answer input
+    // 2. On radio change: sync → hidden input + highlights
     // -----------------------------------------------------------------------
     radios.forEach(function (radio) {
       radio.addEventListener('change', function () {
-        if (correctAnswerInput) {
-          correctAnswerInput.value = radio.value;
-        }
-        updateRowHighlights();
+        if (correctAnswerInput) correctAnswerInput.value = radio.value;
+        updateRowHighlights(radio.value);
       });
     });
 
-    function updateRowHighlights() {
-      const selected = correctAnswerInput ? correctAnswerInput.value : '';
+    function updateRowHighlights(selectedId) {
       container.querySelectorAll('.options-widget-row').forEach(function (row) {
         const optId = row.getAttribute('data-option-id');
-        row.classList.toggle('is-correct', optId === selected);
+        row.classList.toggle('is-correct', optId === selectedId);
       });
     }
 
     // -----------------------------------------------------------------------
-    // 3. Serialize table → JSON on form submit
+    // 3. Serialize table → options JSON hidden input on submit
     // -----------------------------------------------------------------------
     const form = container.closest('form');
     if (form) {
@@ -88,20 +92,20 @@
         const optId = row.getAttribute('data-option-id');
         if (twoOptionMode && (optId === 'c' || optId === 'd')) {
           row.classList.add('hidden');
-          // Clear text and deselect radio for hidden rows
           const textInput = row.querySelector('.options-text-input');
           if (textInput) textInput.value = '';
           const radio = row.querySelector('.options-radio');
           if (radio && radio.checked) {
             radio.checked = false;
             if (correctAnswerInput) correctAnswerInput.value = '';
+            updateRowHighlights('');
           }
         } else {
           row.classList.remove('hidden');
         }
       });
 
-      // Auto-populate YES_NO options if rows a/b are empty
+      // Auto-populate YES_NO text if rows a/b are empty
       if (qType === 'YES_NO') {
         const rowA = container.querySelector('.options-widget-row[data-option-id="a"] .options-text-input');
         const rowB = container.querySelector('.options-widget-row[data-option-id="b"] .options-text-input');
@@ -114,17 +118,16 @@
       questionTypeSelect.addEventListener('change', function () {
         applyQuestionTypeVisibility(this.value);
       });
-      // Apply on initial load
       applyQuestionTypeVisibility(questionTypeSelect.value);
     }
 
     // -----------------------------------------------------------------------
-    // Initial state
+    // Initial sync: ensure hidden input matches the server-pre-checked radio
     // -----------------------------------------------------------------------
-    syncRadioFromHidden();
+    syncHiddenFromCheckedRadio();
   }
 
-  // Run after DOM ready (handles both standard page load and Django admin ajax)
+  // Run after DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initOptionsWidget);
   } else {

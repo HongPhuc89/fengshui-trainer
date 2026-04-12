@@ -34,13 +34,23 @@ class OptionsWidget(forms.Widget):
             except (json.JSONDecodeError, TypeError, KeyError):
                 existing = {}
 
+        # Read pre-selected correct answer injected by PracticeQuestionForm.__init__
+        # via widget.attrs — server-side pre-check, no JS timing dependency.
+        correct_answer = (attrs or {}).get('data-correct-answer', '')
+        # Also check widget-level attrs (set by form __init__)
+        if not correct_answer:
+            correct_answer = self.attrs.get('data-correct-answer', '')
+
         rows_html = ''
         for opt_id in self.OPTION_IDS:
             text_val = existing.get(opt_id, '')
             # Escape for HTML attribute
             text_val_escaped = text_val.replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+            is_correct = opt_id == correct_answer
+            checked_attr = ' checked' if is_correct else ''
+            row_class = 'options-widget-row is-correct' if is_correct else 'options-widget-row'
             rows_html += f'''
-            <tr class="options-widget-row" data-option-id="{opt_id}">
+            <tr class="{row_class}" data-option-id="{opt_id}">
                 <td class="options-widget-id">{opt_id.upper()}</td>
                 <td class="options-widget-text">
                     <input type="text"
@@ -53,7 +63,7 @@ class OptionsWidget(forms.Widget):
                     <input type="radio"
                            name="correct_answer_radio"
                            value="{opt_id}"
-                           class="options-radio">
+                           class="options-radio"{checked_attr}>
                 </td>
             </tr>'''
 
