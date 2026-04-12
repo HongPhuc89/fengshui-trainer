@@ -77,7 +77,7 @@ def parse_questions_csv(file_obj, exam) -> dict:
 
 
 def parse_flashcards_csv(file_obj, lesson=None, module=None) -> dict:
-    """Parse flashcards CSV, bulk create for a lesson or module, return stats."""
+    """Parse flashcards CSV (2-column: Front, Back), bulk create for a lesson or module, return stats."""
     if not lesson and not module:
         return {'created': 0, 'skipped': 0, 'errors': [{'row': 0, 'error': 'Must provide lesson or module'}]}
 
@@ -85,36 +85,31 @@ def parse_flashcards_csv(file_obj, lesson=None, module=None) -> dict:
     if isinstance(text, bytes):
         text = text.decode('utf-8-sig')
     reader = csv.DictReader(io.StringIO(text))
+    rows = [{k.strip().lower(): v for k, v in row.items()} for row in reader]
     to_create, errors, skipped = [], [], 0
 
     parent_qs = lesson.flashcards if lesson else module.flashcards
     existing = set(parent_qs.values_list('front', flat=True))
     next_order = parent_qs.count() + 1
 
-    for i, row in enumerate(reader, start=2):
+    for i, row in enumerate(rows, start=2):
         front = row.get('front', '').strip()
         back = row.get('back', '').strip()
 
         if not front or not back:
-            errors.append({'row': i, 'error': 'front and back must not be empty'})
+            errors.append({'row': i, 'error': 'Missing Front or Back — skipped'})
             skipped += 1
             continue
         if front in existing:
-            errors.append({'row': i, 'error': 'Duplicate front text — skipped'})
+            errors.append({'row': i, 'error': 'Duplicate Front — skipped'})
             skipped += 1
             continue
-
-        difficulty = row.get('difficulty', '').strip().upper()
-        if difficulty not in {'EASY', 'MEDIUM', 'HARD', ''}:
-            difficulty = ''
 
         to_create.append(Flashcard(
             lesson=lesson,
             module=module,
             front=front,
             back=back,
-            category=row.get('category', '').strip(),
-            difficulty=difficulty,
             order=next_order + len(to_create),
         ))
         existing.add(front)
@@ -132,39 +127,34 @@ QUESTIONS_CSV_TEMPLATE = (
 )
 
 def parse_flashcards_csv_for_activity(file_obj, activity: 'TrainingActivity') -> dict:
-    """Parse flashcards CSV and bulk-create for a TrainingActivity. Returns stats."""
+    """Parse flashcards CSV (2-column: Front, Back) and bulk-create for a TrainingActivity. Returns stats."""
     text = file_obj.read()
     if isinstance(text, bytes):
         text = text.decode('utf-8-sig')
     reader = csv.DictReader(io.StringIO(text))
+    rows = [{k.strip().lower(): v for k, v in row.items()} for row in reader]
     to_create, errors, skipped = [], [], 0
 
     existing = set(activity.flashcards.values_list('front', flat=True))
     next_order = activity.flashcards.count() + 1
 
-    for i, row in enumerate(reader, start=2):
+    for i, row in enumerate(rows, start=2):
         front = row.get('front', '').strip()
         back = row.get('back', '').strip()
 
         if not front or not back:
-            errors.append({'row': i, 'error': 'front and back must not be empty'})
+            errors.append({'row': i, 'error': 'Missing Front or Back — skipped'})
             skipped += 1
             continue
         if front in existing:
-            errors.append({'row': i, 'error': 'Duplicate front text — skipped'})
+            errors.append({'row': i, 'error': 'Duplicate Front — skipped'})
             skipped += 1
             continue
-
-        difficulty = row.get('difficulty', '').strip().upper()
-        if difficulty not in {'EASY', 'MEDIUM', 'HARD', ''}:
-            difficulty = ''
 
         to_create.append(Flashcard(
             activity=activity,
             front=front,
             back=back,
-            category=row.get('category', '').strip(),
-            difficulty=difficulty,
             order=next_order + len(to_create),
         ))
         existing.add(front)
@@ -174,10 +164,10 @@ def parse_flashcards_csv_for_activity(file_obj, activity: 'TrainingActivity') ->
 
 
 FLASHCARDS_CSV_TEMPLATE = (
-    'category,front,back,difficulty\r\n'
-    'KHÁI NIỆM CỐT LÕI,"Sự khác biệt giữa Phong và Thủy?","Phong tán khí — gió làm tan khí. Thủy tụ khí — nước giữ khí lại.",MEDIUM\r\n'
-    'ÂM DƯƠNG,"Tại sao phòng ngủ cần năng lượng Âm?","Phòng ngủ cần năng lượng Âm để thư giãn. Quá nhiều Dương gây mất ngủ.",EASY\r\n'
-    'NGŨ HÀNH,"Kim khắc Mộc — ý nghĩa thực tế?","Kim đại diện cho sắc bén kiểm soát sự bành trướng của Mộc.",HARD\r\n'
+    'Front,Back\r\n'
+    '"Sự khác biệt giữa Phong và Thủy?","Phong tán khí — gió làm tan khí. Thủy tụ khí — nước giữ khí lại."\r\n'
+    '"Tại sao phòng ngủ cần năng lượng Âm?","Phòng ngủ cần năng lượng Âm để thư giãn. Quá nhiều Dương gây mất ngủ."\r\n'
+    '"Kim khắc Mộc — ý nghĩa thực tế?","Kim đại diện cho sắc bén kiểm soát sự bành trướng của Mộc."\r\n'
 )
 
 
