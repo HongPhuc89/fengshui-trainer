@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-clean mobile-analyze
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-clean mobile-analyze db-restore
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -42,6 +42,11 @@ encrypt-chapters-force: ## Re-encrypt ALL chapters (increments encryption_versio
 
 createsuperuser: ## Create a Django superuser
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py createsuperuser
+
+DB_BACKUP ?= data/backup.sql.gz
+
+db-restore: ## Restore database from backup file (default: data/backup.sql.gz — override: make db-restore DB_BACKUP=path/to/file.sql.gz)
+	gunzip -c $(DB_BACKUP) | docker-compose -f $(COMPOSE_FILE) exec -T db psql -U postgres -d fengshui_dev
 
 fake-data: ## Import fake data for development (idempotent)
 	docker-compose -f $(COMPOSE_FILE) exec web python manage.py import_fake_data

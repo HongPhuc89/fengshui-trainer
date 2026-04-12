@@ -10,6 +10,25 @@ from books.models import UserBookPurchase
 from videos.models import UserVideoPurchase
 
 
+class PendingApprovalFilter(admin.SimpleListFilter):
+    """Filter users by approval status (active vs pending admin approval)."""
+    title = 'Trạng thái duyệt'
+    parameter_name = 'approval_status'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('pending', 'Chờ duyệt'),
+            ('active', 'Đã kích hoạt'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'pending':
+            return queryset.filter(is_active=False)
+        if self.value() == 'active':
+            return queryset.filter(is_active=True)
+        return queryset
+
+
 class OwnedBookInline(admin.TabularInline):
     model = UserBookPurchase
     extra = 0
@@ -38,17 +57,74 @@ class OwnedVideoInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('id', 'username', 'phone_number', 'email', 'first_name', 'last_name', 'user_type', 'is_device_locked', 'is_staff')
-    list_filter = ('user_type', 'is_device_locked', 'is_staff', 'is_superuser', 'is_active', 'groups')
+    list_display = ('id', 'username', 'phone_number', 'email', 'first_name', 'last_name', 'user_type', 'is_active', 'created_at', 'is_device_locked', 'is_staff')
+    list_filter = (PendingApprovalFilter, 'user_type', 'is_device_locked', 'is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone_number', 'public_id')
     ordering = ('-created_at',)
     inlines = [OwnedBookInline, OwnedVideoInline]
     change_form_template = 'admin/users/user/change_form.html'
+    actions = ['activate_users', 'deactivate_users']
 
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Custom Profile Flags', {'fields': ('phone_number', 'user_type', 'subscription_end_date')}),
         ('Device Security', {'fields': ('is_device_locked', 'last_device_reset')}),
     )
+
+    @admin.action(description='Kích hoạt tài khoản đã chọn')
+    def activate_users(self, request, queryset):
+        # Evaluate queryset to list BEFORE calling .update() to avoid re-evaluation
+        # returning empty results after is_active is changed.
+        users_to_activate = list(queryset.filter(is_active=False))
+        if not users_to_activate:
+            self.message_user(request, 'Không có tài khoản nào cần kích hoạt.', level='warning')
+            return
+        queryset.filter(is_active=False).update(is_active=True)
+        for user in users_to_activate:
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=user,
+                action_category='USER_ACTIVATION',
+                action_detail=f'Admin kích hoạt tài khoản "{user.email}"',
+                change_log={'before': {'is_active': False}, 'after': {'is_active': True}},
+                ip_address=self._get_client_ip(request),
+            )
+        self.message_user(request, f'Đã kích hoạt {len(users_to_activate)} tài khoản.')
+
+    @admin.action(description='Vô hiệu hóa tài khoản đã chọn')
+    def deactivate_users(self, request, queryset):
+        # Evaluate queryset to list BEFORE calling .update() — same reason as activate_users.
+        users_to_deactivate = list(queryset.filter(is_active=True))
+        if not users_to_deactivate:
+            self.message_user(request, 'Không có tài khoản nào đang hoạt động.', level='warning')
+            return
+        queryset.filter(is_active=True).update(is_active=False)
+        for user in users_to_deactivate:
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=user,
+                action_category='USER_ACTIVATION',
+                action_detail=f'Admin vô hiệu hóa tài khoản "{user.email}"',
+                change_log={'before': {'is_active': True}, 'after': {'is_active': False}},
+                ip_address=self._get_client_ip(request),
+            )
+        self.message_user(request, f'Đã vô hiệu hóa {len(users_to_deactivate)} tài khoản.')
+
+    def save_model(self, request, obj, form, change):
+        # Track is_active changes made via the detail form (not just bulk actions).
+        # obj already holds the new value from the submitted form.
+        # `not obj.is_active` gives us the previous value since the new value is the opposite.
+        is_active_changed = change and 'is_active' in form.changed_data
+        super().save_model(request, obj, form, change)
+        if is_active_changed:
+            old_value = not obj.is_active
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=obj,
+                action_category='USER_ACTIVATION',
+                action_detail=f'Admin {"kích hoạt" if obj.is_active else "vô hiệu hóa"} tài khoản "{obj.email}" qua form',
+                change_log={'before': {'is_active': old_value}, 'after': {'is_active': obj.is_active}},
+                ip_address=self._get_client_ip(request),
+            )
 
     def get_urls(self):
         urls = super().get_urls()
@@ -163,6 +239,20 @@ class UserAdmin(BaseUserAdmin):
 
         self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
         return redirect(reverse('admin:users_user_change', args=[pk]))
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request)
+        if obj.book_purchases.exists():
+            return False
+        if obj.video_purchases.exists():
+            return False
+        try:
+            if obj.wallet.balance > 0:
+                return False
+        except Exception:
+            pass
+        return super().has_delete_permission(request)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}

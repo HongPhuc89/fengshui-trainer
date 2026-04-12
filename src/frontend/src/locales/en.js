@@ -27,6 +27,8 @@ export default {
             errorEmpty: 'Please enter email and password.',
             errorInvalid: 'Invalid email or password.',
             errorDeviceLocked: 'This account is locked to another device.',
+            rateLimitExceeded: 'Too many login attempts. Please try again later.',
+            rateLimitExceededSeconds: 'Too many login attempts. Please try again in {seconds} seconds.',
         },
         register: {
             subtitle: 'SCHOLAR REGISTRATION',
@@ -59,6 +61,12 @@ export default {
                 termsRequired: 'You must accept the terms.',
             },
             error: 'Registration failed. Please try again.',
+            successTitle: 'Registration Successful',
+            pendingApproval: 'Your account has been created with email {email}. Please wait for admin approval before logging in.',
+            pendingHint: 'Approval usually takes 1–2 business days. If you need assistance, please contact admin@huyenhoc.pro.',
+            emailAlreadyPendingHint: 'This email is already registered and pending approval. Please contact admin@huyenhoc.pro.',
+            rateLimitExceeded: 'Too many registration attempts. Please try again in 1 hour.',
+            rateLimitExceededSeconds: 'Too many registration attempts. Please try again in {seconds} seconds.',
         },
         policy: {
             title: 'Security Policy',

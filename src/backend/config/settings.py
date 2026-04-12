@@ -193,6 +193,10 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024         # 10 MB threshold → use
 # Auth User Model
 AUTH_USER_MODEL = "users.User"
 
+# Tell DRF to trust 1 proxy (nginx) when reading X-Forwarded-For for rate limiting.
+# Without this, all requests appear to come from the same IP (the proxy), breaking throttling.
+NUM_PROXIES = 1
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -202,6 +206,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [],  # Not applied globally; set per-view
+    "DEFAULT_THROTTLE_RATES": {
+        "register": "5/hour",   # Max 5 registration attempts per IP per hour
+        "login": "30/hour",     # Max 30 login attempts per IP per hour (accommodates mobile token refresh)
+    },
 }
 
 # Spectacular Settings
@@ -229,6 +238,16 @@ VIDEO_STORAGE_BACKEND = env('VIDEO_STORAGE_BACKEND', default='local')
 BUNNY_LIBRARY_ID = env('BUNNY_LIBRARY_ID', default='')
 BUNNY_API_KEY = env('BUNNY_API_KEY', default='')
 BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net')
+
+# Bunny Storage Zone — for encrypted .bin chapter files (Feature 26)
+# Create a Storage Zone + Pull Zone at: https://dash.bunny.net/storage
+BUNNY_STORAGE_ZONE = env('BUNNY_STORAGE_ZONE', default='')
+BUNNY_STORAGE_API_KEY = env('BUNNY_STORAGE_API_KEY', default='')
+BUNNY_STORAGE_CDN_HOSTNAME = env('BUNNY_STORAGE_CDN_HOSTNAME', default='')
+# Region for Storage API endpoint. Recommended: sg (Singapore) for SEA users.
+# Options: de (Frankfurt), ny (New York), la (Los Angeles), sg (Singapore),
+#          syd (Sydney), br (São Paulo), jh (Johannesburg)
+BUNNY_STORAGE_REGION = env('BUNNY_STORAGE_REGION', default='sg')
 
 # SimpleJWT Configuration
 SIMPLE_JWT = {

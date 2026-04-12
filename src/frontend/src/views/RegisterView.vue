@@ -24,6 +24,8 @@ const termsAccepted = ref(false)
 const loading = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
+const registerSuccess = ref(false)
+const registeredEmail = ref('')
 const touched = ref({
   email: false,
   password: false,
@@ -131,14 +133,24 @@ async function submit() {
       password: password.value,
       deviceId: deviceId.value || 'web_unknown',
     })
-    auth.setTokens({ access: data.access, refresh: data.refresh })
-    auth.setUser(data.user)
-    router.push('/')
+    // Server returns { message, email } — no tokens. Show pending approval screen.
+    registerSuccess.value = true
+    registeredEmail.value = data.email
   } catch (e) {
     const res = e.response
     const d = res?.data
-    if (d?.email) fieldErrors.value.email = Array.isArray(d.email) ? d.email[0] : d.email
-    else error.value = d?.detail || (typeof d === 'string' ? d : t('auth.register.error'))
+    if (res?.status === 429) {
+      const retryAfter = res.headers?.['retry-after']
+      error.value = retryAfter
+        ? t('auth.register.rateLimitExceededSeconds', { seconds: retryAfter })
+        : t('auth.register.rateLimitExceeded')
+    } else if (d?.email) {
+      // 400 email-already-exists: may be an inactive account waiting for approval.
+      // Show a friendly hint instead of the raw "already exists" error.
+      fieldErrors.value.email = t('auth.register.emailAlreadyPendingHint')
+    } else {
+      error.value = d?.detail || (typeof d === 'string' ? d : t('auth.register.error'))
+    }
   } finally {
     loading.value = false
   }
@@ -148,7 +160,16 @@ async function submit() {
 <template>
   <div class="register-view">
     <AppLogo variant="register" :subtitle="t('auth.register.subtitle')" />
-    <form class="register-view__form" @submit.prevent="submit">
+
+    <div v-if="registerSuccess" class="register-view__success">
+      <div class="register-view__success-icon">✓</div>
+      <h2 class="register-view__success-title">{{ t('auth.register.successTitle') }}</h2>
+      <p class="register-view__success-body">{{ t('auth.register.pendingApproval', { email: registeredEmail }) }}</p>
+      <p class="register-view__success-hint">{{ t('auth.register.pendingHint') }}</p>
+      <AuthLink to="/auth/login">{{ t('auth.register.loginLink') }}</AuthLink>
+    </div>
+
+    <form v-else class="register-view__form" @submit.prevent="submit">
       <FormInput v-model="email" :label="t('auth.register.emailLabel')" :placeholder="t('auth.register.emailPlaceholder')" icon="envelope" :error="fieldErrors.email" type="email" />
       <FormInput v-model="password" v-model:visible="passwordVisible" :label="t('auth.register.passwordLabel')" type="password" :placeholder="t('auth.register.passwordPlaceholder')" icon="lock" :show-password-toggle="true" :error="fieldErrors.password" />
       <FormInput v-model="confirmPassword" v-model:visible="confirmVisible" :label="t('auth.register.confirmPasswordLabel')" type="password" :placeholder="t('auth.register.confirmPasswordPlaceholder')" icon="shield" :show-password-toggle="true" :error="fieldErrors.confirmPassword" />
@@ -162,11 +183,12 @@ async function submit() {
       <p v-if="error" class="register-view__error">{{ error }}</p>
       <PrimaryButton type="submit" :loading="loading" :disabled="!canSubmit">{{ t('auth.register.submitButton') }}</PrimaryButton>
     </form>
-    <p class="register-view__encrypted">
+
+    <p v-if="!registerSuccess" class="register-view__encrypted">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       {{ t('auth.register.encrypted') }}
     </p>
-    <AuthLink to="/auth/login" :prefix="t('auth.register.alreadyAccount')">{{ t('auth.register.loginLink') }}</AuthLink>
+    <AuthLink v-if="!registerSuccess" to="/auth/login" :prefix="t('auth.register.alreadyAccount')">{{ t('auth.register.loginLink') }}</AuthLink>
   </div>
 </template>
 
@@ -178,5 +200,10 @@ async function submit() {
 .register-view__link { color: var(--accent-gold); }
 .register-view__error { font-size: 0.85rem; color: #e57373; margin-bottom: var(--space-md); }
 .register-view__encrypted { font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-md); display: flex; align-items: center; }
+.register-view__success { text-align: center; padding: var(--space-lg) 0; }
+.register-view__success-icon { font-size: 3rem; color: var(--accent-gold); margin-bottom: var(--space-md); }
+.register-view__success-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-sm); }
+.register-view__success-body { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: var(--space-sm); }
+.register-view__success-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: var(--space-lg); }
 </style>
 
