@@ -1,3 +1,5 @@
+import random
+
 from rest_framework import serializers
 from .models import PracticeModule, Exam, PracticeQuestion, UserExamProgress, Flashcard, FlashcardReview
 
@@ -43,9 +45,14 @@ class ExamDetailSerializer(serializers.ModelSerializer):
 
     def get_questions(self, obj):
         """Return correct_answer for PRACTICE/QUIZ (immediate feedback UX).
-        Hide correct_answer for FINAL_EXAM (security)."""
+        Hide correct_answer for FINAL_EXAM (security).
+        QUIZ type: random sample of 10 questions for quick practice."""
         qs = obj.questions.all().order_by('order')
-        if obj.exam_type in ('PRACTICE', 'QUIZ'):
+        if obj.exam_type == 'QUIZ':
+            questions = list(qs)
+            random.shuffle(questions)
+            return PracticeQuestionWithAnswerSerializer(questions[:10], many=True).data
+        if obj.exam_type == 'PRACTICE':
             return PracticeQuestionWithAnswerSerializer(qs, many=True).data
         return PracticeQuestionListSerializer(qs, many=True).data
 

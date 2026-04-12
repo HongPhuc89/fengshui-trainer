@@ -189,6 +189,11 @@ class BookChapterAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.export_quiz_template_view),
                 name='books_bookchapter_export_quiz_template',
             ),
+            path(
+                '<int:pk>/import-quiz-notebooklm/',
+                self.admin_site.admin_view(self.import_quiz_notebooklm_view),
+                name='books_bookchapter_import_quiz_notebooklm',
+            ),
         ]
         return custom + urls
 
@@ -242,6 +247,31 @@ class BookChapterAdmin(admin.ModelAdmin):
             'opts': self.model._meta,
         })
 
+    def import_quiz_notebooklm_view(self, request, pk):
+        chapter = get_object_or_404(BookChapter, pk=pk)
+        if request.method == 'POST':
+            from exams.utils import parse_questions_csv_notebooklm, provision_training_activity
+            csv_file = request.FILES.get('file')
+            if not csv_file:
+                self.message_user(request, 'Không tìm thấy file.', level='error')
+            else:
+                _, exam = provision_training_activity('chapter', chapter, 'QUIZ')
+                result = parse_questions_csv_notebooklm(csv_file, exam)
+                msg = f'Đã import {result["created"]} câu hỏi.'
+                if result['skipped']:
+                    msg += f' Bỏ qua {result["skipped"]} dòng.'
+                self.message_user(request, msg, level='success' if result['created'] else 'warning')
+                for err in result['errors'][:10]:
+                    self.message_user(request, f'Dòng {err["row"]}: {err["error"]}', level='warning')
+            return redirect(reverse('admin:books_bookchapter_change', args=[pk]))
+
+        from django.template.response import TemplateResponse
+        return TemplateResponse(request, 'admin/books/bookchapter/import_quiz_notebooklm.html', {
+            'chapter': chapter,
+            'title': f'Import Quiz (NotebookLM) — {chapter.title}',
+            'opts': self.model._meta,
+        })
+
     def export_flashcards_template_view(self, request):
         from django.http import HttpResponse
         from exams.utils import FLASHCARDS_CSV_TEMPLATE
@@ -262,6 +292,7 @@ class BookChapterAdmin(admin.ModelAdmin):
         extra_context['import_quiz_url'] = reverse('admin:books_bookchapter_import_quiz', args=[object_id])
         extra_context['export_flashcards_template_url'] = reverse('admin:books_bookchapter_export_flashcards_template')
         extra_context['export_quiz_template_url'] = reverse('admin:books_bookchapter_export_quiz_template')
+        extra_context['import_quiz_notebooklm_url'] = reverse('admin:books_bookchapter_import_quiz_notebooklm', args=[object_id])
         return super().change_view(request, object_id, form_url, extra_context)
 
 

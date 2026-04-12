@@ -171,6 +171,71 @@ FLASHCARDS_CSV_TEMPLATE = (
 )
 
 
+def parse_questions_csv_notebooklm(file_obj, exam) -> dict:
+    """
+    Parse NotebookLM quiz CSV format and bulk-create PracticeQuestions for an Exam.
+
+    Expected columns: #, Question, Option A, Option B, Option C, Option D,
+                      Correct Answer (format "A. text"), Rationale
+    All rows are created as MULTIPLE_CHOICE with points=10.
+    """
+    text = file_obj.read()
+    if isinstance(text, bytes):
+        text = text.decode('utf-8-sig')
+
+    reader = csv.DictReader(io.StringIO(text))
+    rows = [{k.strip().lower(): v for k, v in row.items()} for row in reader]
+
+    existing = set(exam.questions.values_list('question_text', flat=True))
+    next_order = exam.questions.count() + 1
+    to_create, skipped, errors = [], 0, []
+
+    for i, row in enumerate(rows, start=2):
+        q_text = row.get('question', '').strip()
+        if not q_text:
+            errors.append({'row': i, 'error': 'Question trống — skipped'})
+            skipped += 1
+            continue
+        if q_text in existing:
+            errors.append({'row': i, 'error': 'Duplicate Question — skipped'})
+            skipped += 1
+            continue
+
+        options = [
+            {'id': k, 'text': row.get(f'option {k}', '').strip()}
+            for k in ('a', 'b', 'c', 'd')
+            if row.get(f'option {k}', '').strip()
+        ]
+        if len(options) < 2:
+            errors.append({'row': i, 'error': 'Cần ít nhất 2 đáp án — skipped'})
+            skipped += 1
+            continue
+
+        # "A. Full answer text" → "a"
+        raw_correct = row.get('correct answer', '').strip()
+        correct = raw_correct[0].lower() if raw_correct else ''
+        valid_ids = {o['id'] for o in options}
+        if correct not in valid_ids:
+            errors.append({'row': i, 'error': f'correct_answer "{correct}" không hợp lệ — skipped'})
+            skipped += 1
+            continue
+
+        to_create.append(PracticeQuestion(
+            exam=exam,
+            question_type='MULTIPLE_CHOICE',
+            question_text=q_text,
+            options=options,
+            correct_answer=correct,
+            explanation=row.get('rationale', '').strip(),
+            points=10,
+            order=next_order + len(to_create),
+        ))
+        existing.add(q_text)
+
+    PracticeQuestion.objects.bulk_create(to_create)
+    return {'created': len(to_create), 'skipped': skipped, 'errors': errors}
+
+
 def provision_training_activity(source_type: str, source_obj, activity_type: str):
     """
     Get or create TrainingSet + TrainingActivity for a content source.

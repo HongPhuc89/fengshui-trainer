@@ -72,11 +72,13 @@ const canAdvance = computed(() => {
   return !!a.chosen                                 // FINAL_EXAM: chosen is enough
 })
 
-/** Stats for summary screen — correct / wrong / skipped counts. */
+/** Stats for summary screen — correct / wrong / skipped counts.
+ *  Use shuffled.value (questions shown to user), NOT exam.value.questions,
+ *  because QUIZ type refreshes exam after submit with new random questions. */
 const stats = computed(() => {
-  if (!exam.value?.questions) return { correct: 0, wrong: 0, skipped: 0 }
+  if (!shuffled.value.length) return { correct: 0, wrong: 0, skipped: 0 }
   let correct = 0, wrong = 0, skipped = 0
-  for (const q of exam.value.questions) {
+  for (const q of shuffled.value) {
     const a = answered.value[q.public_id]
     if (!a?.chosen) { skipped++; continue }
     const isCorr = isImmediateFeedback.value

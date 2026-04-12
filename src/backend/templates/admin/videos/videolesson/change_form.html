@@ -55,6 +55,17 @@
             </div>
           </div>
 
+          {% if import_quiz_notebooklm_url %}
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">QUIZ — NOTEBOOKLM</div>
+            <div style="display:flex;gap:8px">
+              <a href="{{ import_quiz_notebooklm_url }}" class="btn btn-warning btn-sm">
+                📥 Import NotebookLM CSV
+              </a>
+            </div>
+          </div>
+          {% endif %}
+
         </div>
       </div>
     </div>
