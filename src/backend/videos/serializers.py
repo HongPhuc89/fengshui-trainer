@@ -93,17 +93,27 @@ class VideoCourseDetailWithPurchaseSerializer(VideoCourseDetailSerializer):
 
 class VideoLessonDetailSerializer(serializers.ModelSerializer):
     video_url = serializers.SerializerMethodField()
+    infographic_pdf_url = serializers.SerializerMethodField()
 
     def get_video_url(self, obj):
         # Can be overridden by view to inject signed URL
         return getattr(obj, '_resolved_video_url', obj.video_url) or obj.video_url
+
+    def get_infographic_pdf_url(self, obj):
+        if not obj.infographic_pdf_key:
+            return None
+        request = self.context.get('request')
+        path = f'/api/videos/lessons/{obj.public_id}/infographic-pdf/'
+        if request:
+            return request.build_absolute_uri(path)
+        return path
 
     class Meta:
         model = VideoLesson
         fields = (
             'public_id', 'title', 'slug', 'order', 'description',
             'video_url', 'video_id', 'duration_seconds', 'transcript', 'summary',
-            'thumbnail', 'is_free',
+            'thumbnail', 'is_free', 'infographic_pdf_url', 'infographic_video_url',
         )
 
 

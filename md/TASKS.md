@@ -34,6 +34,7 @@
 | 16 | [feature-16-pdf-reader-v1.md](design/feature-16-pdf-reader-v1.md) | PDF Reader V1 — Keyboard shortcuts, desktop split-panel TOC sidebar, blur DRM + right-click prevention | 📝 |
 | 17 | [feature-17-admin-activity-dashboard.md](design/feature-17-admin-activity-dashboard.md) | Admin Activity Dashboard — DAU & Linh Thạch theo ngày (date range picker, KPI tiles, charts, table) | 📝 |
 | 24 | [feature-24-quiz-session-v2.md](design/feature-24-quiz-session-v2.md) | Quiz Session V2 — Immediate per-question feedback, score ring animation, answer review với highlight đúng/sai | 📝 |
+| 30 | [feature-30-lesson-infographic.md](design/feature-30-lesson-infographic.md) | Lesson Infographic — Đính kèm lược đồ PDF hoặc video tóm tắt vào VideoLesson; tab "Lược đồ" trong player | 📝 |
 
 ---
 

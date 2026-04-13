@@ -99,6 +99,18 @@ class VideoLesson(BaseModel):
     summary = models.TextField(blank=True)
     thumbnail = models.ImageField(upload_to=lesson_thumbnail_upload_to, blank=True, null=True)
     is_free = models.BooleanField(default=False)
+    infographic_pdf_key = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='Lược đồ PDF (Bunny key)',
+        help_text='Bunny Storage key. Auto-populated when uploading via admin. Max 50 MB.',
+    )
+    infographic_video_url = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name='Video tóm tắt URL',
+        help_text='Summary video URL (Bunny embed URL or iframe src). Paste direct URL.',
+    )
 
     class Meta:
         verbose_name = "Video Lesson"

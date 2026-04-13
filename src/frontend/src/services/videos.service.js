@@ -58,6 +58,11 @@ export const videosService = {
     return api.get(`videos/${courseSlug}/lessons/${lessonSlug}/exam/`)
   },
 
+  // Cache 12h: CDN URL is permanent (public Bunny CDN, no expiry)
+  getInfographicPdfUrl(lessonUuid) {
+    return api.get(`videos/lessons/${lessonUuid}/infographic-pdf/url/`, { cache: CACHE_12H })
+  },
+
   /**
    * Upload a video file to a lesson (staff only).
    * @param {string} lessonPublicId - lesson public_id (UUID)

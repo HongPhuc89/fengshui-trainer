@@ -17,7 +17,7 @@ const emit = defineEmits(['update:modelValue'])
         'tab-nav__btn--disabled': tab.disabled,
       }"
       :disabled="tab.disabled"
-      @click="!tab.disabled && emit('update:modelValue', i)"
+      @click="tab.action ? tab.action() : (!tab.disabled && emit('update:modelValue', i))"
     >
       {{ tab.label }}
     </button>

@@ -220,6 +220,21 @@ class VideoLessonAdminForm(forms.ModelForm):
             'accept': 'video/mp4,video/quicktime,video/x-matroska,video/x-msvideo,video/webm',
         }),
     )
+    infographic_pdf_upload = forms.FileField(
+        required=False,
+        label='Upload lược đồ PDF',
+        help_text='Chấp nhận: PDF — tối đa 50 MB. Ghi đè file cũ nếu đã có.',
+        widget=forms.FileInput(attrs={'accept': 'application/pdf'}),
+    )
+
+    def clean_infographic_pdf_upload(self):
+        pdf_file = self.cleaned_data.get('infographic_pdf_upload')
+        if pdf_file:
+            max_size = 50 * 1024 * 1024  # 50 MB
+            if pdf_file.size > max_size:
+                raise forms.ValidationError('File PDF vượt quá giới hạn 50 MB.')
+        return pdf_file
+
     class Meta:
         model = VideoLesson
         fields = '__all__'
@@ -257,7 +272,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'flashcard_count', 'has_exam', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
-    readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn')
+    readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn', 'infographic_pdf_status')
     inlines = []
     change_form_template = 'admin/videos/videolesson/change_form.html'
 
@@ -267,6 +282,14 @@ class VideoLessonAdmin(admin.ModelAdmin):
         }),
         ('Video', {
             'fields': ('video_upload', 'video_status', 'video_id', 'video_url', 'duration_seconds', 'fetch_metadata_btn', 'thumbnail', 'extract_thumbnail_btn'),
+        }),
+        ('Lược đồ PDF', {
+            'fields': ('infographic_pdf_upload', 'infographic_pdf_status', 'infographic_pdf_key'),
+            'description': 'Upload PDF lên Bunny Storage. Ghi đè file cũ nếu đã có. Tối đa 50 MB.',
+        }),
+        ('Video tóm tắt', {
+            'fields': ('infographic_video_url',),
+            'description': 'Dán Bunny embed URL hoặc iframe src của video tóm tắt bài học.',
         }),
         ('Nội dung', {
             'fields': ('description', 'transcript', 'summary'),
@@ -291,6 +314,18 @@ class VideoLessonAdmin(admin.ModelAdmin):
     def has_exam(self, obj):
         return "✅" if obj.exams.filter(exam_type='PRACTICE').exists() else "—"
     has_exam.short_description = "Ôn luyện"
+
+    def infographic_pdf_status(self, obj):
+        if not obj.pk or not obj.infographic_pdf_key:
+            return format_html('<span style="color:#ef5350">Chưa có lược đồ PDF</span>')
+        url = f'/api/videos/lessons/{obj.public_id}/infographic-pdf/'
+        return format_html(
+            '<span style="color:#66bb6a">Key: {}</span> — '
+            '<a href="{}" target="_blank" style="font-weight:bold">Xem PDF hiện tại ↗</a>',
+            obj.infographic_pdf_key,
+            url,
+        )
+    infographic_pdf_status.short_description = 'Trạng thái lược đồ PDF'
 
     def video_status(self, obj):
         if obj.video_url:
@@ -559,6 +594,22 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 self.message_user(request, 'Video đã upload. Duration và thumbnail sẽ được cập nhật tự động sau khi Bunny transcode xong.')
             except Exception as exc:
                 self.message_user(request, f'Upload video thất bại: {exc}', level='error')
+
+        pdf_file = form.cleaned_data.get('infographic_pdf_upload')
+        if pdf_file:
+            from .bunny_file_storage import upload_pdf_to_bunny
+            try:
+                key = upload_pdf_to_bunny(
+                    pdf_file,
+                    lesson_pk=obj.pk,
+                    lesson_uuid=str(obj.public_id),
+                    existing_key=obj.infographic_pdf_key,
+                )
+                obj.infographic_pdf_key = key
+                obj.save(update_fields=['infographic_pdf_key'])
+                self.message_user(request, f'Đã upload lược đồ PDF: {key}')
+            except Exception as exc:
+                self.message_user(request, f'Upload PDF thất bại: {exc}', level='error')
 
 
 @admin.register(UserVideoPurchase)

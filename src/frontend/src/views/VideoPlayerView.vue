@@ -21,11 +21,24 @@ const error   = ref(null)
 
 // ── Tabs ──────────────────────────────────────────────────────
 const activeTab = ref(0)
-const TABS = [
+
+function goToTraining() {
+  const query = {}
+  // Pass lesson UUID so TrainingView can fetch a fresh signed PDF URL with JWT auth
+  if (lesson.value?.infographic_pdf_url)   query.lessonId = lesson.value.public_id
+  // Video URL is a public embed URL — safe to pass directly
+  if (lesson.value?.infographic_video_url) query.video    = lesson.value.infographic_video_url
+  router.push({
+    name: 'TrainingLesson',
+    params: { lessonSlug: route.params.lessonSlug },
+    query,
+  })
+}
+
+const TABS = computed(() => [
   { label: 'Danh sách bài' },
-  { label: 'Flashcards'    },
-  { label: 'Ôn luyện'      },
-]
+  { label: 'Ôn luyện', action: goToTraining },
+])
 
 // ── Video player ref (for triggering save on navigation) ───────
 const playerAreaRef = ref(null)

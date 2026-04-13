@@ -1,6 +1,6 @@
 import random
 
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status, views
@@ -139,7 +139,7 @@ class VideoLessonDetailView(views.APIView):
             video_url = request.build_absolute_uri(f'/media/videos/{lesson.video_id}.mp4')
         lesson._resolved_video_url = video_url
 
-        serializer = VideoLessonDetailSerializer(lesson)
+        serializer = VideoLessonDetailSerializer(lesson, context={'request': request})
         return Response(serializer.data)
 
 
@@ -455,3 +455,62 @@ class LessonExamView(views.APIView):
             raise Http404
         serializer = ExamDetailSerializer(exam, context={'request': request})
         return Response(serializer.data)
+
+
+def _check_infographic_access(request, lesson):
+    """Shared access check for infographic endpoints.
+
+    Returns a DRF Response with 403/404 if access is denied or infographic is missing,
+    otherwise returns None (access granted).
+    """
+    if not request.user.is_staff:
+        if not lesson.is_free:
+            course = lesson.course
+            if not course.is_free:
+                if request.user.user_type != 'VIP':
+                    has_access = UserVideoPurchase.objects.filter(
+                        user=request.user, video=course,
+                    ).exists()
+                    if not has_access:
+                        return Response(
+                            {'error': 'Bạn chưa mua khoá học này.'},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+    if not lesson.infographic_pdf_key:
+        return Response(
+            {'error': 'Bài học này không có lược đồ PDF.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return None
+
+
+class LessonInfographicPDFView(views.APIView):
+    """GET /api/videos/lessons/<lesson_uuid>/infographic-pdf/
+    Access-gate for PDF infographic: validates user access, then 302-redirects to the
+    public Bunny CDN URL. Suitable for direct browser navigation (e.g. admin preview).
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, lesson_uuid):
+        lesson = get_object_or_404(VideoLesson, public_id=lesson_uuid)
+        denied = _check_infographic_access(request, lesson)
+        if denied:
+            return denied
+        from .bunny_file_storage import get_pdf_cdn_url
+        return HttpResponseRedirect(get_pdf_cdn_url(lesson.infographic_pdf_key))
+
+
+class LessonInfographicPDFUrlView(views.APIView):
+    """GET /api/videos/lessons/<lesson_uuid>/infographic-pdf/url/
+    Returns JSON { url } with the public Bunny CDN URL for the PDF infographic.
+    Used by the Vue frontend (JWT auth) so the iframe can load the file directly from CDN.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, lesson_uuid):
+        lesson = get_object_or_404(VideoLesson, public_id=lesson_uuid)
+        denied = _check_infographic_access(request, lesson)
+        if denied:
+            return denied
+        from .bunny_file_storage import get_pdf_cdn_url
+        return Response({'url': get_pdf_cdn_url(lesson.infographic_pdf_key)})
