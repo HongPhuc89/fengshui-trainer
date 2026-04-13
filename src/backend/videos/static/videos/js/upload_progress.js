@@ -162,11 +162,17 @@
   function init() {
     injectStyles();
 
-    fileInput = document.getElementById('id_video_upload');
-    if (!fileInput) return;
+    var videoInputIds = ['id_video_upload'];
+    var watchedInputs = videoInputIds
+      .map(function (id) { return document.getElementById(id); })
+      .filter(Boolean);
 
-    fileInput.addEventListener('change', function () {
-      if (this.files[0]) showFileInfo(this.files[0]);
+    if (watchedInputs.length === 0) return;
+
+    watchedInputs.forEach(function (input) {
+      input.addEventListener('change', function () {
+        if (this.files[0]) showFileInfo(this.files[0]);
+      });
     });
 
     document.addEventListener('click', function (e) {
@@ -174,15 +180,17 @@
       if (btn) clickedButton = btn;
     });
 
-    var form = fileInput.closest('form');
+    var form = watchedInputs[0].closest('form');
     if (!form) return;
 
     form.addEventListener('submit', function (e) {
-      var file = fileInput.files[0];
-      if (!file) return; // no video → normal form submit
+      // Find the first input that has a file selected
+      var activeInput = watchedInputs.find(function (inp) { return inp.files[0]; });
+      if (!activeInput) return; // no video file → normal form submit
 
+      fileInput = activeInput; // update module-level ref used by showFileInfo
       e.preventDefault();
-      var overlay = createOverlay(file.name);
+      var overlay = createOverlay(activeInput.files[0].name);
       document.body.appendChild(overlay);
       submitWithProgress(form, overlay);
     });

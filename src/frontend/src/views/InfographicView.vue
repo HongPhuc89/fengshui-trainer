@@ -35,10 +35,7 @@ onMounted(async () => {
         </svg>
       </button>
       <span class="ig__title">Lược đồ</span>
-      <a v-if="pdfUrl" :href="pdfUrl" target="_blank" rel="noopener" class="ig__open-btn">
-        Mở ↗
-      </a>
-      <div v-else style="width:52px"></div>
+      <div style="width:38px"></div>
     </header>
 
     <!-- Loading -->
@@ -110,15 +107,6 @@ onMounted(async () => {
   color: var(--text-primary);
 }
 
-.ig__open-btn {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--accent-gold);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-.ig__open-btn:hover { background: rgba(197,165,81,0.1); }
 
 /* States */
 .ig__state {

@@ -226,7 +226,6 @@ class VideoLessonAdminForm(forms.ModelForm):
         help_text='Chấp nhận: PDF — tối đa 50 MB. Ghi đè file cũ nếu đã có.',
         widget=forms.FileInput(attrs={'accept': 'application/pdf'}),
     )
-
     def clean_infographic_pdf_upload(self):
         pdf_file = self.cleaned_data.get('infographic_pdf_upload')
         if pdf_file:
@@ -287,10 +286,6 @@ class VideoLessonAdmin(admin.ModelAdmin):
             'fields': ('infographic_pdf_upload', 'infographic_pdf_status', 'infographic_pdf_key'),
             'description': 'Upload PDF lên Bunny Storage. Ghi đè file cũ nếu đã có. Tối đa 50 MB.',
         }),
-        ('Video tóm tắt', {
-            'fields': ('infographic_video_url',),
-            'description': 'Dán Bunny embed URL hoặc iframe src của video tóm tắt bài học.',
-        }),
         ('Nội dung', {
             'fields': ('description', 'transcript', 'summary'),
             'classes': ('collapse',),
@@ -318,12 +313,9 @@ class VideoLessonAdmin(admin.ModelAdmin):
     def infographic_pdf_status(self, obj):
         if not obj.pk or not obj.infographic_pdf_key:
             return format_html('<span style="color:#ef5350">Chưa có lược đồ PDF</span>')
-        url = f'/api/videos/lessons/{obj.public_id}/infographic-pdf/'
         return format_html(
-            '<span style="color:#66bb6a">Key: {}</span> — '
-            '<a href="{}" target="_blank" style="font-weight:bold">Xem PDF hiện tại ↗</a>',
+            '<span style="color:#66bb6a">Key: {}</span>',
             obj.infographic_pdf_key,
-            url,
         )
     infographic_pdf_status.short_description = 'Trạng thái lược đồ PDF'
 
@@ -610,6 +602,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
                 self.message_user(request, f'Đã upload lược đồ PDF: {key}')
             except Exception as exc:
                 self.message_user(request, f'Upload PDF thất bại: {exc}', level='error')
+
 
 
 @admin.register(UserVideoPurchase)

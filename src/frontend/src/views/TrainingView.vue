@@ -116,7 +116,6 @@ function handleBack() {
             :title="trainingTitle"
             @select="selectActivity"
           />
-          <!-- Infographic card — same style as ActivityCard -->
           <button
             v-if="hasInfographic"
             class="tv__infographic-card"

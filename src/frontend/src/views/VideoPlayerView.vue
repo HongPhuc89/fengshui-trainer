@@ -25,11 +25,7 @@ const activeTab = ref(0)
 function goToTraining() {
   const query = {}
   if (lesson.value?.infographic_pdf_url) query.pdf = '1'
-  router.push({
-    name: 'TrainingLesson',
-    params: { lessonSlug: route.params.lessonSlug },
-    query,
-  })
+  router.push({ name: 'TrainingLesson', params: { lessonSlug: route.params.lessonSlug }, query })
 }
 
 const TABS = computed(() => [
