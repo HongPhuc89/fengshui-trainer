@@ -15,7 +15,7 @@ const ACTIVITY_CONFIG = {
 }
 
 const FLASHCARD_SESSION_SIZE = 20
-const QUIZ_SESSION_SIZE = 10
+const QUIZ_SESSION_SIZE = 20
 
 function formatStats(activity) {
   const s = activity.stats
