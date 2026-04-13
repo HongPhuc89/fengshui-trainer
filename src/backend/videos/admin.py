@@ -2,10 +2,12 @@ from django import forms
 from django.contrib import admin
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 
 from exams.models import Exam as ExamModel, Flashcard as FlashcardModel
@@ -239,26 +241,6 @@ class VideoLessonAdminForm(forms.ModelForm):
         fields = '__all__'
 
 
-class LessonExamInline(admin.TabularInline):
-    model = ExamModel
-    fk_name = 'lesson'
-    verbose_name = "Bài ôn luyện"
-    verbose_name_plural = "Bài ôn luyện"
-    extra = 0
-    show_change_link = True
-    fields = ('title', 'slug', 'exam_type', 'passing_score', 'time_limit_minutes')
-
-
-class LessonFlashcardInline(admin.StackedInline):
-    model = FlashcardModel
-    fk_name = 'lesson'
-    verbose_name = "Flashcard"
-    verbose_name_plural = "Kho Flashcard"
-    extra = 0
-    show_change_link = True
-    classes = ('collapse',)
-    fields = ('order', 'category', 'front', 'back', 'difficulty')
-    ordering = ('order',)
 
 
 @admin.register(VideoLesson)
@@ -271,7 +253,10 @@ class VideoLessonAdmin(admin.ModelAdmin):
     list_display = ('course', 'title', 'order', 'is_free', 'duration_seconds', 'flashcard_count', 'has_exam', 'video_status')
     list_filter  = ('is_free', 'course')
     search_fields = ('title', 'course__title')
-    readonly_fields = ('video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn', 'infographic_pdf_status')
+    readonly_fields = (
+        'video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn',
+        'infographic_pdf_status', 'flashcard_panel', 'exam_panel',
+    )
     inlines = []
     change_form_template = 'admin/videos/videolesson/change_form.html'
 
@@ -289,6 +274,12 @@ class VideoLessonAdmin(admin.ModelAdmin):
         ('Nội dung', {
             'fields': ('description', 'transcript', 'summary'),
             'classes': ('collapse',),
+        }),
+        ('Kho Flashcard', {
+            'fields': ('flashcard_panel',),
+        }),
+        ('Bài ôn luyện', {
+            'fields': ('exam_panel',),
         }),
     )
 
@@ -355,6 +346,81 @@ class VideoLessonAdmin(admin.ModelAdmin):
             url,
         )
     extract_thumbnail_btn.short_description = 'Thumbnail tự động'
+
+    _TABLE_STYLE = (
+        'border-collapse:collapse;width:100%;font-size:13px;'
+    )
+    _TH_STYLE = (
+        'padding:6px 10px;text-align:left;background:#f0f0f0;'
+        'border-bottom:2px solid #ddd;white-space:nowrap;'
+    )
+    _TD_STYLE = 'padding:5px 10px;border-bottom:1px solid #eee;vertical-align:top;'
+
+    def flashcard_panel(self, obj):
+        if not obj.pk:
+            return '—'
+        flashcards = FlashcardModel.objects.filter(
+            Q(lesson=obj) | Q(activity__training_set__lesson=obj)
+        ).distinct().order_by('order')
+        if not flashcards.exists():
+            return format_html('<p style="color:#999;font-size:13px">Chưa có flashcard.</p>')
+        rows = []
+        for fc in flashcards:
+            url = reverse('admin:exams_flashcard_change', args=[fc.pk])
+            front = (fc.front[:60] + '…') if len(fc.front) > 60 else fc.front
+            rows.append(
+                f'<tr>'
+                f'<td style="{self._TD_STYLE}">{fc.order}</td>'
+                f'<td style="{self._TD_STYLE}">{fc.category or "—"}</td>'
+                f'<td style="{self._TD_STYLE}"><a href="{url}">{front}</a></td>'
+                f'<td style="{self._TD_STYLE}">{fc.difficulty or "—"}</td>'
+                f'</tr>'
+            )
+        header = (
+            f'<table style="{self._TABLE_STYLE}">'
+            f'<thead><tr>'
+            f'<th style="{self._TH_STYLE}">#</th>'
+            f'<th style="{self._TH_STYLE}">Nhãn</th>'
+            f'<th style="{self._TH_STYLE}">Mặt trước</th>'
+            f'<th style="{self._TH_STYLE}">Độ khó</th>'
+            f'</tr></thead>'
+            f'<tbody>{"".join(rows)}</tbody>'
+            f'</table>'
+        )
+        return mark_safe(header)
+    flashcard_panel.short_description = 'Danh sách Flashcard'
+
+    def exam_panel(self, obj):
+        if not obj.pk:
+            return '—'
+        exams = ExamModel.objects.filter(
+            Q(lesson=obj) | Q(activity__training_set__lesson=obj)
+        ).distinct().order_by('title')
+        if not exams.exists():
+            return format_html('<p style="color:#999;font-size:13px">Chưa có bài ôn luyện.</p>')
+        rows = []
+        for exam in exams:
+            url = reverse('admin:exams_exam_change', args=[exam.pk])
+            q_count = exam.questions.count()
+            rows.append(
+                f'<tr>'
+                f'<td style="{self._TD_STYLE}"><a href="{url}">{exam.title}</a></td>'
+                f'<td style="{self._TD_STYLE}">{exam.get_exam_type_display()}</td>'
+                f'<td style="{self._TD_STYLE}">{q_count} câu</td>'
+                f'</tr>'
+            )
+        header = (
+            f'<table style="{self._TABLE_STYLE}">'
+            f'<thead><tr>'
+            f'<th style="{self._TH_STYLE}">Tên bài</th>'
+            f'<th style="{self._TH_STYLE}">Loại</th>'
+            f'<th style="{self._TH_STYLE}">Số câu</th>'
+            f'</tr></thead>'
+            f'<tbody>{"".join(rows)}</tbody>'
+            f'</table>'
+        )
+        return mark_safe(header)
+    exam_panel.short_description = 'Danh sách Bài ôn luyện'
 
     def get_urls(self):
         urls = super().get_urls()
