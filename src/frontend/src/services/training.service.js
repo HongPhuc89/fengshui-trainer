@@ -17,7 +17,7 @@ export const trainingService = {
     return api.get(`training/chapter/${bookSlug}/${chapterOrder}/`, { cache: CACHE_15M })
   },
 
-  getFlashcards(activityId, count = 20) {
+  getFlashcards(activityId, count = 10) {
     return api.get(`training/activities/${activityId}/flashcards/`, {
       params: { count },
       cache: CACHE_10M,

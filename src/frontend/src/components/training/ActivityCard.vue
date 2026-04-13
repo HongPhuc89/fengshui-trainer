@@ -14,15 +14,21 @@ const ACTIVITY_CONFIG = {
   QUIZ:      { icon: '📝', label: 'Quiz' },
 }
 
+const FLASHCARD_SESSION_SIZE = 10
+const QUIZ_SESSION_SIZE = 10
+
 function formatStats(activity) {
   const s = activity.stats
   if (!s) return ''
   if (activity.activity_type === 'FLASHCARD') {
-    return `${s.total_count} thẻ${s.due_count > 0 ? ` · ${s.due_count} đến hạn` : ''}`
+    const total = s.total_count ?? 0
+    const sessionSize = Math.min(FLASHCARD_SESSION_SIZE, total)
+    return `${sessionSize} thẻ luyện tập ngẫu nhiên`
   }
   if (activity.activity_type === 'QUIZ') {
-    const score = s.last_score != null ? `${s.last_score}%` : 'Chưa làm'
-    return `${s.question_count} câu · ${score}`
+    const total = s.question_count ?? 0
+    const sessionSize = Math.min(QUIZ_SESSION_SIZE, total)
+    return `Luyện tập nhanh với ${sessionSize} câu hỏi trắc nghiệm`
   }
   return ''
 }

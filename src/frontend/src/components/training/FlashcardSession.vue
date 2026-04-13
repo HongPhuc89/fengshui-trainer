@@ -46,7 +46,7 @@ async function loadCards() {
   index.value   = 0
   isFlipped.value = false
   try {
-    const res = await trainingService.getFlashcards(props.activityId, 20)
+    const res = await trainingService.getFlashcards(props.activityId, 10)
     flashcards.value = res.data.flashcards
     total.value      = res.data.total
   } catch {
