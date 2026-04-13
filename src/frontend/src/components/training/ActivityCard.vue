@@ -14,7 +14,7 @@ const ACTIVITY_CONFIG = {
   QUIZ:      { icon: '📝', label: 'Quiz' },
 }
 
-const FLASHCARD_SESSION_SIZE = 10
+const FLASHCARD_SESSION_SIZE = 20
 const QUIZ_SESSION_SIZE = 10
 
 function formatStats(activity) {
