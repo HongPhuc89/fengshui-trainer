@@ -63,6 +63,10 @@ export const videosService = {
     return api.get(`videos/lessons/${lessonUuid}/infographic-pdf/url/`, { cache: CACHE_12H })
   },
 
+  getInfographicPdfUrlBySlug(lessonSlug) {
+    return api.get(`videos/lessons/${lessonSlug}/infographic-pdf/url/`, { cache: CACHE_12H })
+  },
+
   /**
    * Upload a video file to a lesson (staff only).
    * @param {string} lessonPublicId - lesson public_id (UUID)

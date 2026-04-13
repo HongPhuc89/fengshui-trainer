@@ -514,3 +514,23 @@ class LessonInfographicPDFUrlView(views.APIView):
             return denied
         from .bunny_file_storage import get_pdf_cdn_url
         return Response({'url': get_pdf_cdn_url(lesson.infographic_pdf_key)})
+
+
+class LessonInfographicPDFUrlBySlugView(views.APIView):
+    """GET /api/videos/lessons/<lesson_slug>/infographic-pdf/url/
+    Slug-based variant of LessonInfographicPDFUrlView.
+    Allows the frontend to build shareable URLs using the human-readable lesson slug
+    without exposing the internal UUID.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, lesson_slug):
+        lesson = get_object_or_404(
+            VideoLesson.objects.select_related('course'),
+            slug=lesson_slug,
+        )
+        denied = _check_infographic_access(request, lesson)
+        if denied:
+            return denied
+        from .bunny_file_storage import get_pdf_cdn_url
+        return Response({'url': get_pdf_cdn_url(lesson.infographic_pdf_key)})

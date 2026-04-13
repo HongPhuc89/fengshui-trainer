@@ -10,6 +10,7 @@ urlpatterns = [
     path('lessons/<uuid:public_id>/upload/status/',   views.VideoUploadStatusView.as_view(),   name='video_lesson_upload_status'),
     path('lessons/<uuid:lesson_uuid>/infographic-pdf/', views.LessonInfographicPDFView.as_view(), name='videos_videolesson_infographic_pdf'),
     path('lessons/<uuid:lesson_uuid>/infographic-pdf/url/', views.LessonInfographicPDFUrlView.as_view(), name='videos_videolesson_infographic_pdf_url'),
+    path('lessons/<slug:lesson_slug>/infographic-pdf/url/', views.LessonInfographicPDFUrlBySlugView.as_view(), name='videos_videolesson_infographic_pdf_url_by_slug'),
     path('', views.VideoCourseListView.as_view(), name='video_course_list'),
     path('<slug:slug>/', views.VideoCourseDetailView.as_view(), name='video_course_detail'),
     path('<slug:slug>/progress/', views.CourseProgressView.as_view(), name='video_course_progress'),

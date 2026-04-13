@@ -37,6 +37,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/infographic/lesson/:lessonSlug',
+    name: 'InfographicLesson',
+    component: () => import('../views/InfographicView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/training/chapter/:bookSlug/:chapterOrder',
     name: 'TrainingChapter',
     component: () => import('../views/TrainingView.vue'),
