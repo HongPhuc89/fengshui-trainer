@@ -1,27 +1,99 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, shallowRef, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import * as pdfjsLib from 'pdfjs-dist'
 import { videosService } from '../services/videos.service'
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url,
+).href
 
 const route  = useRoute()
 const router = useRouter()
 
-const pdfUrl   = ref(null)
-const loading  = ref(true)
-const error    = ref(null)
+const loading      = ref(true)
+const error        = ref(null)
+const containerRef = ref(null)
+const pdfDoc       = shallowRef(null)
+const canvases     = ref([])          // one canvas element per page
+const renderingTasks = []
 
+// ── Load PDF ──────────────────────────────────────────────
 onMounted(async () => {
   try {
     const res = await videosService.getInfographicPdfUrlBySlug(route.params.lessonSlug)
-    pdfUrl.value = res.data.url
+    const pdfUrl = res.data.url
+
+    const loadingTask = pdfjsLib.getDocument({ url: pdfUrl })
+    pdfDoc.value = await loadingTask.promise
+
+    loading.value = false
+    await nextTick()
+    await renderAllPages()
+    setupResizeObserver()
   } catch (e) {
     error.value = e?.response?.status === 404
       ? 'Bài học này chưa có lược đồ PDF.'
       : 'Không thể tải lược đồ. Vui lòng thử lại.'
-  } finally {
     loading.value = false
   }
 })
+
+onBeforeUnmount(() => {
+  renderingTasks.forEach(t => { try { t.cancel() } catch (_) {} })
+  if (resizeObserver) resizeObserver.disconnect()
+})
+
+// ── Render ────────────────────────────────────────────────
+async function renderAllPages() {
+  if (!pdfDoc.value || !containerRef.value) return
+  const numPages = pdfDoc.value.numPages
+  const dpr = window.devicePixelRatio || 1
+  const containerWidth = containerRef.value.clientWidth || window.innerWidth
+
+  for (let i = 0; i < numPages; i++) {
+    const pageNum = i + 1
+    const page = await pdfDoc.value.getPage(pageNum)
+    const defaultViewport = page.getViewport({ scale: 1 })
+    const scale = (containerWidth / defaultViewport.width) * dpr
+    const viewport = page.getViewport({ scale })
+
+    const canvas = canvases.value[i]
+    if (!canvas) continue
+
+    canvas.width  = viewport.width
+    canvas.height = viewport.height
+    canvas.style.width  = `${viewport.width / dpr}px`
+    canvas.style.height = `${viewport.height / dpr}px`
+
+    const ctx  = canvas.getContext('2d')
+    const task = page.render({ canvasContext: ctx, viewport })
+    renderingTasks[i] = task
+    try {
+      await task.promise
+    } catch (e) {
+      if (e?.name !== 'RenderingCancelledException') throw e
+    }
+  }
+}
+
+// ── Re-render on orientation / resize ────────────────────
+let resizeObserver = null
+function setupResizeObserver() {
+  if (!containerRef.value || !window.ResizeObserver) return
+  let lastW = 0
+  resizeObserver = new ResizeObserver((entries) => {
+    const w = entries[0].contentRect.width
+    if (Math.abs(w - lastW) > 1) {
+      lastW = w
+      renderingTasks.forEach(t => { try { t.cancel() } catch (_) {} })
+      renderingTasks.length = 0
+      renderAllPages()
+    }
+  })
+  resizeObserver.observe(containerRef.value)
+}
 </script>
 
 <template>
@@ -53,14 +125,15 @@ onMounted(async () => {
       <button class="ig__btn-back" @click="router.back()">Quay lại</button>
     </div>
 
-    <!-- PDF iframe -->
-    <iframe
-      v-else-if="pdfUrl"
-      :src="pdfUrl + '#toolbar=0'"
-      class="ig__frame"
-      title="Lược đồ bài học"
-      allowfullscreen
-    />
+    <!-- PDF canvas pages -->
+    <div v-else-if="pdfDoc" ref="containerRef" class="ig__scroll">
+      <canvas
+        v-for="n in pdfDoc.numPages"
+        :key="n"
+        :ref="el => { if (el) canvases[n - 1] = el }"
+        class="ig__canvas"
+      />
+    </div>
 
   </div>
 </template>
@@ -107,7 +180,6 @@ onMounted(async () => {
   color: var(--text-primary);
 }
 
-
 /* States */
 .ig__state {
   flex: 1;
@@ -141,12 +213,17 @@ onMounted(async () => {
   font-size: 0.9rem;
 }
 
-/* PDF frame — fills remaining viewport below header */
-.ig__frame {
+/* Scrollable PDF container */
+.ig__scroll {
   flex: 1;
-  width: 100%;
-  height: calc(100dvh - 56px);
-  border: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ig__canvas {
   display: block;
+  width: 100%;
+  height: auto;
 }
 </style>
