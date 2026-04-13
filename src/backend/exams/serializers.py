@@ -57,7 +57,7 @@ class ExamDetailSerializer(serializers.ModelSerializer):
         return PracticeQuestionListSerializer(qs, many=True).data
 
     def get_total_questions(self, obj):
-        return obj.questions.count()
+        return 20 if obj.exam_type == 'QUIZ' else obj.questions.count()
 
     def get_user_progress(self, obj):
         request = self.context.get('request')
