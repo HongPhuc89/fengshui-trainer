@@ -196,11 +196,11 @@ function closeModal() {
       <div class="book-detail__hero">
         <div
           class="book-detail__cover"
-          :style="book.cover_image
-            ? `background-image:url(${book.cover_image})`
+          :style="(book.small_cover || book.cover_image)
+            ? `background-image:url(${book.small_cover || book.cover_image})`
             : `background:linear-gradient(135deg,#1a1a2e,#e94560)`"
         >
-          <div v-if="!book.cover_image" class="book-detail__cover-initial">
+          <div v-if="!book.cover_image && !book.small_cover" class="book-detail__cover-initial">
             {{ book.title?.charAt(0) }}
           </div>
         </div>
