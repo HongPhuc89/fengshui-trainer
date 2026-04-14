@@ -154,7 +154,7 @@ function prefetchLastLesson(item) {
           @mouseenter="prefetchLastLesson(item)"
         >
           <div class="home-book-card__cover">
-            <img v-if="item.cover_image" :src="item.cover_image" :alt="item.title" />
+            <img v-if="item.cover_image || item.small_cover" :src="item.small_cover || item.cover_image" :alt="item.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
 
             <!-- Badge: chapter number for books, progress % for videos -->
@@ -196,7 +196,7 @@ function prefetchLastLesson(item) {
           @click="goBook(b.slug)"
         >
           <div class="home-book-card__cover">
-            <img v-if="b.cover_image" :src="b.cover_image" :alt="b.title" />
+            <img v-if="b.cover_image || b.small_cover" :src="b.small_cover || b.cover_image" :alt="b.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
             <span class="home-book-card__badge" :class="`home-book-card__badge--${badgeType(b)}`">
               {{ badgeLabel(b) }}

@@ -267,7 +267,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
     search_fields = ('title', 'course__title')
     readonly_fields = (
         'video_id', 'video_url', 'video_status', 'fetch_metadata_btn', 'extract_thumbnail_btn',
-        'infographic_pdf_status', 'flashcard_panel', 'exam_panel',
+        'infographic_pdf_status', 'flashcard_panel', 'exam_panel', 'small_thumbnail_preview',
     )
     inlines = []
     change_form_template = 'admin/videos/videolesson/change_form.html'
@@ -277,7 +277,7 @@ class VideoLessonAdmin(admin.ModelAdmin):
             'fields': ('course', 'title', 'slug', 'order', 'is_free'),
         }),
         ('Video', {
-            'fields': ('video_upload', 'video_status', 'video_id', 'video_url', 'duration_seconds', 'fetch_metadata_btn', 'thumbnail', 'extract_thumbnail_btn'),
+            'fields': ('video_upload', 'video_status', 'video_id', 'video_url', 'duration_seconds', 'fetch_metadata_btn', 'thumbnail', 'small_thumbnail_preview', 'extract_thumbnail_btn'),
         }),
         ('Lược đồ PDF', {
             'fields': ('infographic_pdf_upload', 'infographic_pdf_status', 'infographic_pdf_key'),
@@ -312,6 +312,12 @@ class VideoLessonAdmin(admin.ModelAdmin):
     def has_exam(self, obj):
         return "✅" if obj.exams.filter(exam_type='PRACTICE').exists() else "—"
     has_exam.short_description = "Ôn luyện"
+
+    def small_thumbnail_preview(self, obj):
+        if obj.small_thumbnail:
+            return format_html('<img src="{}" style="max-height:80px;border-radius:4px;" />', obj.small_thumbnail)
+        return "—"
+    small_thumbnail_preview.short_description = "Small thumbnail (WebP preview)"
 
     def infographic_pdf_status(self, obj):
         if not obj.pk or not obj.infographic_pdf_key:

@@ -60,11 +60,44 @@ class Book(BaseModel):
         blank=True,
         help_text="Public ID of linked Exam (exams.Exam). No FK to avoid migration dependency.",
     )
+    small_cover = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Public Bunny CDN URL for resized WebP cover (auto-generated). Do not edit manually.",
+    )
 
     class Meta:
         verbose_name = "Book"
         verbose_name_plural = "Books"
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # Detect whether cover_image changed so we can regenerate small_cover.
+        old_cover_name = None
+        if self.pk:
+            try:
+                old_cover_name = Book.objects.get(pk=self.pk).cover_image.name
+            except Book.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        cover_changed = (self.cover_image.name if self.cover_image else None) != old_cover_name
+
+        if cover_changed:
+            if not self.cover_image:
+                # Cover was cleared — wipe the small version too.
+                Book.objects.filter(pk=self.pk).update(small_cover='')
+                self.small_cover = ''
+                return
+            # Cover was set or replaced — generate small version.
+            try:
+                from books.utils import generate_and_upload_small_cover  # noqa: PLC0415
+                small_url = generate_and_upload_small_cover(self.pk, self.cover_image, force=True)
+                Book.objects.filter(pk=self.pk).update(small_cover=small_url)
+                self.small_cover = small_url
+            except Exception:
+                pass  # Non-fatal; management command can backfill later.
 
     def __str__(self):
         return self.title

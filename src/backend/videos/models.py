@@ -111,12 +111,45 @@ class VideoLesson(BaseModel):
         verbose_name='Video tóm tắt URL',
         help_text='Summary video URL (Bunny embed URL or iframe src). Paste direct URL.',
     )
+    small_thumbnail = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Public Bunny CDN URL for resized WebP thumbnail (auto-generated). Do not edit manually.",
+    )
 
     class Meta:
         verbose_name = "Video Lesson"
         verbose_name_plural = "Video Lessons"
         ordering = ['course', 'order']
         unique_together = [['course', 'order'], ['course', 'slug']]
+
+    def save(self, *args, **kwargs):
+        # Detect whether thumbnail changed so we can regenerate small_thumbnail.
+        old_thumbnail_name = None
+        if self.pk:
+            try:
+                old_thumbnail_name = VideoLesson.objects.get(pk=self.pk).thumbnail.name
+            except VideoLesson.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        thumbnail_changed = (self.thumbnail.name if self.thumbnail else None) != old_thumbnail_name
+
+        if thumbnail_changed:
+            if not self.thumbnail:
+                # Thumbnail was cleared — wipe the small version too.
+                VideoLesson.objects.filter(pk=self.pk).update(small_thumbnail='')
+                self.small_thumbnail = ''
+                return
+            # Thumbnail was set or replaced — generate small version.
+            try:
+                from videos.utils import generate_and_upload_small_thumbnail  # noqa: PLC0415
+                small_url = generate_and_upload_small_thumbnail(self.pk, self.thumbnail, force=True)
+                VideoLesson.objects.filter(pk=self.pk).update(small_thumbnail=small_url)
+                self.small_thumbnail = small_url
+            except Exception:
+                pass  # Non-fatal; management command can backfill later.
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"

@@ -33,7 +33,7 @@ class BookListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = (
-            'public_id', 'title', 'slug', 'category', 'author', 'cover_image',
+            'public_id', 'title', 'slug', 'category', 'author', 'cover_image', 'small_cover',
             'description', 'is_free', 'is_new_release', 'price_lt', 'published_date',
         )
 
@@ -62,7 +62,7 @@ class BookDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = (
-            'public_id', 'title', 'slug', 'category', 'author', 'cover_image',
+            'public_id', 'title', 'slug', 'category', 'author', 'cover_image', 'small_cover',
             'description', 'is_free', 'is_new_release', 'price_lt', 'demo_content',
             'table_of_contents', 'published_date', 'chapters', 'final_exam_id',
         )

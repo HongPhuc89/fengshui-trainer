@@ -56,8 +56,14 @@ class BookAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_new_release', 'published_date', 'reader_progress_link')
     list_filter = ('is_free', 'is_new_release', 'category')
     search_fields = ('title', 'author')
-    readonly_fields = ('slug',)
+    readonly_fields = ('slug', 'small_cover_preview')
     inlines = [BookChapterInline, UserBookPurchaseInline]
+
+    def small_cover_preview(self, obj):
+        if obj.small_cover:
+            return format_html('<img src="{}" style="max-height:120px;border-radius:4px;" />', obj.small_cover)
+        return "—"
+    small_cover_preview.short_description = "Small cover (WebP preview)"
     change_form_template = 'admin/books/book/change_form.html'
 
     @staticmethod

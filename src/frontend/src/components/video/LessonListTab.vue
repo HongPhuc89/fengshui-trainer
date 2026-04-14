@@ -72,9 +72,9 @@ function selectLesson(lesson) {
 
       <!-- Thumbnail -->
       <img
-        v-if="lesson.thumbnail"
+        v-if="lesson.thumbnail || lesson.small_thumbnail"
         class="lesson-list__thumb"
-        :src="lesson.thumbnail"
+        :src="lesson.small_thumbnail || lesson.thumbnail"
         :alt="lesson.title"
       />
       <div v-else class="lesson-list__thumb lesson-list__thumb--empty">

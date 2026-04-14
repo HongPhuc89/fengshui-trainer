@@ -12,7 +12,7 @@ class VideoCategorySerializer(serializers.ModelSerializer):
 class VideoLessonListSerializer(serializers.ModelSerializer):
     class Meta:
         model = VideoLesson
-        fields = ('public_id', 'title', 'slug', 'order', 'duration_seconds', 'thumbnail', 'is_free')
+        fields = ('public_id', 'title', 'slug', 'order', 'duration_seconds', 'thumbnail', 'small_thumbnail', 'is_free')
 
 
 class VideoCourseListSerializer(serializers.ModelSerializer):
@@ -33,6 +33,8 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
             return obj.cover_image
         first = obj.lessons.order_by('order').exclude(thumbnail='').filter(thumbnail__isnull=False).first()
         if first and first.thumbnail:
+            if first.small_thumbnail:
+                return first.small_thumbnail
             request = self.context.get('request')
             return request.build_absolute_uri(first.thumbnail.url) if request else first.thumbnail.url
         return None
@@ -64,6 +66,8 @@ class VideoCourseDetailSerializer(serializers.ModelSerializer):
             return obj.cover_image
         first = next((l for l in obj.lessons.all() if l.thumbnail), None)
         if first:
+            if first.small_thumbnail:
+                return first.small_thumbnail
             request = self.context.get('request')
             return request.build_absolute_uri(first.thumbnail.url) if request else first.thumbnail.url
         return None
@@ -113,7 +117,7 @@ class VideoLessonDetailSerializer(serializers.ModelSerializer):
         fields = (
             'public_id', 'title', 'slug', 'order', 'description',
             'video_url', 'video_id', 'duration_seconds', 'transcript', 'summary',
-            'thumbnail', 'is_free', 'infographic_pdf_url', 'infographic_video_url',
+            'thumbnail', 'small_thumbnail', 'is_free', 'infographic_pdf_url', 'infographic_video_url',
         )
 
 

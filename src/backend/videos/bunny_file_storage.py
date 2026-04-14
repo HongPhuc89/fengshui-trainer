@@ -1,5 +1,5 @@
 """
-Bunny Storage helpers for PDF infographic files (Feature 30).
+Bunny Storage helpers for PDF infographic files (Feature 30) and image optimization (Feature 31).
 
 Security model (same as .bin chapter files):
 - PDF files are stored on Bunny Storage and served via a public CDN pull zone.
@@ -7,10 +7,17 @@ Security model (same as .bin chapter files):
 - Access control is enforced by the Django API gate: only authenticated, authorised users
   receive the CDN URL. The CDN itself has no token authentication.
 """
+import io
 import uuid
 
 import requests as http
 from django.conf import settings
+
+try:
+    from PIL import Image
+    _PIL_AVAILABLE = True
+except ImportError:
+    _PIL_AVAILABLE = False
 
 _STORAGE_API_BASE = 'https://storage.bunnycdn.com'
 
@@ -21,6 +28,67 @@ def _storage_api_base() -> str:
     if region and region != 'de':
         return f'https://{region}.storage.bunnycdn.com'
     return _STORAGE_API_BASE
+
+
+def upload_image_to_bunny(
+    source_image_field,
+    storage_key: str,
+    max_width: int,
+    max_height: int,
+    webp_quality: int = 85,
+    skip_if_exists: bool = True,
+) -> str:
+    """Resize an image field value, convert to WebP, and upload to Bunny Storage.
+
+    Args:
+        source_image_field: A Django ``ImageField`` instance with a valid ``.path``.
+        storage_key: Destination path within the Bunny storage zone (e.g. ``book_covers/small/1.webp``).
+        max_width: Maximum width in pixels (bounding box for ``thumbnail()``).
+        max_height: Maximum height in pixels.
+        webp_quality: WebP compression quality 1–100 (default 85).
+        skip_if_exists: If True, HEAD-check Bunny first and skip upload if the file already exists.
+
+    Returns:
+        Public CDN URL of the uploaded image.
+
+    Raises:
+        RuntimeError: If Pillow is not installed.
+        requests.HTTPError: If Bunny returns a non-2xx status on upload.
+    """
+    if not _PIL_AVAILABLE:
+        raise RuntimeError("Pillow is required for image optimization. Install it with: pip install Pillow")
+
+    zone = settings.BUNNY_STORAGE_ZONE
+    api_key = settings.BUNNY_STORAGE_API_KEY
+    cdn_hostname = settings.BUNNY_STORAGE_CDN_HOSTNAME
+    upload_url = f'{_storage_api_base()}/{zone}/{storage_key}'
+    cdn_url = f'https://{cdn_hostname}/{storage_key}'
+
+    if skip_if_exists:
+        check = http.head(upload_url, headers={'AccessKey': api_key}, timeout=10)
+        if check.status_code == 200:
+            return cdn_url
+
+    with Image.open(source_image_field.path) as img:
+        img = img.convert('RGB')
+        img.thumbnail((max_width, max_height), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format='WEBP', quality=webp_quality, method=6)
+        buf.seek(0)
+        image_data = buf.read()
+
+    resp = http.put(
+        upload_url,
+        data=image_data,
+        headers={
+            'AccessKey': api_key,
+            'Content-Type': 'image/webp',
+            'Cache-Control': 'public, max-age=31536000',
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return cdn_url
 
 
 def upload_pdf_to_bunny(file_obj, lesson_pk: int, lesson_uuid: str, existing_key: str = '') -> str:

@@ -228,13 +228,13 @@ function coverGradient(book) {
         <!-- Cover -->
         <div
           class="books__cover"
-          :style="book.cover_image
-            ? `background-image:url(${book.cover_image})`
+          :style="(book.small_cover || book.cover_image)
+            ? `background-image:url(${book.small_cover || book.cover_image})`
             : `background:${coverGradient(book)}`"
         >
           <span v-if="book.is_new_release" class="books__badge-hot">Mới</span>
           <span v-if="readingSet.has(book.slug)" class="books__badge-reading">Đang đọc</span>
-          <div v-if="!book.cover_image" class="books__cover-initial">
+          <div v-if="!book.cover_image && !book.small_cover" class="books__cover-initial">
             {{ book.title?.charAt(0) }}
           </div>
         </div>
