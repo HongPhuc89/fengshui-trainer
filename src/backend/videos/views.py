@@ -45,13 +45,18 @@ class RecentlyWatchedCoursesView(views.APIView):
         data = []
         for cp in course_progresses:
             course = cp.course
-            cover_url = None
             if course.cover_image:
-                cover_url = request.build_absolute_uri(course.cover_image.url)
+                cover_url = course.cover_image  # already a plain URL (CharField)
             else:
-                first = course.lessons.order_by('order').exclude(thumbnail='').filter(thumbnail__isnull=False).first()
+                first = (
+                    course.lessons.order_by('order')
+                    .exclude(thumbnail='').filter(thumbnail__isnull=False)
+                    .first()
+                )
                 if first and first.thumbnail:
-                    cover_url = request.build_absolute_uri(first.thumbnail.url)
+                    cover_url = first.small_thumbnail or request.build_absolute_uri(first.thumbnail.url)
+                else:
+                    cover_url = None
             data.append({
                 'slug': course.slug,
                 'title': course.title,

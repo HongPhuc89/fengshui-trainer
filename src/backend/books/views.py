@@ -52,13 +52,17 @@ class RecentlyReadBooksView(views.APIView):
         data = []
         for p in recent:
             book = p.chapter.book
-            cover_url = None
-            if book.cover_image:
+            if book.small_cover:
+                cover_url = book.small_cover
+            elif book.cover_image:
                 cover_url = request.build_absolute_uri(book.cover_image.url)
+            else:
+                cover_url = None
             data.append({
                 'slug': book.slug,
                 'title': book.title,
                 'cover_image': cover_url,
+                'small_cover': book.small_cover or None,
                 'chapter_order': p.chapter.order,
                 'current_page': p.current_page,
             })
