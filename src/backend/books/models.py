@@ -93,7 +93,7 @@ class Book(BaseModel):
             # Cover was set or replaced — generate small version.
             try:
                 from books.utils import generate_and_upload_small_cover  # noqa: PLC0415
-                small_url = generate_and_upload_small_cover(self.pk, self.cover_image, force=True)
+                small_url = generate_and_upload_small_cover(self.pk, self.cover_image)
                 Book.objects.filter(pk=self.pk).update(small_cover=small_url)
                 self.small_cover = small_url
             except Exception:

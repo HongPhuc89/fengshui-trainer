@@ -145,7 +145,7 @@ class VideoLesson(BaseModel):
             # Thumbnail was set or replaced — generate small version.
             try:
                 from videos.utils import generate_and_upload_small_thumbnail  # noqa: PLC0415
-                small_url = generate_and_upload_small_thumbnail(self.pk, self.thumbnail, force=True)
+                small_url = generate_and_upload_small_thumbnail(self.pk, self.thumbnail)
                 VideoLesson.objects.filter(pk=self.pk).update(small_thumbnail=small_url)
                 self.small_thumbnail = small_url
             except Exception:
