@@ -2,12 +2,10 @@
 import { ref, shallowRef, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import { videosService } from '../services/videos.service'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs',
-  import.meta.url,
-).href
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
 
 const route  = useRoute()
 const router = useRouter()

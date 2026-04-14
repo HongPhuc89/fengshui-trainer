@@ -2,6 +2,7 @@
 import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import { booksService } from '../services/books.service'
 import { useBreakpoint } from '../composables/useBreakpoint'
 import { useWatermark } from '../composables/useWatermark'
@@ -9,10 +10,7 @@ import { usePdfDecryption } from '../composables/usePdfDecryption'
 import { api } from '../api/client'
 import * as Sentry from '@sentry/vue'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs',
-  import.meta.url,
-).href
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
 
 // ── Router ────────────────────────────────────────────────
 const route = useRoute()
