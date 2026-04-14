@@ -188,7 +188,7 @@
 {% block after_related_objects %}
 {{ block.super }}
 {% if grant_access_url %}
-<div style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+<div id="grant-access-panel" style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt cho người dùng mới</h3>
   <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
     <label for="grant_user_id">ID người dùng:</label>
@@ -201,6 +201,23 @@
     </span>
   </div>
 </div>
+<script>
+(function () {
+  function moveGrantPanel() {
+    var panel = document.getElementById('grant-access-panel');
+    if (!panel) return;
+    var targetGroup = document.getElementById('userbookpurchase_set-group');
+    if (targetGroup && targetGroup.parentNode) {
+      targetGroup.parentNode.insertBefore(panel, targetGroup.nextSibling);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', moveGrantPanel);
+  } else {
+    moveGrantPanel();
+  }
+})();
+</script>
 <script>
 document.getElementById('grant_access_btn').addEventListener('click', function () {
   const userId = document.getElementById('grant_user_id').value.trim();

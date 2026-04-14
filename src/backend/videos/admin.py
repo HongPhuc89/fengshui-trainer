@@ -123,20 +123,30 @@ class VideoCourseAdmin(admin.ModelAdmin):
         if request.method != 'POST':
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
         user_id = request.POST.get('user_id')
         if not user_id:
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': 'Vui lòng nhập ID người dùng.'}, status=400)
             self.message_user(request, 'Vui lòng nhập ID người dùng.', level='error')
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': 'Không tìm thấy người dùng.'}, status=404)
             self.message_user(request, 'Không tìm thấy người dùng.', level='error')
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
         if UserVideoPurchase.objects.filter(user=user, video=video).exists():
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".'}, status=400)
             self.message_user(request, f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".', level='error')
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         with transaction.atomic():
             UserVideoPurchase.objects.create(user=user, video=video)
@@ -161,6 +171,8 @@ class VideoCourseAdmin(admin.ModelAdmin):
             except Exception:
                 pass
 
+        if is_ajax:
+            return JsonResponse({'ok': True, 'message': f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.'})
         self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
         return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 

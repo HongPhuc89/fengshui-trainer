@@ -3,18 +3,65 @@
 {% block after_related_objects %}
 {{ block.super }}
 {% if grant_access_url %}
-<div style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+<div id="grant-access-panel" style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt cho người dùng mới</h3>
-  <form method="post" action="{{ grant_access_url }}">
-    {% csrf_token %}
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
     <label for="grant_user_id">ID người dùng:</label>
-    <input type="number" name="user_id" id="grant_user_id" placeholder="Nhập user ID" required
-           style="margin: 0 8px; padding: 4px 8px;">
-    <button type="submit" class="button default">Kích hoạt</button>
-    <span style="margin-left: 12px; color: #888; font-size: 12px;">
+    <input type="number" id="grant_user_id" placeholder="Nhập user ID"
+           style="padding: 4px 8px;">
+    <button type="button" class="button default" id="grant_access_btn">Kích hoạt</button>
+    <span id="grant_access_msg" style="font-size:13px;"></span>
+    <span style="color: #888; font-size: 12px;">
       Tra cứu ID tại: <a href="{% url 'admin:users_user_changelist' %}" target="_blank">Danh sách người dùng</a>
     </span>
-  </form>
+  </div>
 </div>
+<script>
+(function () {
+  function moveGrantPanel() {
+    var panel = document.getElementById('grant-access-panel');
+    if (!panel) return;
+    var targetGroup = document.getElementById('uservideopurchase_set-group');
+    if (targetGroup && targetGroup.parentNode) {
+      targetGroup.parentNode.insertBefore(panel, targetGroup.nextSibling);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', moveGrantPanel);
+  } else {
+    moveGrantPanel();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('grant_access_btn').addEventListener('click', function () {
+      var userId = document.getElementById('grant_user_id').value.trim();
+      var msg = document.getElementById('grant_access_msg');
+      if (!userId) { msg.style.color = 'red'; msg.textContent = 'Vui lòng nhập ID người dùng.'; return; }
+
+      this.disabled = true;
+      msg.style.color = '#888';
+      msg.textContent = 'Đang xử lý…';
+
+      var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      fetch('{{ grant_access_url }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfToken },
+        body: 'user_id=' + encodeURIComponent(userId),
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        msg.style.color = data.ok ? 'green' : 'red';
+        msg.textContent = data.message;
+        if (data.ok) {
+          document.getElementById('grant_user_id').value = '';
+          setTimeout(function () { location.href = location.pathname + '#uservideopurchase_set-group'; location.reload(); }, 1000);
+        }
+      })
+      .catch(function () { msg.style.color = 'red'; msg.textContent = 'Lỗi kết nối.'; })
+      .finally(function () { document.getElementById('grant_access_btn').disabled = false; });
+    });
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}
