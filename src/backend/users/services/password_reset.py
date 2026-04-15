@@ -11,6 +11,7 @@ Flow:
 """
 
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 
@@ -20,6 +21,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from ..models import User, PasswordResetOTP
+
+logger = logging.getLogger('__name__')
 
 
 class RateLimitExceeded(Exception):
@@ -66,12 +69,17 @@ def request_otp(email: str) -> dict:
     try:
         user = User.objects.get(email=email, is_active=True)
     except User.DoesNotExist:
+        logger.warning("otp_request_failed: email=%s reason=user_not_found_or_inactive", email)
         raise ValueError("Email không tồn tại hoặc tài khoản chưa được kích hoạt.")
 
     # 2. Check daily rate limit (per email)
     daily_key = _daily_count_key(email)
     daily_count = cache.get(daily_key, 0)
     if daily_count >= settings.OTP_DAILY_LIMIT:
+        logger.warning(
+            "otp_request_rate_limited: user_id=%s email=%s daily_count=%s limit=%s",
+            user.pk, email, daily_count, settings.OTP_DAILY_LIMIT,
+        )
         raise RateLimitExceeded(
             f"Đã vượt quá giới hạn {settings.OTP_DAILY_LIMIT} lần gửi OTP trong ngày. "
             "Vui lòng thử lại vào ngày mai."
@@ -92,7 +100,13 @@ def request_otp(email: str) -> dict:
     )
 
     # 4. Increment daily counter (TTL = seconds until local midnight)
-    cache.set(daily_key, daily_count + 1, timeout=_seconds_until_midnight())
+    new_count = daily_count + 1
+    cache.set(daily_key, new_count, timeout=_seconds_until_midnight())
+
+    logger.info(
+        "otp_requested: user_id=%s email=%s daily_count=%s/%s expires_at=%s",
+        user.pk, email, new_count, settings.OTP_DAILY_LIMIT, expires_at.isoformat(),
+    )
 
     # 5. Send OTP email
     _send_otp_email(user, otp_code, settings.OTP_EXPIRY_MINUTES)
@@ -116,6 +130,7 @@ def verify_otp(email: str, otp_code: str) -> dict:
     try:
         user = User.objects.get(email=email, is_active=True)
     except User.DoesNotExist:
+        logger.warning("otp_verify_failed: email=%s reason=user_not_found", email)
         raise ValueError("Email không tồn tại.")
 
     with transaction.atomic():
@@ -123,10 +138,15 @@ def verify_otp(email: str, otp_code: str) -> dict:
         try:
             otp_obj = PasswordResetOTP.objects.select_for_update().get(user=user)
         except PasswordResetOTP.DoesNotExist:
+            logger.warning("otp_verify_failed: user_id=%s email=%s reason=no_otp_record", user.pk, email)
             raise ValueError("OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu mã mới.")
 
         # 3. Guard: already expired or used
         if not otp_obj.is_valid:
+            logger.warning(
+                "otp_verify_failed: user_id=%s email=%s reason=%s",
+                user.pk, email, "already_used" if otp_obj.is_used else "expired",
+            )
             raise ValueError("OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu mã mới.")
 
         # 4. Increment attempt counter before hash comparison
@@ -137,15 +157,24 @@ def verify_otp(email: str, otp_code: str) -> dict:
             if remaining <= 0:
                 otp_obj.is_used = True
                 otp_obj.save(update_fields=['attempts', 'is_used'])
+                logger.warning(
+                    "otp_verify_failed: user_id=%s email=%s reason=max_attempts_exceeded attempts=%s",
+                    user.pk, email, otp_obj.attempts,
+                )
                 raise ValueError(
                     "Đã nhập sai quá nhiều lần. OTP bị vô hiệu. Vui lòng yêu cầu mã mới."
                 )
             otp_obj.save(update_fields=['attempts'])
+            logger.warning(
+                "otp_verify_failed: user_id=%s email=%s reason=wrong_otp attempt=%s remaining=%s",
+                user.pk, email, otp_obj.attempts, remaining,
+            )
             raise ValueError(f"OTP không đúng. Còn {remaining} lần thử.")
 
         # 5. OTP matches — mark as used
         otp_obj.is_used = True
         otp_obj.save(update_fields=['attempts', 'is_used'])
+        logger.info("otp_verified: user_id=%s email=%s attempts=%s", user.pk, email, otp_obj.attempts)
 
     # 6. Issue a cryptographically secure reset token stored in Redis
     reset_token = secrets.token_urlsafe(32)
@@ -163,11 +192,13 @@ def confirm_reset(reset_token: str, new_password: str) -> None:
     """
     user_pk = cache.get(f"password_reset_token:{reset_token}")
     if not user_pk:
+        logger.warning("password_reset_failed: reason=invalid_or_expired_token")
         raise ValueError("Token không hợp lệ hoặc đã hết hạn.")
 
     try:
         user = User.objects.get(pk=user_pk, is_active=True)
     except User.DoesNotExist:
+        logger.warning("password_reset_failed: user_pk=%s reason=user_not_found", user_pk)
         raise ValueError("Tài khoản không tồn tại.")
 
     user.set_password(new_password)
@@ -175,6 +206,7 @@ def confirm_reset(reset_token: str, new_password: str) -> None:
 
     # Delete token immediately so it cannot be reused
     cache.delete(f"password_reset_token:{reset_token}")
+    logger.info("password_reset_confirmed: user_id=%s email=%s", user.pk, user.email)
 
 
 # ---------------------------------------------------------------------------
