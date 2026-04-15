@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
@@ -23,6 +23,7 @@ const loading = ref(false)
 const error = ref('')
 const pendingApproval = ref(false)
 const pendingEmail = ref('')
+const resetSuccess = computed(() => route.query.reset === 'success')
 
 async function submit() {
   error.value = ''
@@ -67,6 +68,10 @@ async function submit() {
   <div class="login-view">
     <AppLogo variant="login" />
 
+    <div v-if="resetSuccess" class="login-view__reset-banner">
+      {{ t('auth.login.resetSuccess') }}
+    </div>
+
     <div v-if="pendingApproval" class="login-view__pending">
       <div class="login-view__pending-icon">⏳</div>
       <h2 class="login-view__pending-title">{{ t('auth.register.successTitle') }}</h2>
@@ -94,7 +99,7 @@ async function submit() {
         :show-password-toggle="true"
       />
       <div class="login-view__forgot">
-        <a href="#" class="login-view__forgot-link" @click.prevent="">{{ t('auth.login.forgotPassword') }}</a>
+        <RouterLink to="/auth/forgot-password" class="login-view__forgot-link">{{ t('auth.login.forgotPassword') }}</RouterLink>
       </div>
       <PrimaryButton type="submit" :loading="loading">{{ t('auth.login.submitButton') }}</PrimaryButton>
     </form>
@@ -112,6 +117,7 @@ async function submit() {
 .login-view__form { margin-top: var(--space-md); }
 .login-view__forgot { text-align: right; margin-top: -8px; margin-bottom: var(--space-md); }
 .login-view__forgot-link { color: var(--accent-gold); font-size: 0.85rem; }
+.login-view__reset-banner { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 8px; padding: 10px 16px; font-size: 0.9rem; text-align: center; margin-bottom: var(--space-md); }
 .login-view__pending { text-align: center; padding: var(--space-lg) 0; }
 .login-view__pending-icon { font-size: 3rem; margin-bottom: var(--space-md); }
 .login-view__pending-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-sm); }

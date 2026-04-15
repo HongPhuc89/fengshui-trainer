@@ -36,4 +36,20 @@ export const authService = {
   logout(refreshToken) {
     return api.post('/auth/logout/', { refresh: refreshToken })
   },
+
+  requestPasswordResetOtp(email) {
+    return api.post('auth/password-reset/request/', { email })
+  },
+
+  verifyPasswordResetOtp(email, otp) {
+    return api.post('auth/password-reset/verify/', { email, otp })
+  },
+
+  confirmPasswordReset(resetToken, newPassword, confirmPassword) {
+    return api.post('auth/password-reset/confirm/', {
+      reset_token: resetToken,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    })
+  },
 }

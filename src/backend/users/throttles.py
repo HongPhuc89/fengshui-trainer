@@ -9,3 +9,8 @@ class RegisterRateThrottle(AnonRateThrottle):
 class LoginRateThrottle(AnonRateThrottle):
     """Throttle for login endpoint — higher rate to accommodate mobile token refresh."""
     scope = 'login'
+
+
+class OtpRequestRateThrottle(AnonRateThrottle):
+    """IP-level throttle for OTP request and verify endpoints — last line of defence."""
+    scope = 'otp_request'

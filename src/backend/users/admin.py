@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from .models import User, UserDevice, AdminAuditLog
+from .models import User, UserDevice, AdminAuditLog, PasswordResetOTP
 from books.models import UserBookPurchase
 from videos.models import UserVideoPurchase
 
@@ -311,6 +311,21 @@ class UserDeviceAdmin(admin.ModelAdmin):
         if xff:
             return xff.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
+
+
+@admin.register(PasswordResetOTP)
+class PasswordResetOTPAdmin(admin.ModelAdmin):
+    list_display = ('user', 'expires_at', 'attempts', 'is_used', 'created_at')
+    list_filter = ('is_used',)
+    search_fields = ('user__email', 'user__username')
+    readonly_fields = ('user', 'otp_hash', 'expires_at', 'attempts', 'is_used', 'created_at', 'updated_at')
+    ordering = ('-created_at',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AdminAuditLog)

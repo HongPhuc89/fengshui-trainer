@@ -55,6 +55,7 @@ const routes = [
     children: [
       { path: 'login', name: 'Login', component: () => import('../views/LoginView.vue') },
       { path: 'register', name: 'Register', component: () => import('../views/RegisterView.vue') },
+      { path: 'forgot-password', name: 'ForgotPassword', component: () => import('../views/ForgotPasswordView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
