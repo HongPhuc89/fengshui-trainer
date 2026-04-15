@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from ..models import User, UserDevice
@@ -114,6 +115,9 @@ class CustomLoginSerializer(serializers.Serializer):
 
         # Mark all other devices as REVOKED so DeviceJWTAuthentication rejects their tokens
         user.devices.exclude(device_id=current_device_id).update(status='REVOKED')
+
+        # Update last_login timestamp (django.contrib.auth.login() is not called in JWT flow)
+        update_last_login(None, user)
 
         # Issue new token with device_id claim embedded
         refresh = RefreshToken.for_user(user)
