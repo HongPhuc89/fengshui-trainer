@@ -329,7 +329,7 @@ async function submitStep3() {
   border: 1.5px solid var(--border-color, #ccc);
   border-radius: 8px;
   background: var(--input-bg, #fff);
-  color: var(--text-primary);
+  color: black;
   outline: none;
   transition: border-color 0.15s;
 }
