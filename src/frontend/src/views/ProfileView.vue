@@ -112,6 +112,14 @@ async function saveName() {
 }
 
 // ─── Change Password ──────────────────────────────────────────────────────────
+const PW_CHANGED_KEY = 'pw_changed_date'
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+}
+
+const alreadyChangedToday = ref(localStorage.getItem(PW_CHANGED_KEY) === todayIso())
+
 const showPasswordForm = ref(false)
 const passwordForm = reactive({
   current_password: '',
@@ -123,6 +131,7 @@ const passwordError = ref('')
 const passwordSuccess = ref(false)
 
 function openPasswordForm() {
+  if (alreadyChangedToday.value) return
   Object.assign(passwordForm, { current_password: '', new_password: '', confirm_password: '' })
   passwordError.value = ''
   passwordSuccess.value = false
@@ -145,6 +154,8 @@ async function savePassword() {
   passwordSaving.value = true
   try {
     await userService.changePassword({ ...passwordForm })
+    localStorage.setItem(PW_CHANGED_KEY, todayIso())
+    alreadyChangedToday.value = true
     showPasswordForm.value = false
     Object.assign(passwordForm, { current_password: '', new_password: '', confirm_password: '' })
     passwordSuccess.value = true
@@ -153,7 +164,9 @@ async function savePassword() {
     }, 4000)
   } catch (err) {
     const data = err.response?.data
-    if (data?.current_password) {
+    if (err.response?.status === 429 && data?.detail) {
+      passwordError.value = data.detail
+    } else if (data?.current_password) {
       passwordError.value = data.current_password
     } else if (data?.confirm_password) {
       passwordError.value = data.confirm_password
@@ -353,7 +366,10 @@ onMounted(() => {
     <div class="card security-card">
       <div class="security-header">
         <span class="card-label">Bảo mật</span>
-        <button v-if="!showPasswordForm" class="btn-text-link" @click="openPasswordForm">
+        <span v-if="alreadyChangedToday" class="pw-changed-today">
+          Đã đổi hôm nay
+        </span>
+        <button v-else-if="!showPasswordForm" class="btn-text-link" @click="openPasswordForm">
           Đổi mật khẩu
         </button>
       </div>
@@ -859,6 +875,11 @@ onMounted(() => {
   color: #4ade80;
   font-size: 0.82rem;
   margin: var(--space-xs) 0 0;
+}
+
+.pw-changed-today {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* ── Helpers ────────────────────────────────────────────── */

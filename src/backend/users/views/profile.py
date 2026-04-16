@@ -97,6 +97,12 @@ class ChangePasswordView(views.APIView):
         serializer.is_valid(raise_exception=True)
         user = request.user
 
+        if user.password_changed_at == timezone.localdate():
+            return Response(
+                {'detail': 'Bạn chỉ có thể đổi mật khẩu một lần mỗi ngày.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         if not user.check_password(serializer.validated_data['current_password']):
             return Response(
                 {'current_password': 'Mật khẩu hiện tại không đúng.'},
@@ -113,7 +119,8 @@ class ChangePasswordView(views.APIView):
             return Response({'new_password': list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(new_password)
-        user.save(update_fields=['password'])
+        user.password_changed_at = timezone.localdate()
+        user.save(update_fields=['password', 'password_changed_at'])
 
         logger.info('change_password_success: user_id=%s email=%s', user.pk, user.email)
         return Response({'message': 'Đổi mật khẩu thành công.'})

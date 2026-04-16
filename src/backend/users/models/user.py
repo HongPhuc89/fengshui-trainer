@@ -33,6 +33,9 @@ class User(AbstractUser, BaseModel):
     is_device_locked = models.BooleanField(default=False)
     last_device_reset = models.DateTimeField(default=timezone.now)
 
+    # Password change rate limiting — one change allowed per calendar day
+    password_changed_at = models.DateField(null=True, blank=True)
+
     # Use public_id as the primary identifier for external relations
     # but keep standard Django id (BaseModel.id) for internal performance
     
