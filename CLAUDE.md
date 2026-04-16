@@ -11,7 +11,7 @@ Every feature must go through the following stages **in order**. Do not skip or 
 ### Stage 1 — Detail Design (Technical Leader)
 
 - Use the `/technical-leader` skill to produce a detail design document.
-- Save the document to `md/design/<feature-name>.md`.
+- Save the document to `md/design/feature-<number>-<short-name>.md` (e.g. `feature-32-change-password.md`). The number must be the next sequential number after the highest existing feature number in `md/TASKS.md`. Never use a non-numeric slug as the filename (e.g. `feature-change-password.md` is **invalid**).
 - Present the design to the user and explicitly ask for PO review.
 
 ### Stage 2 — PO Review Loop

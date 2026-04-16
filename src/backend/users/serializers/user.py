@@ -2,6 +2,22 @@ from rest_framework import serializers
 from ..models import User
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError(
+                {'confirm_password': 'Mật khẩu xác nhận không khớp.'}
+            )
+        # validate_password() is intentionally NOT called here — it requires the user
+        # object for UserAttributeSimilarityValidator (checks against email/name).
+        # Validation is done in the view after the user object is resolved.
+        return data
+
+
 class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
 

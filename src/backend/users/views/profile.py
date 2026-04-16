@@ -1,6 +1,9 @@
 import io
 from datetime import timedelta
+from logging import getLogger
 
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.base import ContentFile
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -11,6 +14,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..serializers import UserSerializer
+from ..serializers.user import ChangePasswordSerializer
+from ..throttles import LoginRateThrottle
+
+logger = getLogger(__name__)
 
 ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
@@ -78,6 +85,38 @@ class AvatarUploadView(views.APIView):
 
         avatar_url = request.build_absolute_uri(user.avatar.url)
         return Response({'avatar_url': avatar_url}, status=status.HTTP_200_OK)
+
+
+class ChangePasswordView(views.APIView):
+    """POST /api/users/me/change-password/ — Change password for the authenticated user."""
+    permission_classes = (IsAuthenticated,)
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+
+        if not user.check_password(serializer.validated_data['current_password']):
+            return Response(
+                {'current_password': 'Mật khẩu hiện tại không đúng.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_password = serializer.validated_data['new_password']
+
+        # validate_password called here (not in serializer) so UserAttributeSimilarityValidator
+        # has the user object to check against email/name attributes.
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            return Response({'new_password': list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        logger.info('change_password_success: user_id=%s email=%s', user.pk, user.email)
+        return Response({'message': 'Đổi mật khẩu thành công.'})
 
 
 @extend_schema(responses={200: {

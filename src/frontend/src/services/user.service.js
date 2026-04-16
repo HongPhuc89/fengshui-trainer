@@ -17,6 +17,10 @@ export const userService = {
     })
   },
 
+  changePassword(data) {
+    return client.post('/users/me/change-password/', data)
+  },
+
   getDeviceStatus() {
     return client.get('/users/me/device-status/')
   },

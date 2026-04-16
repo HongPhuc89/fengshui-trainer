@@ -111,6 +111,62 @@ async function saveName() {
   }
 }
 
+// ─── Change Password ──────────────────────────────────────────────────────────
+const showPasswordForm = ref(false)
+const passwordForm = reactive({
+  current_password: '',
+  new_password: '',
+  confirm_password: '',
+})
+const passwordSaving = ref(false)
+const passwordError = ref('')
+const passwordSuccess = ref(false)
+
+function openPasswordForm() {
+  Object.assign(passwordForm, { current_password: '', new_password: '', confirm_password: '' })
+  passwordError.value = ''
+  passwordSuccess.value = false
+  showPasswordForm.value = true
+}
+
+function cancelPasswordForm() {
+  showPasswordForm.value = false
+}
+
+async function savePassword() {
+  passwordError.value = ''
+  passwordSuccess.value = false
+
+  if (passwordForm.new_password !== passwordForm.confirm_password) {
+    passwordError.value = 'Mật khẩu xác nhận không khớp.'
+    return
+  }
+
+  passwordSaving.value = true
+  try {
+    await userService.changePassword({ ...passwordForm })
+    showPasswordForm.value = false
+    Object.assign(passwordForm, { current_password: '', new_password: '', confirm_password: '' })
+    passwordSuccess.value = true
+    setTimeout(() => {
+      passwordSuccess.value = false
+    }, 4000)
+  } catch (err) {
+    const data = err.response?.data
+    if (data?.current_password) {
+      passwordError.value = data.current_password
+    } else if (data?.confirm_password) {
+      passwordError.value = data.confirm_password
+    } else if (data?.new_password) {
+      passwordError.value = Array.isArray(data.new_password) ? data.new_password[0] : data.new_password
+    } else {
+      passwordError.value = 'Đổi mật khẩu thất bại. Vui lòng thử lại.'
+    }
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
 // ─── Wallet balance ───────────────────────────────────────────────────────────
 const walletBalance = ref(null)
 
@@ -291,6 +347,68 @@ onMounted(() => {
           </span>
         </div>
       </div>
+    </div>
+
+    <!-- ── Security (Change Password) ──────────────────────── -->
+    <div class="card security-card">
+      <div class="security-header">
+        <span class="card-label">Bảo mật</span>
+        <button v-if="!showPasswordForm" class="btn-text-link" @click="openPasswordForm">
+          Đổi mật khẩu
+        </button>
+      </div>
+
+      <div v-if="showPasswordForm" class="password-form">
+        <p v-if="passwordError" class="field-error">{{ passwordError }}</p>
+        <div class="pw-field">
+          <label class="pw-label" for="pw-current">Mật khẩu hiện tại</label>
+          <input
+            id="pw-current"
+            v-model="passwordForm.current_password"
+            class="name-input"
+            type="password"
+            autocomplete="current-password"
+            :disabled="passwordSaving"
+          />
+        </div>
+        <div class="pw-field">
+          <label class="pw-label" for="pw-new">Mật khẩu mới</label>
+          <input
+            id="pw-new"
+            v-model="passwordForm.new_password"
+            class="name-input"
+            type="password"
+            autocomplete="new-password"
+            :disabled="passwordSaving"
+          />
+        </div>
+        <div class="pw-field">
+          <label class="pw-label" for="pw-confirm">Xác nhận mật khẩu mới</label>
+          <input
+            id="pw-confirm"
+            v-model="passwordForm.confirm_password"
+            class="name-input"
+            type="password"
+            autocomplete="new-password"
+            :disabled="passwordSaving"
+          />
+        </div>
+        <div class="name-edit-actions">
+          <button class="btn-cancel-sm" :disabled="passwordSaving" @click="cancelPasswordForm">
+            Hủy
+          </button>
+          <button
+            class="btn-save"
+            :disabled="passwordSaving || !passwordForm.current_password || !passwordForm.new_password || !passwordForm.confirm_password"
+            @click="savePassword"
+          >
+            <span v-if="passwordSaving" class="spinner spinner--sm" />
+            <span v-else>Xác nhận</span>
+          </button>
+        </div>
+      </div>
+
+      <p v-if="passwordSuccess" class="form-success">Đổi mật khẩu thành công!</p>
     </div>
 
     <!-- ── Logout ─────────────────────────────────────────── -->
@@ -691,6 +809,56 @@ onMounted(() => {
 .btn-logout:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ── Security / Change Password ─────────────────────────── */
+.security-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.security-header .card-label {
+  margin: 0;
+}
+
+.btn-text-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent-gold);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0;
+}
+
+.btn-text-link:hover {
+  opacity: 0.8;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.pw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pw-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.form-success {
+  color: #4ade80;
+  font-size: 0.82rem;
+  margin: var(--space-xs) 0 0;
 }
 
 /* ── Helpers ────────────────────────────────────────────── */
