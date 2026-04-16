@@ -49,7 +49,7 @@ class Book(BaseModel):
     is_free = models.BooleanField(default=False)
     is_new_release = models.BooleanField(default=False)
     price_lt = models.PositiveIntegerField(
-        default=0,
+        default=500,
         help_text="Price in LT (in-app currency)",
     )
     demo_content = models.TextField(blank=True)
