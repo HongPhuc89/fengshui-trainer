@@ -39,7 +39,9 @@ def _delete_old_backups(retention_days: int = 30):
 
     keys = [obj["Key"] for obj in to_delete]
     logger.info("Deleting %d old backups: %s", len(keys), ", ".join(keys))
-    s3.delete_objects(Bucket=bucket, Delete={"Objects": to_delete})
+    # Supabase S3-compatible API does not support bulk delete_objects; delete one by one.
+    for key in keys:
+        s3.delete_object(Bucket=bucket, Key=key)
     logger.info("Deleted %d old backups", len(keys))
 
 
