@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AdminUserCreationForm as DjangoAdminUserCreationForm
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
@@ -11,10 +11,10 @@ from books.models import UserBookPurchase
 from videos.models import UserVideoPurchase
 
 
-class AdminUserCreationForm(UserCreationForm):
+class AdminUserCreationForm(DjangoAdminUserCreationForm):
     """User creation form for Django admin that requires email."""
 
-    class Meta(UserCreationForm.Meta):
+    class Meta(DjangoAdminUserCreationForm.Meta):
         model = User
         fields = ('username', 'email')
 
