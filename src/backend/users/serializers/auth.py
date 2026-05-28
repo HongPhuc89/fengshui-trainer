@@ -6,7 +6,7 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 from ..models import User, UserDevice
 from ..utils import get_client_ip, parse_device_name
 
-MAX_DEVICES = 3
+MAX_DEVICES = 5
 
 
 class RegisterSerializer(serializers.ModelSerializer):
