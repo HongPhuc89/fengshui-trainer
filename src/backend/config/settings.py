@@ -172,6 +172,10 @@ SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="media")
 SUPABASE_BACKUP_BUCKET = env("SUPABASE_BACKUP_BUCKET", default="db-backups")
 SUPABASE_REGION = env("SUPABASE_REGION", default="ap-southeast-1")
 SUPABASE_URL_EXPIRY = 3600  # pre-signed URL valid for 1 hour
+SUPABASE_DATABASE_URL = env("SUPABASE_DATABASE_URL", default="")
+
+# Health check secret token (for /api/health-supabase/)
+HEALTH_SECRET_TOKEN = env("HEALTH_SECRET_TOKEN", default="")
 
 # PDF encryption — generate with: openssl rand -hex 32
 PDF_MASTER_KEY = env("PDF_MASTER_KEY", default="")
