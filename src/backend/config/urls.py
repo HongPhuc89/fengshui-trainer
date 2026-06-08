@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/comments/', include('comments.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/admin/stats/', include('users.urls_admin_stats')),
+    path('api/landing/', include('landing.urls')),
 ]
 
 if settings.DEBUG:

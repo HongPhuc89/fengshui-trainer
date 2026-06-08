@@ -81,6 +81,8 @@ INSTALLED_APPS = [
     "comments",
     "notifications",
     "core",
+    "landing",
+    "jsoneditor",
 ]
 
 MIDDLEWARE = [

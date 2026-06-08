@@ -1,0 +1,285 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { landingService } from '../services/landing.service'
+import BookIntroAccordionItem from '../components/landing/BookIntroAccordionItem.vue'
+import BookIntroFeaturedCard from '../components/landing/BookIntroFeaturedCard.vue'
+import BookIntroSidebar from '../components/landing/BookIntroSidebar.vue'
+
+const pageData = ref(null)
+const loading = ref(true)
+const error = ref(false)
+const activeChapterLabel = ref(null)
+
+async function fetchPage() {
+  loading.value = true
+  error.value = false
+  try {
+    const res = await landingService.getBookIntroPage()
+    pageData.value = res.data
+    const first = res.data.chapters?.find(c => c.display_type === 'accordion')
+    if (first) activeChapterLabel.value = first.chapter_label
+  } catch {
+    error.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+function toggleChapter(label) {
+  activeChapterLabel.value = activeChapterLabel.value === label ? null : label
+}
+
+// Group consecutive featured chapters together so they render in a 2-col grid
+const groupedChapters = computed(() => {
+  if (!pageData.value?.chapters) return []
+  const result = []
+  let featuredBuffer = []
+
+  for (const chapter of pageData.value.chapters) {
+    if (chapter.display_type === 'featured') {
+      featuredBuffer.push(chapter)
+    } else {
+      if (featuredBuffer.length) {
+        result.push({ type: 'featured-group', chapters: [...featuredBuffer] })
+        featuredBuffer = []
+      }
+      result.push({ type: 'accordion', chapter })
+    }
+  }
+  if (featuredBuffer.length) {
+    result.push({ type: 'featured-group', chapters: featuredBuffer })
+  }
+  return result
+})
+
+onMounted(fetchPage)
+</script>
+
+<template>
+  <div class="book-intro">
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="book-intro__skeleton">
+      <div class="skeleton skeleton--title"></div>
+      <div class="skeleton skeleton--subtitle"></div>
+      <div class="skeleton skeleton--bar"></div>
+      <div class="skeleton skeleton--bar"></div>
+      <div class="skeleton skeleton--bar"></div>
+    </div>
+
+    <!-- Error state -->
+    <div v-else-if="error" class="book-intro__error">
+      <p>Không thể tải nội dung, vui lòng thử lại.</p>
+      <button class="book-intro__retry" @click="fetchPage">Thử lại</button>
+    </div>
+
+    <!-- Main content -->
+    <template v-else-if="pageData">
+      <div class="book-intro__layout">
+        <!-- Left column -->
+        <div class="book-intro__main">
+          <header class="book-intro__header">
+            <span class="book-intro__tag">{{ pageData.tag_label }}</span>
+            <h1 class="book-intro__headline">{{ pageData.headline }}</h1>
+            <div class="book-intro__divider" aria-hidden="true"></div>
+          </header>
+
+          <!-- Empty state -->
+          <p v-if="!pageData.chapters?.length" class="book-intro__empty">
+            Chưa có nội dung.
+          </p>
+
+          <div v-else class="book-intro__chapters">
+            <template v-for="(group, i) in groupedChapters" :key="i">
+              <!-- Accordion chapter -->
+              <BookIntroAccordionItem
+                v-if="group.type === 'accordion'"
+                :chapter="group.chapter"
+                :is-open="activeChapterLabel === group.chapter.chapter_label"
+                @toggle="toggleChapter"
+              />
+
+              <!-- Featured chapters grid -->
+              <div v-else class="book-intro__featured-grid">
+                <BookIntroFeaturedCard
+                  v-for="(chapter, j) in group.chapters"
+                  :key="j"
+                  :chapter="chapter"
+                  :class="{ 'book-intro__featured-card--full': group.chapters.length % 2 !== 0 && j === group.chapters.length - 1 }"
+                />
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Right column: sidebar -->
+        <div class="book-intro__sidebar-col">
+          <BookIntroSidebar
+            :qr-image="pageData.sidebar_qr_image"
+            :zalo-url="pageData.sidebar_zalo_url"
+          />
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.book-intro {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 5rem 1.25rem 6rem;
+}
+
+@media (min-width: 768px) {
+  .book-intro {
+    padding: 8rem 4rem 6rem;
+  }
+}
+
+/* Skeleton */
+.book-intro__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 700px;
+}
+
+.skeleton {
+  background: var(--bg-card);
+  border-radius: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton--title  { height: 3.5rem; width: 80%; }
+.skeleton--subtitle { height: 2rem; width: 60%; }
+.skeleton--bar { height: 4rem; width: 100%; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Error */
+.book-intro__error {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.book-intro__retry {
+  padding: 0.5rem 1.5rem;
+  border: 1px solid var(--btn-primary);
+  background: transparent;
+  color: var(--btn-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.book-intro__retry:hover {
+  background: var(--btn-primary);
+  color: var(--btn-primary-text, #3c2f00);
+}
+
+/* Layout */
+.book-intro__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+@media (min-width: 1024px) {
+  .book-intro__layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 3rem;
+  }
+
+  .book-intro__main {
+    flex: 2;
+    min-width: 0;
+  }
+
+  .book-intro__sidebar-col {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Header */
+.book-intro__header {
+  margin-bottom: 3rem;
+}
+
+.book-intro__tag {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--btn-primary);
+  margin-bottom: 1rem;
+}
+
+.book-intro__headline {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 500;
+  color: var(--btn-primary);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+/* Decorative divider */
+.book-intro__divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-input), transparent);
+  position: relative;
+  max-width: 32rem;
+}
+
+.book-intro__divider::after {
+  content: '◆';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-main, #131313);
+  padding: 0 0.625rem;
+  color: var(--btn-primary);
+  font-size: 0.75rem;
+}
+
+/* Chapters */
+.book-intro__chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.book-intro__empty {
+  color: var(--text-secondary);
+  padding: 2rem 0;
+}
+
+/* Featured grid */
+.book-intro__featured-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .book-intro__featured-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .book-intro__featured-card--full {
+    grid-column: 1 / -1;
+  }
+}
+</style>

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import AppLayout from '../layouts/AppLayout.vue'
+import LandingLayout from '../layouts/LandingLayout.vue'
 
 const routes = [
   {
@@ -56,6 +57,18 @@ const routes = [
       { path: 'login', name: 'Login', component: () => import('../views/LoginView.vue') },
       { path: 'register', name: 'Register', component: () => import('../views/RegisterView.vue') },
       { path: 'forgot-password', name: 'ForgotPassword', component: () => import('../views/ForgotPasswordView.vue') },
+    ],
+  },
+  {
+    path: '/',
+    component: LandingLayout,
+    children: [
+      {
+        path: 'gioi-thieu-sach',
+        name: 'BookIntroPage',
+        component: () => import('../views/BookIntroPageView.vue'),
+        meta: { requiresAuth: false },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

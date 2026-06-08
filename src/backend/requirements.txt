@@ -18,3 +18,4 @@ sentry-sdk
 requests
 boto3
 cryptography
+django-jsoneditor
