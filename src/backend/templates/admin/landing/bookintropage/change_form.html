@@ -1,0 +1,395 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+/* ── QR upload zone (replaces default widget) ─────────────── */
+.qr-zone {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.qr-zone__thumb {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 2px solid #ccc;
+  display: block;
+  background: #fff;
+}
+.qr-zone__placeholder {
+  width: 160px;
+  height: 160px;
+  border: 2px dashed #aaa;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #888;
+  font-size: 13px;
+  background: #f8f8f8;
+}
+.qr-zone__placeholder svg { opacity: .45; }
+.qr-zone__btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  background: #417690;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.qr-zone__btn:hover { background: #2d5470; }
+
+/* ── Modal overlay ────────────────────────────────────────── */
+.qr-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+.qr-modal-backdrop.open { display: flex; }
+
+.qr-modal {
+  background: #fff;
+  border-radius: 8px;
+  width: 480px;
+  max-width: 96vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+.qr-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.qr-modal__close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #555;
+  line-height: 1;
+  padding: 0 4px;
+}
+.qr-modal__body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Drop zone */
+.qr-modal__drop {
+  border: 2px dashed #417690;
+  border-radius: 6px;
+  padding: 32px 16px;
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.qr-modal__drop.dragover {
+  background: #e8f4fb;
+  border-color: #205070;
+}
+.qr-modal__drop svg { opacity: .5; }
+.qr-modal__drop input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.qr-modal__paste-hint {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+}
+.qr-modal__paste-hint kbd {
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+/* Preview */
+.qr-modal__preview { display: none; flex-direction: column; align-items: center; gap: 10px; }
+.qr-modal__preview.visible { display: flex; }
+.qr-modal__preview img {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  object-fit: contain;
+}
+.qr-modal__preview-name { font-size: 12px; color: #777; }
+
+/* Footer */
+.qr-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid #e0e0e0;
+}
+.qr-modal__footer button {
+  padding: 6px 18px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-cancel { background: #eee; color: #444; }
+.btn-cancel:hover { background: #ddd; }
+.btn-confirm { background: #417690; color: #fff; }
+.btn-confirm:hover { background: #2d5470; }
+.btn-confirm:disabled { background: #a0bcc8; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+(function () {
+  'use strict';
+
+  // ── Find the qr_image_upload field row ───────────────────
+  const row = document.querySelector('.field-qr_image_upload');
+  if (!row) return;
+
+  const originalInput = row.querySelector('input[type="file"]');
+  if (!originalInput) return;
+
+  // Hide the original widget controls (keep input in DOM for form submit)
+  const widgetWrap = originalInput.closest('p') || originalInput.parentElement;
+  widgetWrap.style.display = 'none';
+
+  // Get current image src from the qr preview readonly field if already uploaded to CDN
+  const previewRow = document.querySelector('.field-qr_image_preview');
+  const existingImg  = previewRow ? previewRow.querySelector('img') : null;
+  const currentSrc   = existingImg ? existingImg.src : null;
+
+  // ── Staged file ──────────────────────────────────────────
+  let stagedFile = null;
+
+  // ── Convert any image File → JPEG via Canvas ─────────────
+  const JPEG_QUALITY = 0.88;
+  function toJpeg(file) {
+    return new Promise(resolve => {
+      if (file.type === 'image/jpeg') { resolve(file); return; }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          const baseName = (file.name || 'qr').replace(/\.[^.]+$/, '') || 'qr';
+          resolve(new File([blob], baseName + '.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', JPEG_QUALITY);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  // ── Build zone ───────────────────────────────────────────
+  const zone = document.createElement('div');
+  zone.className = 'qr-zone';
+
+  if (currentSrc) {
+    const img = document.createElement('img');
+    img.className = 'qr-zone__thumb';
+    img.id = 'qr-zone-thumb';
+    img.src = currentSrc;
+    img.alt = 'QR';
+    zone.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'qr-zone__placeholder';
+    placeholder.id = 'qr-zone-thumb';
+    placeholder.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="3" height="3"/>
+        <rect x="18" y="14" width="3" height="3"/>
+        <rect x="14" y="18" width="3" height="3"/>
+        <rect x="18" y="18" width="3" height="3"/>
+      </svg>
+      <span>Chưa có ảnh QR</span>`;
+    zone.appendChild(placeholder);
+  }
+
+  const changeBtn = document.createElement('button');
+  changeBtn.type = 'button';
+  changeBtn.className = 'qr-zone__btn';
+  changeBtn.textContent = currentSrc ? 'Đổi ảnh QR' : 'Chọn ảnh QR';
+  zone.appendChild(changeBtn);
+
+  const helpText = row.querySelector('.help');
+  row.querySelector('div').insertBefore(zone, helpText || null);
+
+  // ── Build modal ──────────────────────────────────────────
+  const backdrop = document.createElement('div');
+  backdrop.className = 'qr-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="qr-modal">
+      <div class="qr-modal__header">
+        <span>Ảnh QR Zalo</span>
+        <button type="button" class="qr-modal__close" id="qr-modal-close">×</button>
+      </div>
+      <div class="qr-modal__body">
+        <div class="qr-modal__drop" id="qr-drop-zone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Kéo thả ảnh vào đây hoặc <u>chọn file</u></span>
+          <span style="font-size:11px;color:#aaa">PNG, JPG, WEBP</span>
+          <input type="file" id="qr-modal-file" accept="image/*">
+        </div>
+        <p class="qr-modal__paste-hint">Hoặc nhấn <kbd>Ctrl</kbd>+<kbd>V</kbd> để dán ảnh từ clipboard</p>
+        <div class="qr-modal__preview" id="qr-preview">
+          <img id="qr-preview-img" src="" alt="preview">
+          <span class="qr-modal__preview-name" id="qr-preview-name"></span>
+        </div>
+      </div>
+      <div class="qr-modal__footer">
+        <button type="button" class="btn-cancel" id="qr-btn-cancel">Hủy</button>
+        <button type="button" class="btn-confirm" id="qr-btn-confirm" disabled>Xác nhận</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+
+  // ── Modal refs ───────────────────────────────────────────
+  const dropZone       = document.getElementById('qr-drop-zone');
+  const modalFileInput = document.getElementById('qr-modal-file');
+  const preview        = document.getElementById('qr-preview');
+  const previewImg     = document.getElementById('qr-preview-img');
+  const previewName    = document.getElementById('qr-preview-name');
+  const btnConfirm     = document.getElementById('qr-btn-confirm');
+  const btnCancel      = document.getElementById('qr-btn-cancel');
+  const btnClose       = document.getElementById('qr-modal-close');
+
+  // ── Open / close ─────────────────────────────────────────
+  function openModal() {
+    stagedFile = null;
+    preview.classList.remove('visible');
+    previewImg.src = '';
+    previewName.textContent = '';
+    btnConfirm.disabled = true;
+    backdrop.classList.add('open');
+  }
+  function closeModal() {
+    backdrop.classList.remove('open');
+  }
+
+  changeBtn.addEventListener('click', openModal);
+  btnCancel.addEventListener('click', closeModal);
+  btnClose.addEventListener('click',  closeModal);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
+
+  // ── Stage a file (converts to JPEG first) ────────────────
+  async function stageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    btnConfirm.disabled = true;
+    previewName.textContent = 'Đang xử lý…';
+    preview.classList.add('visible');
+    const jpeg = await toJpeg(file);
+    stagedFile = jpeg;
+    const url = URL.createObjectURL(jpeg);
+    previewImg.src = url;
+    const origKB = Math.round(file.size / 1024);
+    const jpegKB = Math.round(jpeg.size / 1024);
+    const info   = file.type !== 'image/jpeg'
+      ? `${jpeg.name}  (${origKB} KB → ${jpegKB} KB)`
+      : `${jpeg.name}  (${jpegKB} KB)`;
+    previewName.textContent = info;
+    btnConfirm.disabled = false;
+  }
+
+  // ── File input ───────────────────────────────────────────
+  modalFileInput.addEventListener('change', () => {
+    if (modalFileInput.files[0]) stageFile(modalFileInput.files[0]);
+  });
+
+  // ── Drag & drop ──────────────────────────────────────────
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) stageFile(file);
+  });
+
+  // ── Paste ────────────────────────────────────────────────
+  document.addEventListener('paste', e => {
+    if (!backdrop.classList.contains('open')) return;
+    const items = e.clipboardData?.items ?? [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const raw = item.getAsFile();
+        if (raw) {
+          const named = new File([raw], 'clipboard', { type: item.type });
+          stageFile(named);
+          break;
+        }
+      }
+    }
+  });
+
+  // ── Confirm ──────────────────────────────────────────────
+  btnConfirm.addEventListener('click', () => {
+    if (!stagedFile) return;
+
+    // Transfer staged file to the original input
+    const dt = new DataTransfer();
+    dt.items.add(stagedFile);
+    originalInput.files = dt.files;
+
+    // Update the zone preview
+    const zoneThumb = document.getElementById('qr-zone-thumb');
+    if (zoneThumb.tagName === 'IMG') {
+      zoneThumb.src = URL.createObjectURL(stagedFile);
+    } else {
+      const img = document.createElement('img');
+      img.className = 'qr-zone__thumb';
+      img.id = 'qr-zone-thumb';
+      img.src = URL.createObjectURL(stagedFile);
+      img.alt = 'QR';
+      zoneThumb.replaceWith(img);
+    }
+    changeBtn.textContent = 'Đổi ảnh QR';
+
+    closeModal();
+  });
+})();
+</script>
+{% endblock %}

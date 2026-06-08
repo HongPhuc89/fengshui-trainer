@@ -207,6 +207,7 @@ onMounted(fetchPage)
   .book-intro__sidebar-col {
     flex: 1;
     min-width: 0;
+    align-self: flex-start;
   }
 }
 
