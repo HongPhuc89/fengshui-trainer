@@ -116,6 +116,8 @@ onMounted(fetchPage)
           <BookIntroSidebar
             :qr-image="pageData.sidebar_qr_image"
             :zalo-url="pageData.sidebar_zalo_url"
+            :phone="pageData.sidebar_phone"
+            :messenger-url="pageData.sidebar_messenger_url"
           />
         </div>
       </div>
@@ -124,10 +126,27 @@ onMounted(fetchPage)
 </template>
 
 <style scoped>
+/* ── Design tokens ───────────────────────────────────────── */
+:root {
+  --land-gold: #f2ca50;
+  --land-gold-dim: #e9c349;
+  --land-on-primary: #3c2f00;
+  --land-bg: #131313;
+  --land-surface-low: #1c1b1b;
+  --land-surface: #20201f;
+  --land-on-surface: #e5e2e1;
+  --land-on-surface-var: #d0c5af;
+  --land-outline: #99907c;
+  --land-outline-var: #4d4635;
+}
+
 .book-intro {
   max-width: 1280px;
   margin: 0 auto;
   padding: 5rem 1.25rem 6rem;
+  background: #131313;
+  min-height: 100vh;
+  color: #e5e2e1;
 }
 
 @media (min-width: 768px) {
@@ -145,25 +164,25 @@ onMounted(fetchPage)
 }
 
 .skeleton {
-  background: var(--bg-card);
+  background: #1c1b1b;
   border-radius: 4px;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.skeleton--title  { height: 3.5rem; width: 80%; }
-.skeleton--subtitle { height: 2rem; width: 60%; }
-.skeleton--bar { height: 4rem; width: 100%; }
+.skeleton--title    { height: 3.5rem; width: 80%; }
+.skeleton--subtitle { height: 2rem;   width: 60%; }
+.skeleton--bar      { height: 4rem;   width: 100%; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%       { opacity: 0.4; }
 }
 
 /* Error */
 .book-intro__error {
   text-align: center;
   padding: 4rem 2rem;
-  color: var(--text-secondary);
+  color: #d0c5af;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -172,17 +191,21 @@ onMounted(fetchPage)
 
 .book-intro__retry {
   padding: 0.5rem 1.5rem;
-  border: 1px solid var(--btn-primary);
+  border: 1px solid #f2ca50;
   background: transparent;
-  color: var(--btn-primary);
+  color: #f2ca50;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
   transition: background 0.2s, color 0.2s;
 }
 
 .book-intro__retry:hover {
-  background: var(--btn-primary);
-  color: var(--btn-primary-text, #3c2f00);
+  background: #f2ca50;
+  color: #3c2f00;
 }
 
 /* Layout */
@@ -208,6 +231,8 @@ onMounted(fetchPage)
     flex: 1;
     min-width: 0;
     align-self: flex-start;
+    position: sticky;
+    top: 7.5rem;
   }
 }
 
@@ -218,18 +243,20 @@ onMounted(fetchPage)
 
 .book-intro__tag {
   display: block;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--btn-primary);
+  color: #f2ca50;
   margin-bottom: 1rem;
 }
 
 .book-intro__headline {
+  font-family: 'EB Garamond', serif;
   font-size: clamp(2rem, 5vw, 4rem);
   font-weight: 500;
-  color: var(--btn-primary);
+  color: #f2ca50;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin-bottom: 1.5rem;
@@ -238,9 +265,10 @@ onMounted(fetchPage)
 /* Decorative divider */
 .book-intro__divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-input), transparent);
+  background: linear-gradient(90deg, transparent, #99907c, transparent);
   position: relative;
   max-width: 32rem;
+  margin: 2rem 0;
 }
 
 .book-intro__divider::after {
@@ -249,9 +277,9 @@ onMounted(fetchPage)
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  background: var(--bg-main, #131313);
+  background: #131313;
   padding: 0 0.625rem;
-  color: var(--btn-primary);
+  color: #f2ca50;
   font-size: 0.75rem;
 }
 
@@ -263,7 +291,7 @@ onMounted(fetchPage)
 }
 
 .book-intro__empty {
-  color: var(--text-secondary);
+  color: #d0c5af;
   padding: 2rem 0;
 }
 

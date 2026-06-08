@@ -1,7 +1,9 @@
 <script setup>
 defineProps({
-  qrImage: { type: String, default: '' },
-  zaloUrl: { type: String, required: true },
+  qrImage:      { type: String, default: '' },
+  zaloUrl:      { type: String, required: true },
+  phone:        { type: String, default: '' },
+  messengerUrl: { type: String, default: '' },
 })
 
 function hideOnError(e) {
@@ -11,86 +13,202 @@ function hideOnError(e) {
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar__contact">
-      <a
-        v-if="qrImage"
-        :href="zaloUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="sidebar__qr-link"
-      >
-        <img
-          :src="qrImage"
-          alt="QR Zalo"
-          class="sidebar__qr-img"
-          @error="hideOnError"
-        />
-      </a>
+    <!-- Contact box -->
+    <div class="sidebar__contact-box">
+      <h3 class="sidebar__contact-title">Liên hệ tư vấn &amp; Thỉnh sách</h3>
 
-      <a
-        :href="zaloUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="sidebar__zalo-btn"
-      >
-        <span class="sidebar__zalo-icon" aria-hidden="true">💬</span>
-        Zalo Channel
-      </a>
+      <!-- QR with glow -->
+      <div v-if="qrImage" class="sidebar__qr-wrapper">
+        <div class="sidebar__qr-glow"></div>
+        <a :href="zaloUrl" target="_blank" rel="noopener noreferrer" class="sidebar__qr-inner">
+          <img :src="qrImage" alt="QR Zalo" class="sidebar__qr-img" @error="hideOnError" />
+        </a>
+      </div>
+
+      <div class="sidebar__contact-info">
+        <p class="sidebar__scan-label">Quét mã Zalo liên hệ</p>
+        <a v-if="phone" :href="`tel:${phone}`" class="sidebar__phone">{{ phone }}</a>
+      </div>
+
+      <div class="sidebar__divider" aria-hidden="true"></div>
+
+      <div class="sidebar__actions">
+        <a
+          v-if="messengerUrl"
+          :href="messengerUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="sidebar__action-btn"
+        >
+          <span class="material-symbols-outlined sidebar__action-icon">send</span>
+          <span>Messenger</span>
+        </a>
+      </div>
     </div>
   </aside>
 </template>
 
 <style scoped>
 .sidebar {
-  position: sticky;
-  top: 2rem;
-}
-
-.sidebar__contact {
-  background: var(--bg-card);
-  border: 1px solid rgba(var(--color-primary-rgb, 242 202 80), 0.2);
-  padding: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
-.sidebar__qr-link {
+/* ── Contact box ─────────────────────────────────── */
+.sidebar__contact-box {
+  background: #1c1b1b;
+  border: 1px solid rgba(242, 202, 80, 0.2);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(242, 202, 80, 0.05);
+}
+
+.sidebar__contact-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #f2ca50;
+  margin-bottom: 2rem;
+}
+
+/* QR glow */
+.sidebar__qr-wrapper {
+  position: relative;
+  width: 12rem;
+  height: 12rem;
+  margin: 0 auto 2rem;
+}
+
+.sidebar__qr-glow {
+  position: absolute;
+  inset: 0;
+  background: rgba(242, 202, 80, 0.2);
+  filter: blur(2rem);
+  border-radius: 9999px;
+  transition: background 0.5s;
+}
+
+.sidebar__qr-wrapper:hover .sidebar__qr-glow {
+  background: rgba(242, 202, 80, 0.3);
+}
+
+.sidebar__qr-inner {
+  position: relative;
   display: block;
-  width: 180px;
-  height: 180px;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(242, 202, 80, 0.3);
+  width: 100%;
+  height: 100%;
+  transition: transform 0.3s;
+}
+
+.sidebar__qr-wrapper:hover .sidebar__qr-inner {
+  transform: scale(1.05);
 }
 
 .sidebar__qr-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(var(--color-primary-rgb, 242 202 80), 0.3);
-  background: #fff;
-  padding: 0.5rem;
+  filter: grayscale(1);
+  transition: filter 0.3s;
 }
 
-.sidebar__zalo-btn {
+.sidebar__qr-img:hover {
+  filter: grayscale(0);
+}
+
+/* Contact info */
+.sidebar__contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar__scan-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #f2ca50;
+}
+
+.sidebar__phone {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: #e5e2e1;
+  text-decoration: none;
+  display: block;
+  transition: color 0.2s;
+}
+
+.sidebar__phone:hover {
+  color: #f2ca50;
+}
+
+/* Divider */
+.sidebar__divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #99907c, transparent);
+  position: relative;
+  margin: 2rem 0;
+  opacity: 0.3;
+}
+
+.sidebar__divider::after {
+  content: '◆';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #1c1b1b;
+  padding: 0 0.625rem;
+  color: #f2ca50;
+  font-size: 0.75rem;
+}
+
+/* Action buttons */
+.sidebar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebar__action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
+  gap: 0.75rem;
   padding: 1rem;
-  background: var(--bg-main);
-  border: 1px solid rgba(var(--color-primary-rgb, 242 202 80), 0.2);
-  color: var(--text-primary);
+  background: #20201f;
+  border: 1px solid rgba(242, 202, 80, 0.2);
+  color: #e5e2e1;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   text-decoration: none;
   transition: background 0.2s;
 }
 
-.sidebar__zalo-btn:hover {
-  background: rgba(var(--color-primary-rgb, 242 202 80), 0.1);
+.sidebar__action-btn:hover {
+  background: rgba(242, 202, 80, 0.1);
 }
+
+.sidebar__action-icon {
+  color: #f2ca50;
+  font-size: 1.25rem;
+  font-variation-settings: 'FILL' 0, 'wght' 300;
+}
+
 </style>

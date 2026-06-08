@@ -27,7 +27,7 @@ async function copyLink(url, idx) {
           {{ [chapter.subtitle, chapter.price_label].filter(Boolean).join(' — ') }}
         </span>
       </div>
-      <span class="accordion-item__arrow" aria-hidden="true">▾</span>
+      <span class="material-symbols-outlined accordion-item__arrow" aria-hidden="true">expand_more</span>
     </button>
 
     <div class="accordion-item__body">
@@ -45,15 +45,14 @@ async function copyLink(url, idx) {
               rel="noopener noreferrer"
               class="btn btn--outline-gold"
             >
-              {{ item.demo_label || 'XEM DEMO' }}
-              <span class="btn__icon" aria-hidden="true">↗</span>
+              Truy cập
+              <span class="material-symbols-outlined btn__icon" aria-hidden="true">open_in_new</span>
             </a>
             <button
-              v-if="item.copy_link_url"
               class="btn btn--ghost"
-              @click="copyLink(item.copy_link_url, idx)"
+              @click="copyLink(item.copy_link_url || item.demo_url, idx)"
             >
-              {{ copiedIndex === idx ? 'Đã sao chép!' : 'Sao chép link' }}
+              {{ copiedIndex === idx ? 'Đã sao chép!' : 'Copy link' }}
             </button>
           </div>
         </div>
@@ -64,8 +63,9 @@ async function copyLink(url, idx) {
 
 <style scoped>
 .accordion-item {
-  border-top: 1px solid rgba(var(--color-primary-rgb, 242 202 80), 0.2);
-  background: var(--bg-card);
+  border-top: 1px solid rgba(242, 202, 80, 0.2);
+  background: #1c1b1b;
+  box-shadow: 0 0 20px rgba(242, 202, 80, 0.05);
 }
 
 .accordion-item__header {
@@ -78,11 +78,11 @@ async function copyLink(url, idx) {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-primary);
+  color: #e5e2e1;
 }
 
 .accordion-item__header:hover .accordion-item__title {
-  color: var(--btn-primary);
+  color: #f2ca50;
 }
 
 .accordion-item__meta {
@@ -92,31 +92,36 @@ async function copyLink(url, idx) {
 }
 
 .accordion-item__label {
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--btn-primary);
+  color: #f2ca50;
 }
 
 .accordion-item__title {
-  font-size: 1.5rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.75rem;
   font-weight: 500;
-  color: var(--text-primary);
-  transition: color 0.2s;
+  color: #e5e2e1;
+  transition: color 0.3s;
+  line-height: 1.3;
 }
 
 .accordion-item__sub {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 1rem;
+  color: #d0c5af;
   opacity: 0.7;
 }
 
 .accordion-item__arrow {
-  font-size: 1.5rem;
-  color: var(--btn-primary);
+  font-size: 2rem;
+  color: #f2ca50;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  font-variation-settings: 'FILL' 0, 'wght' 300;
 }
 
 .accordion-item--open .accordion-item__arrow {
@@ -137,7 +142,7 @@ async function copyLink(url, idx) {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
-  padding: 0 2rem 2rem;
+  padding: 0 2rem 2.5rem;
 }
 
 @media (min-width: 768px) {
@@ -148,8 +153,8 @@ async function copyLink(url, idx) {
 
 .accordion-item__card {
   padding: 1.5rem;
-  background: var(--bg-main);
-  border-left: 4px solid rgba(var(--color-primary-rgb, 242 202 80), 0.4);
+  background: #131313;
+  border-left: 4px solid rgba(242, 202, 80, 0.4);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -158,13 +163,15 @@ async function copyLink(url, idx) {
 }
 
 .accordion-item__card:hover {
-  border-left-color: var(--btn-primary);
+  border-left-color: #f2ca50;
 }
 
 .accordion-item__card-title {
+  font-family: 'Hanken Grotesk', sans-serif;
   font-size: 1rem;
   font-weight: 400;
-  color: var(--text-primary);
+  color: #e5e2e1;
+  line-height: 1.6;
 }
 
 .accordion-item__actions {
@@ -176,8 +183,9 @@ async function copyLink(url, idx) {
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   padding: 0.5rem 1rem;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -185,31 +193,32 @@ async function copyLink(url, idx) {
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
   border: none;
-}
-
-.btn--outline-gold {
-  color: var(--btn-primary);
-  border: 1px solid rgba(var(--color-primary-rgb, 242 202 80), 0.3);
-  background: transparent;
   text-decoration: none;
 }
 
+.btn--outline-gold {
+  color: #f2ca50;
+  border: 1px solid rgba(242, 202, 80, 0.2);
+  background: transparent;
+}
+
 .btn--outline-gold:hover {
-  background: var(--btn-primary);
-  color: var(--btn-primary-text, #3c2f00);
+  background: #f2ca50;
+  color: #3c2f00;
 }
 
 .btn--ghost {
-  color: var(--text-secondary);
-  border: 1px solid var(--border-input);
+  color: #d0c5af;
+  border: 1px solid #4d4635;
   background: transparent;
 }
 
 .btn--ghost:hover {
-  background: var(--bg-card);
+  background: #1c1b1b;
 }
 
 .btn__icon {
-  font-style: normal;
+  font-size: 0.875rem;
+  font-variation-settings: 'FILL' 0, 'wght' 300;
 }
 </style>
