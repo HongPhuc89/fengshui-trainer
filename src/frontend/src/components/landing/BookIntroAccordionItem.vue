@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 const props = defineProps({
   chapter: { type: Object, required: true },
+  chapterNumber: { type: Number, required: true },
   isOpen: { type: Boolean, default: false },
 })
 
@@ -20,12 +21,14 @@ async function copyLink(url, idx) {
 <template>
   <div class="accordion-item" :class="{ 'accordion-item--open': isOpen }">
     <button class="accordion-item__header" @click="emit('toggle', chapter.chapter_label)">
-      <div class="accordion-item__meta">
-        <span class="accordion-item__label">{{ chapter.chapter_label }}</span>
-        <h2 class="accordion-item__title">{{ chapter.title }}</h2>
-        <span v-if="chapter.subtitle || chapter.price_label" class="accordion-item__sub">
-          {{ [chapter.subtitle, chapter.price_label].filter(Boolean).join(' — ') }}
-        </span>
+      <div class="accordion-item__header-inner">
+        <div class="accordion-item__num">{{ chapterNumber }}</div>
+        <div class="accordion-item__meta">
+          <h2 class="accordion-item__title">{{ chapter.title }}</h2>
+          <span v-if="chapter.subtitle || chapter.price_label" class="accordion-item__sub">
+            {{ [chapter.subtitle, chapter.price_label].filter(Boolean).join(' — ') }}
+          </span>
+        </div>
       </div>
       <span class="material-symbols-outlined accordion-item__arrow" aria-hidden="true">expand_more</span>
     </button>
@@ -73,31 +76,48 @@ async function copyLink(url, idx) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
   text-align: left;
   background: none;
   border: none;
   cursor: pointer;
   color: #e5e2e1;
+  gap: 1rem;
 }
 
 .accordion-item__header:hover .accordion-item__title {
   color: #f2ca50;
 }
 
+.accordion-item__header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.accordion-item__num {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid #f2ca50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f2ca50;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(242, 202, 80, 0.15);
+}
+
 .accordion-item__meta {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.accordion-item__label {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #f2ca50;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .accordion-item__title {

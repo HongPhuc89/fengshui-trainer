@@ -32,20 +32,22 @@ const groupedChapters = computed(() => {
   if (!pageData.value?.chapters) return []
   const result = []
   let featuredBuffer = []
+  let num = 0
 
   for (const chapter of pageData.value.chapters) {
+    num++
     if (chapter.display_type === 'featured') {
-      featuredBuffer.push(chapter)
+      featuredBuffer.push({ chapter, num })
     } else {
       if (featuredBuffer.length) {
-        result.push({ type: 'featured-group', chapters: [...featuredBuffer] })
+        result.push({ type: 'featured-group', items: [...featuredBuffer] })
         featuredBuffer = []
       }
-      result.push({ type: 'accordion', chapter })
+      result.push({ type: 'accordion', chapter, num })
     }
   }
   if (featuredBuffer.length) {
-    result.push({ type: 'featured-group', chapters: featuredBuffer })
+    result.push({ type: 'featured-group', items: featuredBuffer })
   }
   return result
 })
@@ -92,6 +94,7 @@ onMounted(fetchPage)
               <BookIntroAccordionItem
                 v-if="group.type === 'accordion'"
                 :chapter="group.chapter"
+                :chapter-number="group.num"
                 :is-open="activeChapterLabel === group.chapter.chapter_label"
                 @toggle="toggleChapter"
               />
@@ -99,10 +102,11 @@ onMounted(fetchPage)
               <!-- Featured chapters grid -->
               <div v-else class="book-intro__featured-grid">
                 <BookIntroFeaturedCard
-                  v-for="(chapter, j) in group.chapters"
+                  v-for="({ chapter, num }, j) in group.items"
                   :key="j"
                   :chapter="chapter"
-                  :class="{ 'book-intro__featured-card--full': group.chapters.length % 2 !== 0 && j === group.chapters.length - 1 }"
+                  :chapter-number="num"
+                  :class="{ 'book-intro__featured-card--full': group.items.length % 2 !== 0 && j === group.items.length - 1 }"
                 />
               </div>
             </template>
@@ -297,18 +301,8 @@ onMounted(fetchPage)
 
 /* Featured grid */
 .book-intro__featured-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .book-intro__featured-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .book-intro__featured-card--full {
-    grid-column: 1 / -1;
-  }
 }
 </style>
