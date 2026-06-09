@@ -16,8 +16,6 @@ async function fetchPage() {
   try {
     const res = await landingService.getBookIntroPage()
     pageData.value = res.data
-    const first = res.data.chapters?.find(c => c.display_type === 'accordion')
-    if (first) activeChapterLabel.value = first.chapter_label
   } catch {
     error.value = true
   } finally {
@@ -78,9 +76,9 @@ onMounted(fetchPage)
         <!-- Left column -->
         <div class="book-intro__main">
           <header class="book-intro__header">
-            <span class="book-intro__tag">{{ pageData.tag_label }}</span>
             <h1 class="book-intro__headline">{{ pageData.headline }}</h1>
             <div class="book-intro__divider" aria-hidden="true"></div>
+            <span class="book-intro__tag">{{ pageData.tag_label }}</span>
           </header>
 
           <!-- Empty state -->
@@ -249,8 +247,9 @@ onMounted(fetchPage)
   font-weight: 600;
   letter-spacing: 0.3em;
   text-transform: uppercase;
+  font-style: italic;
   color: #f2ca50;
-  margin-bottom: 1rem;
+  margin-top: 0.5rem;
 }
 
 .book-intro__headline {
