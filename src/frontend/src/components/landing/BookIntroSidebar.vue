@@ -59,27 +59,27 @@ function hideOnError(e) {
 .sidebar__contact-box {
   background: #1c1b1b;
   border: 1px solid rgba(242, 202, 80, 0.2);
-  padding: 2rem;
+  padding: 1.25rem;
   text-align: center;
   box-shadow: 0 0 20px rgba(242, 202, 80, 0.05);
 }
 
 .sidebar__contact-title {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #f2ca50;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* QR glow */
 .sidebar__qr-wrapper {
   position: relative;
-  width: 12rem;
-  height: 12rem;
-  margin: 0 auto 2rem;
+  width: 9rem;
+  height: 9rem;
+  margin: 0 auto 1rem;
 }
 
 .sidebar__qr-glow {
@@ -128,8 +128,8 @@ function hideOnError(e) {
 .sidebar__contact-info {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
 }
 
 .sidebar__scan-label {
@@ -143,7 +143,7 @@ function hideOnError(e) {
 
 .sidebar__phone {
   font-family: 'EB Garamond', serif;
-  font-size: 1.75rem;
+  font-size: 1.4rem;
   font-weight: 500;
   color: #e5e2e1;
   text-decoration: none;
@@ -160,7 +160,7 @@ function hideOnError(e) {
   height: 1px;
   background: linear-gradient(90deg, transparent, #99907c, transparent);
   position: relative;
-  margin: 2rem 0;
+  margin: 1rem 0;
   opacity: 0.3;
 }
 
@@ -188,7 +188,7 @@ function hideOnError(e) {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 0.625rem;
   background: #20201f;
   border: 1px solid rgba(242, 202, 80, 0.2);
   color: #e5e2e1;

@@ -223,13 +223,14 @@ onMounted(fetchPage)
   }
 
   .book-intro__main {
-    flex: 2;
+    flex: 3;
     min-width: 0;
   }
 
   .book-intro__sidebar-col {
     flex: 1;
     min-width: 0;
+    max-width: 280px;
     align-self: flex-start;
     position: sticky;
     top: 7.5rem;

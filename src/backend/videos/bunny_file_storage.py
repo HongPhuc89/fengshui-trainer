@@ -8,10 +8,13 @@ Security model (same as .bin chapter files):
   receive the CDN URL. The CDN itself has no token authentication.
 """
 import io
+import logging
 import uuid
 
 import requests as http
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 try:
     from PIL import Image
@@ -151,6 +154,36 @@ def delete_pdf_from_bunny(storage_key: str) -> None:
         timeout=30,
     )
     resp.raise_for_status()
+
+
+def purge_cdn_url(cdn_url: str) -> bool:
+    """Purge a single URL from Bunny CDN edge cache.
+
+    Uses the Bunny account-level API key (BUNNY_ACCOUNT_API_KEY in settings).
+    Silently returns False if the key is not configured — purge is best-effort.
+
+    Args:
+        cdn_url: The fully qualified CDN URL to purge (e.g. https://zone.b-cdn.net/path/file.webp).
+
+    Returns:
+        True if purge succeeded (2xx), False otherwise.
+    """
+    api_key = getattr(settings, 'BUNNY_ACCOUNT_API_KEY', '')
+    if not api_key:
+        logger.warning('purge_cdn_url: BUNNY_ACCOUNT_API_KEY not configured, skipping purge for %s', cdn_url)
+        return False
+    try:
+        resp = http.get(
+            'https://api.bunny.net/purge',
+            params={'url': cdn_url, 'async': 'false'},
+            headers={'AccessKey': api_key},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return True
+    except Exception:
+        logger.exception('purge_cdn_url: failed to purge %s', cdn_url)
+        return False
 
 
 def get_pdf_cdn_url(storage_key: str) -> str:

@@ -251,6 +251,10 @@ BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net
 BUNNY_STORAGE_ZONE = env('BUNNY_STORAGE_ZONE', default='')
 BUNNY_STORAGE_API_KEY = env('BUNNY_STORAGE_API_KEY', default='')
 BUNNY_STORAGE_CDN_HOSTNAME = env('BUNNY_STORAGE_CDN_HOSTNAME', default='')
+
+# Bunny account-level API key — for CDN cache purge operations.
+# Get from: https://dash.bunny.net/account/apikey
+BUNNY_ACCOUNT_API_KEY = env('BUNNY_ACCOUNT_API_KEY', default='')
 # Region for Storage API endpoint. Recommended: sg (Singapore) for SEA users.
 # Options: de (Frankfurt), ny (New York), la (Los Angeles), sg (Singapore),
 #          syd (Sydney), br (São Paulo), jh (Johannesburg)

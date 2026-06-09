@@ -48,7 +48,7 @@ class BookIntroPage(models.Model):
 
         if qr_changed and self.qr_image_upload:
             try:
-                from videos.bunny_file_storage import upload_image_to_bunny
+                from videos.bunny_file_storage import purge_cdn_url, upload_image_to_bunny
                 storage_key = f'landing/qr/{self.pk}.webp'
                 cdn_url = upload_image_to_bunny(
                     self.qr_image_upload,
@@ -59,6 +59,8 @@ class BookIntroPage(models.Model):
                 )
                 BookIntroPage.objects.filter(pk=self.pk).update(sidebar_qr_image=cdn_url)
                 self.sidebar_qr_image = cdn_url
+
+                purge_cdn_url(cdn_url)
 
                 # Remove the local upload file to avoid storing duplicates
                 local_path = self.qr_image_upload.path
