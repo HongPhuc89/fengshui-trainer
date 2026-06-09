@@ -356,3 +356,6 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Ho_Chi_Minh"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_RESULT_EXPIRES = 3600  # 1 hour — auto-cleanup task results to prevent CLOSE_WAIT buildup
+CELERY_BROKER_POOL_LIMIT = 5  # max broker connections per worker process
+CELERY_REDIS_MAX_CONNECTIONS = 10  # max Redis connections in the result backend pool
