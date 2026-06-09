@@ -92,7 +92,3 @@ class BookIntroPage(models.Model):
                     raise ValidationError(
                         {'chapters': f'Chapter {i + 1}, item {j + 1} missing keys: {missing_item}'}
                     )
-                if not item.get('demo_url'):
-                    raise ValidationError(
-                        {'chapters': f'Chapter {i + 1}, item {j + 1}: demo_url must not be empty.'}
-                    )

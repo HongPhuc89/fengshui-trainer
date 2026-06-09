@@ -27,21 +27,23 @@ async function copyLink(url, idx) {
       :key="idx"
       class="featured-card__actions"
     >
-      <a
-        :href="item.demo_url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="btn btn--outline-gold"
-      >
-        Truy cập
-        <span class="material-symbols-outlined btn__icon" aria-hidden="true">open_in_new</span>
-      </a>
-      <button
-        class="btn btn--ghost"
-        @click="copyLink(item.copy_link_url || item.demo_url, idx)"
-      >
-        {{ copiedIndex === idx ? 'Đã sao chép!' : 'Copy link' }}
-      </button>
+      <template v-if="item.demo_url">
+        <a
+          :href="item.demo_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn--outline-gold"
+        >
+          Truy cập
+          <span class="material-symbols-outlined btn__icon" aria-hidden="true">open_in_new</span>
+        </a>
+        <button
+          class="btn btn--ghost"
+          @click="copyLink(item.copy_link_url || item.demo_url, idx)"
+        >
+          {{ copiedIndex === idx ? 'Đã sao chép!' : 'Copy link' }}
+        </button>
+      </template>
     </div>
 
     <span v-if="chapter.icon" class="featured-card__icon" aria-hidden="true">{{ chapter.icon }}</span>

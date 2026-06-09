@@ -38,7 +38,7 @@ async function copyLink(url, idx) {
           class="accordion-item__card"
         >
           <h3 v-if="item.title" class="accordion-item__card-title">{{ item.title }}</h3>
-          <div class="accordion-item__actions">
+          <div v-if="item.demo_url" class="accordion-item__actions">
             <a
               :href="item.demo_url"
               target="_blank"
