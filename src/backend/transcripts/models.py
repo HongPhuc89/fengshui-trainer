@@ -136,6 +136,8 @@ class TranscriptJob(models.Model):
         """
         from django.utils import timezone
         from datetime import timedelta
+        if not self.created_at:
+            return 'expired'
         age = timezone.now() - self.created_at
         if age <= timedelta(hours=48) and self.gemini_file_valid:
             return 'gemini'
