@@ -31,6 +31,7 @@ Code
 | [book-annotations-bookmarks.md](book-annotations-bookmarks.md) | Book Annotations & Bookmarks — bookmark trang, ghi chú theo chapter trong Book Reader | 🟡 Medium | L | Idea |
 | [pwa-progressive-web-app.md](pwa-progressive-web-app.md) | PWA — Progressive Web App, installable, Add to Home Screen (bridge trước Flutter app) | 🟡 Medium | S | Idea |
 | [daily-streak-learning-habit.md](daily-streak-learning-habit.md) | Daily Streak & Learning Habit System — "Hỏa Hầu" streak, freeze, milestones | 🟢 Low (2027) | M | Idea |
+| [youtube-to-lesson-pipeline.md](youtube-to-lesson-pipeline.md) | YouTube-to-Lesson Auto-Import Pipeline — yt-dlp + Gemini API transcript/dịch tự động cho admin | 🔴 High | L | Idea |
 
 ---
 
