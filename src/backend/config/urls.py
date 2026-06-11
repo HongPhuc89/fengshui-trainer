@@ -34,5 +34,10 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    from django.views.static import serve
+    from django.urls import re_path
+    from config.views_media import serve_media_with_range
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve_media_with_range),
+    ]
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

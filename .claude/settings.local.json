@@ -11,7 +11,8 @@
       "Bash(flutter build:*)",
       "Bash(flutter --version)",
       "Bash(docker-compose *)",
-      "Bash(docker run *)"
+      "Bash(docker run *)",
+      "Bash(curl *)"
     ]
   }
 }
