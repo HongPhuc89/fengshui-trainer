@@ -3,7 +3,7 @@
 ## Document Information
 
 - **Feature**: 33 — YouTube Transcript Pipeline (Admin Tool)
-- **Version**: 2.0
+- **Version**: 2.2
 - **Created**: 2026-06-11
 - **Status**: Draft — Pending PO Review
 - **Author**: Technical Leader
@@ -210,11 +210,14 @@ from django.db import models
 
 
 class StepStatus(models.TextChoices):
-    PENDING    = 'PENDING',    'Pending'
-    PROCESSING = 'PROCESSING', 'Processing'
-    DONE       = 'DONE',       'Done'
-    FAILED     = 'FAILED',     'Failed'
-    SKIPPED    = 'SKIPPED',    'Skipped'  # step 2a skipped nếu file_uri còn hiệu lực
+    PENDING      = 'PENDING',      'Pending'
+    PROCESSING   = 'PROCESSING',   'Processing'   # step 1 download
+    UPLOADING    = 'UPLOADING',    'Uploading'    # step 2a upload to Gemini
+    TRANSCRIBING = 'TRANSCRIBING', 'Transcribing' # step 2b generate transcript
+    TRANSLATING  = 'TRANSLATING',  'Translating'  # step 3 translate
+    DONE         = 'DONE',         'Done'
+    FAILED       = 'FAILED',       'Failed'
+    SKIPPED      = 'SKIPPED',      'Skipped'
 
 
 class TranscriptJob(models.Model):
@@ -264,15 +267,12 @@ class TranscriptJob(models.Model):
 
     @property
     def overall_status(self) -> str:
-        statuses = [
-            self.step1_status, self.step2a_status,
-            self.step2b_status, self.step3_status,
-        ]
+        statuses = [self.step1_status, self.step2a_status, self.step2b_status, self.step3_status]
         if any(s == StepStatus.FAILED for s in statuses):
             return 'FAILED'
         if all(s in (StepStatus.DONE, StepStatus.SKIPPED) for s in statuses):
             return 'DONE'
-        if any(s == StepStatus.PROCESSING for s in statuses):
+        if any(s in (StepStatus.PROCESSING, StepStatus.UPLOADING, StepStatus.TRANSCRIBING, StepStatus.TRANSLATING) for s in statuses):
             return 'PROCESSING'
         return 'PENDING'
 
@@ -334,13 +334,16 @@ task_translate_transcript(job_id)  → Step 3: generate_content → bản dịch
 
 Chain khi tạo mới:
 ```python
-(
-    task_download_audio.s(job_id)
-    | task_upload_to_gemini.s(job_id)
-    | task_transcribe_audio.s(job_id)
-    | task_translate_transcript.s(job_id)
-).delay()
+pipeline = (
+    task_download_audio.si(job_id)
+    | task_upload_to_gemini.si(job_id)
+    | task_transcribe_audio.si(job_id)
+    | task_translate_transcript.si(job_id)
+)
+pipeline.delay()
 ```
+
+> **Lưu ý**: Dùng `.si()` (immutable signature) thay vì `.s()` để Celery không tự động truyền return value của task trước làm argument đầu tiên của task sau. Mỗi task nhận `job_id` trực tiếp từ `.si(job_id)`, không phụ thuộc vào return value của task trước.
 
 Re-run từng step độc lập:
 ```python
@@ -421,7 +424,7 @@ def task_upload_to_gemini(self, job_id: int):
         logger.error('task_upload_to_gemini: job %s step1 not done', job_id)
         return
 
-    job.step2a_status = StepStatus.PROCESSING
+    job.step2a_status = StepStatus.UPLOADING
     job.step2a_error = ''
     job.save(update_fields=['step2a_status', 'step2a_error', 'updated_at'])
 
@@ -460,7 +463,7 @@ def task_transcribe_audio(self, job_id: int):
         logger.error('task_transcribe_audio: job %s step2a not done', job_id)
         return
 
-    job.step2b_status = StepStatus.PROCESSING
+    job.step2b_status = StepStatus.TRANSCRIBING
     job.step2b_error = ''
     job.save(update_fields=['step2b_status', 'step2b_error', 'updated_at'])
 
@@ -500,7 +503,7 @@ def task_translate_transcript(self, job_id: int):
         logger.error('task_translate_transcript: job %s step2b not done', job_id)
         return
 
-    job.step3_status = StepStatus.PROCESSING
+    job.step3_status = StepStatus.TRANSLATING
     job.step3_error = ''
     job.save(update_fields=['step3_status', 'step3_error', 'updated_at'])
 
@@ -578,6 +581,12 @@ def task_cleanup_old_audio():
         if path and os.path.exists(path):
             os.remove(path)
             deleted_count += 1
+            # Remove empty directory
+            output_dir = os.path.dirname(path)
+            try:
+                os.rmdir(output_dir)  # chỉ xóa nếu thư mục rỗng
+            except OSError:
+                pass  # thư mục không rỗng hoặc không tồn tại, bỏ qua
         job.audio_file = ''
         job.save(update_fields=['audio_file', 'updated_at'])
 
@@ -624,11 +633,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 STATUS_COLORS = {
-    'PENDING':    '#aaa',
-    'PROCESSING': '#f90',
-    'DONE':       '#4caf50',
-    'FAILED':     '#e53935',
-    'SKIPPED':    '#2196f3',
+    'PENDING':      '#aaa',
+    'PROCESSING':   '#f90',
+    'UPLOADING':    '#ff9800',
+    'TRANSCRIBING': '#ff9800',
+    'TRANSLATING':  '#ff9800',
+    'DONE':         '#4caf50',
+    'FAILED':       '#e53935',
+    'SKIPPED':      '#2196f3',
 }
 
 def _badge(status):
@@ -884,10 +896,10 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if is_new:
             pipeline = (
-                task_download_audio.s(obj.pk)
-                | task_upload_to_gemini.s(obj.pk)
-                | task_transcribe_audio.s(obj.pk)
-                | task_translate_transcript.s(obj.pk)
+                task_download_audio.si(obj.pk)
+                | task_upload_to_gemini.si(obj.pk)
+                | task_transcribe_audio.si(obj.pk)
+                | task_translate_transcript.si(obj.pk)
             )
             pipeline.delay()
             messages.info(request, f'Job {obj.pk}: Full pipeline queued.')
@@ -898,6 +910,10 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             path = job.audio_file_path
             if path and os.path.exists(path):
                 os.remove(path)
+                try:
+                    os.rmdir(os.path.dirname(path))
+                except OSError:
+                    pass
 
     def delete_model(self, request, obj):
         self._delete_audio_file(obj)
@@ -992,22 +1008,35 @@ def import_playlist_view(self, request):
             messages.warning(request, 'No videos selected.')
             return redirect('admin:transcripts_import_playlist')
 
+        # Check existing jobs
+        existing_urls = set(
+            TranscriptJob.objects.filter(youtube_url__in=selected_urls)
+            .values_list('youtube_url', flat=True)
+        )
+        duplicate_count = len(existing_urls)
+
         created = 0
+        skipped = 0
         for url in selected_urls:
+            if url in existing_urls:
+                skipped += 1
+                continue
             job = TranscriptJob.objects.create(
                 youtube_url=url,
                 playlist_url=playlist_url,
                 title=selected_titles.get(url, '')[:500],
             )
             pipeline = (
-                task_download_audio.s(job.pk)
-                | task_upload_to_gemini.s(job.pk)
-                | task_transcribe_audio.s(job.pk)
-                | task_translate_transcript.s(job.pk)
+                task_download_audio.si(job.pk)
+                | task_upload_to_gemini.si(job.pk)
+                | task_transcribe_audio.si(job.pk)
+                | task_translate_transcript.si(job.pk)
             )
             pipeline.delay()
             created += 1
 
+        if skipped:
+            messages.warning(request, f'{skipped} video(s) skipped — job already exists.')
         messages.success(request, f'{created} job(s) created and queued.')
         return redirect('admin:transcripts_transcriptjob_changelist')
 
@@ -1091,11 +1120,24 @@ def import_playlist_view(self, request):
 ### 5.4 Link "Import Playlist" trên changelist
 
 ```python
-# Thêm vào TranscriptJobAdmin
-def changelist_view(self, request, extra_context=None):
-    extra_context = extra_context or {}
-    extra_context['import_playlist_url'] = '/admin/transcripts/import-playlist/'
-    return super().changelist_view(request, extra_context=extra_context)
+# Trong TranscriptJobAdmin
+change_list_template = 'admin/transcripts/transcriptjob_changelist.html'
+```
+
+Thêm template:
+
+```html
+<!-- templates/admin/transcripts/transcriptjob_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+  <li>
+    <a href="{% url 'admin:transcripts_import_playlist' %}"
+       class="addlink">
+      Import from Playlist
+    </a>
+  </li>
+  {{ block.super }}
+{% endblock %}
 ```
 
 ---
@@ -1155,6 +1197,19 @@ google-genai
 - **Production native**: Đảm bảo `MEDIA_ROOT` trong `settings.py` trỏ đến persistent path trên VPS (ví dụ `/var/www/thienthu/media`), và Nginx config `location /media/` serve static files từ path đó.
 - **Celery Beat**: Cần đảm bảo `celery beat` đang chạy trên production để periodic task dọn MP3 hoạt động.
 
+### Celery Queue (production recommendation)
+
+Assign transcripts tasks vào dedicated queue `transcripts` để tránh long-running tasks (step 2b có thể 5–15 phút) block các task ngắn khác:
+
+```python
+# config/settings.py
+CELERY_TASK_ROUTES = {
+    'transcripts.tasks.*': {'queue': 'transcripts'},
+}
+```
+
+Khởi động worker với: `celery -A config worker -Q transcripts,default`
+
 ---
 
 ## 8. Error Handling
@@ -1208,49 +1263,54 @@ Job created
 - [ ] **33.9** Chạy `makemigrations` + `migrate`
 
 ### Celery Tasks
-- [ ] **33.7** `task_download_audio` — yt-dlp subprocess, lưu audio_file + title, step1 status
-- [ ] **33.8** `task_upload_to_gemini` — skip nếu file_uri còn hiệu lực, upload MP3 lên File API, lưu gemini_file_uri + gemini_uploaded_at
-- [ ] **33.9** `task_transcribe_audio` — `soft_time_limit=1800`, guard step2a, `client.files.get` + `generate_content`, lưu raw_transcript
-- [ ] **33.10** `task_translate_transcript` — guard step2b, generate_content với translate prompt, lưu translated_transcript
-- [ ] **33.11** `_fail_step` helper
-- [ ] **33.12** `task_cleanup_old_audio` — xóa MP3 > 15 ngày, clear audio_file field
-- [ ] **33.13** Dynamic rate limit trong `TranscriptsConfig.ready()` từ `GEMINI_RPM_LIMIT`
-- [ ] **33.14** Thêm `cleanup-old-transcript-audio` vào `CELERY_BEAT_SCHEDULE`
+- [ ] **33.10** `task_download_audio` — yt-dlp subprocess, lưu audio_file + title, step1 status
+- [ ] **33.11** `task_upload_to_gemini` — skip nếu file_uri còn hiệu lực, upload MP3 lên File API, lưu gemini_file_uri + gemini_uploaded_at
+- [ ] **33.12** `task_transcribe_audio` — `soft_time_limit=1800`, guard step2a, `client.files.get` + `generate_content`, lưu raw_transcript
+- [ ] **33.13** `task_translate_transcript` — guard step2b, generate_content với translate prompt, lưu translated_transcript
+- [ ] **33.14** `_fail_step` helper
+- [ ] **33.15** `task_cleanup_old_audio` — xóa MP3 > 15 ngày, xóa thư mục rỗng, clear audio_file field
+- [ ] **33.16** Dynamic rate limit trong `TranscriptsConfig.ready()` từ `GEMINI_RPM_LIMIT`
+- [ ] **33.17** Thêm `cleanup-old-transcript-audio` vào `CELERY_BEAT_SCHEDULE`
+- [ ] **33.18** Thêm `CELERY_TASK_ROUTES` để route `transcripts.tasks.*` vào queue `transcripts`
+- [ ] **33.19** Verify chain dùng `.si()` (immutable signature) ở tất cả chỗ tạo pipeline
+- [ ] **33.20** _(reserved)_
 
 ### Settings
-- [ ] **33.15** Thêm `GEMINI_API_KEY` và `GEMINI_RPM_LIMIT` vào `config/settings.py` (chỉ 2 env vars — không còn hardcode prompts)
-- [ ] **33.16** Thêm `GEMINI_API_KEY` và `GEMINI_RPM_LIMIT` vào `docker/.env` và `docker/.env.example`
+- [ ] **33.21** Thêm `GEMINI_API_KEY` và `GEMINI_RPM_LIMIT` vào `config/settings.py` (chỉ 2 env vars — không còn hardcode prompts)
+- [ ] **33.22** Thêm `GEMINI_API_KEY` và `GEMINI_RPM_LIMIT` vào `docker/.env` và `docker/.env.example`
 
 ### Admin
-- [ ] **33.17** `TranscriptConfigAdmin` — readonly `type`, edit `model` (enum dropdown) + `value` (textarea), disable add/delete
-- [ ] **33.18** `TranscriptJobAdmin` — list display với 4 step badges, fieldsets, readonly fields
-- [ ] **33.18** `audio_player` — `<audio>` tag với logic `audio_serve_mode`
-- [ ] **33.19** `gemini_file_badge` — valid/expired indicator
-- [ ] **33.20** `rerun_buttons` — 4 nút Re-run trên detail page
-- [ ] **33.21** Custom URL `/<job_id>/rerun/<step>/` → trigger task
-- [ ] **33.22** 4 bulk actions (rerun download/upload/transcribe/translate)
-- [ ] **33.23** `save_model` override — auto-start full pipeline khi tạo mới
-- [ ] **33.24** `delete_model` + `delete_queryset` override — xóa MP3 khi xóa job
+- [ ] **33.23** `TranscriptConfigAdmin` — readonly `type`, edit `model` (enum dropdown) + `value` (textarea), disable add/delete
+- [ ] **33.24** `TranscriptJobAdmin` — list display với 4 step badges, fieldsets, readonly fields
+- [ ] **33.25** `audio_player` — `<audio>` tag với logic `audio_serve_mode`
+- [ ] **33.26** `gemini_file_badge` — valid/expired indicator
+- [ ] **33.27** `rerun_buttons` — 4 nút Re-run trên detail page
+- [ ] **33.28** Custom URL `/<job_id>/rerun/<step>/` → trigger task
+- [ ] **33.29** 4 bulk actions (rerun download/upload/transcribe/translate)
+- [ ] **33.30** `save_model` override — auto-start full pipeline khi tạo mới
+- [ ] **33.31** `delete_model` + `delete_queryset` override — xóa MP3 + thư mục rỗng khi xóa job
+- [ ] **33.32** `change_list_template` + template `transcriptjob_changelist.html` — link "Import from Playlist" trên changelist
 
 ### Playlist Import
-- [ ] **33.25** Custom URL `/admin/transcripts/import-playlist/`
-- [ ] **33.26** `import_playlist_view` — GET form + POST step=fetch (yt-dlp --flat-playlist) + POST step=confirm (tạo jobs)
-- [ ] **33.27** Template `templates/admin/transcripts/import_playlist.html` — form + checkbox table
-- [ ] **33.28** Link "Import Playlist" trên changelist page
+- [ ] **33.33** Custom URL `/admin/transcripts/import-playlist/`
+- [ ] **33.34** `import_playlist_view` — GET form + POST step=fetch (yt-dlp --flat-playlist) + POST step=confirm (tạo jobs, skip duplicates)
+- [ ] **33.35** Template `templates/admin/transcripts/import_playlist.html` — form + checkbox table
+- [ ] **33.36** Duplicate check trước khi tạo job: skip nếu `youtube_url` đã tồn tại, hiển thị warning message
 
 ### Dependencies
-- [ ] **33.29** Thêm `yt-dlp` và `google-genai` vào `requirements.txt`
-- [ ] **33.30** Rebuild docker image (dev) hoặc `pip install` trên VPS (production)
+- [ ] **33.37** Thêm `yt-dlp` và `google-genai` vào `requirements.txt`
+- [ ] **33.38** Rebuild docker image (dev) hoặc `pip install` trên VPS (production)
 
 ### Verification
-- [ ] **33.31** Test single video: tạo job → verify 4 steps DONE
-- [ ] **33.32** Kiểm tra audio player hoạt động trong admin
-- [ ] **33.33** Re-run step2b: verify không upload lại (step2a SKIPPED)
-- [ ] **33.34** Re-run step3: verify không transcribe lại
-- [ ] **33.35** Test playlist import: fetch → chọn 2-3 video → confirm → verify jobs tạo đúng
-- [ ] **33.36** Test rate limit: `GEMINI_RPM_LIMIT=2`, import 5 video → verify throttle hoạt động
-- [ ] **33.37** Test cleanup: job giả > 15 ngày → chạy `task_cleanup_old_audio` → verify file xóa
-- [ ] **33.38** Test URL invalid → verify step1 FAILED, error message đúng
+- [ ] **33.39** Test single video: tạo job → verify 4 steps DONE
+- [ ] **33.40** Kiểm tra audio player hoạt động trong admin
+- [ ] **33.41** Re-run step2b: verify không upload lại (step2a SKIPPED)
+- [ ] **33.42** Re-run step3: verify không transcribe lại
+- [ ] **33.43** Test playlist import: fetch → chọn 2-3 video → confirm → verify jobs tạo đúng
+- [ ] **33.44** Test duplicate: import cùng playlist 2 lần → verify duplicate bị skip với warning
+- [ ] **33.45** Test rate limit: `GEMINI_RPM_LIMIT=2`, import 5 video → verify throttle hoạt động
+- [ ] **33.46** Test cleanup: job giả > 15 ngày → chạy `task_cleanup_old_audio` → verify file + thư mục xóa
+- [ ] **33.47** Test URL invalid → verify step1 FAILED, error message đúng
 
 ---
 
@@ -1270,4 +1330,4 @@ Job created
 
 ---
 
-*End of Feature 33 Design Document v2.1*
+*End of Feature 33 Design Document v2.2*
