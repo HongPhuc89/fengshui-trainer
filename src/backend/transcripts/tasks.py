@@ -36,20 +36,30 @@ def task_download_audio(self, job_id: int):
     output_template = os.path.join(output_dir, 'audio.%(ext)s')
 
     try:
-        result = subprocess.run(
+        # Fetch title without downloading
+        title_result = subprocess.run(
+            ['yt-dlp', '--no-playlist', '--print', 'title', '--no-warnings', job.youtube_url],
+            capture_output=True, text=True, timeout=60, check=True,
+        )
+        title = title_result.stdout.strip().splitlines()[0] if title_result.stdout.strip() else ''
+        safe_title = ''.join(c if c.isalnum() or c in ' -_.' else '_' for c in title).strip() or 'audio'
+        filename = f'{safe_title[:100]}.mp3'
+        final_path = os.path.join(output_dir, filename)
+
+        # Download audio directly to the final filename
+        subprocess.run(
             [
                 'yt-dlp',
                 '--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0',
-                '--output', output_template,
-                '--print', 'title',
+                '--output', final_path.replace('.mp3', '.%(ext)s'),
                 '--no-playlist',
+                '--no-warnings',
                 job.youtube_url,
             ],
             capture_output=True, text=True, timeout=600, check=True,
         )
-        title = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ''
-        relative_path = os.path.join('transcripts', str(job_id), 'audio.mp3')
 
+        relative_path = os.path.join('transcripts', str(job_id), filename)
         job.audio_file = relative_path
         job.title = title[:500]
         job.step1_status = StepStatus.DONE
