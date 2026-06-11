@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "core",
     "landing",
     "jsoneditor",
+    "transcripts",
 ]
 
 MIDDLEWARE = [
@@ -359,3 +360,12 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_RESULT_EXPIRES = 3600  # 1 hour — auto-cleanup task results to prevent CLOSE_WAIT buildup
 CELERY_BROKER_POOL_LIMIT = 5  # max broker connections per worker process
 CELERY_REDIS_MAX_CONNECTIONS = 10  # max Redis connections in the result backend pool
+
+# Celery Task Routes — route transcripts tasks to dedicated queue
+CELERY_TASK_ROUTES = {
+    'transcripts.tasks.*': {'queue': 'transcripts'},
+}
+
+# --- Gemini / Transcript Pipeline ---
+GEMINI_API_KEY   = env('GEMINI_API_KEY', default='')
+GEMINI_RPM_LIMIT = env.int('GEMINI_RPM_LIMIT', default=8)  # 0 = unlimited (Pay-as-you-go)

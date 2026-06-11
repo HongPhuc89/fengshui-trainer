@@ -19,3 +19,5 @@ requests
 boto3
 cryptography
 django-jsoneditor
+yt-dlp
+google-genai

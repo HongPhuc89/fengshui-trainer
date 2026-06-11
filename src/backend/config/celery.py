@@ -17,6 +17,10 @@ app.conf.beat_schedule = {
         "task": "core.backup_database",
         "schedule": crontab(hour=12, minute=0),  # 12h UTC (19h ICT)
     },
+    "cleanup-old-transcript-audio": {
+        "task": "transcripts.tasks.task_cleanup_old_audio",
+        "schedule": crontab(hour=3, minute=0),   # 3AM ICT daily
+    },
 }
 
 

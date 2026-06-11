@@ -1,0 +1,68 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Import from YouTube Playlist</h1>
+
+{% if not step %}
+<!-- Step 1: enter URL -->
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="fetch">
+  <div style="margin-bottom:16px">
+    <label><b>Playlist URL:</b></label><br>
+    <input type="url" name="playlist_url" style="width:500px;padding:6px"
+           placeholder="https://www.youtube.com/playlist?list=...">
+  </div>
+  <button type="submit" class="button default">Fetch Video List</button>
+</form>
+
+{% elif step == 'confirm' %}
+<!-- Step 2: select videos -->
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="confirm">
+  <input type="hidden" name="playlist_url" value="{{ playlist_url }}">
+
+  <p>Found <b>{{ videos|length }}</b> videos. Select videos to import:</p>
+
+  <div style="margin-bottom:12px">
+    <a href="#" onclick="document.querySelectorAll('input[name=selected_videos]').forEach(c=>c.checked=true);return false">
+      Select All
+    </a> |
+    <a href="#" onclick="document.querySelectorAll('input[name=selected_videos]').forEach(c=>c.checked=false);return false">
+      Deselect All
+    </a>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr>
+        <th style="width:40px;padding:8px;border-bottom:1px solid #ddd">&#10003;</th>
+        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:left">#</th>
+        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:left">Title</th>
+        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:left">URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for video in videos %}
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">
+          <input type="checkbox" name="selected_videos" value="{{ video.url }}" checked>
+          <input type="hidden" name="title_{{ video.url }}" value="{{ video.title }}">
+        </td>
+        <td style="padding:8px;border-bottom:1px solid #eee">{{ forloop.counter }}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">{{ video.title|default:"(no title)" }}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">
+          <a href="{{ video.url }}" target="_blank">{{ video.url|truncatechars:60 }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:16px">
+    <button type="submit" class="button default">Create Jobs for Selected Videos</button>
+    <a href="{% url 'admin:transcripts_import_playlist' %}" style="margin-left:16px">&larr; Back</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
