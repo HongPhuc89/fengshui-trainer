@@ -14,7 +14,10 @@
       "Bash(docker run *)",
       "Bash(curl *)",
       "Skill(deep-research)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(grep -v \"^$\")",
+      "Skill(claude-api)",
+      "Bash(sort -t'-' -k2 -n)"
     ]
   }
 }

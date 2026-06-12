@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+from datetime import datetime, timezone as dt_tz, timedelta
 
 from celery import shared_task
 from django.conf import settings
@@ -8,6 +9,108 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 GEMINI_MAX_OUTPUT_TOKENS = 65536
+GEMINI_FILE_API_MODEL = 'gemini-file-api'  # synthetic name to track file upload quota separately
+
+
+def _next_midnight_utc() -> datetime:
+    now = datetime.now(dt_tz.utc)
+    return (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _get_gemini_client(model_name: str):
+    """
+    Pick best available (key, model) pair:
+    1. Bulk-create usage rows for active keys missing one for this model.
+    2. Reset RPD counters for rows past their reset time.
+    3. Filter: key is_active, not exhausted, rpd_count < GEMINI_RPD_LIMIT.
+    4. Sort LRU (key.last_used_at asc, nulls first).
+    Returns (client, key_pk, usage_pk).
+    Falls back to settings.GEMINI_API_KEY if no DB key available.
+    Raises RuntimeError if nothing available.
+    """
+    from .models import TranscriptApiKey, TranscriptApiKeyUsage
+    from django.utils import timezone
+    from django.db import models as m
+    import google.genai as genai
+
+    now = timezone.now()
+    rpd_limit = settings.GEMINI_RPD_LIMIT
+
+    # Bulk-create missing usage rows (2 queries, not N)
+    existing_key_ids = set(
+        TranscriptApiKeyUsage.objects.filter(model_name=model_name)
+        .values_list('api_key_id', flat=True)
+    )
+    new_rows = [
+        TranscriptApiKeyUsage(
+            api_key_id=key_id,
+            model_name=model_name,
+            rpd_reset_at=_next_midnight_utc(),
+        )
+        for key_id in TranscriptApiKey.objects.filter(is_active=True)
+            .exclude(pk__in=existing_key_ids)
+            .values_list('pk', flat=True)
+    ]
+    if new_rows:
+        TranscriptApiKeyUsage.objects.bulk_create(new_rows, ignore_conflicts=True)
+
+    # Reset daily counters for rows past their reset time
+    TranscriptApiKeyUsage.objects.filter(
+        model_name=model_name,
+        rpd_reset_at__lte=now,
+    ).update(rpd_count=0, rpd_reset_at=_next_midnight_utc(), exhausted_until=None)
+
+    # Pick best candidate (LRU, not exhausted, under RPD limit)
+    usage = (
+        TranscriptApiKeyUsage.objects
+        .filter(api_key__is_active=True, model_name=model_name)
+        .filter(m.Q(exhausted_until__isnull=True) | m.Q(exhausted_until__lte=now))
+        .filter(rpd_count__lt=rpd_limit)
+        .order_by('api_key__last_used_at')
+        .select_related('api_key')
+        .first()
+    )
+
+    if usage:
+        TranscriptApiKeyUsage.objects.filter(pk=usage.pk).update(
+            rpd_count=m.F('rpd_count') + 1,
+        )
+        TranscriptApiKey.objects.filter(pk=usage.api_key_id).update(
+            last_used_at=now,
+            request_count=m.F('request_count') + 1,
+        )
+        return genai.Client(api_key=usage.api_key.api_key), usage.api_key_id, usage.pk
+
+    # Fallback to env key
+    if settings.GEMINI_API_KEY:
+        logger.warning(
+            '_get_gemini_client: no DB key for model=%s, falling back to env GEMINI_API_KEY',
+            model_name,
+        )
+        return genai.Client(api_key=settings.GEMINI_API_KEY), None, None
+
+    raise RuntimeError(
+        f'No Gemini API key available for model {model_name} — '
+        f'all exhausted, RPD limit reached, or no env fallback.'
+    )
+
+
+def _mark_key_model_exhausted(usage_pk: 'int | None', retry_after_minutes: int = 60):
+    """
+    Mark a (key, model) usage row as exhausted for retry_after_minutes.
+    No-op if usage_pk is None (env fallback key has no DB row).
+    """
+    if usage_pk is None:
+        return
+    from .models import TranscriptApiKeyUsage
+    from django.utils import timezone
+
+    TranscriptApiKeyUsage.objects.filter(pk=usage_pk).update(
+        exhausted_until=timezone.now() + timedelta(minutes=retry_after_minutes),
+    )
+    logger.warning(
+        '_mark_key_model_exhausted: usage pk=%s exhausted for %d min', usage_pk, retry_after_minutes,
+    )
 
 
 def _fail_step(job, step: str, error_msg: str):
@@ -80,7 +183,7 @@ def task_upload_to_gemini(self, job_id: int):
     """Step 2a: Upload MP3 to Gemini File API, save gemini_file_uri + gemini_uploaded_at."""
     from .models import TranscriptJob, StepStatus
     from django.utils import timezone
-    import google.genai as genai
+    import google.api_core.exceptions
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -102,16 +205,28 @@ def task_upload_to_gemini(self, job_id: int):
     job.save(update_fields=['step2a_status', 'step2a_error', 'updated_at'])
 
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        # Open file as bytes to avoid ASCII encoding issues with non-ASCII filenames
-        with open(job.audio_file_path, 'rb') as f:
-            uploaded = client.files.upload(
-                file=f,
-                config={
-                    'mime_type': 'audio/mpeg',
-                    'display_name': f'job_{job_id}.mp3',
-                },
-            )
+        client, _key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
+        try:
+            # Open file as bytes to avoid ASCII encoding issues with non-ASCII filenames
+            with open(job.audio_file_path, 'rb') as f:
+                uploaded = client.files.upload(
+                    file=f,
+                    config={
+                        'mime_type': 'audio/mpeg',
+                        'display_name': f'job_{job_id}.mp3',
+                    },
+                )
+        except google.api_core.exceptions.ResourceExhausted:
+            _mark_key_model_exhausted(usage_pk)
+            client, _key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
+            with open(job.audio_file_path, 'rb') as f:
+                uploaded = client.files.upload(
+                    file=f,
+                    config={
+                        'mime_type': 'audio/mpeg',
+                        'display_name': f'job_{job_id}.mp3',
+                    },
+                )
         job.gemini_file_uri  = uploaded.uri
         job.gemini_file_name = uploaded.name
         job.gemini_uploaded_at = timezone.now()
@@ -128,7 +243,6 @@ def task_upload_to_gemini(self, job_id: int):
 def task_transcribe_audio(self, job_id: int):
     """Step 2b: Transcribe Chinese audio via Gemini generate_content, save raw_transcript."""
     from .models import TranscriptJob, StepStatus
-    import google.genai as genai
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -145,19 +259,64 @@ def task_transcribe_audio(self, job_id: int):
 
     try:
         from .models import TranscriptConfig, ConfigType
+        import google.api_core.exceptions
         config = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT)
 
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        file_ref = client.files.get(name=job.gemini_file_name)
+        audio_path = job.audio_file_path
+        file_size = os.path.getsize(audio_path)
 
-        response = client.models.generate_content(
-            model=config.model,  # enum from TranscriptConfig, not user-typed
-            contents=[file_ref, config.value],
-        )
-        if not response.text:
-            finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
-            raise ValueError(f'Gemini returned empty transcript (finish_reason={finish})')
-        job.raw_transcript = response.text
+        if file_size <= GEMINI_AUDIO_SPLIT_THRESHOLD:
+            client, _key_pk, usage_pk = _get_gemini_client(config.model)
+            file_ref = client.files.get(name=job.gemini_file_name)
+            try:
+                response = client.models.generate_content(
+                    model=config.model,
+                    contents=[file_ref, config.value],
+                )
+            except google.api_core.exceptions.ResourceExhausted:
+                _mark_key_model_exhausted(usage_pk)
+                client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                file_ref = client.files.get(name=job.gemini_file_name)
+                response = client.models.generate_content(
+                    model=config.model,
+                    contents=[file_ref, config.value],
+                )
+            if not response.text:
+                finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
+                raise ValueError(f'Gemini returned empty transcript (finish_reason={finish})')
+            job.raw_transcript = response.text
+        else:
+            chunks = _split_audio_into_chunks(audio_path, chunk_duration_secs=GEMINI_AUDIO_CHUNK_DURATION)
+            logger.info('task_transcribe_audio: job %s split into %d chunks', job_id, len(chunks))
+            parts = []
+            for idx, chunk in enumerate(chunks):
+                logger.info('task_transcribe_audio: job %s chunk %d/%d', job_id, idx + 1, len(chunks))
+                client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                with open(chunk['path'], 'rb') as f:
+                    uploaded = client.files.upload(
+                        file=f,
+                        config={'mime_type': 'audio/mpeg', 'display_name': f'job_{job_id}_chunk_{idx:03d}.mp3'},
+                    )
+                try:
+                    response = client.models.generate_content(
+                        model=config.model,
+                        contents=[uploaded, config.value],
+                    )
+                except google.api_core.exceptions.ResourceExhausted:
+                    _mark_key_model_exhausted(usage_pk)
+                    client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                    response = client.models.generate_content(
+                        model=config.model,
+                        contents=[uploaded, config.value],
+                    )
+                if not response.text:
+                    finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
+                    raise ValueError(f'Gemini returned empty transcript for chunk {idx} (finish_reason={finish})')
+                parts.append(_offset_transcript_timestamps(response.text, chunk['offset_secs']))
+                os.remove(chunk['path'])
+
+            job.raw_transcript = '\n\n'.join(parts)
+
         job.step2b_status = StepStatus.DONE
         job.save(update_fields=['raw_transcript', 'step2b_status', 'updated_at'])
     except Exception as exc:
@@ -169,7 +328,6 @@ def task_transcribe_audio(self, job_id: int):
 def task_translate_transcript(self, job_id: int):
     """Step 3: Translate Chinese raw_transcript to Vietnamese via Gemini."""
     from .models import TranscriptJob, StepStatus
-    import google.genai as genai
     from google.genai.types import GenerateContentConfig
 
     try:
@@ -187,19 +345,29 @@ def task_translate_transcript(self, job_id: int):
 
     try:
         from .models import TranscriptConfig, ConfigType
+        import google.api_core.exceptions
         config = TranscriptConfig.get(ConfigType.TRANSLATE_PROMPT)
 
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
         full_prompt = (
             config.value
             + '\n\n---\n\nNội dung cần dịch:\n\n'
             + job.raw_transcript
         )
-        response = client.models.generate_content(
-            model=config.model,  # enum from TranscriptConfig
-            contents=[full_prompt],
-            config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
-        )
+        client, _key_pk, usage_pk = _get_gemini_client(config.model)
+        try:
+            response = client.models.generate_content(
+                model=config.model,
+                contents=[full_prompt],
+                config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
+            )
+        except google.api_core.exceptions.ResourceExhausted:
+            _mark_key_model_exhausted(usage_pk)
+            client, _key_pk, usage_pk = _get_gemini_client(config.model)
+            response = client.models.generate_content(
+                model=config.model,
+                contents=[full_prompt],
+                config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
+            )
         job.translated_transcript = response.text
         job.step3_status = StepStatus.DONE
         job.save(update_fields=['translated_transcript', 'step3_status', 'updated_at'])

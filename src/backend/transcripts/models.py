@@ -1,5 +1,48 @@
 import uuid
 from django.db import models
+from .fields import EncryptedCharField
+
+
+class TranscriptApiKey(models.Model):
+    label         = models.CharField(max_length=100,
+                        help_text='Display name, e.g. key-phuc-personal, key-work')
+    api_key       = EncryptedCharField(max_length=200)
+    is_active     = models.BooleanField(default=True,
+                        help_text='Disable to pause key without deleting it')
+    request_count = models.PositiveIntegerField(default=0,
+                        help_text='Total requests used across all models (never resets)')
+    last_used_at  = models.DateTimeField(null=True, blank=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Gemini API Key'
+        verbose_name_plural = 'Gemini API Keys'
+        ordering            = ['label']
+
+    def __str__(self):
+        return self.label
+
+
+class TranscriptApiKeyUsage(models.Model):
+    api_key         = models.ForeignKey(
+                          TranscriptApiKey, on_delete=models.CASCADE,
+                          related_name='usages')
+    model_name      = models.CharField(max_length=100,
+                          help_text='e.g. gemini-2.5-flash, gemini-file-api')
+    rpd_count       = models.PositiveIntegerField(default=0,
+                          help_text='Requests used today for this model')
+    rpd_reset_at    = models.DateTimeField(
+                          help_text='When rpd_count resets (midnight UTC)')
+    exhausted_until = models.DateTimeField(null=True, blank=True,
+                          help_text='Set on 429. Null = available.')
+
+    class Meta:
+        unique_together     = [('api_key', 'model_name')]
+        verbose_name        = 'API Key Usage'
+        verbose_name_plural = 'API Key Usages'
+
+    def __str__(self):
+        return f'{self.api_key.label} / {self.model_name}'
 
 
 class GeminiModel(models.TextChoices):

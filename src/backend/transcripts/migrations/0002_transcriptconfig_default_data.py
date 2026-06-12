@@ -27,6 +27,8 @@ TRANSLATE_PROMPT_DEFAULT = """
 
 **Quy tắc bắt buộc:**
 
+0. **Output thuần túy:** KHÔNG thêm bất kỳ lời dẫn, giới thiệu, tóm tắt hay nhận xét nào trước hoặc sau bản dịch. Ký tự đầu tiên của output phải là **[**
+
 1. **Mốc thời gian:** Chuyển tất cả timestamp về định dạng [MM:SS] (ví dụ: [00:00], [01:26], [12:34]). Không hiển thị giờ. In đậm, đứng đầu mỗi đoạn.
 
 2. **Gộp câu (BẮT BUỘC):** Transcript gốc bị cắt vụn thành dòng 3–10 chữ, không trọn nghĩa. Tuyệt đối KHÔNG dịch thô từng dòng.

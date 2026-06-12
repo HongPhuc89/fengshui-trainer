@@ -9,7 +9,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
 
-from .models import TranscriptConfig, TranscriptJob
+from .models import TranscriptConfig, TranscriptJob, TranscriptApiKey, TranscriptApiKeyUsage
 from .tasks import (
     task_download_audio, task_upload_to_gemini,
     task_transcribe_audio, task_translate_transcript,
@@ -438,3 +438,64 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         for job in queryset:
             self._delete_audio_file(job)
         super().delete_queryset(request, queryset)
+
+
+# --- API Key Pool ---
+
+class TranscriptApiKeyUsageInline(admin.TabularInline):
+    model           = TranscriptApiKeyUsage
+    extra           = 0
+    can_delete      = False
+    fields          = ['model_name', 'rpd_count', 'rpd_reset_at', 'exhausted_until', 'usage_status']
+    readonly_fields = ['model_name', 'rpd_count', 'rpd_reset_at', 'exhausted_until', 'usage_status']
+
+    @admin.display(description='Status')
+    def usage_status(self, obj):
+        from django.utils import timezone
+        from django.conf import settings as dj_settings
+        if obj.exhausted_until and obj.exhausted_until > timezone.now():
+            until = obj.exhausted_until.strftime('%d/%m %H:%M')
+            return format_html('<span style="color:#e53935;font-weight:bold">⛔ Until {}</span>', until)
+        rpd_limit = dj_settings.GEMINI_RPD_LIMIT
+        if obj.rpd_count >= rpd_limit:
+            return format_html(
+                '<span style="color:#f90;font-weight:bold">⚠ RPD limit ({}/{})</span>',
+                obj.rpd_count, rpd_limit,
+            )
+        return format_html(
+            '<span style="color:#4caf50;font-weight:bold">✓ {}/{}</span>',
+            obj.rpd_count, rpd_limit,
+        )
+
+
+@admin.register(TranscriptApiKey)
+class TranscriptApiKeyAdmin(admin.ModelAdmin):
+    list_display    = ['label', 'is_active', 'request_count', 'last_used_at', 'key_status']
+    list_editable   = ['is_active']
+    search_fields   = ['label']
+    ordering        = ['label']
+    inlines         = [TranscriptApiKeyUsageInline]
+    actions         = ['action_reset_all_exhausted']
+
+    readonly_fields = ['api_key_masked', 'request_count', 'last_used_at', 'created_at']
+    fields          = ['label', 'api_key', 'api_key_masked', 'is_active',
+                       'request_count', 'last_used_at', 'created_at']
+
+    @admin.display(description='Status')
+    def key_status(self, obj):
+        if not obj.is_active:
+            return format_html('<span style="color:#aaa">— Disabled</span>')
+        return format_html('<span style="color:#4caf50;font-weight:bold">✓ Active</span>')
+
+    @admin.display(description='API Key (masked)')
+    def api_key_masked(self, obj):
+        if not obj.api_key:
+            return '—'
+        return f'****{obj.api_key[-8:]}'
+
+    @admin.action(description='Reset exhausted_until for all usages of selected keys')
+    def action_reset_all_exhausted(self, request, queryset):
+        updated = TranscriptApiKeyUsage.objects.filter(
+            api_key__in=queryset,
+        ).update(exhausted_until=None)
+        self.message_user(request, f'{updated} usage row(s) quota reset.')

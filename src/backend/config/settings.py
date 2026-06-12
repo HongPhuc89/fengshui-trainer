@@ -368,4 +368,5 @@ CELERY_TASK_ROUTES = {
 
 # --- Gemini / Transcript Pipeline ---
 GEMINI_API_KEY   = env('GEMINI_API_KEY', default='')
-GEMINI_RPM_LIMIT = env.int('GEMINI_RPM_LIMIT', default=8)  # 0 = unlimited (Pay-as-you-go)
+GEMINI_RPM_LIMIT = env.int('GEMINI_RPM_LIMIT', default=8)   # 0 = unlimited (Pay-as-you-go)
+GEMINI_RPD_LIMIT = env.int('GEMINI_RPD_LIMIT', default=18)  # safe buffer below free-tier RPD=20
