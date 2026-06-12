@@ -183,7 +183,7 @@ def task_upload_to_gemini(self, job_id: int):
     """Step 2a: Upload MP3 to Gemini File API, save gemini_file_uri + gemini_uploaded_at."""
     from .models import TranscriptJob, StepStatus
     from django.utils import timezone
-    import google.api_core.exceptions
+    from google.genai.errors import ClientError as GeminiClientError
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -216,7 +216,9 @@ def task_upload_to_gemini(self, job_id: int):
                         'display_name': f'job_{job_id}.mp3',
                     },
                 )
-        except google.api_core.exceptions.ResourceExhausted:
+        except GeminiClientError as _quota_exc:
+            if _quota_exc.code != 429:
+                raise
             _mark_key_model_exhausted(usage_pk)
             client, _key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
             with open(job.audio_file_path, 'rb') as f:
@@ -259,7 +261,7 @@ def task_transcribe_audio(self, job_id: int):
 
     try:
         from .models import TranscriptConfig, ConfigType
-        import google.api_core.exceptions
+        from google.genai.errors import ClientError as GeminiClientError
         config = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT)
 
         audio_path = job.audio_file_path
@@ -273,7 +275,9 @@ def task_transcribe_audio(self, job_id: int):
                     model=config.model,
                     contents=[file_ref, config.value],
                 )
-            except google.api_core.exceptions.ResourceExhausted:
+            except GeminiClientError as _quota_exc:
+                if _quota_exc.code != 429:
+                    raise
                 _mark_key_model_exhausted(usage_pk)
                 client, _key_pk, usage_pk = _get_gemini_client(config.model)
                 file_ref = client.files.get(name=job.gemini_file_name)
@@ -302,7 +306,9 @@ def task_transcribe_audio(self, job_id: int):
                         model=config.model,
                         contents=[uploaded, config.value],
                     )
-                except google.api_core.exceptions.ResourceExhausted:
+                except GeminiClientError as _quota_exc:
+                    if _quota_exc.code != 429:
+                        raise
                     _mark_key_model_exhausted(usage_pk)
                     client, _key_pk, usage_pk = _get_gemini_client(config.model)
                     response = client.models.generate_content(
@@ -345,7 +351,7 @@ def task_translate_transcript(self, job_id: int):
 
     try:
         from .models import TranscriptConfig, ConfigType
-        import google.api_core.exceptions
+        from google.genai.errors import ClientError as GeminiClientError
         config = TranscriptConfig.get(ConfigType.TRANSLATE_PROMPT)
 
         full_prompt = (
@@ -360,7 +366,9 @@ def task_translate_transcript(self, job_id: int):
                 contents=[full_prompt],
                 config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
             )
-        except google.api_core.exceptions.ResourceExhausted:
+        except GeminiClientError as _quota_exc:
+            if _quota_exc.code != 429:
+                raise
             _mark_key_model_exhausted(usage_pk)
             client, _key_pk, usage_pk = _get_gemini_client(config.model)
             response = client.models.generate_content(
