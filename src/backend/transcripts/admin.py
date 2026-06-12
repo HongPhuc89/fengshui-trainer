@@ -470,7 +470,11 @@ class TranscriptApiKeyUsageInline(admin.TabularInline):
 
 @admin.register(TranscriptApiKey)
 class TranscriptApiKeyAdmin(admin.ModelAdmin):
-    list_display    = ['label', 'is_active', 'request_count', 'last_used_at', 'key_status']
+    list_display    = [
+        'label', 'is_active', 'request_count', 'last_used_at',
+        'usage_flash25', 'usage_flash35', 'usage_file_api',
+        'key_status',
+    ]
     list_editable   = ['is_active']
     search_fields   = ['label']
     ordering        = ['label']
@@ -480,6 +484,43 @@ class TranscriptApiKeyAdmin(admin.ModelAdmin):
     readonly_fields = ['api_key_masked', 'request_count', 'last_used_at', 'created_at']
     fields          = ['label', 'api_key', 'api_key_masked', 'is_active',
                        'request_count', 'last_used_at', 'created_at']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('usages')
+
+    def _usage_badge(self, obj, model_name):
+        from django.utils import timezone
+        from django.conf import settings as dj_settings
+        usage = next((u for u in obj.usages.all() if u.model_name == model_name), None)
+        if usage is None:
+            return format_html('<span style="color:#aaa">—</span>')
+        rpd_limit = dj_settings.GEMINI_RPD_LIMIT
+        if usage.exhausted_until and usage.exhausted_until > timezone.now():
+            until = usage.exhausted_until.strftime('%H:%M')
+            return format_html(
+                '<span style="color:#e53935;font-weight:bold">⛔ {}</span>', until,
+            )
+        if usage.rpd_count >= rpd_limit:
+            return format_html(
+                '<span style="color:#f90;font-weight:bold">⚠ {}/{}</span>',
+                usage.rpd_count, rpd_limit,
+            )
+        return format_html(
+            '<span style="color:#4caf50;font-weight:bold">✓ {}/{}</span>',
+            usage.rpd_count, rpd_limit,
+        )
+
+    @admin.display(description='2.5-flash')
+    def usage_flash25(self, obj):
+        return self._usage_badge(obj, 'gemini-2.5-flash')
+
+    @admin.display(description='3.5-flash')
+    def usage_flash35(self, obj):
+        return self._usage_badge(obj, 'gemini-3.5-flash')
+
+    @admin.display(description='File API')
+    def usage_file_api(self, obj):
+        return self._usage_badge(obj, 'gemini-file-api')
 
     @admin.display(description='Status')
     def key_status(self, obj):
