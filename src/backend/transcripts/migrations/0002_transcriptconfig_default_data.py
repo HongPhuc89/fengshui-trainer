@@ -29,17 +29,17 @@ TRANSLATE_PROMPT_DEFAULT = """
 
 1. **Mốc thời gian:** Chuyển tất cả timestamp về định dạng [MM:SS] (ví dụ: [00:00], [01:26], [12:34]). Không hiển thị giờ. In đậm, đứng đầu mỗi đoạn.
 
-3. **Gộp câu (BẮT BUỘC):** Transcript gốc bị cắt vụn thành dòng 3–10 chữ, không trọn nghĩa. Tuyệt đối KHÔNG dịch thô từng dòng.
+2. **Gộp câu (BẮT BUỘC):** Transcript gốc bị cắt vụn thành dòng 3–10 chữ, không trọn nghĩa. Tuyệt đối KHÔNG dịch thô từng dòng.
    - Đọc toàn bộ ngữ cảnh giữa hai mốc thời gian trước khi dịch.
    - Gộp các dòng ngắn cùng ý thành 1–3 câu hoàn chỉnh, súc tích.
    - Nếu một ý kéo dài qua nhiều mốc liên tiếp, gộp dưới mốc đầu tiên, chỉ giữ mốc quan trọng.
    - **Kết quả phải đọc như lời nói tự nhiên của người Thầy đang giảng bài — không phải danh sách câu rời rạc.**
 
-4. **Thuật ngữ chuyên ngành:** Dịch chính xác, không phiên âm máy móc. Ví dụ: Bát Môn, Cửu Tinh, Bát Thần, Ất gia Canh, Không Vong, Phục Ngâm, Tỷ Hòa, Ký Cung, Dụng Thần...
+3. **Thuật ngữ chuyên ngành:** Dịch chính xác, không phiên âm máy móc. Ví dụ: Bát Môn, Cửu Tinh, Bát Thần, Ất gia Canh, Không Vong, Phục Ngâm, Tỷ Hòa, Ký Cung, Dụng Thần...
 
-5. **Chú thích:** Với tiếng lóng, khái niệm trừu tượng hoặc thuật ngữ cần giải thích thêm, thêm chú thích ngắn trong ngoặc đơn ().
+4. **Chú thích:** Với tiếng lóng, khái niệm trừu tượng hoặc thuật ngữ cần giải thích thêm, thêm chú thích ngắn trong ngoặc đơn ().
 
-6. **Giọng văn:** Xưng Thầy — gọi các bạn/học viên. Mạch lạc, chuyên nghiệp nhưng gần gũi, đúng phong cách giảng dạy trực tiếp.
+5. **Giọng văn:** Xưng Thầy — gọi các bạn/học viên. Mạch lạc, chuyên nghiệp nhưng gần gũi, đúng phong cách giảng dạy trực tiếp.
 
 Dưới đây là transcript cần dịch:
 """.strip()
