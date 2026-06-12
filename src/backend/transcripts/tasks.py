@@ -101,10 +101,15 @@ def task_upload_to_gemini(self, job_id: int):
 
     try:
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        uploaded = client.files.upload(
-            file=job.audio_file_path,
-            config={'mime_type': 'audio/mpeg'},
-        )
+        # Open file as bytes to avoid ASCII encoding issues with non-ASCII filenames
+        with open(job.audio_file_path, 'rb') as f:
+            uploaded = client.files.upload(
+                file=f,
+                config={
+                    'mime_type': 'audio/mpeg',
+                    'display_name': f'job_{job_id}.mp3',
+                },
+            )
         job.gemini_file_uri  = uploaded.uri
         job.gemini_file_name = uploaded.name
         job.gemini_uploaded_at = timezone.now()
