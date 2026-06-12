@@ -354,7 +354,17 @@ class TranscriptJobAdmin(admin.ModelAdmin):
 
     @admin.display(description='Translated Transcript (Vietnamese)')
     def translated_transcript_display(self, obj):
-        return self._transcript_field(obj.translated_transcript, max_height='600px')
+        if not obj.translated_transcript:
+            return '—'
+        return format_html(
+            '<button type="button" onclick="'
+            'navigator.clipboard.writeText(document.getElementById(\'trans-text-{}\').innerText)'
+            '.then(function(){{this.textContent=\'✓ Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)}}.bind(this))'
+            '" style="margin-bottom:8px;padding:4px 12px;cursor:pointer">Copy</button>'
+            '<pre id="trans-text-{}" style="white-space:pre-wrap;max-height:600px;overflow-y:auto;'
+            'font-family:monospace;font-size:13px;line-height:1.6">{}</pre>',
+            obj.pk, obj.pk, obj.translated_transcript,
+        )
 
     # --- Re-run buttons on detail page ---
     @admin.display(description='Re-run Controls')
