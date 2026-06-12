@@ -108,6 +108,9 @@ class TranscriptJob(models.Model):
     gemini_file_uri    = models.CharField(max_length=500, blank=True, default='')  # file URI from Gemini
     gemini_file_name   = models.CharField(max_length=200, blank=True, default='')  # Gemini file name (for delete/get)
     gemini_uploaded_at = models.DateTimeField(null=True, blank=True)               # to calculate 48h expiry
+    gemini_api_key     = models.ForeignKey(                                         # key used to upload — step 2b must reuse it
+                             'TranscriptApiKey', null=True, blank=True,
+                             on_delete=models.SET_NULL, related_name='+')
     step2a_status      = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
     step2a_error       = models.TextField(blank=True, default='')
 

@@ -8,8 +8,49 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MAX_OUTPUT_TOKENS = 65536
-GEMINI_FILE_API_MODEL = 'gemini-file-api'  # synthetic name to track file upload quota separately
+GEMINI_MAX_OUTPUT_TOKENS     = 65536
+GEMINI_FILE_API_MODEL        = 'gemini-file-api'  # synthetic name to track file upload quota separately
+GEMINI_AUDIO_SPLIT_THRESHOLD = 50 * 1024 * 1024   # 50 MB — split audio into chunks above this size
+GEMINI_AUDIO_CHUNK_DURATION  = 2700                # 45 min/chunk → ~45 MB at 128kbps
+
+
+def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
+    """Split MP3 into chunks of chunk_duration_secs using ffmpeg. Returns list of {path, offset_secs}."""
+    import json
+    probe = subprocess.run(
+        ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', audio_path],
+        capture_output=True, text=True, check=True,
+    )
+    duration = float(json.loads(probe.stdout)['format']['duration'])
+    output_dir = os.path.dirname(audio_path)
+    chunks = []
+    offset = 0
+    idx = 0
+    while offset < duration:
+        chunk_path = os.path.join(output_dir, f'chunk_{idx:03d}.mp3')
+        subprocess.run(
+            ['ffmpeg', '-y', '-i', audio_path, '-ss', str(offset),
+             '-t', str(chunk_duration_secs), '-c', 'copy', chunk_path],
+            capture_output=True, check=True,
+        )
+        chunks.append({'path': chunk_path, 'offset_secs': int(offset)})
+        offset += chunk_duration_secs
+        idx += 1
+    return chunks
+
+
+def _offset_transcript_timestamps(text: str, offset_secs: int) -> str:
+    """Add chunk offset to every [HH:MM:SS] timestamp in transcript text."""
+    import re
+    if offset_secs == 0:
+        return text
+
+    def shift(match):
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total = h * 3600 + m * 60 + s + offset_secs
+        return f'[{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}]'
+
+    return re.sub(r'\[(\d{2}):(\d{2}):(\d{2})\]', shift, text)
 
 
 def _next_midnight_utc() -> datetime:
@@ -93,6 +134,26 @@ def _get_gemini_client(model_name: str):
         f'No Gemini API key available for model {model_name} — '
         f'all exhausted, RPD limit reached, or no env fallback.'
     )
+
+
+def _get_gemini_client_for_job(job) -> tuple:
+    """
+    Return (client, key_pk, None) using the key pinned to this job (job.gemini_api_key_id).
+    Falls back to _get_gemini_client(GEMINI_FILE_API_MODEL) if no key is pinned.
+    Used by step 2b to ensure it accesses files uploaded by step 2a with the same key.
+    """
+    import google.genai as genai
+    if job.gemini_api_key_id:
+        from .models import TranscriptApiKey
+        try:
+            key_obj = TranscriptApiKey.objects.get(pk=job.gemini_api_key_id, is_active=True)
+            return genai.Client(api_key=key_obj.api_key), key_obj.pk, None
+        except TranscriptApiKey.DoesNotExist:
+            logger.warning(
+                '_get_gemini_client_for_job: pinned key pk=%s not found/inactive, falling back',
+                job.gemini_api_key_id,
+            )
+    return _get_gemini_client(GEMINI_FILE_API_MODEL)
 
 
 def _mark_key_model_exhausted(usage_pk: 'int | None', retry_after_minutes: int = 60):
@@ -205,7 +266,7 @@ def task_upload_to_gemini(self, job_id: int):
     job.save(update_fields=['step2a_status', 'step2a_error', 'updated_at'])
 
     try:
-        client, _key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
+        client, key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
         try:
             # Open file as bytes to avoid ASCII encoding issues with non-ASCII filenames
             with open(job.audio_file_path, 'rb') as f:
@@ -220,7 +281,7 @@ def task_upload_to_gemini(self, job_id: int):
             if _quota_exc.code != 429:
                 raise
             _mark_key_model_exhausted(usage_pk)
-            client, _key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
+            client, key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
             with open(job.audio_file_path, 'rb') as f:
                 uploaded = client.files.upload(
                     file=f,
@@ -229,13 +290,14 @@ def task_upload_to_gemini(self, job_id: int):
                         'display_name': f'job_{job_id}.mp3',
                     },
                 )
-        job.gemini_file_uri  = uploaded.uri
-        job.gemini_file_name = uploaded.name
+        job.gemini_file_uri    = uploaded.uri
+        job.gemini_file_name   = uploaded.name
         job.gemini_uploaded_at = timezone.now()
+        job.gemini_api_key_id  = key_pk  # step 2b must reuse this key to access the uploaded file
         job.step2a_status = StepStatus.DONE
         job.save(update_fields=[
             'gemini_file_uri', 'gemini_file_name', 'gemini_uploaded_at',
-            'step2a_status', 'updated_at',
+            'gemini_api_key_id', 'step2a_status', 'updated_at',
         ])
     except Exception as exc:
         _fail_step(job, 'step2a', str(exc))
@@ -268,7 +330,8 @@ def task_transcribe_audio(self, job_id: int):
         file_size = os.path.getsize(audio_path)
 
         if file_size <= GEMINI_AUDIO_SPLIT_THRESHOLD:
-            client, _key_pk, usage_pk = _get_gemini_client(config.model)
+            # Must use the same key that uploaded the file in step 2a
+            client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
             file_ref = client.files.get(name=job.gemini_file_name)
             try:
                 response = client.models.generate_content(
