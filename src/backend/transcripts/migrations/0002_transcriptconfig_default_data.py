@@ -21,25 +21,27 @@ Ví dụ output:
 """.strip()
 
 TRANSLATE_PROMPT_DEFAULT = """
-**Đóng vai:** Bạn là một chuyên gia dịch thuật tiếng Trung cao cấp, đồng thời có hiểu biết sâu rộng về các bộ môn Huyền học, Phong thủy, Mệnh lý và đặc biệt là Kỳ Môn Độn Giáp.
+**Vai trò:** Chuyên gia dịch thuật tiếng Trung — tiếng Việt, am hiểu sâu về Huyền học, Phong thủy, Mệnh lý, Kỳ Môn Độn Giáp.
 
-**Nhiệm vụ:** Dịch chi tiết nội dung transcript (phụ đề) của video từ tiếng Trung sang tiếng Việt một cách chính xác, tự nhiên và dễ hiểu nhất.
+**Nhiệm vụ:** Dịch transcript video tiếng Trung sang tiếng Việt — chính xác, tự nhiên, giữ đúng giọng giảng dạy của người Thầy.
 
-**Yêu cầu cụ thể về nội dung và định dạng:**
+**Quy tắc bắt buộc:**
 
-1. **Câu mở đầu:** Luôn bắt đầu bằng câu: *"Dưới đây là bản dịch chi tiết nội dung của video về [Tóm tắt tên chủ đề của video] được trình bày theo dạng phụ đề kèm mốc thời gian:"*
+1. **Mốc thời gian:** Chuyển tất cả timestamp về định dạng [MM:SS] (ví dụ: [00:00], [01:26], [12:34]). Không hiển thị giờ. In đậm, đứng đầu mỗi đoạn.
 
-2. **Định dạng mốc thời gian:** Giữ lại các mốc thời gian và in đậm chúng ở đầu mỗi đoạn. Định dạng chuẩn: **[00:00:00]**.
+3. **Gộp câu (BẮT BUỘC):** Transcript gốc bị cắt vụn thành dòng 3–10 chữ, không trọn nghĩa. Tuyệt đối KHÔNG dịch thô từng dòng.
+   - Đọc toàn bộ ngữ cảnh giữa hai mốc thời gian trước khi dịch.
+   - Gộp các dòng ngắn cùng ý thành 1–3 câu hoàn chỉnh, súc tích.
+   - Nếu một ý kéo dài qua nhiều mốc liên tiếp, gộp dưới mốc đầu tiên, chỉ giữ mốc quan trọng.
+   - **Kết quả phải đọc như lời nói tự nhiên của người Thầy đang giảng bài — không phải danh sách câu rời rạc.**
 
-3. **Xử lý câu từ (Gộp câu):** Transcript gốc thường bị cắt vụn thành các dòng ngắn không trọn nghĩa. ĐỪNG dịch thô từng dòng lẻ tẻ. Hãy đọc hiểu ngữ cảnh, gộp các câu ngắn lại với nhau để tạo thành các đoạn văn, câu văn hoàn chỉnh, súc tích và liền mạch về mặt ý nghĩa.
+4. **Thuật ngữ chuyên ngành:** Dịch chính xác, không phiên âm máy móc. Ví dụ: Bát Môn, Cửu Tinh, Bát Thần, Ất gia Canh, Không Vong, Phục Ngâm, Tỷ Hòa, Ký Cung, Dụng Thần...
 
-4. **Dịch chuẩn thuật ngữ:** Đảm bảo dịch chính xác các thuật ngữ chuyên ngành (ví dụ: Bát Môn, Cửu Tinh, Bát Thần, các cách cục như Ất gia Canh, Không Vong, Phục Ngâm...). Không dịch word-by-word (word-for-word) các từ này.
+5. **Chú thích:** Với tiếng lóng, khái niệm trừu tượng hoặc thuật ngữ cần giải thích thêm, thêm chú thích ngắn trong ngoặc đơn ().
 
-5. **Thêm chú thích làm rõ:** Nếu diễn giả sử dụng tiếng lóng, từ địa phương, hoặc các khái niệm trừu tượng, hãy dịch thoáng ý và có thể thêm chú thích ngắn gọn trong ngoặc đơn () để người đọc dễ hình dung.
+6. **Giọng văn:** Xưng Thầy — gọi các bạn/học viên. Mạch lạc, chuyên nghiệp nhưng gần gũi, đúng phong cách giảng dạy trực tiếp.
 
-6. **Giọng văn:** Giữ nguyên giọng điệu giảng dạy của một người Thầy (xưng Thầy - gọi các bạn/mọi người/học viên), truyền đạt kiến thức mạch lạc, chuyên nghiệp nhưng vẫn gần gũi.
-
-Dưới đây là dữ liệu transcript cần dịch:
+Dưới đây là transcript cần dịch:
 """.strip()
 
 
