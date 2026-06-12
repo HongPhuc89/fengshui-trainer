@@ -7,6 +7,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+GEMINI_MAX_OUTPUT_TOKENS = 65536
+
 
 def _fail_step(job, step: str, error_msg: str):
     """Helper to mark a step as FAILED and save error message."""
@@ -152,6 +154,9 @@ def task_transcribe_audio(self, job_id: int):
             model=config.model,  # enum from TranscriptConfig, not user-typed
             contents=[file_ref, config.value],
         )
+        if not response.text:
+            finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
+            raise ValueError(f'Gemini returned empty transcript (finish_reason={finish})')
         job.raw_transcript = response.text
         job.step2b_status = StepStatus.DONE
         job.save(update_fields=['raw_transcript', 'step2b_status', 'updated_at'])
@@ -165,6 +170,7 @@ def task_translate_transcript(self, job_id: int):
     """Step 3: Translate Chinese raw_transcript to Vietnamese via Gemini."""
     from .models import TranscriptJob, StepStatus
     import google.genai as genai
+    from google.genai.types import GenerateContentConfig
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -192,6 +198,7 @@ def task_translate_transcript(self, job_id: int):
         response = client.models.generate_content(
             model=config.model,  # enum from TranscriptConfig
             contents=[full_prompt],
+            config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
         )
         job.translated_transcript = response.text
         job.step3_status = StepStatus.DONE
