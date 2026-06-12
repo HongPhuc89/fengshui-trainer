@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/*.egg-info
+**/.eggs
+src/backend/.venv
+src/backend/venv
+
+# Django
+src/backend/staticfiles
+src/backend/media
+src/backend/celerybeat-schedule
+src/backend/celerybeat.pid
+src/backend/db.sqlite3
+
+# Frontend
+src/frontend/node_modules
+src/frontend/dist
+src/frontend/.nuxt
+
+# Docs & planning
+md/
+*.md
+!src/backend/requirements.txt
+
+# IDE & OS
+.vscode
+.idea
+**/.DS_Store
+**/*.swp
+
+# Env files (never bake into image)
+**/.env
+**/.env.*
