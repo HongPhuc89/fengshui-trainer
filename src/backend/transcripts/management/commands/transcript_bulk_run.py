@@ -37,20 +37,45 @@ STEP2B_FALLBACK_MODELS = [
 ]
 
 
+def _step2a_key_matches_step2b(job) -> bool:
+    """Return True if the key pinned to the uploaded file is still usable for step 2b.
+
+    False means step 2a must be re-run with a fresh key before step 2b can proceed.
+    """
+    from transcripts.models import TranscriptApiKey
+    from django.utils import timezone
+
+    if not job.gemini_api_key_id:
+        return False
+    try:
+        key = TranscriptApiKey.objects.get(pk=job.gemini_api_key_id, is_active=True)
+    except TranscriptApiKey.DoesNotExist:
+        return False
+
+    # Check if this key is exhausted for the transcribe model
+    usage = key.usages.filter(model_name=job._transcribe_model_hint).first()
+    if usage and usage.exhausted_until and usage.exhausted_until > timezone.now():
+        return False
+
+    return True
+
+
 def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_transcribe_audio):
     """Run step 2b with automatic model escalation on failure.
 
-    On each failure the file is re-uploaded (step 2a) with a fresh key, then
-    step 2b is retried with the next model in STEP2B_FALLBACK_MODELS.
+    Before each attempt, if the key pinned in step 2a is no longer usable
+    (inactive, exhausted, or mismatched), step 2a is re-run first to get a
+    fresh key/file pair.  On failure, the next model in STEP2B_FALLBACK_MODELS
+    is tried until one succeeds or all are exhausted.
 
     Returns True if any attempt succeeded, False if all attempts failed.
     stdout_fn(msg) is called to print progress (pass self.stdout.write).
     """
-    from transcripts.models import StepStatus
+    from transcripts.models import StepStatus, TranscriptConfig, ConfigType
 
     def _reset_step2a(job):
-        job.step2a_status = StepStatus.PENDING
-        job.step2a_error  = ''
+        job.step2a_status      = StepStatus.PENDING
+        job.step2a_error       = ''
         job.gemini_file_uri    = ''
         job.gemini_file_name   = ''
         job.gemini_uploaded_at = None
@@ -63,36 +88,47 @@ def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_tran
         ])
 
     def _reset_step2b(job):
-        job.step2b_status = StepStatus.PENDING
-        job.step2b_error  = ''
+        job.step2b_status  = StepStatus.PENDING
+        job.step2b_error   = ''
         job.raw_transcript = ''
         job.save(update_fields=['step2b_status', 'step2b_error', 'raw_transcript', 'updated_at'])
 
-    # Attempt 1: config model (no override)
-    stdout_fn('  step2b: transcribing (attempt 1 / config model)...', ending=' ')
-    task_transcribe_audio(job.pk)
-    job.refresh_from_db()
-    if job.step2b_status == StepStatus.DONE:
-        return True
-
-    stdout_fn(f'FAILED — {job.step2b_error[:200]}')
-
-    # Attempts 2+: escalate through STEP2B_FALLBACK_MODELS
-    for attempt_idx, fallback_model in enumerate(STEP2B_FALLBACK_MODELS, start=2):
-        stdout_fn(
-            f'  step2b: re-uploading (attempt {attempt_idx}, model={fallback_model})...',
-            ending=' ',
-        )
+    def _reupload(job, label):
+        """Re-run step 2a with a fresh key. Returns True on success."""
+        stdout_fn(f'  step2b: re-uploading ({label})...', ending=' ')
         _reset_step2a(job)
         task_upload_to_gemini(job.pk)
         job.refresh_from_db()
-        if job.step2a_status not in (StepStatus.DONE, StepStatus.SKIPPED):
-            stdout_fn(f'step2a FAILED — {job.step2a_error[:200]}')
-            return False
+        if job.step2a_status in (StepStatus.DONE, StepStatus.SKIPPED):
+            stdout_fn('step2a OK', ending=' — ')
+            return True
+        stdout_fn(f'step2a FAILED — {job.step2a_error[:200]}')
+        return False
 
-        stdout_fn(f'step2a OK — transcribing...', ending=' ')
+    # Resolve config model once so _step2a_key_matches_step2b can use it
+    try:
+        config_model = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT).model
+    except Exception:
+        config_model = ''
+
+    # Build attempt list: (model_override_or_None, attempt_label)
+    attempts = [(None, 'attempt 1 / config model')] + [
+        (m, f'attempt {i} / {m}')
+        for i, m in enumerate(STEP2B_FALLBACK_MODELS, start=2)
+    ]
+
+    for model_override, label in attempts:
+        effective_model = model_override or config_model
+        # Stash on job so _step2a_key_matches_step2b can read it without a DB round-trip
+        job._transcribe_model_hint = effective_model
+
+        if not _step2a_key_matches_step2b(job):
+            if not _reupload(job, label):
+                return False
+
+        stdout_fn(f'  step2b: transcribing ({label})...', ending=' ')
         _reset_step2b(job)
-        task_transcribe_audio(job.pk, model_override=fallback_model)
+        task_transcribe_audio(job.pk, model_override=model_override)
         job.refresh_from_db()
         if job.step2b_status == StepStatus.DONE:
             return True
@@ -100,6 +136,7 @@ def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_tran
         stdout_fn(f'FAILED — {job.step2b_error[:200]}')
 
     return False
+
 
 def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
     """Run step 3 with automatic model escalation on failure.
