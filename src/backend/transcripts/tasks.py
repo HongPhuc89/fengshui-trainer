@@ -304,8 +304,11 @@ def task_upload_to_gemini(self, job_id: int):
 
 
 @shared_task(bind=True, max_retries=0, soft_time_limit=1800)  # 30 minutes max
-def task_transcribe_audio(self, job_id: int):
-    """Step 2b: Transcribe Chinese audio via Gemini generate_content, save raw_transcript."""
+def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None):
+    """Step 2b: Transcribe Chinese audio via Gemini generate_content, save raw_transcript.
+
+    model_override: if given, use this model instead of TranscriptConfig.model.
+    """
     from .models import TranscriptJob, StepStatus
 
     try:
@@ -325,6 +328,7 @@ def task_transcribe_audio(self, job_id: int):
         from .models import TranscriptConfig, ConfigType
         from google.genai.errors import ClientError as GeminiClientError
         config = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT)
+        model = model_override or config.model
 
         audio_path = job.audio_file_path
         file_size = os.path.getsize(audio_path)
@@ -335,17 +339,17 @@ def task_transcribe_audio(self, job_id: int):
             file_ref = client.files.get(name=job.gemini_file_name)
             try:
                 response = client.models.generate_content(
-                    model=config.model,
+                    model=model,
                     contents=[file_ref, config.value],
                 )
             except GeminiClientError as _quota_exc:
                 if _quota_exc.code != 429:
                     raise
                 _mark_key_model_exhausted(usage_pk)
-                client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                client, _key_pk, usage_pk = _get_gemini_client(model)
                 file_ref = client.files.get(name=job.gemini_file_name)
                 response = client.models.generate_content(
-                    model=config.model,
+                    model=model,
                     contents=[file_ref, config.value],
                 )
             if not response.text:
@@ -358,7 +362,7 @@ def task_transcribe_audio(self, job_id: int):
             parts = []
             for idx, chunk in enumerate(chunks):
                 logger.info('task_transcribe_audio: job %s chunk %d/%d', job_id, idx + 1, len(chunks))
-                client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                client, _key_pk, usage_pk = _get_gemini_client(model)
                 with open(chunk['path'], 'rb') as f:
                     uploaded = client.files.upload(
                         file=f,
@@ -366,16 +370,16 @@ def task_transcribe_audio(self, job_id: int):
                     )
                 try:
                     response = client.models.generate_content(
-                        model=config.model,
+                        model=model,
                         contents=[uploaded, config.value],
                     )
                 except GeminiClientError as _quota_exc:
                     if _quota_exc.code != 429:
                         raise
                     _mark_key_model_exhausted(usage_pk)
-                    client, _key_pk, usage_pk = _get_gemini_client(config.model)
+                    client, _key_pk, usage_pk = _get_gemini_client(model)
                     response = client.models.generate_content(
-                        model=config.model,
+                        model=model,
                         contents=[uploaded, config.value],
                     )
                 if not response.text:

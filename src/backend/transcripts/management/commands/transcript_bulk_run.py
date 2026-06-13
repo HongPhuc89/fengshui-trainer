@@ -5,6 +5,13 @@ Run the full pipeline (step 1 → 2a → 2b → 3) for all TranscriptJobs with i
 Steps that are already DONE/SKIPPED are skipped unless --force is given.
 Each step only runs if the previous step succeeded.
 
+Step 2b model escalation:
+  When step 2b fails, the command automatically re-uploads (step 2a) with a fresh API key
+  and retries transcription with a higher-capability model:
+    attempt 1 — config model (default: gemini-2.5-flash)
+    attempt 2 — gemini-3-flash-preview
+    attempt 3 — gemini-3.5-flash
+
 Usage:
     docker-compose -f docker/docker-compose.yml exec web \\
         python manage.py transcript_bulk_run
@@ -21,6 +28,78 @@ Options:
 """
 
 from django.core.management.base import BaseCommand
+
+# Models to try for step 2b, in escalation order (index 0 = default from config, then fallbacks).
+# Index 0 is a sentinel — the actual config model is used at runtime; only indices 1+ are overrides.
+STEP2B_FALLBACK_MODELS = [
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash',
+]
+
+
+def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_transcribe_audio):
+    """Run step 2b with automatic model escalation on failure.
+
+    On each failure the file is re-uploaded (step 2a) with a fresh key, then
+    step 2b is retried with the next model in STEP2B_FALLBACK_MODELS.
+
+    Returns True if any attempt succeeded, False if all attempts failed.
+    stdout_fn(msg) is called to print progress (pass self.stdout.write).
+    """
+    from transcripts.models import StepStatus
+
+    def _reset_step2a(job):
+        job.step2a_status = StepStatus.PENDING
+        job.step2a_error  = ''
+        job.gemini_file_uri    = ''
+        job.gemini_file_name   = ''
+        job.gemini_uploaded_at = None
+        job.gemini_api_key_id  = None
+        job.save(update_fields=[
+            'step2a_status', 'step2a_error',
+            'gemini_file_uri', 'gemini_file_name',
+            'gemini_uploaded_at', 'gemini_api_key_id',
+            'updated_at',
+        ])
+
+    def _reset_step2b(job):
+        job.step2b_status = StepStatus.PENDING
+        job.step2b_error  = ''
+        job.raw_transcript = ''
+        job.save(update_fields=['step2b_status', 'step2b_error', 'raw_transcript', 'updated_at'])
+
+    # Attempt 1: config model (no override)
+    stdout_fn('  step2b: transcribing (attempt 1 / config model)...', ending=' ')
+    task_transcribe_audio(job.pk)
+    job.refresh_from_db()
+    if job.step2b_status == StepStatus.DONE:
+        return True
+
+    stdout_fn(f'FAILED — {job.step2b_error[:200]}')
+
+    # Attempts 2+: escalate through STEP2B_FALLBACK_MODELS
+    for attempt_idx, fallback_model in enumerate(STEP2B_FALLBACK_MODELS, start=2):
+        stdout_fn(
+            f'  step2b: re-uploading (attempt {attempt_idx}, model={fallback_model})...',
+            ending=' ',
+        )
+        _reset_step2a(job)
+        task_upload_to_gemini(job.pk)
+        job.refresh_from_db()
+        if job.step2a_status not in (StepStatus.DONE, StepStatus.SKIPPED):
+            stdout_fn(f'step2a FAILED — {job.step2a_error[:200]}')
+            return False
+
+        stdout_fn(f'step2a OK — transcribing...', ending=' ')
+        _reset_step2b(job)
+        task_transcribe_audio(job.pk, model_override=fallback_model)
+        job.refresh_from_db()
+        if job.step2b_status == StepStatus.DONE:
+            return True
+
+        stdout_fn(f'FAILED — {job.step2b_error[:200]}')
+
+    return False
 
 MIN_JOB_ID = 4   # only process jobs with id > this value
 MAX_JOBS   = 10  # max jobs per run (0 = unlimited); override with --limit
@@ -163,7 +242,7 @@ class Command(BaseCommand):
             if job_failed:
                 continue
 
-            # --- Step 2b: Transcribe ---
+            # --- Step 2b: Transcribe (with model escalation on failure) ---
             if run_step2b:
                 already_done = job.step2b_status == StepStatus.DONE
                 if already_done and not force:
@@ -176,17 +255,19 @@ class Command(BaseCommand):
                         job.step2b_error  = ''
                         job.save(update_fields=['step2b_status', 'step2b_error', 'updated_at'])
 
-                    self.stdout.write('  step2b: transcribing...', ending=' ')
                     self.stdout.flush()
-                    task_transcribe_audio(job.pk)
+                    success = _run_step2b_with_escalation(
+                        job, self.stdout.write,
+                        task_upload_to_gemini, task_transcribe_audio,
+                    )
                     job.refresh_from_db()
 
-                    if job.step2b_status == StepStatus.DONE:
+                    if success:
                         self.stdout.write(self.style.SUCCESS('DONE'))
                         preview = job.raw_transcript[:200].replace('\n', ' ')
                         self.stdout.write(f'          preview: {preview}...')
                     else:
-                        self.stdout.write(self.style.ERROR('FAILED'))
+                        self.stdout.write(self.style.ERROR('  step2b: all model attempts failed'))
                         self.stdout.write(f'          error: {job.step2b_error[:300]}')
                         failed_count += 1
                         job_failed = True
