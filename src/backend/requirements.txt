@@ -21,3 +21,4 @@ cryptography
 django-jsoneditor
 yt-dlp
 google-genai
+python-docx
