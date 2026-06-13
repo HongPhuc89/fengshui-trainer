@@ -398,8 +398,11 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
 
 @shared_task(bind=True, max_retries=0, soft_time_limit=600,
              rate_limit=None)  # rate_limit set dynamically from settings in apps.py
-def task_translate_transcript(self, job_id: int):
-    """Step 3: Translate Chinese raw_transcript to Vietnamese via Gemini."""
+def task_translate_transcript(self, job_id: int, model_override: 'str | None' = None):
+    """Step 3: Translate Chinese raw_transcript to Vietnamese via Gemini.
+
+    model_override: if given, use this model instead of TranscriptConfig.model.
+    """
     from .models import TranscriptJob, StepStatus
     from google.genai.types import GenerateContentConfig
 
@@ -420,16 +423,17 @@ def task_translate_transcript(self, job_id: int):
         from .models import TranscriptConfig, ConfigType
         from google.genai.errors import ClientError as GeminiClientError
         config = TranscriptConfig.get(ConfigType.TRANSLATE_PROMPT)
+        model = model_override or config.model
 
         full_prompt = (
             config.value
             + '\n\n---\n\nNội dung cần dịch:\n\n'
             + job.raw_transcript
         )
-        client, _key_pk, usage_pk = _get_gemini_client(config.model)
+        client, _key_pk, usage_pk = _get_gemini_client(model)
         try:
             response = client.models.generate_content(
-                model=config.model,
+                model=model,
                 contents=[full_prompt],
                 config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
             )
@@ -437,9 +441,9 @@ def task_translate_transcript(self, job_id: int):
             if _quota_exc.code != 429:
                 raise
             _mark_key_model_exhausted(usage_pk)
-            client, _key_pk, usage_pk = _get_gemini_client(config.model)
+            client, _key_pk, usage_pk = _get_gemini_client(model)
             response = client.models.generate_content(
-                model=config.model,
+                model=model,
                 contents=[full_prompt],
                 config=GenerateContentConfig(max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS),
             )
