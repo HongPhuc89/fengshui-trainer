@@ -117,8 +117,15 @@ def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_tran
         for i, m in enumerate(STEP2B_FALLBACK_MODELS, start=2)
     ]
 
+    from transcripts.tasks import _has_db_key_for_model
+
     for model_override, label in attempts:
         effective_model = model_override or config_model
+
+        if not _has_db_key_for_model(effective_model):
+            stdout_fn(f'  step2b: no DB key for {effective_model}, skipping')
+            continue
+
         # Stash on job so _step2a_key_matches_step2b can read it without a DB round-trip
         job._transcribe_model_hint = effective_model
 
@@ -141,10 +148,11 @@ def _run_step2b_with_escalation(job, stdout_fn, task_upload_to_gemini, task_tran
 def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
     """Run step 3 with automatic model escalation on failure.
 
-    Retries translation with each model in STEP2B_FALLBACK_MODELS before giving up.
+    Skips models that have no DB key (avoids env fallback).
+    Retries with each model in STEP2B_FALLBACK_MODELS before giving up.
     Returns True if any attempt succeeded, False if all attempts failed.
     """
-    from transcripts.models import StepStatus
+    from transcripts.models import StepStatus, TranscriptConfig, ConfigType
 
     def _reset_step3(job):
         job.step3_status = StepStatus.PENDING
@@ -152,23 +160,28 @@ def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
         job.translated_transcript = ''
         job.save(update_fields=['step3_status', 'step3_error', 'translated_transcript', 'updated_at'])
 
-    # Attempt 1: config model (no override)
-    stdout_fn('  step3 : translating (attempt 1 / config model)...', ending=' ')
-    task_translate_transcript(job.pk)
-    job.refresh_from_db()
-    if job.step3_status == StepStatus.DONE:
-        return True
+    try:
+        config_model = TranscriptConfig.get(ConfigType.TRANSLATE_PROMPT).model
+    except Exception:
+        config_model = ''
 
-    stdout_fn(f'FAILED — {job.step3_error[:200]}')
+    attempts = [(None, 'attempt 1 / config model')] + [
+        (m, f'attempt {i} / {m}')
+        for i, m in enumerate(STEP2B_FALLBACK_MODELS, start=2)
+    ]
 
-    # Attempts 2+: escalate through STEP2B_FALLBACK_MODELS
-    for attempt_idx, fallback_model in enumerate(STEP2B_FALLBACK_MODELS, start=2):
-        stdout_fn(
-            f'  step3 : retrying (attempt {attempt_idx}, model={fallback_model})...',
-            ending=' ',
-        )
+    from transcripts.tasks import _has_db_key_for_model
+
+    for model_override, label in attempts:
+        effective_model = model_override or config_model
+
+        if not _has_db_key_for_model(effective_model):
+            stdout_fn(f'  step3 : no DB key for {effective_model}, skipping')
+            continue
+
+        stdout_fn(f'  step3 : translating ({label})...', ending=' ')
         _reset_step3(job)
-        task_translate_transcript(job.pk, model_override=fallback_model)
+        task_translate_transcript(job.pk, model_override=model_override)
         job.refresh_from_db()
         if job.step3_status == StepStatus.DONE:
             return True

@@ -58,7 +58,7 @@ def _next_midnight_utc() -> datetime:
     return (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _get_gemini_client(model_name: str):
+def _get_gemini_client(model_name: str, no_env_fallback: bool = False):
     """
     Pick best available (key, model) pair:
     1. Bulk-create usage rows for active keys missing one for this model.
@@ -66,7 +66,7 @@ def _get_gemini_client(model_name: str):
     3. Filter: key is_active, not exhausted, rpd_count < GEMINI_RPD_LIMIT.
     4. Sort LRU (key.last_used_at asc, nulls first).
     Returns (client, key_pk, usage_pk).
-    Falls back to settings.GEMINI_API_KEY if no DB key available.
+    Falls back to settings.GEMINI_API_KEY if no DB key available (unless no_env_fallback=True).
     Raises RuntimeError if nothing available.
     """
     from .models import TranscriptApiKey, TranscriptApiKeyUsage
@@ -122,8 +122,8 @@ def _get_gemini_client(model_name: str):
         )
         return genai.Client(api_key=usage.api_key.api_key), usage.api_key_id, usage.pk
 
-    # Fallback to env key
-    if settings.GEMINI_API_KEY:
+    # Fallback to env key (skipped when caller wants DB-only selection)
+    if not no_env_fallback and settings.GEMINI_API_KEY:
         logger.warning(
             '_get_gemini_client: no DB key for model=%s, falling back to env GEMINI_API_KEY',
             model_name,
@@ -134,6 +134,26 @@ def _get_gemini_client(model_name: str):
         f'No Gemini API key available for model {model_name} — '
         f'all exhausted, RPD limit reached, or no env fallback.'
     )
+
+
+def _has_db_key_for_model(model_name: str) -> bool:
+    """Return True if at least one active, non-exhausted DB key exists for model_name."""
+    from .models import TranscriptApiKey, TranscriptApiKeyUsage
+    from django.utils import timezone
+    from django.db import models as m
+
+    now = timezone.now()
+    rpd_limit = settings.GEMINI_RPD_LIMIT
+    active_key_ids = set(TranscriptApiKey.objects.filter(is_active=True).values_list('pk', flat=True))
+    if not active_key_ids:
+        return False
+    return TranscriptApiKeyUsage.objects.filter(
+        api_key_id__in=active_key_ids,
+        model_name=model_name,
+        rpd_count__lt=rpd_limit,
+    ).filter(
+        m.Q(exhausted_until__isnull=True) | m.Q(exhausted_until__lte=now)
+    ).exists()
 
 
 def _get_gemini_client_for_job(job) -> tuple:
