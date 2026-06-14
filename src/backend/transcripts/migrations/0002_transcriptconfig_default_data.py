@@ -18,7 +18,7 @@ Ví dụ output:
 
 [00:01:23]
 首先我们要了解八门，分别是休门、生门、伤门...
-""".strip()
+""".strip()  # kept for migration rollback reference — active prompt is in 0006
 
 TRANSLATE_PROMPT_DEFAULT = """
 **Vai trò:** Chuyên gia dịch thuật tiếng Trung — tiếng Việt, am hiểu sâu về Huyền học, Phong thủy, Mệnh lý, Kỳ Môn Độn Giáp.
