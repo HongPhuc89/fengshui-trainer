@@ -13,7 +13,15 @@ GEMINI_FILE_API_MODEL        = 'gemini-file-api'  # synthetic name to track file
 GEMINI_AUDIO_SPLIT_THRESHOLD = 50 * 1024 * 1024   # 50 MB — split audio into chunks above this size
 GEMINI_AUDIO_CHUNK_DURATION  = 2700                # 45 min/chunk → ~45 MB at 128kbps
 TRANSCRIPT_MIN_COVERAGE      = 0.90                # warn if transcript covers < 90% of audio duration
-TRANSCRIPT_ESCALATION_MODEL  = 'gemini-3-flash-preview'  # model to retry step 2b when coverage is low/unverifiable
+TRANSCRIPT_ESCALATION_MODEL  = 'gemini-3-flash-preview'  # model to retry full step 2b when coverage is low
+
+# Per-chunk model escalation order: tried in sequence when a chunk fails with 500/empty.
+# Index 0 is a sentinel — the actual config model is used at call time; fallbacks start at index 1.
+# Mirrors STEP2B_FALLBACK_MODELS in transcript_bulk_run.py — keep in sync.
+CHUNK_FALLBACK_MODELS = [
+    'gemini-3-flash-preview',  # stronger context window than 2.5-flash
+    'gemini-3.5-flash',        # last resort before giving up on this chunk
+]
 
 
 def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
@@ -421,37 +429,58 @@ def _get_finish_reason(response) -> str:
 def _transcribe_single_file(job, model: str, prompt: str) -> str:
     """Transcribe a single audio file already uploaded to Gemini (step 2a).
 
-    Reuses the key pinned to the job from step 2a. On 429, marks that key exhausted
-    and retries with a new key — the file_name is still accessible because Gemini File
-    API files are project-scoped (not key-scoped) at the read level.
-    Returns the raw transcript text.
+    Attempt order:
+      1. config model + pinned key from step 2a
+         - 429 → rotate key, same model
+         - 500 / empty → escalate to CHUNK_FALLBACK_MODELS in order
+      2..N. fallback model + fresh key (same key-retry logic)
+    Raises if all attempts fail.
     """
     from google.genai.errors import ClientError as GeminiClientError
 
-    client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
-    file_ref = client.files.get(name=job.gemini_file_name)
-    try:
-        response = client.models.generate_content(model=model, contents=[file_ref, prompt])
-    except GeminiClientError as exc:
-        if exc.code != 429:
-            raise
-        _mark_key_model_exhausted(usage_pk)
-        client, _key_pk, _usage_pk = _get_gemini_client(model)
-        file_ref = client.files.get(name=job.gemini_file_name)
-        response = client.models.generate_content(model=model, contents=[file_ref, prompt])
+    models_to_try = [model] + CHUNK_FALLBACK_MODELS
+    last_exc = None
 
-    if not response.text:
-        raise ValueError(f'Gemini returned empty transcript (finish_reason={_get_finish_reason(response)})')
-    return response.text
+    for attempt, m in enumerate(models_to_try):
+        try:
+            if attempt == 0:
+                client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
+            else:
+                client, _key_pk, usage_pk = _get_gemini_client(m)
+            file_ref = client.files.get(name=job.gemini_file_name)
+            try:
+                response = client.models.generate_content(model=m, contents=[file_ref, prompt])
+            except GeminiClientError as exc:
+                if exc.code != 429:
+                    raise
+                _mark_key_model_exhausted(usage_pk)
+                client, _key_pk, _usage_pk = _get_gemini_client(m)
+                file_ref = client.files.get(name=job.gemini_file_name)
+                response = client.models.generate_content(model=m, contents=[file_ref, prompt])
+
+            if not response.text:
+                raise ValueError(f'empty response (finish_reason={_get_finish_reason(response)})')
+            logger.info('_transcribe_single_file: succeeded with model=%s (attempt %d)', m, attempt + 1)
+            return response.text
+
+        except Exception as exc:
+            last_exc = exc
+            logger.warning('_transcribe_single_file: model=%s attempt %d failed: %s', m, attempt + 1, exc)
+
+    raise RuntimeError(f'All transcription attempts failed for single file: {last_exc}')
 
 
 def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt: str) -> str:
-    """Upload one chunk file to Gemini and transcribe it.
+    """Upload one chunk and transcribe it, with per-chunk key and model escalation.
 
-    Upload and generate_content use the same key — Gemini File API files are scoped
-    to the uploading key, so switching keys between upload and generate causes 403/404.
-    On 429 during generate_content, re-uploads the chunk with a fresh key before retrying.
-    Returns the raw transcript text for this chunk (timestamps not yet offset-adjusted).
+    Attempt order:
+      1. config model + fresh key
+         - 429 during generate → re-upload with new key, same model
+         - 500 / empty         → escalate to next model
+      2..N. fallback model + fresh key (same key-retry logic per attempt)
+    Each attempt uploads the chunk independently — upload and generate_content always
+    use the same key since Gemini File API files are scoped to the uploading key.
+    Raises if all model attempts fail.
     """
     from google.genai.errors import ClientError as GeminiClientError
 
@@ -462,22 +491,36 @@ def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt
                 config={'mime_type': 'audio/mpeg', 'display_name': display_name},
             )
 
-    client, _key_pk, usage_pk = _get_gemini_client(model)
-    uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}.mp3')
-    try:
-        response = client.models.generate_content(model=model, contents=[uploaded, prompt])
-    except GeminiClientError as exc:
-        if exc.code != 429:
-            raise
-        # 429: file is scoped to the exhausted key — must re-upload with fresh key
-        _mark_key_model_exhausted(usage_pk)
-        client, _key_pk, _usage_pk = _get_gemini_client(model)
-        uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_retry.mp3')
-        response = client.models.generate_content(model=model, contents=[uploaded, prompt])
+    models_to_try = [model] + CHUNK_FALLBACK_MODELS
+    last_exc = None
 
-    if not response.text:
-        raise ValueError(f'Gemini empty transcript for chunk {idx} (finish_reason={_get_finish_reason(response)})')
-    return response.text
+    for attempt, m in enumerate(models_to_try):
+        try:
+            client, _key_pk, usage_pk = _get_gemini_client(m)
+            uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_a{attempt}.mp3')
+            try:
+                response = client.models.generate_content(model=m, contents=[uploaded, prompt])
+            except GeminiClientError as exc:
+                if exc.code != 429:
+                    raise
+                # 429: re-upload with fresh key — file is scoped to the exhausted key
+                _mark_key_model_exhausted(usage_pk)
+                client, _key_pk, _usage_pk = _get_gemini_client(m)
+                uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_a{attempt}r.mp3')
+                response = client.models.generate_content(model=m, contents=[uploaded, prompt])
+
+            if not response.text:
+                raise ValueError(f'empty response (finish_reason={_get_finish_reason(response)})')
+            logger.info('_transcribe_one_chunk: job %s chunk %d succeeded with model=%s (attempt %d)',
+                        job_id, idx, m, attempt + 1)
+            return response.text
+
+        except Exception as exc:
+            last_exc = exc
+            logger.warning('_transcribe_one_chunk: job %s chunk %d model=%s attempt %d failed: %s',
+                           job_id, idx, m, attempt + 1, exc)
+
+    raise RuntimeError(f'All transcription attempts failed for chunk {idx}: {last_exc}')
 
 
 def _transcribe_chunked(job_id: int, audio_path: str, model: str, prompt: str) -> str:
