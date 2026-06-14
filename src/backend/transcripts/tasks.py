@@ -25,25 +25,31 @@ CHUNK_FALLBACK_MODELS = [
 
 
 def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
-    """Split MP3 into chunks of chunk_duration_secs using ffmpeg. Returns list of {path, offset_secs}."""
+    """Split MP3 into chunks of chunk_duration_secs using ffmpeg.
+
+    Returns list of {path, offset_secs, duration_secs} where duration_secs is the
+    actual expected duration of that chunk (may be less than chunk_duration_secs for
+    the last chunk). Used to filter out hallucinated timestamps from Gemini.
+    """
     import json
     probe = subprocess.run(
         ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', audio_path],
         capture_output=True, text=True, check=True,
     )
-    duration = float(json.loads(probe.stdout)['format']['duration'])
+    total_duration = float(json.loads(probe.stdout)['format']['duration'])
     output_dir = os.path.dirname(audio_path)
     chunks = []
     offset = 0
     idx = 0
-    while offset < duration:
+    while offset < total_duration:
         chunk_path = os.path.join(output_dir, f'chunk_{idx:03d}.mp3')
+        actual_duration = min(chunk_duration_secs, total_duration - offset)
         subprocess.run(
             ['ffmpeg', '-y', '-i', audio_path, '-ss', str(offset),
              '-t', str(chunk_duration_secs), '-c', 'copy', chunk_path],
             capture_output=True, check=True,
         )
-        chunks.append({'path': chunk_path, 'offset_secs': int(offset)})
+        chunks.append({'path': chunk_path, 'offset_secs': int(offset), 'duration_secs': actual_duration})
         offset += chunk_duration_secs
         idx += 1
     return chunks
@@ -61,6 +67,38 @@ def _offset_transcript_timestamps(text: str, offset_secs: int) -> str:
         return f'[{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}]'
 
     return re.sub(r'\[(\d{2}):(\d{2}):(\d{2})\]', shift, text)
+
+
+def _strip_hallucinated_timestamps(text: str, chunk_duration_secs: float) -> str:
+    """Remove lines whose [HH:MM:SS] timestamp exceeds the chunk's actual duration.
+
+    Gemini occasionally generates timestamps beyond the audio it was given — typically
+    when the model "remembers" the full video duration from training data. This filter
+    truncates the transcript at the first timestamp that exceeds chunk_duration_secs,
+    keeping all content up to that point (the text line before the bad timestamp is kept).
+
+    A 5% tolerance is added to avoid discarding the last valid second due to rounding.
+    """
+    import re
+    limit = chunk_duration_secs * 1.05  # 5% tolerance for rounding
+    lines = text.splitlines()
+    result = []
+    dropped = 0
+    for line in lines:
+        m = re.match(r'^\[\s*(\d{1,3}):(\d{2}):(\d{2})\s*\]', line.strip())
+        if m:
+            h, mi, s = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            ts = h * 3600 + mi * 60 + s
+            if ts > limit:
+                dropped += 1
+                continue  # skip this timestamp line and its following text
+        result.append(line)
+    if dropped:
+        logger.warning(
+            '_strip_hallucinated_timestamps: dropped %d timestamp line(s) exceeding %.0fs limit',
+            dropped, chunk_duration_secs,
+        )
+    return '\n'.join(result)
 
 
 def get_audio_duration(audio_path: str) -> float:
@@ -559,6 +597,7 @@ def _transcribe_chunked(job_id: int, audio_path: str, model: str, prompt: str) -
     try:
         for idx, chunk in enumerate(chunks):
             text = _transcribe_one_chunk(job_id, chunk, idx, total, model, prompt)
+            text = _strip_hallucinated_timestamps(text, chunk['duration_secs'])
             parts.append(_offset_transcript_timestamps(text, chunk['offset_secs']))
             os.remove(chunk['path'])
             logger.info('[job %s] chunk %d/%d done, %d/%d chunks complete',
