@@ -441,36 +441,47 @@ def _transcribe_single_file(job, model: str, prompt: str) -> str:
     models_to_try = [model] + CHUNK_FALLBACK_MODELS
     last_exc = None
 
+    logger.info('[job %s] single-file transcribe start — file=%s models=%s',
+                job.pk, job.gemini_file_name, models_to_try)
+
     for attempt, m in enumerate(models_to_try):
         try:
             if attempt == 0:
-                client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
+                client, key_pk, usage_pk = _get_gemini_client_for_job(job)
             else:
-                client, _key_pk, usage_pk = _get_gemini_client(m)
+                client, key_pk, usage_pk = _get_gemini_client(m)
+            logger.info('[job %s] attempt %d/%d model=%s key_pk=%s — calling generate_content',
+                        job.pk, attempt + 1, len(models_to_try), m, key_pk)
             file_ref = client.files.get(name=job.gemini_file_name)
             try:
                 response = client.models.generate_content(model=m, contents=[file_ref, prompt])
             except GeminiClientError as exc:
                 if exc.code != 429:
                     raise
+                logger.warning('[job %s] attempt %d 429 quota model=%s key_pk=%s — rotating key',
+                               job.pk, attempt + 1, m, key_pk)
                 _mark_key_model_exhausted(usage_pk)
-                client, _key_pk, _usage_pk = _get_gemini_client(m)
+                client, key_pk, usage_pk = _get_gemini_client(m)
+                logger.info('[job %s] attempt %d retrying model=%s key_pk=%s',
+                            job.pk, attempt + 1, m, key_pk)
                 file_ref = client.files.get(name=job.gemini_file_name)
                 response = client.models.generate_content(model=m, contents=[file_ref, prompt])
 
             if not response.text:
                 raise ValueError(f'empty response (finish_reason={_get_finish_reason(response)})')
-            logger.info('_transcribe_single_file: succeeded with model=%s (attempt %d)', m, attempt + 1)
+            logger.info('[job %s] attempt %d OK model=%s key_pk=%s — %d chars',
+                        job.pk, attempt + 1, m, key_pk, len(response.text))
             return response.text
 
         except Exception as exc:
             last_exc = exc
-            logger.warning('_transcribe_single_file: model=%s attempt %d failed: %s', m, attempt + 1, exc)
+            logger.warning('[job %s] attempt %d FAILED model=%s key_pk=%s — %s',
+                           job.pk, attempt + 1, m, key_pk, exc)
 
     raise RuntimeError(f'All transcription attempts failed for single file: {last_exc}')
 
 
-def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt: str) -> str:
+def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, total: int, model: str, prompt: str) -> str:
     """Upload one chunk and transcribe it, with per-chunk key and model escalation.
 
     Attempt order:
@@ -484,7 +495,12 @@ def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt
     """
     from google.genai.errors import ClientError as GeminiClientError
 
-    def _upload(api_client, display_name: str):
+    chunk_size_mb = os.path.getsize(chunk['path']) / 1024 / 1024
+    offset_hms = f"{chunk['offset_secs'] // 3600:02d}:{(chunk['offset_secs'] % 3600) // 60:02d}:{chunk['offset_secs'] % 60:02d}"
+    prefix = f'[job {job_id}] chunk {idx + 1}/{total} offset={offset_hms} size={chunk_size_mb:.1f}MB'
+
+    def _upload(api_client, key_pk, display_name: str):
+        logger.info('%s — uploading as %s key_pk=%s', prefix, display_name, key_pk)
         with open(chunk['path'], 'rb') as f:
             return api_client.files.upload(
                 file=f,
@@ -496,29 +512,32 @@ def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt
 
     for attempt, m in enumerate(models_to_try):
         try:
-            client, _key_pk, usage_pk = _get_gemini_client(m)
-            uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_a{attempt}.mp3')
+            client, key_pk, usage_pk = _get_gemini_client(m)
+            logger.info('%s — attempt %d/%d model=%s key_pk=%s', prefix, attempt + 1, len(models_to_try), m, key_pk)
+            uploaded = _upload(client, key_pk, f'job_{job_id}_chunk_{idx:03d}_a{attempt}.mp3')
+            logger.info('%s — upload done, calling generate_content model=%s key_pk=%s', prefix, m, key_pk)
             try:
                 response = client.models.generate_content(model=m, contents=[uploaded, prompt])
             except GeminiClientError as exc:
                 if exc.code != 429:
                     raise
-                # 429: re-upload with fresh key — file is scoped to the exhausted key
+                logger.warning('%s — 429 quota model=%s key_pk=%s, rotating key + re-uploading', prefix, m, key_pk)
                 _mark_key_model_exhausted(usage_pk)
-                client, _key_pk, _usage_pk = _get_gemini_client(m)
-                uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_a{attempt}r.mp3')
+                client, key_pk, usage_pk = _get_gemini_client(m)
+                uploaded = _upload(client, key_pk, f'job_{job_id}_chunk_{idx:03d}_a{attempt}r.mp3')
+                logger.info('%s — re-upload done, retrying generate_content model=%s key_pk=%s', prefix, m, key_pk)
                 response = client.models.generate_content(model=m, contents=[uploaded, prompt])
 
             if not response.text:
                 raise ValueError(f'empty response (finish_reason={_get_finish_reason(response)})')
-            logger.info('_transcribe_one_chunk: job %s chunk %d succeeded with model=%s (attempt %d)',
-                        job_id, idx, m, attempt + 1)
+            logger.info('%s — attempt %d OK model=%s key_pk=%s, %d chars',
+                        prefix, attempt + 1, m, key_pk, len(response.text))
             return response.text
 
         except Exception as exc:
             last_exc = exc
-            logger.warning('_transcribe_one_chunk: job %s chunk %d model=%s attempt %d failed: %s',
-                           job_id, idx, m, attempt + 1, exc)
+            logger.warning('%s — attempt %d FAILED model=%s key_pk=%s: %s',
+                           prefix, attempt + 1, m, key_pk, exc)
 
     raise RuntimeError(f'All transcription attempts failed for chunk {idx}: {last_exc}')
 
@@ -531,24 +550,31 @@ def _transcribe_chunked(job_id: int, audio_path: str, model: str, prompt: str) -
     re-raising so no orphaned files are left on disk.
     Returns the merged raw transcript text.
     """
+    file_size_mb = os.path.getsize(audio_path) / 1024 / 1024
     chunks = _split_audio_into_chunks(audio_path, chunk_duration_secs=GEMINI_AUDIO_CHUNK_DURATION)
-    logger.info('_transcribe_chunked: job %s split into %d chunks', job_id, len(chunks))
+    total = len(chunks)
+    logger.info('[job %s] chunked transcribe start — file=%.1fMB chunks=%d model=%s',
+                job_id, file_size_mb, total, model)
     parts = []
     try:
         for idx, chunk in enumerate(chunks):
-            logger.info('_transcribe_chunked: job %s chunk %d/%d', job_id, idx + 1, len(chunks))
-            text = _transcribe_one_chunk(job_id, chunk, idx, model, prompt)
+            text = _transcribe_one_chunk(job_id, chunk, idx, total, model, prompt)
             parts.append(_offset_transcript_timestamps(text, chunk['offset_secs']))
             os.remove(chunk['path'])
+            logger.info('[job %s] chunk %d/%d done, %d/%d chunks complete',
+                        job_id, idx + 1, total, idx + 1, total)
     except Exception:
-        for remaining in chunks:
-            if os.path.exists(remaining['path']):
-                try:
-                    os.remove(remaining['path'])
-                except OSError:
-                    pass
+        leftovers = [c['path'] for c in chunks if os.path.exists(c['path'])]
+        logger.warning('[job %s] error mid-chunked, cleaning up %d leftover file(s)', job_id, len(leftovers))
+        for path in leftovers:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
         raise
 
+    total_chars = sum(len(p) for p in parts)
+    logger.info('[job %s] chunked transcribe done — %d chunks merged, %d total chars', job_id, total, total_chars)
     return '\n\n'.join(parts)
 
 
