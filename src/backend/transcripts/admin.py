@@ -91,6 +91,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
     actions      = [
         'action_rerun_download', 'action_rerun_upload',
         'action_rerun_transcribe', 'action_rerun_translate',
+        'action_trigger_step3',
     ]
 
     readonly_fields = [
@@ -101,7 +102,6 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         'step2a_status', 'step2a_error_display', 'step2a_timing',
         'step2b_status', 'step2b_timing', 'step2b_model', 'step2b_error_display',
         'transcript_coverage_display', 'step2b_warning_display',
-        'raw_transcript_display',
         'translated_transcript_display',
         'step3_status', 'step3_error_display', 'step3_timing',
         'overall_badge', 'created_at', 'updated_at',
@@ -133,7 +133,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             'fields': [
                 'step2b_status', 'step2b_model', 'step2b_timing', 'step2b_error_display',
                 'transcript_coverage_display', 'step2b_warning_display',
-                'raw_transcript_display',
+                'raw_transcript',
             ],
             'classes': ['collapse'],
         }),
@@ -488,10 +488,6 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             max_height, text,
         )
 
-    @admin.display(description='Raw Transcript (Chinese)')
-    def raw_transcript_display(self, obj):
-        return self._transcript_field(obj.raw_transcript)
-
     @admin.display(description='Translated Transcript (Vietnamese)')
     def translated_transcript_display(self, obj):
         if not obj.translated_transcript:
@@ -548,6 +544,28 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         for job in queryset:
             task_translate_transcript.delay(job.pk)
         self.message_user(request, f'{queryset.count()} translate task(s) queued.')
+
+    @admin.action(description='▶ Trigger Step 3 — translate raw_transcript (for manually-entered transcripts)')
+    def action_trigger_step3(self, request, queryset):
+        from .models import StepStatus
+        queued = 0
+        skipped = 0
+        for job in queryset:
+            if not job.raw_transcript:
+                skipped += 1
+                continue
+            job.step2b_status = StepStatus.DONE
+            job.save(update_fields=['step2b_status', 'updated_at'])
+            task_translate_transcript.apply_async(args=[job.pk])
+            queued += 1
+        if queued:
+            self.message_user(request, f'{queued} job(s) queued for Step 3 translation.')
+        if skipped:
+            self.message_user(
+                request,
+                f'{skipped} job(s) skipped — raw_transcript is empty.',
+                level=messages.WARNING,
+            )
 
     # --- Auto-start pipeline on create ---
     def save_model(self, request, obj, form, change):

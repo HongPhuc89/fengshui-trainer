@@ -8,97 +8,16 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MAX_OUTPUT_TOKENS     = 65536
-GEMINI_FILE_API_MODEL        = 'gemini-file-api'  # synthetic name to track file upload quota separately
-GEMINI_AUDIO_SPLIT_THRESHOLD = 50 * 1024 * 1024   # 50 MB — split audio into chunks above this size
-GEMINI_AUDIO_CHUNK_DURATION  = 2700                # 45 min/chunk → ~45 MB at 128kbps
-TRANSCRIPT_MIN_COVERAGE      = 0.90                # warn if transcript covers < 90% of audio duration
-TRANSCRIPT_ESCALATION_MODEL  = 'gemini-3-flash-preview'  # model to retry full step 2b when coverage is low
+GEMINI_MAX_OUTPUT_TOKENS    = 65536
+GEMINI_FILE_API_MODEL       = 'gemini-file-api'  # synthetic name to track file upload quota separately
+TRANSCRIPT_MIN_COVERAGE     = 0.90               # warn if transcript covers < 90% of audio duration
+TRANSCRIPT_ESCALATION_MODEL = 'gemini-3-flash-preview'  # model to retry step 2b when coverage is low
 
-# Per-chunk model escalation order: tried in sequence when a chunk fails with 500/empty.
-# Index 0 is a sentinel — the actual config model is used at call time; fallbacks start at index 1.
-# Mirrors STEP2B_FALLBACK_MODELS in transcript_bulk_run.py — keep in sync.
-CHUNK_FALLBACK_MODELS = [
-    'gemini-3-flash-preview',  # stronger context window than 2.5-flash
-    'gemini-3.5-flash',        # last resort before giving up on this chunk
+# Model fallback order for transcription: tried in sequence when primary model fails.
+TRANSCRIBE_FALLBACK_MODELS = [
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash',
 ]
-
-
-def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
-    """Split MP3 into chunks of chunk_duration_secs using ffmpeg.
-
-    Returns list of {path, offset_secs, duration_secs} where duration_secs is the
-    actual expected duration of that chunk (may be less than chunk_duration_secs for
-    the last chunk). Used to filter out hallucinated timestamps from Gemini.
-    """
-    import json
-    probe = subprocess.run(
-        ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', audio_path],
-        capture_output=True, text=True, check=True,
-    )
-    total_duration = float(json.loads(probe.stdout)['format']['duration'])
-    output_dir = os.path.dirname(audio_path)
-    chunks = []
-    offset = 0
-    idx = 0
-    while offset < total_duration:
-        chunk_path = os.path.join(output_dir, f'chunk_{idx:03d}.mp3')
-        actual_duration = min(chunk_duration_secs, total_duration - offset)
-        subprocess.run(
-            ['ffmpeg', '-y', '-i', audio_path, '-ss', str(offset),
-             '-t', str(chunk_duration_secs), '-c', 'copy', chunk_path],
-            capture_output=True, check=True,
-        )
-        chunks.append({'path': chunk_path, 'offset_secs': int(offset), 'duration_secs': actual_duration})
-        offset += chunk_duration_secs
-        idx += 1
-    return chunks
-
-
-def _offset_transcript_timestamps(text: str, offset_secs: int) -> str:
-    """Add chunk offset to every [HH:MM:SS] timestamp in transcript text."""
-    import re
-    if offset_secs == 0:
-        return text
-
-    def shift(match):
-        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        total = h * 3600 + m * 60 + s + offset_secs
-        return f'[{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}]'
-
-    return re.sub(r'\[(\d{2}):(\d{2}):(\d{2})\]', shift, text)
-
-
-def _strip_hallucinated_timestamps(text: str, chunk_duration_secs: float) -> str:
-    """Remove lines whose [HH:MM:SS] timestamp exceeds the chunk's actual duration.
-
-    Gemini occasionally generates timestamps beyond the audio it was given — typically
-    when the model "remembers" the full video duration from training data. This filter
-    truncates the transcript at the first timestamp that exceeds chunk_duration_secs,
-    keeping all content up to that point (the text line before the bad timestamp is kept).
-
-    A 5% tolerance is added to avoid discarding the last valid second due to rounding.
-    """
-    import re
-    limit = chunk_duration_secs * 1.05  # 5% tolerance for rounding
-    lines = text.splitlines()
-    result = []
-    dropped = 0
-    for line in lines:
-        m = re.match(r'^\[\s*(\d{1,3}):(\d{2}):(\d{2})\s*\]', line.strip())
-        if m:
-            h, mi, s = int(m.group(1)), int(m.group(2)), int(m.group(3))
-            ts = h * 3600 + mi * 60 + s
-            if ts > limit:
-                dropped += 1
-                continue  # skip this timestamp line and its following text
-        result.append(line)
-    if dropped:
-        logger.warning(
-            '_strip_hallucinated_timestamps: dropped %d timestamp line(s) exceeding %.0fs limit',
-            dropped, chunk_duration_secs,
-        )
-    return '\n'.join(result)
 
 
 def get_audio_duration(audio_path: str) -> float:
@@ -470,13 +389,13 @@ def _transcribe_single_file(job, model: str, prompt: str) -> str:
     Attempt order:
       1. config model + pinned key from step 2a
          - 429 → rotate key, same model
-         - 500 / empty → escalate to CHUNK_FALLBACK_MODELS in order
+         - 500 / empty → escalate to TRANSCRIBE_FALLBACK_MODELS in order
       2..N. fallback model + fresh key (same key-retry logic)
     Raises if all attempts fail.
     """
     from google.genai.errors import ClientError as GeminiClientError
 
-    models_to_try = [model] + CHUNK_FALLBACK_MODELS
+    models_to_try = [model] + TRANSCRIBE_FALLBACK_MODELS
     last_exc = None
 
     logger.info('[job %s] single-file transcribe start — file=%s models=%s',
@@ -519,109 +438,11 @@ def _transcribe_single_file(job, model: str, prompt: str) -> str:
     raise RuntimeError(f'All transcription attempts failed for single file: {last_exc}')
 
 
-def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, total: int, model: str, prompt: str) -> str:
-    """Upload one chunk and transcribe it, with per-chunk key and model escalation.
-
-    Attempt order:
-      1. config model + fresh key
-         - 429 during generate → re-upload with new key, same model
-         - 500 / empty         → escalate to next model
-      2..N. fallback model + fresh key (same key-retry logic per attempt)
-    Each attempt uploads the chunk independently — upload and generate_content always
-    use the same key since Gemini File API files are scoped to the uploading key.
-    Raises if all model attempts fail.
-    """
-    from google.genai.errors import ClientError as GeminiClientError
-
-    chunk_size_mb = os.path.getsize(chunk['path']) / 1024 / 1024
-    offset_hms = f"{chunk['offset_secs'] // 3600:02d}:{(chunk['offset_secs'] % 3600) // 60:02d}:{chunk['offset_secs'] % 60:02d}"
-    prefix = f'[job {job_id}] chunk {idx + 1}/{total} offset={offset_hms} size={chunk_size_mb:.1f}MB'
-
-    def _upload(api_client, key_pk, display_name: str):
-        logger.info('%s — uploading as %s key_pk=%s', prefix, display_name, key_pk)
-        with open(chunk['path'], 'rb') as f:
-            return api_client.files.upload(
-                file=f,
-                config={'mime_type': 'audio/mpeg', 'display_name': display_name},
-            )
-
-    models_to_try = [model] + CHUNK_FALLBACK_MODELS
-    last_exc = None
-
-    for attempt, m in enumerate(models_to_try):
-        try:
-            client, key_pk, usage_pk = _get_gemini_client(m)
-            logger.info('%s — attempt %d/%d model=%s key_pk=%s', prefix, attempt + 1, len(models_to_try), m, key_pk)
-            uploaded = _upload(client, key_pk, f'job_{job_id}_chunk_{idx:03d}_a{attempt}.mp3')
-            logger.info('%s — upload done, calling generate_content model=%s key_pk=%s', prefix, m, key_pk)
-            try:
-                response = client.models.generate_content(model=m, contents=[uploaded, prompt])
-            except GeminiClientError as exc:
-                if exc.code != 429:
-                    raise
-                logger.warning('%s — 429 quota model=%s key_pk=%s, rotating key + re-uploading', prefix, m, key_pk)
-                _mark_key_model_exhausted(usage_pk)
-                client, key_pk, usage_pk = _get_gemini_client(m)
-                uploaded = _upload(client, key_pk, f'job_{job_id}_chunk_{idx:03d}_a{attempt}r.mp3')
-                logger.info('%s — re-upload done, retrying generate_content model=%s key_pk=%s', prefix, m, key_pk)
-                response = client.models.generate_content(model=m, contents=[uploaded, prompt])
-
-            if not response.text:
-                raise ValueError(f'empty response (finish_reason={_get_finish_reason(response)})')
-            logger.info('%s — attempt %d OK model=%s key_pk=%s, %d chars',
-                        prefix, attempt + 1, m, key_pk, len(response.text))
-            return response.text
-
-        except Exception as exc:
-            last_exc = exc
-            logger.warning('%s — attempt %d FAILED model=%s key_pk=%s: %s',
-                           prefix, attempt + 1, m, key_pk, exc)
-
-    raise RuntimeError(f'All transcription attempts failed for chunk {idx}: {last_exc}')
-
-
-def _transcribe_chunked(job_id: int, audio_path: str, model: str, prompt: str) -> str:
-    """Split audio into chunks, transcribe each, merge with corrected timestamps.
-
-    All chunk files are created upfront by ffmpeg. Each is removed immediately after
-    successful transcription. On any error, remaining chunk files are cleaned up before
-    re-raising so no orphaned files are left on disk.
-    Returns the merged raw transcript text.
-    """
-    file_size_mb = os.path.getsize(audio_path) / 1024 / 1024
-    chunks = _split_audio_into_chunks(audio_path, chunk_duration_secs=GEMINI_AUDIO_CHUNK_DURATION)
-    total = len(chunks)
-    logger.info('[job %s] chunked transcribe start — file=%.1fMB chunks=%d model=%s',
-                job_id, file_size_mb, total, model)
-    parts = []
-    try:
-        for idx, chunk in enumerate(chunks):
-            text = _transcribe_one_chunk(job_id, chunk, idx, total, model, prompt)
-            text = _strip_hallucinated_timestamps(text, chunk['duration_secs'])
-            parts.append(_offset_transcript_timestamps(text, chunk['offset_secs']))
-            os.remove(chunk['path'])
-            logger.info('[job %s] chunk %d/%d done, %d/%d chunks complete',
-                        job_id, idx + 1, total, idx + 1, total)
-    except Exception:
-        leftovers = [c['path'] for c in chunks if os.path.exists(c['path'])]
-        logger.warning('[job %s] error mid-chunked, cleaning up %d leftover file(s)', job_id, len(leftovers))
-        for path in leftovers:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-        raise
-
-    total_chars = sum(len(p) for p in parts)
-    logger.info('[job %s] chunked transcribe done — %d chunks merged, %d total chars', job_id, total, total_chars)
-    return '\n\n'.join(parts)
-
-
 def _verify_coverage(job, job_id: int) -> None:
-    """Compute transcript coverage ratio and set job.transcript_coverage / step2b_warning.
+    """Compute transcript coverage from raw_transcript text and set job fields.
 
-    Compares the last timestamp in raw_transcript against audio duration from ffprobe.
-    Never raises — verification failure sets a warning but does not fail the job.
+    Never raises — errors set a warning without failing the job.
+    Caller is responsible for saving job fields.
     """
     try:
         audio_duration = get_audio_duration(job.audio_file_path)
@@ -635,7 +456,6 @@ def _verify_coverage(job, job_id: int) -> None:
 
         coverage = last_ts / audio_duration
         if coverage > 1.5:
-            # Timestamps far exceed audio — likely playlist-relative hallucination
             job.transcript_coverage = None
             job.step2b_warning = (
                 f'Cannot verify coverage: last timestamp {last_ts:.0f}s far exceeds '
@@ -657,7 +477,6 @@ def _verify_coverage(job, job_id: int) -> None:
             logger.warning('_verify_coverage: job %s coverage=%.1f%% — possible truncation', job_id, coverage * 100)
         else:
             job.step2b_warning = ''
-
     except Exception as exc:
         job.transcript_coverage = None
         job.step2b_warning = f'Coverage check error: {str(exc)[:200]}'
@@ -668,7 +487,8 @@ def _verify_coverage(job, job_id: int) -> None:
 def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None):
     """Step 2b: Transcribe Chinese audio via Gemini, save raw_transcript.
 
-    Routes to single-file or chunked flow based on file size.
+    Always attempts Gemini single-file upload. If Gemini rejects (e.g. file too large),
+    the task fails normally — admin can then edit raw_transcript manually and trigger Step 3.
     model_override: if given, use this model instead of TranscriptConfig.model.
     """
     from .models import TranscriptJob, StepStatus, TranscriptConfig, ConfigType
@@ -692,13 +512,8 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
     try:
         config = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT)
         model = model_override or config.model
-        audio_path = job.audio_file_path
 
-        if os.path.getsize(audio_path) <= GEMINI_AUDIO_SPLIT_THRESHOLD:
-            job.raw_transcript = _transcribe_single_file(job, model, config.value)
-        else:
-            job.raw_transcript = _transcribe_chunked(job_id, audio_path, model, config.value)
-
+        job.raw_transcript = _transcribe_single_file(job, model, config.value)
         _verify_coverage(job, job_id)
 
         job.step2b_status = StepStatus.DONE

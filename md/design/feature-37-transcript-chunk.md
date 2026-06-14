@@ -109,7 +109,9 @@ class TranscriptChunk(models.Model):
 
     class Meta:
         ordering = ['job', 'idx']
-        unique_together = [('job', 'idx')]
+        constraints = [
+            models.UniqueConstraint(fields=['job', 'idx'], name='unique_transcriptchunk_job_idx'),
+        ]
         indexes = [
             models.Index(fields=['job', 'idx'], name='idx_transcriptchunk_job_idx'),
         ]
@@ -764,7 +766,7 @@ Mỗi chunk có `ts_format` riêng. `_parse_chunk_result` detect format per-chun
 | File | Action | Mô tả |
 |------|--------|-------|
 | `src/backend/transcripts/models.py` | Sửa | Thêm class `TsFormat` (TextChoices) + model `TranscriptChunk` |
-| `src/backend/transcripts/migrations/0010_transcript_chunk.py` | Tạo | Schema migration — CreateModel TranscriptChunk, AddConstraint unique_together, AddIndex |
+| `src/backend/transcripts/migrations/0010_transcript_chunk.py` | Tạo | Schema migration — CreateModel TranscriptChunk (với UniqueConstraint trong options), AddIndex |
 | `src/backend/transcripts/tasks.py` | Sửa | Thêm `_parse_chunk_result`, `_build_raw_transcript_from_chunks`, `_verify_coverage_from_chunks`, `_verify_coverage_from_text`; sửa `_transcribe_one_chunk` (return dict), `_transcribe_chunked` (delete+bulk_create), `_verify_coverage` (dispatch sang 2 helpers) |
 | `src/backend/transcripts/admin.py` | Sửa | Import `TranscriptChunk`; thêm `TranscriptChunkInline`; thêm `inlines = [TranscriptChunkInline]` vào `TranscriptJobAdmin` |
 
@@ -775,15 +777,16 @@ Mỗi chunk có `ts_format` riêng. `_parse_chunk_result` detect format per-chun
 ### models.py
 - [ ] Thêm class `TsFormat(models.TextChoices)` với 4 choices: `hms`, `msc`, `ms`, `''`
 - [ ] Thêm model `TranscriptChunk` với đầy đủ fields như thiết kế
-- [ ] Thêm `Meta`: `ordering`, `unique_together`, `indexes`, `verbose_name`
+- [ ] Thêm `Meta`: `ordering`, `constraints` (UniqueConstraint), `indexes`, `verbose_name`
 - [ ] Thêm `__str__`
 
 ### migrations
 - [ ] Tạo file `0010_transcript_chunk.py`
 - [ ] `dependencies = [('transcripts', '0009_update_transcript_prompt_v3')]`
 - [ ] `CreateModel` với tất cả fields
-- [ ] `AddConstraint` unique_together `(job, idx)`
+- [ ] `CreateModel` bao gồm `constraints = [UniqueConstraint(fields=['job', 'idx'], name='unique_transcriptchunk_job_idx')]` trong `options`
 - [ ] `AddIndex` `idx_transcriptchunk_job_idx`
+- [ ] **Lưu ý:** Chạy `makemigrations` thực tế để sinh migration đúng; không copy-paste migration từ design doc
 
 ### tasks.py
 - [ ] Thêm hàm `_parse_chunk_result(raw_text, offset_secs, duration_secs) -> dict`
