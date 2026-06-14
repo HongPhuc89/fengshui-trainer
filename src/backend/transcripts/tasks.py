@@ -64,38 +64,67 @@ def get_audio_duration(audio_path: str) -> float:
     return float(json.loads(probe.stdout)['format']['duration'])
 
 
-def get_last_transcript_timestamp(text: str) -> 'tuple[float, str] | tuple[None, None]':
-    """Return (seconds, format) for the last valid timestamp in the transcript, or (None, None).
+def _parse_timestamps_to_seconds(text: str) -> 'tuple[list[float], str]':
+    """Extract all valid timestamps from transcript text, return (sorted_seconds_list, format_tag).
 
-    Gemini uses several timestamp formats — all are normalised here:
-    - [HH:MM:SS]  or  [ HH:MM:SS ]  or  [ HH:MM:SS]  (optional inner spaces)
-    - [MM:SS:cs]  — minutes:seconds:centiseconds (third field ≥ 60 is the giveaway)
-
-    Detection: if any timestamp has third field ≥ 60, the format is [MM:SS:cs].
-    Returns format tag 'hms' or 'msc' so callers can log the interpretation.
+    Detects format automatically:
+    - [HH:MM:SS] / [ HH:MM:SS ] — standard (most transcripts)
+    - [MM:SS:cs] — centiseconds in third field (third field ≥ 60)
+    - [MM:SS]    — two-field fallback (some short clips)
     """
     import re
-    # Allow optional whitespace inside brackets
-    matches = re.findall(r'\[\s*(\d{2,3}):(\d{2}):(\d{2})\s*\]', text)
-    if not matches:
-        return None, None
 
-    has_invalid_s = any(int(s) >= 60 for _, _, s in matches)
+    three = re.findall(r'\[\s*(\d{1,3}):(\d{2}):(\d{2})\s*\]', text)
+    two   = re.findall(r'\[\s*(\d{1,3}):(\d{2})\s*\]', text)
 
-    if has_invalid_s:
-        # Format is [MM:SS:cs] — treat first field as minutes, second as seconds
-        for m_str, s_str, _ in reversed(matches):
+    three_vals: list[float] = []
+    three_fmt = 'hms'
+    if three:
+        has_invalid_s = any(int(s) >= 60 for _, _, s in three)
+        if has_invalid_s:
+            three_fmt = 'msc'
+            for m_str, s_str, _ in three:
+                m, s = int(m_str), int(s_str)
+                if s < 60:
+                    three_vals.append(float(m * 60 + s))
+        else:
+            for h_str, m_str, s_str in three:
+                h, m, s = int(h_str), int(m_str), int(s_str)
+                if m < 60 and s < 60:
+                    three_vals.append(float(h * 3600 + m * 60 + s))
+
+    two_vals: list[float] = []
+    if two:
+        for m_str, s_str in two:
             m, s = int(m_str), int(s_str)
-            if s < 60:
-                return m * 60 + s, 'msc'
-        return None, None
-    else:
-        # Format is [HH:MM:SS]
-        for h_str, m_str, s_str in reversed(matches):
-            h, m, s = int(h_str), int(m_str), int(s_str)
             if m < 60 and s < 60:
-                return h * 3600 + m * 60 + s, 'hms'
+                two_vals.append(float(m * 60 + s))
+
+    # Prefer whichever format has more timestamps; 3-field wins on tie.
+    if three_vals and (not two_vals or len(three_vals) >= len(two_vals)):
+        return sorted(three_vals), three_fmt
+    if two_vals:
+        return sorted(two_vals), 'ms'
+    return [], ''
+
+
+def get_last_transcript_timestamp(text: str) -> 'tuple[float, str] | tuple[None, None]':
+    """Return (seconds, format) for the effective last timestamp in the transcript, or (None, None).
+
+    Uses the 95th-percentile value instead of the raw maximum to filter out hallucinated
+    timestamps that Gemini occasionally appends at the end (e.g. [08:58:58] after [00:08:54]
+    in a 9-minute clip).  With ≥ 10 timestamps the p95 value is a stable estimate of where
+    the transcript actually ends; with fewer timestamps the max is used directly.
+    """
+    secs, fmt = _parse_timestamps_to_seconds(text)
+    if not secs:
         return None, None
+
+    if len(secs) >= 10:
+        # p95: take the value at the 95th percentile to discard outlier jumps at the tail
+        idx = int(len(secs) * 0.95)
+        return secs[idx], fmt
+    return secs[-1], fmt
 
 
 def _next_midnight_utc() -> datetime:
