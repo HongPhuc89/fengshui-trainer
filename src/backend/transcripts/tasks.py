@@ -13,6 +13,7 @@ GEMINI_FILE_API_MODEL        = 'gemini-file-api'  # synthetic name to track file
 GEMINI_AUDIO_SPLIT_THRESHOLD = 50 * 1024 * 1024   # 50 MB — split audio into chunks above this size
 GEMINI_AUDIO_CHUNK_DURATION  = 2700                # 45 min/chunk → ~45 MB at 128kbps
 TRANSCRIPT_MIN_COVERAGE      = 0.90                # warn if transcript covers < 90% of audio duration
+TRANSCRIPT_ESCALATION_MODEL  = 'gemini-3-flash-preview'  # model to retry step 2b when coverage is low/unverifiable
 
 
 def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
@@ -271,9 +272,11 @@ def _mark_key_model_exhausted(usage_pk: 'int | None', retry_after_minutes: int =
 def _fail_step(job, step: str, error_msg: str):
     """Helper to mark a step as FAILED and save error message."""
     from .models import StepStatus
+    from django.utils import timezone
     setattr(job, f'{step}_status', StepStatus.FAILED)
     setattr(job, f'{step}_error', error_msg[:5000])
-    job.save(update_fields=[f'{step}_status', f'{step}_error', 'updated_at'])
+    setattr(job, f'{step}_finished_at', timezone.now())
+    job.save(update_fields=[f'{step}_status', f'{step}_error', f'{step}_finished_at', 'updated_at'])
     logger.error('_fail_step: job %s %s FAILED: %s', job.pk, step, error_msg[:200])
 
 
@@ -281,6 +284,7 @@ def _fail_step(job, step: str, error_msg: str):
 def task_download_audio(self, job_id: int):
     """Step 1: Download audio from YouTube via yt-dlp, save as MP3."""
     from .models import TranscriptJob, StepStatus
+    from django.utils import timezone
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -289,7 +293,9 @@ def task_download_audio(self, job_id: int):
 
     job.step1_status = StepStatus.PROCESSING
     job.step1_error = ''
-    job.save(update_fields=['step1_status', 'step1_error', 'updated_at'])
+    job.step1_started_at = timezone.now()
+    job.step1_finished_at = None
+    job.save(update_fields=['step1_status', 'step1_error', 'step1_started_at', 'step1_finished_at', 'updated_at'])
 
     output_dir = os.path.join(settings.MEDIA_ROOT, 'transcripts', str(job_id))
     os.makedirs(output_dir, exist_ok=True)
@@ -323,7 +329,8 @@ def task_download_audio(self, job_id: int):
         job.audio_file = relative_path
         job.title = title[:500]
         job.step1_status = StepStatus.DONE
-        job.save(update_fields=['audio_file', 'title', 'step1_status', 'updated_at'])
+        job.step1_finished_at = timezone.now()
+        job.save(update_fields=['audio_file', 'title', 'step1_status', 'step1_finished_at', 'updated_at'])
 
     except subprocess.TimeoutExpired:
         _fail_step(job, 'step1', 'Download timed out after 10 minutes')
@@ -345,10 +352,15 @@ def task_upload_to_gemini(self, job_id: int):
     except TranscriptJob.DoesNotExist:
         return
 
-    # Skip if file_uri is still valid (re-run doesn't need to re-upload)
+    # Gemini file still valid — no need to re-upload, but still queue step 2b
     if job.gemini_file_valid:
+        now = timezone.now()
         job.step2a_status = StepStatus.SKIPPED
-        job.save(update_fields=['step2a_status', 'updated_at'])
+        job.step2a_started_at = now
+        job.step2a_finished_at = now
+        job.save(update_fields=['step2a_status', 'step2a_started_at', 'step2a_finished_at', 'updated_at'])
+        task_transcribe_audio.apply_async(args=[job_id])
+        logger.info('task_upload_to_gemini: job %s — file still valid, skipped upload, queued step 2b', job_id)
         return
 
     if job.step1_status != StepStatus.DONE or not job.audio_file:
@@ -357,7 +369,9 @@ def task_upload_to_gemini(self, job_id: int):
 
     job.step2a_status = StepStatus.UPLOADING
     job.step2a_error = ''
-    job.save(update_fields=['step2a_status', 'step2a_error', 'updated_at'])
+    job.step2a_started_at = timezone.now()
+    job.step2a_finished_at = None
+    job.save(update_fields=['step2a_status', 'step2a_error', 'step2a_started_at', 'step2a_finished_at', 'updated_at'])
 
     try:
         client, key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
@@ -389,10 +403,13 @@ def task_upload_to_gemini(self, job_id: int):
         job.gemini_uploaded_at = timezone.now()
         job.gemini_api_key_id  = key_pk  # step 2b must reuse this key to access the uploaded file
         job.step2a_status = StepStatus.DONE
+        job.step2a_finished_at = timezone.now()
         job.save(update_fields=[
             'gemini_file_uri', 'gemini_file_name', 'gemini_uploaded_at',
-            'gemini_api_key_id', 'step2a_status', 'updated_at',
+            'gemini_api_key_id', 'step2a_status', 'step2a_finished_at', 'updated_at',
         ])
+        task_transcribe_audio.apply_async(args=[job_id])
+        logger.info('task_upload_to_gemini: job %s — queued step 2b', job_id)
     except Exception as exc:
         _fail_step(job, 'step2a', str(exc))
 
@@ -414,9 +431,12 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
         logger.error('task_transcribe_audio: job %s step2a not done', job_id)
         return
 
+    from django.utils import timezone as tz
     job.step2b_status = StepStatus.TRANSCRIBING
     job.step2b_error = ''
-    job.save(update_fields=['step2b_status', 'step2b_error', 'updated_at'])
+    job.step2b_started_at = tz.now()
+    job.step2b_finished_at = None
+    job.save(update_fields=['step2b_status', 'step2b_error', 'step2b_started_at', 'step2b_finished_at', 'updated_at'])
 
     try:
         from .models import TranscriptConfig, ConfigType
@@ -529,17 +549,29 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
             logger.warning('task_transcribe_audio: job %s coverage check failed: %s', job_id, verify_exc)
 
         job.step2b_status = StepStatus.DONE
+        job.step2b_finished_at = tz.now()
+        job.step2b_model = model_override or ''
         job.save(update_fields=[
-            'raw_transcript', 'step2b_status',
+            'raw_transcript', 'step2b_status', 'step2b_finished_at', 'step2b_model',
             'transcript_coverage', 'step2b_warning', 'updated_at',
         ])
 
-        if job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE:
+        coverage_ok = job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE
+
+        if coverage_ok:
             task_translate_transcript.apply_async(args=[job_id])
             logger.info('task_transcribe_audio: job %s coverage OK — queued step 3', job_id)
+        elif job.step2b_model != TRANSCRIPT_ESCALATION_MODEL:
+            # Coverage low or unverifiable on default model — escalate to stronger model
+            logger.warning(
+                'task_transcribe_audio: job %s coverage=%s — escalating to %s',
+                job_id, job.transcript_coverage, TRANSCRIPT_ESCALATION_MODEL,
+            )
+            task_transcribe_audio.apply_async(args=[job_id], kwargs={'model_override': TRANSCRIPT_ESCALATION_MODEL})
         else:
-            logger.info(
-                'task_transcribe_audio: job %s coverage=%s — step 3 NOT auto-queued',
+            # Already ran with escalation model — do not retry further
+            logger.warning(
+                'task_transcribe_audio: job %s coverage=%s after escalation — giving up',
                 job_id, job.transcript_coverage,
             )
     except Exception as exc:
@@ -565,9 +597,12 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
         logger.error('task_translate_transcript: job %s step2b not done', job_id)
         return
 
+    from django.utils import timezone as tz3
     job.step3_status = StepStatus.TRANSLATING
     job.step3_error = ''
-    job.save(update_fields=['step3_status', 'step3_error', 'updated_at'])
+    job.step3_started_at = tz3.now()
+    job.step3_finished_at = None
+    job.save(update_fields=['step3_status', 'step3_error', 'step3_started_at', 'step3_finished_at', 'updated_at'])
 
     try:
         from .models import TranscriptConfig, ConfigType
@@ -599,7 +634,8 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
             )
         job.translated_transcript = response.text
         job.step3_status = StepStatus.DONE
-        job.save(update_fields=['translated_transcript', 'step3_status', 'updated_at'])
+        job.step3_finished_at = tz3.now()
+        job.save(update_fields=['translated_transcript', 'step3_status', 'step3_finished_at', 'updated_at'])
     except Exception as exc:
         _fail_step(job, 'step3', str(exc))
 

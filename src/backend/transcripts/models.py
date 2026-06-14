@@ -101,9 +101,11 @@ class TranscriptJob(models.Model):
     title        = models.CharField(max_length=500, blank=True, default='')
 
     # --- Step 1: Download ---
-    audio_file   = models.CharField(max_length=500, blank=True, default='')  # relative path under MEDIA_ROOT
-    step1_status = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
-    step1_error  = models.TextField(blank=True, default='')
+    audio_file        = models.CharField(max_length=500, blank=True, default='')  # relative path under MEDIA_ROOT
+    step1_status      = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
+    step1_error       = models.TextField(blank=True, default='')
+    step1_started_at  = models.DateTimeField(null=True, blank=True)
+    step1_finished_at = models.DateTimeField(null=True, blank=True)
 
     # --- Step 2a: Upload to Gemini File API ---
     gemini_file_uri    = models.CharField(max_length=500, blank=True, default='')  # file URI from Gemini
@@ -114,11 +116,17 @@ class TranscriptJob(models.Model):
                              on_delete=models.SET_NULL, related_name='+')
     step2a_status      = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
     step2a_error       = models.TextField(blank=True, default='')
+    step2a_started_at  = models.DateTimeField(null=True, blank=True)
+    step2a_finished_at = models.DateTimeField(null=True, blank=True)
 
     # --- Step 2b: Transcribe (Chinese) ---
     raw_transcript      = models.TextField(blank=True, default='')  # Chinese + [HH:MM:SS] timestamps
     step2b_status       = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
     step2b_error        = models.TextField(blank=True, default='')
+    step2b_started_at   = models.DateTimeField(null=True, blank=True)
+    step2b_finished_at  = models.DateTimeField(null=True, blank=True)
+    step2b_model        = models.CharField(max_length=100, blank=True, default='',
+                              help_text='Gemini model used for last step 2b run')
     transcript_coverage = models.FloatField(
         null=True, blank=True,
         help_text='Ratio of last transcript timestamp / audio duration (0.0–1.0). Null if not verified.'
@@ -132,6 +140,8 @@ class TranscriptJob(models.Model):
     translated_transcript = models.TextField(blank=True, default='')
     step3_status          = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
     step3_error           = models.TextField(blank=True, default='')
+    step3_started_at      = models.DateTimeField(null=True, blank=True)
+    step3_finished_at     = models.DateTimeField(null=True, blank=True)
 
     # --- Timestamps ---
     created_at = models.DateTimeField(auto_now_add=True)

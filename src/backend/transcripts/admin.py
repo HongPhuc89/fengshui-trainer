@@ -97,13 +97,13 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         'uuid', 'title', 'playlist_url', 'audio_file',
         'gemini_file_uri', 'gemini_file_name', 'gemini_uploaded_at',
         'gemini_file_badge',
-        'step1_status', 'step1_error_display',
-        'step2a_status', 'step2a_error_display',
-        'step2b_status', 'step2b_error_display',
+        'step1_status', 'step1_error_display', 'step1_timing',
+        'step2a_status', 'step2a_error_display', 'step2a_timing',
+        'step2b_status', 'step2b_timing', 'step2b_model', 'step2b_error_display',
         'transcript_coverage_display', 'step2b_warning_display',
         'raw_transcript_display',
         'translated_transcript_display',
-        'step3_status', 'step3_error_display',
+        'step3_status', 'step3_error_display', 'step3_timing',
         'overall_badge', 'created_at', 'updated_at',
         'rerun_buttons', 'audio_player',
     ]
@@ -119,11 +119,11 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             'fields': ['audio_player'],
         }),
         ('Step 1 — Download', {
-            'fields': ['step1_status', 'audio_file', 'step1_error_display'],
+            'fields': ['step1_status', 'step1_timing', 'audio_file', 'step1_error_display'],
         }),
         ('Step 2a — Upload to Gemini', {
             'fields': [
-                'step2a_status', 'step2a_error_display',
+                'step2a_status', 'step2a_timing', 'step2a_error_display',
                 'gemini_file_uri', 'gemini_file_name',
                 'gemini_uploaded_at', 'gemini_file_badge',
             ],
@@ -131,14 +131,14 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         }),
         ('Step 2b — Transcribe (Chinese)', {
             'fields': [
-                'step2b_status', 'step2b_error_display',
+                'step2b_status', 'step2b_model', 'step2b_timing', 'step2b_error_display',
                 'transcript_coverage_display', 'step2b_warning_display',
                 'raw_transcript_display',
             ],
             'classes': ['collapse'],
         }),
         ('Step 3 — Translate (Vietnamese)', {
-            'fields': ['step3_status', 'step3_error_display', 'translated_transcript_display'],
+            'fields': ['step3_status', 'step3_timing', 'step3_error_display', 'translated_transcript_display'],
         }),
         ('Metadata', {
             'fields': ['overall_badge', 'created_at', 'updated_at'],
@@ -347,6 +347,40 @@ class TranscriptJobAdmin(admin.ModelAdmin):
 
     @admin.display(description='Overall')
     def overall_badge(self, obj): return _badge(obj.overall_status)
+
+    def _step_timing(self, started_at, finished_at):
+        if not started_at:
+            return '—'
+        start_str = started_at.strftime('%Y-%m-%d %H:%M:%S')
+        if not finished_at:
+            return format_html('<span style="color:#f90">{} → running…</span>', start_str)
+        duration = finished_at - started_at
+        total_secs = int(duration.total_seconds())
+        if total_secs < 60:
+            dur_str = f'{total_secs}s'
+        else:
+            dur_str = f'{total_secs // 60}m {total_secs % 60}s'
+        finish_str = finished_at.strftime('%H:%M:%S')
+        return format_html(
+            '{} → {} <span style="color:#aaa">({})</span>',
+            start_str, finish_str, dur_str,
+        )
+
+    @admin.display(description='Timing')
+    def step1_timing(self, obj):
+        return self._step_timing(obj.step1_started_at, obj.step1_finished_at)
+
+    @admin.display(description='Timing')
+    def step2a_timing(self, obj):
+        return self._step_timing(obj.step2a_started_at, obj.step2a_finished_at)
+
+    @admin.display(description='Timing')
+    def step2b_timing(self, obj):
+        return self._step_timing(obj.step2b_started_at, obj.step2b_finished_at)
+
+    @admin.display(description='Timing')
+    def step3_timing(self, obj):
+        return self._step_timing(obj.step3_started_at, obj.step3_finished_at)
 
     @admin.display(description='Coverage')
     def coverage_badge(self, obj):
