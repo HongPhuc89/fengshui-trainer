@@ -156,12 +156,55 @@ class TranscriptJobAdmin(admin.ModelAdmin):
                 name='transcripts_rerun_step',
             ),
             path(
+                '<int:job_id>/download-docx/',
+                self.admin_site.admin_view(self.download_docx_view),
+                name='transcripts_download_docx',
+            ),
+            path(
                 'import-playlist/',
                 self.admin_site.admin_view(self.import_playlist_view),
                 name='transcripts_import_playlist',
             ),
         ]
         return custom + urls
+
+    def download_docx_view(self, request, job_id):
+        import io
+        from django.http import HttpResponse
+        from docx import Document
+        from docx.shared import Pt
+
+        job = get_object_or_404(TranscriptJob, pk=job_id)
+        if not job.translated_transcript:
+            messages.error(request, f'Job {job_id}: no translated transcript to export.')
+            return redirect('admin:transcripts_transcriptjob_change', job_id)
+
+        doc = Document()
+        for para in list(doc.paragraphs):
+            para._element.getparent().remove(para._element)
+
+        run = doc.add_paragraph().add_run(f'Link clip: {job.youtube_url}')
+        run.font.size = Pt(12)
+        doc.add_paragraph()
+        for line in job.translated_transcript.splitlines():
+            doc.add_paragraph().add_run(line).font.size = Pt(12)
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+
+        raw_title = (job.title or f'job_{job_id}').strip()
+        # Keep Unicode letters/digits and safe punctuation; strip only filesystem-unsafe chars
+        safe_title = ''.join(c if c not in r'\/:*?"<>|' else '_' for c in raw_title).strip()
+        filename = f'{safe_title[:120]}.docx'
+
+        response = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        )
+        from urllib.parse import quote
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{quote(filename)}"
+        return response
 
     def rerun_step_view(self, request, job_id, step):
         job = get_object_or_404(TranscriptJob, pk=job_id)  # noqa: F841
@@ -454,13 +497,17 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         if not obj.translated_transcript:
             return '—'
         return format_html(
+            '<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">'
             '<button type="button" onclick="'
             'navigator.clipboard.writeText(document.getElementById(\'trans-text-{}\').innerText)'
             '.then(function(){{this.textContent=\'✓ Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)}}.bind(this))'
-            '" style="margin-bottom:8px;padding:4px 12px;cursor:pointer">Copy</button>'
+            '" style="padding:4px 12px;cursor:pointer">Copy</button>'
+            '<a class="button" href="/admin/transcripts/transcriptjob/{}/download-docx/" '
+            'style="padding:4px 12px;text-decoration:none">⬇ Download Word</a>'
+            '</div>'
             '<pre id="trans-text-{}" style="white-space:pre-wrap;max-height:600px;overflow-y:auto;'
             'font-family:monospace;font-size:13px;line-height:1.6">{}</pre>',
-            obj.pk, obj.pk, obj.translated_transcript,
+            obj.pk, obj.pk, obj.pk, obj.translated_transcript,
         )
 
     # --- Re-run buttons on detail page ---
