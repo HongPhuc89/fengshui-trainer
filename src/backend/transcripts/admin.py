@@ -49,6 +49,32 @@ class TranscriptConfigAdmin(admin.ModelAdmin):
         return False  # config rows must not be deleted
 
 
+class CoverageStatusFilter(admin.SimpleListFilter):
+    title = 'Coverage status'
+    parameter_name = 'coverage_status'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('ok',          'OK (≥90%)'),
+            ('warn',        'Incomplete (<90%)'),
+            ('unverifiable','Unverifiable (ERR)'),
+            ('unchecked',   'Not checked yet'),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == 'ok':
+            return queryset.filter(transcript_coverage__gte=0.90, transcript_coverage__lte=1.5)
+        if v == 'warn':
+            return queryset.filter(transcript_coverage__gte=0, transcript_coverage__lt=0.90)
+        if v == 'unverifiable':
+            # Coverage is None but a warning exists — hallucinated timestamps or parse error
+            return queryset.filter(transcript_coverage__isnull=True, step2b_warning__gt='')
+        if v == 'unchecked':
+            return queryset.filter(transcript_coverage__isnull=True, step2b_warning='')
+        return queryset
+
+
 @admin.register(TranscriptJob)
 class TranscriptJobAdmin(admin.ModelAdmin):
 
@@ -59,7 +85,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         'step1_badge', 'step2a_badge', 'step2b_badge', 'step3_badge',
         'overall_badge', 'coverage_badge', 'created_at',
     ]
-    list_filter  = ['step1_status', 'step2b_status', 'step3_status']
+    list_filter  = ['step1_status', 'step2b_status', 'step3_status', CoverageStatusFilter]
     search_fields = ['youtube_url', 'title', 'playlist_url']
     ordering     = ['-created_at']
     actions      = [

@@ -533,6 +533,15 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
             'raw_transcript', 'step2b_status',
             'transcript_coverage', 'step2b_warning', 'updated_at',
         ])
+
+        if job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE:
+            task_translate_transcript.apply_async(args=[job_id])
+            logger.info('task_transcribe_audio: job %s coverage OK — queued step 3', job_id)
+        else:
+            logger.info(
+                'task_transcribe_audio: job %s coverage=%s — step 3 NOT auto-queued',
+                job_id, job.transcript_coverage,
+            )
     except Exception as exc:
         _fail_step(job, 'step2b', str(exc))
 
