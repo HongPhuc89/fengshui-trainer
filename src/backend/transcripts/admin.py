@@ -57,7 +57,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'title_short', 'youtube_url_short',
         'step1_badge', 'step2a_badge', 'step2b_badge', 'step3_badge',
-        'overall_badge', 'created_at',
+        'overall_badge', 'coverage_badge', 'created_at',
     ]
     list_filter  = ['step1_status', 'step2b_status', 'step3_status']
     search_fields = ['youtube_url', 'title', 'playlist_url']
@@ -73,8 +73,9 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         'gemini_file_badge',
         'step1_status', 'step1_error_display',
         'step2a_status', 'step2a_error_display',
-        'raw_transcript_display',
         'step2b_status', 'step2b_error_display',
+        'transcript_coverage_display', 'step2b_warning_display',
+        'raw_transcript_display',
         'translated_transcript_display',
         'step3_status', 'step3_error_display',
         'overall_badge', 'created_at', 'updated_at',
@@ -103,7 +104,11 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             'classes': ['collapse'],
         }),
         ('Step 2b — Transcribe (Chinese)', {
-            'fields': ['step2b_status', 'step2b_error_display', 'raw_transcript_display'],
+            'fields': [
+                'step2b_status', 'step2b_error_display',
+                'transcript_coverage_display', 'step2b_warning_display',
+                'raw_transcript_display',
+            ],
             'classes': ['collapse'],
         }),
         ('Step 3 — Translate (Vietnamese)', {
@@ -316,6 +321,38 @@ class TranscriptJobAdmin(admin.ModelAdmin):
 
     @admin.display(description='Overall')
     def overall_badge(self, obj): return _badge(obj.overall_status)
+
+    @admin.display(description='Coverage')
+    def coverage_badge(self, obj):
+        if obj.transcript_coverage is None:
+            return format_html('<span style="color:#aaa">—</span>')
+        pct = obj.transcript_coverage * 100
+        color = '#4caf50' if pct >= 90 else '#e53935'
+        return format_html(
+            '<span style="color:{};font-weight:bold">{}</span>',
+            color, f'{pct:.1f}%',
+        )
+
+    @admin.display(description='Transcript Coverage')
+    def transcript_coverage_display(self, obj):
+        if obj.transcript_coverage is None:
+            return '—'
+        pct = obj.transcript_coverage * 100
+        color = '#4caf50' if pct >= 90 else '#e53935'
+        return format_html(
+            '<span style="color:{};font-weight:bold;font-size:16px">{}</span>'
+            ' <span style="color:#aaa;font-size:12px">(≥90% = OK, <90% = incomplete)</span>',
+            color, f'{pct:.1f}%',
+        )
+
+    @admin.display(description='Step 2b Warning')
+    def step2b_warning_display(self, obj):
+        if not obj.step2b_warning:
+            return '—'
+        return format_html(
+            '<span style="color:#f90;font-weight:bold">⚠ {}</span>',
+            obj.step2b_warning,
+        )
 
     # --- Error displays ---
     def _error_field(self, error_text):

@@ -12,6 +12,7 @@ GEMINI_MAX_OUTPUT_TOKENS     = 65536
 GEMINI_FILE_API_MODEL        = 'gemini-file-api'  # synthetic name to track file upload quota separately
 GEMINI_AUDIO_SPLIT_THRESHOLD = 50 * 1024 * 1024   # 50 MB — split audio into chunks above this size
 GEMINI_AUDIO_CHUNK_DURATION  = 2700                # 45 min/chunk → ~45 MB at 128kbps
+TRANSCRIPT_MIN_COVERAGE      = 0.90                # warn if transcript covers < 90% of audio duration
 
 
 def _split_audio_into_chunks(audio_path: str, chunk_duration_secs: int = 2700) -> list:
@@ -51,6 +52,50 @@ def _offset_transcript_timestamps(text: str, offset_secs: int) -> str:
         return f'[{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}]'
 
     return re.sub(r'\[(\d{2}):(\d{2}):(\d{2})\]', shift, text)
+
+
+def get_audio_duration(audio_path: str) -> float:
+    """Return audio duration in seconds via ffprobe."""
+    import json
+    probe = subprocess.run(
+        ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', audio_path],
+        capture_output=True, text=True, check=True,
+    )
+    return float(json.loads(probe.stdout)['format']['duration'])
+
+
+def get_last_transcript_timestamp(text: str) -> 'tuple[float, str] | tuple[None, None]':
+    """Return (seconds, format) for the last valid timestamp in the transcript, or (None, None).
+
+    Gemini uses several timestamp formats — all are normalised here:
+    - [HH:MM:SS]  or  [ HH:MM:SS ]  or  [ HH:MM:SS]  (optional inner spaces)
+    - [MM:SS:cs]  — minutes:seconds:centiseconds (third field ≥ 60 is the giveaway)
+
+    Detection: if any timestamp has third field ≥ 60, the format is [MM:SS:cs].
+    Returns format tag 'hms' or 'msc' so callers can log the interpretation.
+    """
+    import re
+    # Allow optional whitespace inside brackets
+    matches = re.findall(r'\[\s*(\d{2,3}):(\d{2}):(\d{2})\s*\]', text)
+    if not matches:
+        return None, None
+
+    has_invalid_s = any(int(s) >= 60 for _, _, s in matches)
+
+    if has_invalid_s:
+        # Format is [MM:SS:cs] — treat first field as minutes, second as seconds
+        for m_str, s_str, _ in reversed(matches):
+            m, s = int(m_str), int(s_str)
+            if s < 60:
+                return m * 60 + s, 'msc'
+        return None, None
+    else:
+        # Format is [HH:MM:SS]
+        for h_str, m_str, s_str in reversed(matches):
+            h, m, s = int(h_str), int(m_str), int(s_str)
+            if m < 60 and s < 60:
+                return h * 3600 + m * 60 + s, 'hms'
+        return None, None
 
 
 def _next_midnight_utc() -> datetime:
@@ -410,8 +455,55 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
 
             job.raw_transcript = '\n\n'.join(parts)
 
+        # Verify transcript completeness against audio duration (§3.3)
+        audio_path = job.audio_file_path
+        try:
+            audio_duration = get_audio_duration(audio_path)
+            last_ts, ts_fmt = get_last_transcript_timestamp(job.raw_transcript)
+
+            if last_ts is not None and audio_duration > 0:
+                coverage = last_ts / audio_duration
+                if coverage > 1.5:
+                    # Even after format detection, timestamps far exceed audio — playlist-relative source.
+                    job.transcript_coverage = None
+                    job.step2b_warning = (
+                        f'Cannot verify coverage: last timestamp {last_ts:.0f}s far exceeds '
+                        f'audio duration {audio_duration:.0f}s. Transcript may reference a longer source.'
+                    )
+                    logger.warning(
+                        'task_transcribe_audio: job %s last_ts=%ds >> audio=%ds (fmt=%s) — skipping coverage',
+                        job_id, last_ts, audio_duration, ts_fmt,
+                    )
+                else:
+                    job.transcript_coverage = round(coverage, 4)
+                    if coverage < TRANSCRIPT_MIN_COVERAGE:
+                        job.step2b_warning = (
+                            f'Transcript may be incomplete: last timestamp {last_ts:.0f}s '
+                            f'vs audio {audio_duration:.0f}s (coverage={coverage:.1%}). '
+                            f'Consider re-running Step 2b.'
+                        )
+                        logger.warning(
+                            'task_transcribe_audio: job %s coverage=%.1f%% — possible truncation',
+                            job_id, coverage * 100,
+                        )
+                    else:
+                        job.step2b_warning = ''
+            else:
+                job.transcript_coverage = None
+                job.step2b_warning = 'Cannot verify completeness: no timestamps found in transcript.'
+                logger.warning('task_transcribe_audio: job %s — no timestamps to verify coverage', job_id)
+
+        except Exception as verify_exc:
+            # Verification failure must not fail the job — transcript already has value
+            job.transcript_coverage = None
+            job.step2b_warning = f'Coverage check error: {str(verify_exc)[:200]}'
+            logger.warning('task_transcribe_audio: job %s coverage check failed: %s', job_id, verify_exc)
+
         job.step2b_status = StepStatus.DONE
-        job.save(update_fields=['raw_transcript', 'step2b_status', 'updated_at'])
+        job.save(update_fields=[
+            'raw_transcript', 'step2b_status',
+            'transcript_coverage', 'step2b_warning', 'updated_at',
+        ])
     except Exception as exc:
         _fail_step(job, 'step2b', str(exc))
 

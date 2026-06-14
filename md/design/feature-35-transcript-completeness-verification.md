@@ -3,8 +3,9 @@
 ## Document Information
 
 - **Feature**: 35 — Transcript Completeness Verification
-- **Version**: 1.0
+- **Version**: 1.4
 - **Created**: 2026-06-12
+- **Updated**: 2026-06-14
 - **Status**: Draft — Pending PO Review
 - **Author**: Technical Leader
 
@@ -81,7 +82,7 @@ step2b_warning = models.TextField(
 **Helper 1: Lấy audio duration**
 
 ```python
-def _get_audio_duration(audio_path: str) -> float:
+def get_audio_duration(audio_path: str) -> float:
     """Return audio duration in seconds via ffprobe."""
     import json
     probe = subprocess.run(
@@ -96,7 +97,7 @@ def _get_audio_duration(audio_path: str) -> float:
 ```python
 import re
 
-def _get_last_transcript_timestamp(text: str) -> float | None:
+def get_last_transcript_timestamp(text: str) -> float | None:
     """Return the last [HH:MM:SS] timestamp in transcript as total seconds, or None."""
     matches = re.findall(r'\[(\d{2}):(\d{2}):(\d{2})\]', text)
     if not matches:
@@ -120,8 +121,8 @@ Thêm verify block **sau khi gán `job.raw_transcript`**, trước khi `job.save
 
 audio_path = job.audio_file_path
 try:
-    audio_duration = _get_audio_duration(audio_path)
-    last_ts = _get_last_transcript_timestamp(job.raw_transcript)
+    audio_duration = get_audio_duration(audio_path)
+    last_ts = get_last_transcript_timestamp(job.raw_transcript)
 
     if last_ts is not None and audio_duration > 0:
         coverage = last_ts / audio_duration
@@ -229,14 +230,197 @@ def step2b_warning_display(self, obj):
 
 ---
 
+## 3.5 Batch Job — Backfill Existing Jobs
+
+### Mục đích
+
+Sau khi migrate và deploy, tất cả `TranscriptJob` hiện tại sẽ có `transcript_coverage = NULL` và `step2b_warning = ''`. Batch job này tính toán và điền lại 2 fields đó cho toàn bộ jobs đã `DONE` mà **chưa có coverage**.
+
+### Phạm vi
+
+- Chỉ process jobs có `step2b_status = DONE` **và** `raw_transcript` không rỗng **và** `transcript_coverage IS NULL`.
+- Không recompute jobs đã có coverage (idempotent — có thể chạy lại nhiều lần an toàn).
+- Không chạy Gemini — chỉ đọc `raw_transcript` từ DB và `audio_file` từ disk (ffprobe).
+- Nếu audio file đã expired (> 15 ngày), ghi warning nhưng **không fail** — set `step2b_warning = 'Coverage check error: ...'`.
+
+### Implementation — Management Command
+
+Tạo file mới: `src/backend/transcripts/management/commands/transcript_backfill_coverage.py`
+
+```python
+"""
+Management command: backfill transcript_coverage and step2b_warning for existing DONE jobs.
+
+Usage:
+    python manage.py transcript_backfill_coverage
+    python manage.py transcript_backfill_coverage --dry-run
+    python manage.py transcript_backfill_coverage --job-ids 1 2 5
+"""
+import logging
+from django.core.management.base import BaseCommand
+from transcripts.models import TranscriptJob, StepStatus
+from transcripts.tasks import (
+    get_audio_duration,
+    get_last_transcript_timestamp,
+    TRANSCRIPT_MIN_COVERAGE,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class Command(BaseCommand):
+    help = 'Backfill transcript_coverage and step2b_warning for existing DONE jobs'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--dry-run', action='store_true',
+            help='Print what would be updated without saving to DB',
+        )
+        parser.add_argument(
+            '--job-ids', nargs='+', type=int,
+            help='Only process specific job IDs (default: all eligible jobs)',
+        )
+
+    def handle(self, *args, **options):
+        dry_run = options['dry_run']
+        job_ids = options.get('job_ids')
+
+        qs = TranscriptJob.objects.filter(
+            step2b_status=StepStatus.DONE,
+            raw_transcript__gt='',
+            transcript_coverage__isnull=True,
+        ).order_by('id')
+
+        if job_ids:
+            qs = qs.filter(pk__in=job_ids)
+
+        total = qs.count()
+        self.stdout.write(f'Found {total} jobs to process. dry_run={dry_run}')
+
+        ok_count = warn_count = err_count = 0
+
+        for job in qs.iterator():
+            audio_path = job.audio_file_path
+            try:
+                if not audio_path:
+                    raise FileNotFoundError('audio_file_path is None')
+
+                audio_duration = get_audio_duration(audio_path)
+                last_ts = get_last_transcript_timestamp(job.raw_transcript)
+
+                if last_ts is not None and audio_duration > 0:
+                    coverage = last_ts / audio_duration
+                    job.transcript_coverage = round(coverage, 4)
+                    if coverage < TRANSCRIPT_MIN_COVERAGE:
+                        job.step2b_warning = (
+                            f'Transcript may be incomplete: last timestamp {last_ts:.0f}s '
+                            f'vs audio {audio_duration:.0f}s (coverage={coverage:.1%}). '
+                            f'Consider re-running Step 2b.'
+                        )
+                        warn_count += 1
+                    else:
+                        job.step2b_warning = ''
+                        ok_count += 1
+                else:
+                    job.transcript_coverage = None
+                    job.step2b_warning = 'Cannot verify completeness: no [HH:MM:SS] timestamps found in transcript.'
+                    err_count += 1
+
+            except Exception as exc:
+                job.transcript_coverage = None
+                job.step2b_warning = f'Coverage check error: {str(exc)[:200]}'
+                err_count += 1
+
+            status = (
+                f'OK ({job.transcript_coverage:.1%})' if job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE
+                else f'WARN ({job.transcript_coverage:.1%})' if job.transcript_coverage is not None
+                else f'ERR: {job.step2b_warning[:80]}'
+            )
+            self.stdout.write(f'  Job {job.pk}: {status}')
+
+            if not dry_run:
+                job.save(update_fields=['transcript_coverage', 'step2b_warning', 'updated_at'])
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Done. ok={ok_count} warn={warn_count} err={err_count} '
+                f'({"dry-run, no changes saved" if dry_run else "saved"})'
+            )
+        )
+```
+
+### Cách chạy
+
+```bash
+# Preview (không ghi DB)
+docker-compose -f docker/docker-compose.yml exec web \
+    python manage.py transcript_backfill_coverage --dry-run
+
+# Chạy thật (tất cả jobs eligible)
+docker-compose -f docker/docker-compose.yml exec web \
+    python manage.py transcript_backfill_coverage
+
+# Chỉ một số job ID cụ thể
+docker-compose -f docker/docker-compose.yml exec web \
+    python manage.py transcript_backfill_coverage --job-ids 1 3 7
+```
+
+### Luồng xử lý
+
+```
+TranscriptJob (step2b_status=DONE, transcript_coverage=NULL)
+  │
+  ├── audio_file_path exists? ──No──→ step2b_warning = 'Coverage check error: ...'
+  │
+  ├── ffprobe → audio_duration
+  │
+  ├── parse last [HH:MM:SS] in raw_transcript → last_ts
+  │
+  ├── last_ts is None? ──Yes──→ step2b_warning = 'Cannot verify...'
+  │
+  ├── coverage = last_ts / audio_duration
+  │
+  ├── coverage >= 0.90? ──Yes──→ transcript_coverage = value, step2b_warning = ''
+  │
+  └── coverage < 0.90? ──Yes──→ transcript_coverage = value, step2b_warning = 'Incomplete...'
+```
+
+### Lưu ý
+
+| | |
+|---|---|
+| **Idempotent** | `transcript_coverage__isnull=True` guard — chạy lại không recompute jobs đã có coverage. |
+| **Audio expired** | Jobs > 15 ngày thường không còn audio file → err_count tăng, warning ghi "Coverage check error: audio_file_path is None". Không fail command. |
+| **Không cần Celery** | Command này chạy inline trong web container, không dispatch Celery task. |
+| **`get_audio_duration` và `get_last_transcript_timestamp`** | Import từ `tasks.py` — tên public (bỏ underscore prefix theo quyết định ở phần 3.6). |
+
+### 3.6 Refactor — Export helpers ra khỏi `tasks.py`
+
+Để management command có thể import 2 helper functions, cần di chuyển chúng vào module riêng hoặc giữ trong `tasks.py` nhưng export ra ngoài (không private).
+
+**Phương án chọn:** Giữ trong `tasks.py`, bỏ underscore prefix → đổi tên thành `get_audio_duration` và `get_last_transcript_timestamp`. Cũng rename `TRANSCRIPT_MIN_COVERAGE` thành public constant (không cần underscore vì constant dùng cho import).
+
+```python
+# tasks.py — rename:
+# _get_audio_duration        → get_audio_duration
+# _get_last_transcript_timestamp → get_last_transcript_timestamp
+# Thêm mới:
+TRANSCRIPT_MIN_COVERAGE = 0.90
+```
+
+Tất cả call-sites trong `task_transcribe_audio` cũng cập nhật theo tên mới.
+
+---
+
 ## 4. Files Cần Sửa/Tạo
 
 | File | Thay đổi |
 |---|---|
 | `src/backend/transcripts/models.py` | Thêm 2 fields: `transcript_coverage`, `step2b_warning` |
-| `src/backend/transcripts/tasks.py` | Thêm constant `TRANSCRIPT_MIN_COVERAGE`, 2 helpers, verify block trong `task_transcribe_audio` |
+| `src/backend/transcripts/tasks.py` | Thêm constant `TRANSCRIPT_MIN_COVERAGE`, rename 2 helpers thành public (`get_audio_duration`, `get_last_transcript_timestamp`), verify block trong `task_transcribe_audio` |
 | `src/backend/transcripts/admin.py` | Thêm `coverage_badge` (list), `transcript_coverage_display` + `step2b_warning_display` (detail) |
 | `src/backend/transcripts/migrations/000X_...py` | Migration tự động từ `makemigrations` |
+| `src/backend/transcripts/management/commands/transcript_backfill_coverage.py` | **Mới** — Batch job backfill `transcript_coverage` + `step2b_warning` cho jobs cũ |
 
 ---
 
@@ -256,6 +440,8 @@ def step2b_warning_display(self, obj):
 
 ## 6. Test Plan
 
+### 6.1 Task `task_transcribe_audio` (step 2b — forward path)
+
 1. **Video ngắn (<50 MB, jobs 1–3):** Chạy lại step 2b → coverage hiển thị ≥ 90% (xanh).
 2. **Video dài (job 4, 112 MB):** Sau khi chunked transcription xong → coverage ≥ 90%.
 3. **Simulate truncation:** Tạo transcript giả chỉ có timestamp đến 30% duration → admin thấy coverage đỏ + warning message.
@@ -263,3 +449,12 @@ def step2b_warning_display(self, obj):
 5. **Audio file expired:** Job cũ bị cleanup audio → `step2b_warning` = "Coverage check error: ..." nhưng job vẫn `DONE`.
 6. **Admin list view:** `coverage_badge` hiển thị đúng màu xanh/đỏ/dash.
 7. **Admin detail page:** `transcript_coverage_display` và `step2b_warning_display` hiển thị đúng trong fieldset Step 2b.
+
+### 6.2 Batch Job `transcript_backfill_coverage`
+
+8. **Dry-run:** Chạy `--dry-run` → output in ra trạng thái từng job, không có gì thay đổi trong DB (`transcript_coverage` vẫn NULL sau khi chạy).
+9. **Backfill all eligible:** Sau migration, chạy command không có flag → tất cả jobs có `step2b_status=DONE` và `transcript_coverage=NULL` được fill. Kiểm tra DB: không còn row nào với `transcript_coverage IS NULL AND step2b_status=DONE`.
+10. **Idempotent:** Chạy lại lần 2 → "Found 0 jobs to process." (không reprocess jobs đã có coverage).
+11. **Specific job IDs:** `--job-ids 1 3` → chỉ jobs 1 và 3 được xử lý.
+12. **Audio expired jobs:** Job cũ (> 15 ngày, audio đã bị xóa) → `step2b_warning = 'Coverage check error: ...'`, `transcript_coverage = NULL`. Command exit 0, không crash.
+13. **Mixed batch:** Batch gồm jobs: OK coverage, WARN coverage, no timestamps, audio expired → output summary đúng (`ok=N warn=M err=K`).

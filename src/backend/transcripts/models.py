@@ -116,9 +116,17 @@ class TranscriptJob(models.Model):
     step2a_error       = models.TextField(blank=True, default='')
 
     # --- Step 2b: Transcribe (Chinese) ---
-    raw_transcript = models.TextField(blank=True, default='')  # Chinese + [HH:MM:SS] timestamps
-    step2b_status  = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
-    step2b_error   = models.TextField(blank=True, default='')
+    raw_transcript      = models.TextField(blank=True, default='')  # Chinese + [HH:MM:SS] timestamps
+    step2b_status       = models.CharField(max_length=20, choices=StepStatus.choices, default=StepStatus.PENDING)
+    step2b_error        = models.TextField(blank=True, default='')
+    transcript_coverage = models.FloatField(
+        null=True, blank=True,
+        help_text='Ratio of last transcript timestamp / audio duration (0.0–1.0). Null if not verified.'
+    )
+    step2b_warning = models.TextField(
+        blank=True, default='',
+        help_text='Warning message if transcript appears incomplete. Does not fail the job.'
+    )
 
     # --- Step 3: Translate (Vietnamese) ---
     translated_transcript = models.TextField(blank=True, default='')
