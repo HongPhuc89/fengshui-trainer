@@ -2,9 +2,9 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.7
-- **Last Updated**: 2026-03-13
-- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
+- **Version**: 1.8
+- **Last Updated**: 2026-06-14
+- **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done | AI Transcript Pipeline ✅ Done (branch feature/enable-ai-transcript)
 
 ---
 
@@ -37,6 +37,10 @@
 | 30 | [feature-30-lesson-infographic.md](design/feature-30-lesson-infographic.md) | Lesson Infographic — Đính kèm lược đồ PDF hoặc video tóm tắt vào VideoLesson; tab "Lược đồ" trong player | 📝 |
 | 31 | [feature-31-book-cover-image-optimization.md](design/feature-31-book-cover-image-optimization.md) | Book Cover Image Optimization — Thêm `small_cover` CharField (WebP, Bunny CDN) giữ nguyên `cover_image` gốc trên Supabase | 📝 |
 | 32 | [feature-32-change-password.md](design/feature-32-change-password.md) | Change Password — Đổi mật khẩu từ màn hình Profile (IsAuthenticated, verify current_password, Django validate_password) | 📝 |
+| 33 | [feature-33-youtube-transcript-pipeline.md](design/feature-33-youtube-transcript-pipeline.md) | YouTube Transcript Pipeline — Admin tool nhập YouTube URL, pipeline 4 bước: download MP3, upload Gemini, transcribe Chinese→timestamp, dịch Vietnamese | ✅ |
+| 34 | [feature-34-transcript-chunked-translation.md](design/feature-34-transcript-chunked-translation.md) | Transcript Chunked Translation — Xử lý audio dài 3+ giờ bằng chunking, model escalation khi thất bại | ✅ |
+| 35 | [feature-35-transcript-completeness-verification.md](design/feature-35-transcript-completeness-verification.md) | Transcript Completeness Verification — Kiểm tra coverage transcript, cảnh báo thiếu đoạn, auto-queue translation | ✅ |
+| 36 | [feature-36-gemini-api-key-rotation.md](design/feature-36-gemini-api-key-rotation.md) | Gemini API Key Pool & Per-Model Quota Rotation — Pool nhiều API key, xoay vòng per-key per-model, gắn key vào TranscriptJob | ✅ |
 
 ---
 
@@ -406,6 +410,64 @@
 
 ---
 
+---
+
+### Feature 33: YouTube Transcript Pipeline ✅ COMPLETE
+**Branch**: `feature/enable-ai-transcript` | **Status**: ✅ Implemented
+
+- [x] **33.1** `TranscriptJob` model — YouTube URL, status, step tracking, audio lifecycle (48h Gemini → 15 days local → auto-delete)
+- [x] **33.2** Step 1 — Celery task `task_download_audio`: yt-dlp + FFmpeg, lưu `/media/transcripts/<job_id>/audio.mp3`, lấy video title
+- [x] **33.3** Step 2a — Upload MP3 lên Gemini File API, lưu `gemini_file_uri`
+- [x] **33.4** Step 2b — Transcribe audio Chinese → raw transcript với timestamp `[HH:MM:SS]`
+- [x] **33.5** Step 3 — Celery task `task_translate_transcript`: dịch Chinese → Vietnamese chuyên ngành Kỳ Môn/Phong Thủy
+- [x] **33.6** Playlist import — nhập YouTube playlist URL, tạo nhiều `TranscriptJob` cùng lúc
+- [x] **33.7** Media streaming — serve audio/video với range support (`/media/` endpoint)
+- [x] **33.8** Admin UI — `TranscriptJobAdmin`, copy button translated transcript, download DOCX
+
+> **Design doc**: `md/design/feature-33-youtube-transcript-pipeline.md`
+> **Backend only** — Django app `transcripts/`, Celery tasks, Gemini integration
+
+---
+
+### Feature 34: Transcript Chunked Translation ✅ COMPLETE
+**Branch**: `feature/enable-ai-transcript` | **Status**: ✅ Implemented
+
+- [x] **34.1** Chunked audio processing — chia audio dài thành chunks, xử lý tuần tự
+- [x] **34.2** Model escalation — tự động escalate sang model mạnh hơn khi transcription/translation thất bại
+- [x] **34.3** Bulk run management command — chạy nhiều job cùng lúc, retry logic
+
+> **Design doc**: `md/design/feature-34-transcript-chunked-translation.md`
+
+---
+
+### Feature 35: Transcript Completeness Verification ✅ COMPLETE
+**Branch**: `feature/enable-ai-transcript` | **Status**: ✅ Implemented
+
+- [x] **35.1** Coverage calculation — so sánh timestamp transcript với tổng thời lượng audio
+- [x] **35.2** Warning system — cảnh báo nếu coverage < threshold, highlight đoạn thiếu
+- [x] **35.3** Auto-queue translation — tự động queue step 3 sau khi step 2b đủ coverage
+- [x] **35.4** Coverage status filter — filter trong admin theo coverage status
+- [x] **35.5** Timing fields — thêm `timing_*` fields vào `TranscriptJob` cho từng step
+
+> **Design doc**: `md/design/feature-35-transcript-completeness-verification.md`
+
+---
+
+### Feature 36: Gemini API Key Pool & Per-Model Quota Rotation ✅ COMPLETE
+**Branch**: `feature/enable-ai-transcript` | **Status**: ✅ Implemented
+
+- [x] **36.1** `TranscriptApiKey` model — pool nhiều Gemini API key, per-model quota tracking
+- [x] **36.2** Key rotation logic — xoay vòng key per-model khi quota hết, fallback sang key tiếp theo
+- [x] **36.3** DB key validation — validate key từ DB trước mỗi lần dùng (step 2b + step 3 escalation)
+- [x] **36.4** `gemini_api_key` FK trên `TranscriptJob` — gắn key cụ thể vào job để tracking
+- [x] **36.5** Admin UI — `TranscriptApiKeyAdmin` với usage badges per model (FLASH_20, FLASH_35, PRO_25)
+- [x] **36.6** Re-upload logic — tự động re-upload audio lên Gemini khi key thay đổi (step 2b)
+- [x] **36.7** Gemini 3 Flash model — thêm `FLASH_35` option vào `GeminiModel` choices
+
+> **Design doc**: `md/design/feature-36-gemini-api-key-rotation.md`
+
+---
+
 ## Phase 3: Flutter Mobile App (Post-MVP)
 
 **Status**: ❌ Not started — sau khi web MVP hoàn thành
@@ -447,9 +509,9 @@
 
 ---
 
-## Current Sprint (2026-03-13)
+## Current Sprint (2026-06-14)
 
-**Branch**: `main`
+**Branch**: `feature/enable-ai-transcript`
 
 ### Đã hoàn thành (Phase 1 Backend)
 - [x] Auth, Books, Videos, Exams, Wallet, Notifications APIs
@@ -472,16 +534,23 @@
 - [x] **Feature 15** — Client-side caching (axios-cache-interceptor + localforage)
 - [x] **CORS fix** — `VITE_API_BASE_URL=` (empty) dùng Vite proxy thay vì bypass
 
+### Đã hoàn thành (AI Transcript — branch feature/enable-ai-transcript)
+- [x] **Feature 33** — YouTube Transcript Pipeline (28 commits): TranscriptJob model, yt-dlp download, Gemini transcribe/translate, playlist import, DOCX download, admin UI
+- [x] **Feature 34** — Chunked Translation: chunked audio processing cho video dài 3+ giờ, model escalation
+- [x] **Feature 35** — Completeness Verification: coverage calculation, warning system, auto-queue translation, timing fields
+- [x] **Feature 36** — Gemini API Key Pool: TranscriptApiKey model, per-model rotation, DB key validation, re-upload logic
+
 ### Còn lại (theo thứ tự ưu tiên)
-1. **Avatar upload FE** — crop modal (`vue-advanced-cropper`) + `POST /api/users/me/avatar/`
-2. **notifications.service.js** + NotificationsView.vue + badge unread trên nav
-3. **UX polish** — toast errors, loading skeletons, empty states, responsive check (375/768/1024px)
-4. **Watermark composable** (`useWatermark.js`) — dùng cho BookReader + VideoPlayer
-5. **Feature 14** — Firebase Analytics (design done, chưa implement)
-6. **Feature 13** — Content Sync commands (design done, chưa implement)
-7. **Feature 16** — PDF Reader V1 (keyboard shortcuts + desktop split-panel + blur/right-click DRM, design done)
-8. **Feature 17** — Admin Activity Dashboard (DAU + LT theo ngày, design done)
-8. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
+1. **Merge** `feature/enable-ai-transcript` → `main`
+2. **Avatar upload FE** — crop modal (`vue-advanced-cropper`) + `POST /api/users/me/avatar/`
+3. **notifications.service.js** + NotificationsView.vue + badge unread trên nav
+4. **UX polish** — toast errors, loading skeletons, empty states, responsive check (375/768/1024px)
+5. **Watermark composable** (`useWatermark.js`) — dùng cho BookReader + VideoPlayer
+6. **Feature 14** — Firebase Analytics (design done, chưa implement)
+7. **Feature 13** — Content Sync commands (design done, chưa implement)
+8. **Feature 16** — PDF Reader V1 (keyboard shortcuts + desktop split-panel + blur/right-click DRM, design done)
+9. **Feature 17** — Admin Activity Dashboard (DAU + LT theo ngày, design done)
+10. Feature 12 V2 — card stack, swipe animation, image support (defer đến có quyết định BE)
 
 ---
 
@@ -546,7 +615,11 @@
 | Feature 15. Client-Side Caching | ✅ |
 | Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
 | Feature 17. Admin Activity Dashboard | 📝 Design done, chưa implement |
+| Feature 33. YouTube Transcript Pipeline | ✅ (branch feature/enable-ai-transcript) |
+| Feature 34. Transcript Chunked Translation | ✅ (branch feature/enable-ai-transcript) |
+| Feature 35. Transcript Completeness Verification | ✅ (branch feature/enable-ai-transcript) |
+| Feature 36. Gemini API Key Pool & Rotation | ✅ (branch feature/enable-ai-transcript) |
 
 ---
 
-*Last updated: 2026-03-13 (v1.7 — Feature 17 Admin Activity Dashboard design doc added)*
+*Last updated: 2026-06-14 (v1.8 — Features 33-36 AI Transcript Pipeline added and marked complete)*

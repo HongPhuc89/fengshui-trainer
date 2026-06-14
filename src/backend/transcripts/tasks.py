@@ -414,13 +414,157 @@ def task_upload_to_gemini(self, job_id: int):
         _fail_step(job, 'step2a', str(exc))
 
 
+def _get_finish_reason(response) -> str:
+    return getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
+
+
+def _transcribe_single_file(job, model: str, prompt: str) -> str:
+    """Transcribe a single audio file already uploaded to Gemini (step 2a).
+
+    Reuses the key pinned to the job from step 2a. On 429, marks that key exhausted
+    and retries with a new key — the file_name is still accessible because Gemini File
+    API files are project-scoped (not key-scoped) at the read level.
+    Returns the raw transcript text.
+    """
+    from google.genai.errors import ClientError as GeminiClientError
+
+    client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
+    file_ref = client.files.get(name=job.gemini_file_name)
+    try:
+        response = client.models.generate_content(model=model, contents=[file_ref, prompt])
+    except GeminiClientError as exc:
+        if exc.code != 429:
+            raise
+        _mark_key_model_exhausted(usage_pk)
+        client, _key_pk, _usage_pk = _get_gemini_client(model)
+        file_ref = client.files.get(name=job.gemini_file_name)
+        response = client.models.generate_content(model=model, contents=[file_ref, prompt])
+
+    if not response.text:
+        raise ValueError(f'Gemini returned empty transcript (finish_reason={_get_finish_reason(response)})')
+    return response.text
+
+
+def _transcribe_one_chunk(job_id: int, chunk: dict, idx: int, model: str, prompt: str) -> str:
+    """Upload one chunk file to Gemini and transcribe it.
+
+    Upload and generate_content use the same key — Gemini File API files are scoped
+    to the uploading key, so switching keys between upload and generate causes 403/404.
+    On 429 during generate_content, re-uploads the chunk with a fresh key before retrying.
+    Returns the raw transcript text for this chunk (timestamps not yet offset-adjusted).
+    """
+    from google.genai.errors import ClientError as GeminiClientError
+
+    def _upload(api_client, display_name: str):
+        with open(chunk['path'], 'rb') as f:
+            return api_client.files.upload(
+                file=f,
+                config={'mime_type': 'audio/mpeg', 'display_name': display_name},
+            )
+
+    client, _key_pk, usage_pk = _get_gemini_client(model)
+    uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}.mp3')
+    try:
+        response = client.models.generate_content(model=model, contents=[uploaded, prompt])
+    except GeminiClientError as exc:
+        if exc.code != 429:
+            raise
+        # 429: file is scoped to the exhausted key — must re-upload with fresh key
+        _mark_key_model_exhausted(usage_pk)
+        client, _key_pk, _usage_pk = _get_gemini_client(model)
+        uploaded = _upload(client, f'job_{job_id}_chunk_{idx:03d}_retry.mp3')
+        response = client.models.generate_content(model=model, contents=[uploaded, prompt])
+
+    if not response.text:
+        raise ValueError(f'Gemini empty transcript for chunk {idx} (finish_reason={_get_finish_reason(response)})')
+    return response.text
+
+
+def _transcribe_chunked(job_id: int, audio_path: str, model: str, prompt: str) -> str:
+    """Split audio into chunks, transcribe each, merge with corrected timestamps.
+
+    All chunk files are created upfront by ffmpeg. Each is removed immediately after
+    successful transcription. On any error, remaining chunk files are cleaned up before
+    re-raising so no orphaned files are left on disk.
+    Returns the merged raw transcript text.
+    """
+    chunks = _split_audio_into_chunks(audio_path, chunk_duration_secs=GEMINI_AUDIO_CHUNK_DURATION)
+    logger.info('_transcribe_chunked: job %s split into %d chunks', job_id, len(chunks))
+    parts = []
+    try:
+        for idx, chunk in enumerate(chunks):
+            logger.info('_transcribe_chunked: job %s chunk %d/%d', job_id, idx + 1, len(chunks))
+            text = _transcribe_one_chunk(job_id, chunk, idx, model, prompt)
+            parts.append(_offset_transcript_timestamps(text, chunk['offset_secs']))
+            os.remove(chunk['path'])
+    except Exception:
+        for remaining in chunks:
+            if os.path.exists(remaining['path']):
+                try:
+                    os.remove(remaining['path'])
+                except OSError:
+                    pass
+        raise
+
+    return '\n\n'.join(parts)
+
+
+def _verify_coverage(job, job_id: int) -> None:
+    """Compute transcript coverage ratio and set job.transcript_coverage / step2b_warning.
+
+    Compares the last timestamp in raw_transcript against audio duration from ffprobe.
+    Never raises — verification failure sets a warning but does not fail the job.
+    """
+    try:
+        audio_duration = get_audio_duration(job.audio_file_path)
+        last_ts, ts_fmt = get_last_transcript_timestamp(job.raw_transcript)
+
+        if last_ts is None or audio_duration <= 0:
+            job.transcript_coverage = None
+            job.step2b_warning = 'Cannot verify completeness: no timestamps found in transcript.'
+            logger.warning('_verify_coverage: job %s — no timestamps', job_id)
+            return
+
+        coverage = last_ts / audio_duration
+        if coverage > 1.5:
+            # Timestamps far exceed audio — likely playlist-relative hallucination
+            job.transcript_coverage = None
+            job.step2b_warning = (
+                f'Cannot verify coverage: last timestamp {last_ts:.0f}s far exceeds '
+                f'audio duration {audio_duration:.0f}s. Transcript may reference a longer source.'
+            )
+            logger.warning(
+                '_verify_coverage: job %s last_ts=%ds >> audio=%ds (fmt=%s) — skipping',
+                job_id, last_ts, audio_duration, ts_fmt,
+            )
+            return
+
+        job.transcript_coverage = round(coverage, 4)
+        if coverage < TRANSCRIPT_MIN_COVERAGE:
+            job.step2b_warning = (
+                f'Transcript may be incomplete: last timestamp {last_ts:.0f}s '
+                f'vs audio {audio_duration:.0f}s (coverage={coverage:.1%}). '
+                f'Consider re-running Step 2b.'
+            )
+            logger.warning('_verify_coverage: job %s coverage=%.1f%% — possible truncation', job_id, coverage * 100)
+        else:
+            job.step2b_warning = ''
+
+    except Exception as exc:
+        job.transcript_coverage = None
+        job.step2b_warning = f'Coverage check error: {str(exc)[:200]}'
+        logger.warning('_verify_coverage: job %s check failed: %s', job_id, exc)
+
+
 @shared_task(bind=True, max_retries=0, soft_time_limit=1800)  # 30 minutes max
 def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None):
-    """Step 2b: Transcribe Chinese audio via Gemini generate_content, save raw_transcript.
+    """Step 2b: Transcribe Chinese audio via Gemini, save raw_transcript.
 
+    Routes to single-file or chunked flow based on file size.
     model_override: if given, use this model instead of TranscriptConfig.model.
     """
-    from .models import TranscriptJob, StepStatus
+    from .models import TranscriptJob, StepStatus, TranscriptConfig, ConfigType
+    from django.utils import timezone as tz
 
     try:
         job = TranscriptJob.objects.get(pk=job_id)
@@ -431,7 +575,6 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
         logger.error('task_transcribe_audio: job %s step2a not done', job_id)
         return
 
-    from django.utils import timezone as tz
     job.step2b_status = StepStatus.TRANSCRIBING
     job.step2b_error = ''
     job.step2b_started_at = tz.now()
@@ -439,114 +582,16 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
     job.save(update_fields=['step2b_status', 'step2b_error', 'step2b_started_at', 'step2b_finished_at', 'updated_at'])
 
     try:
-        from .models import TranscriptConfig, ConfigType
-        from google.genai.errors import ClientError as GeminiClientError
         config = TranscriptConfig.get(ConfigType.TRANSCRIPT_PROMPT)
         model = model_override or config.model
-
         audio_path = job.audio_file_path
-        file_size = os.path.getsize(audio_path)
 
-        if file_size <= GEMINI_AUDIO_SPLIT_THRESHOLD:
-            # Must use the same key that uploaded the file in step 2a
-            client, _key_pk, usage_pk = _get_gemini_client_for_job(job)
-            file_ref = client.files.get(name=job.gemini_file_name)
-            try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[file_ref, config.value],
-                )
-            except GeminiClientError as _quota_exc:
-                if _quota_exc.code != 429:
-                    raise
-                _mark_key_model_exhausted(usage_pk)
-                client, _key_pk, usage_pk = _get_gemini_client(model)
-                file_ref = client.files.get(name=job.gemini_file_name)
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[file_ref, config.value],
-                )
-            if not response.text:
-                finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
-                raise ValueError(f'Gemini returned empty transcript (finish_reason={finish})')
-            job.raw_transcript = response.text
+        if os.path.getsize(audio_path) <= GEMINI_AUDIO_SPLIT_THRESHOLD:
+            job.raw_transcript = _transcribe_single_file(job, model, config.value)
         else:
-            chunks = _split_audio_into_chunks(audio_path, chunk_duration_secs=GEMINI_AUDIO_CHUNK_DURATION)
-            logger.info('task_transcribe_audio: job %s split into %d chunks', job_id, len(chunks))
-            parts = []
-            for idx, chunk in enumerate(chunks):
-                logger.info('task_transcribe_audio: job %s chunk %d/%d', job_id, idx + 1, len(chunks))
-                client, _key_pk, usage_pk = _get_gemini_client(model)
-                with open(chunk['path'], 'rb') as f:
-                    uploaded = client.files.upload(
-                        file=f,
-                        config={'mime_type': 'audio/mpeg', 'display_name': f'job_{job_id}_chunk_{idx:03d}.mp3'},
-                    )
-                try:
-                    response = client.models.generate_content(
-                        model=model,
-                        contents=[uploaded, config.value],
-                    )
-                except GeminiClientError as _quota_exc:
-                    if _quota_exc.code != 429:
-                        raise
-                    _mark_key_model_exhausted(usage_pk)
-                    client, _key_pk, usage_pk = _get_gemini_client(model)
-                    response = client.models.generate_content(
-                        model=model,
-                        contents=[uploaded, config.value],
-                    )
-                if not response.text:
-                    finish = getattr(response.candidates[0], 'finish_reason', 'unknown') if response.candidates else 'no candidates'
-                    raise ValueError(f'Gemini returned empty transcript for chunk {idx} (finish_reason={finish})')
-                parts.append(_offset_transcript_timestamps(response.text, chunk['offset_secs']))
-                os.remove(chunk['path'])
+            job.raw_transcript = _transcribe_chunked(job_id, audio_path, model, config.value)
 
-            job.raw_transcript = '\n\n'.join(parts)
-
-        # Verify transcript completeness against audio duration (§3.3)
-        audio_path = job.audio_file_path
-        try:
-            audio_duration = get_audio_duration(audio_path)
-            last_ts, ts_fmt = get_last_transcript_timestamp(job.raw_transcript)
-
-            if last_ts is not None and audio_duration > 0:
-                coverage = last_ts / audio_duration
-                if coverage > 1.5:
-                    # Even after format detection, timestamps far exceed audio — playlist-relative source.
-                    job.transcript_coverage = None
-                    job.step2b_warning = (
-                        f'Cannot verify coverage: last timestamp {last_ts:.0f}s far exceeds '
-                        f'audio duration {audio_duration:.0f}s. Transcript may reference a longer source.'
-                    )
-                    logger.warning(
-                        'task_transcribe_audio: job %s last_ts=%ds >> audio=%ds (fmt=%s) — skipping coverage',
-                        job_id, last_ts, audio_duration, ts_fmt,
-                    )
-                else:
-                    job.transcript_coverage = round(coverage, 4)
-                    if coverage < TRANSCRIPT_MIN_COVERAGE:
-                        job.step2b_warning = (
-                            f'Transcript may be incomplete: last timestamp {last_ts:.0f}s '
-                            f'vs audio {audio_duration:.0f}s (coverage={coverage:.1%}). '
-                            f'Consider re-running Step 2b.'
-                        )
-                        logger.warning(
-                            'task_transcribe_audio: job %s coverage=%.1f%% — possible truncation',
-                            job_id, coverage * 100,
-                        )
-                    else:
-                        job.step2b_warning = ''
-            else:
-                job.transcript_coverage = None
-                job.step2b_warning = 'Cannot verify completeness: no timestamps found in transcript.'
-                logger.warning('task_transcribe_audio: job %s — no timestamps to verify coverage', job_id)
-
-        except Exception as verify_exc:
-            # Verification failure must not fail the job — transcript already has value
-            job.transcript_coverage = None
-            job.step2b_warning = f'Coverage check error: {str(verify_exc)[:200]}'
-            logger.warning('task_transcribe_audio: job %s coverage check failed: %s', job_id, verify_exc)
+        _verify_coverage(job, job_id)
 
         job.step2b_status = StepStatus.DONE
         job.step2b_finished_at = tz.now()
@@ -557,19 +602,16 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
         ])
 
         coverage_ok = job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE
-
         if coverage_ok:
             task_translate_transcript.apply_async(args=[job_id])
             logger.info('task_transcribe_audio: job %s coverage OK — queued step 3', job_id)
         elif job.step2b_model != TRANSCRIPT_ESCALATION_MODEL:
-            # Coverage low or unverifiable on default model — escalate to stronger model
             logger.warning(
                 'task_transcribe_audio: job %s coverage=%s — escalating to %s',
                 job_id, job.transcript_coverage, TRANSCRIPT_ESCALATION_MODEL,
             )
             task_transcribe_audio.apply_async(args=[job_id], kwargs={'model_override': TRANSCRIPT_ESCALATION_MODEL})
         else:
-            # Already ran with escalation model — do not retry further
             logger.warning(
                 'task_transcribe_audio: job %s coverage=%s after escalation — giving up',
                 job_id, job.transcript_coverage,
