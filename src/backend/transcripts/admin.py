@@ -131,7 +131,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         'step1_badge', 'step2a_badge', 'step2b_badge', 'step3_badge',
         'overall_badge', 'coverage_badge', 'created_at',
     ]
-    list_filter  = ['source_type', 'step1_status', 'step2b_status', 'step3_status', CoverageStatusFilter]
+    list_filter  = ['source_type', 'step1_status', 'step2a_status', 'step2b_status', 'step3_status', CoverageStatusFilter]
     search_fields = ['youtube_url', 'title', 'playlist_url']
     ordering     = ['-created_at']
     actions      = [
@@ -143,7 +143,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
     readonly_fields = [
         'uuid', 'title', 'playlist_url', 'audio_file',
         'gemini_file_uri', 'gemini_file_name', 'gemini_uploaded_at',
-        'gemini_file_badge',
+        'gemini_file_badge', 'gemini_api_key',
         'step1_status', 'step1_error_display', 'step1_timing',
         'step2a_status', 'step2a_error_display', 'step2a_timing',
         'step2b_status', 'step2b_timing', 'step2b_model', 'step2b_error_display',
@@ -170,6 +170,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         ('Step 2a — Upload to Gemini', {
             'fields': [
                 'step2a_status', 'step2a_timing', 'step2a_error_display',
+                'gemini_api_key',
                 'gemini_file_uri', 'gemini_file_name',
                 'gemini_uploaded_at', 'gemini_file_badge',
             ],
