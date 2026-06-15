@@ -103,11 +103,7 @@ class Command(BaseCommand):
 
     def handle(self, **options):
         from transcripts.models import SourceType, StepStatus, TranscriptJob
-        from transcripts.tasks import (
-            task_upload_to_gemini,
-            task_transcribe_audio,
-            task_translate_transcript,
-        )
+        from transcripts.tasks import task_upload_to_gemini
 
         folder       = os.path.abspath(options['folder'])
         playlist_url = options['playlist_url'].strip()
@@ -162,13 +158,8 @@ class Command(BaseCommand):
                     job.save(update_fields=['audio_file', 'updated_at'])
 
                     job_pk = job.pk
-                    pipeline = (
-                        task_upload_to_gemini.si(job_pk)
-                        | task_transcribe_audio.si(job_pk)
-                        | task_translate_transcript.si(job_pk)
-                    )
-                    # Queue only after transaction commits — worker sees audio_file guaranteed
-                    transaction.on_commit(pipeline.delay)
+                    # task_upload_to_gemini internally triggers step2b, which triggers step3
+                    transaction.on_commit(lambda pk=job_pk: task_upload_to_gemini.delay(pk))
             except (OSError, shutil.Error) as exc:
                 self.stdout.write(self.style.ERROR(
                     f'  [ERROR  ] {f["name"][:60]} — could not copy file: {exc}'
