@@ -1,6 +1,18 @@
+import os
 import uuid
 from django.db import models
 from .fields import EncryptedCharField
+
+
+class SourceType(models.TextChoices):
+    YOUTUBE     = 'YOUTUBE',     'YouTube URL'
+    LOCAL_AUDIO = 'LOCAL_AUDIO', 'Local Audio Upload'
+
+
+def _upload_to_temp(instance, filename):
+    """Upload to a UUID-named temp folder; final path is set in admin save_model."""
+    ext = os.path.splitext(filename)[1].lower() or '.audio'
+    return f'transcripts/uploads/{uuid.uuid4()}/audio{ext}'
 
 
 class TranscriptApiKey(models.Model):
@@ -96,9 +108,14 @@ class TranscriptJob(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     # --- Input ---
-    youtube_url  = models.URLField(max_length=500)
-    playlist_url = models.URLField(max_length=500, blank=True, default='')  # source playlist if any
-    title        = models.CharField(max_length=500, blank=True, default='')
+    source_type    = models.CharField(
+                         max_length=20, choices=SourceType.choices, default=SourceType.YOUTUBE)
+    youtube_url    = models.URLField(max_length=500, blank=True, default='')
+    uploaded_audio = models.FileField(
+                         upload_to=_upload_to_temp, null=True, blank=True,
+                         help_text='Upload an audio file (MP3/WAV/M4A, max 100 MB)')
+    playlist_url   = models.URLField(max_length=500, blank=True, default='')  # source playlist if any
+    title          = models.CharField(max_length=500, blank=True, default='')
 
     # --- Step 1: Download ---
     audio_file        = models.CharField(max_length=500, blank=True, default='')  # relative path under MEDIA_ROOT

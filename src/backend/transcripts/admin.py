@@ -1,7 +1,9 @@
 import logging
 import os
+import shutil
 import subprocess
 
+from django import forms
 from django.contrib import admin, messages
 from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect
@@ -9,13 +11,56 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
 
-from .models import TranscriptConfig, TranscriptJob, TranscriptApiKey, TranscriptApiKeyUsage
+from .models import (
+    SourceType, TranscriptConfig, TranscriptJob,
+    TranscriptApiKey, TranscriptApiKeyUsage,
+)
 from .tasks import (
     task_download_audio, task_upload_to_gemini,
     task_transcribe_audio, task_translate_transcript,
 )
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_AUDIO_MIME = {
+    '.mp3':  'audio/mpeg',
+    '.wav':  'audio/wav',
+    '.m4a':  'audio/mp4',
+    '.ogg':  'audio/ogg',
+    '.flac': 'audio/flac',
+}
+_ALLOWED_AUDIO_EXTS = set(_ALLOWED_AUDIO_MIME.keys())
+
+
+class TranscriptJobForm(forms.ModelForm):
+    class Meta:
+        model  = TranscriptJob
+        fields = '__all__'
+
+    class Media:
+        js = ('admin/transcripts/source_type_toggle.js',)
+
+    def clean(self):
+        cleaned = super().clean()
+        source_type    = cleaned.get('source_type')
+        youtube_url    = (cleaned.get('youtube_url') or '').strip()
+        uploaded_audio = cleaned.get('uploaded_audio')
+
+        if source_type == SourceType.YOUTUBE:
+            if not youtube_url:
+                self.add_error('youtube_url', 'YouTube URL is required for source type YouTube.')
+        elif source_type == SourceType.LOCAL_AUDIO:
+            is_new = self.instance.pk is None
+            if is_new and not uploaded_audio:
+                self.add_error('uploaded_audio', 'Please upload an audio file.')
+            if uploaded_audio and hasattr(uploaded_audio, 'name'):
+                ext = os.path.splitext(uploaded_audio.name)[1].lower()
+                if ext not in _ALLOWED_AUDIO_EXTS:
+                    self.add_error(
+                        'uploaded_audio',
+                        f'Unsupported format "{ext}". Allowed: {", ".join(sorted(_ALLOWED_AUDIO_EXTS))}',
+                    )
+        return cleaned
 
 STATUS_COLORS = {
     'PENDING':      '#aaa',
@@ -78,14 +123,15 @@ class CoverageStatusFilter(admin.SimpleListFilter):
 @admin.register(TranscriptJob)
 class TranscriptJobAdmin(admin.ModelAdmin):
 
+    form = TranscriptJobForm
     change_list_template = 'admin/transcripts/transcriptjob_changelist.html'
 
     list_display = [
-        'id', 'title_short', 'youtube_url_short',
+        'id', 'title_short', 'source_badge', 'source_url_short',
         'step1_badge', 'step2a_badge', 'step2b_badge', 'step3_badge',
         'overall_badge', 'coverage_badge', 'created_at',
     ]
-    list_filter  = ['step1_status', 'step2b_status', 'step3_status', CoverageStatusFilter]
+    list_filter  = ['source_type', 'step1_status', 'step2b_status', 'step3_status', CoverageStatusFilter]
     search_fields = ['youtube_url', 'title', 'playlist_url']
     ordering     = ['-created_at']
     actions      = [
@@ -110,7 +156,7 @@ class TranscriptJobAdmin(admin.ModelAdmin):
 
     fieldsets = [
         ('Job Info', {
-            'fields': ['uuid', 'youtube_url', 'playlist_url', 'title'],
+            'fields': ['uuid', 'source_type', 'youtube_url', 'uploaded_audio', 'playlist_url', 'title'],
         }),
         ('Re-run Controls', {
             'fields': ['rerun_buttons'],
@@ -326,6 +372,10 @@ class TranscriptJobAdmin(admin.ModelAdmin):
 
         return TemplateResponse(request, 'admin/transcripts/import_playlist.html', context)
 
+    def _audio_mime(self, obj):
+        ext = os.path.splitext(str(obj.audio_file))[1].lower()
+        return _ALLOWED_AUDIO_MIME.get(ext, 'audio/mpeg')
+
     # --- Audio Player ---
     @admin.display(description='Audio Preview')
     def audio_player(self, obj):
@@ -334,24 +384,26 @@ class TranscriptJobAdmin(admin.ModelAdmin):
             # Gemini file URI cannot be streamed directly in browser
             # Show local audio player if file exists, fallback to info message
             if obj.audio_file:
-                url = f'{settings.MEDIA_URL}{obj.audio_file}'
+                url  = f'{settings.MEDIA_URL}{obj.audio_file}'
+                mime = self._audio_mime(obj)
                 return format_html(
                     '<audio controls style="width:100%">'
-                    '<source src="{}" type="audio/mpeg">'
+                    '<source src="{}" type="{}">'
                     '</audio>'
                     '<small style="color:#aaa">Gemini file valid until 48h • Serving from local</small>',
-                    url,
+                    url, mime,
                 )
             return format_html(
                 '<small style="color:#2196f3">Gemini file URI valid (< 48h) — local file still available</small>'
             )
         if mode == 'local':
-            url = f'{settings.MEDIA_URL}{obj.audio_file}'
+            url  = f'{settings.MEDIA_URL}{obj.audio_file}'
+            mime = self._audio_mime(obj)
             return format_html(
                 '<audio controls style="width:100%">'
-                '<source src="{}" type="audio/mpeg">'
+                '<source src="{}" type="{}">'
                 '</audio>',
-                url,
+                url, mime,
             )
         return format_html('<small style="color:#aaa">Audio file expired (> 15 days) — deleted</small>')
 
@@ -369,12 +421,23 @@ class TranscriptJobAdmin(admin.ModelAdmin):
     def title_short(self, obj):
         return (obj.title or '(no title)')[:50]
 
-    @admin.display(description='URL')
-    def youtube_url_short(self, obj):
-        return format_html(
-            '<a href="{}" target="_blank">{}</a>',
-            obj.youtube_url, obj.youtube_url[:45],
-        )
+    @admin.display(description='Source')
+    def source_badge(self, obj):
+        if obj.source_type == SourceType.LOCAL_AUDIO:
+            return format_html('<span style="color:#2196f3;font-weight:bold">LOCAL</span>')
+        return format_html('<span style="color:#4caf50;font-weight:bold">YT</span>')
+
+    @admin.display(description='URL / File')
+    def source_url_short(self, obj):
+        if obj.source_type == SourceType.LOCAL_AUDIO:
+            name = os.path.basename(str(obj.audio_file)) if obj.audio_file else '—'
+            return name[:45]
+        if obj.youtube_url:
+            return format_html(
+                '<a href="{}" target="_blank">{}</a>',
+                obj.youtube_url, obj.youtube_url[:45],
+            )
+        return '—'
 
     @admin.display(description='S1')
     def step1_badge(self, obj): return _badge(obj.step1_status)
@@ -512,6 +575,13 @@ class TranscriptJobAdmin(admin.ModelAdmin):
         if not obj.pk:
             return '(save job first)'
         base = f'/admin/transcripts/transcriptjob/{obj.pk}/rerun'
+        if obj.source_type == SourceType.LOCAL_AUDIO:
+            return format_html(
+                '<a class="button" href="{}/step2a/" style="margin:4px">▶ Step 2a (Upload)</a>'
+                '<a class="button" href="{}/step2b/" style="margin:4px">▶ Step 2b (Transcribe)</a>'
+                '<a class="button" href="{}/step3/" style="margin:4px">▶ Step 3 (Translate)</a>',
+                base, base, base,
+            )
         return format_html(
             '<a class="button" href="{}/step1/" style="margin:4px">▶ Step 1 (Download)</a>'
             '<a class="button" href="{}/step2a/" style="margin:4px">▶ Step 2a (Upload)</a>'
@@ -523,9 +593,22 @@ class TranscriptJobAdmin(admin.ModelAdmin):
     # --- Bulk actions ---
     @admin.action(description='▶ Re-run Step 1 (Download)')
     def action_rerun_download(self, request, queryset):
+        queued  = 0
+        skipped = 0
         for job in queryset:
+            if job.source_type == SourceType.LOCAL_AUDIO:
+                skipped += 1
+                continue
             task_download_audio.delay(job.pk)
-        self.message_user(request, f'{queryset.count()} download task(s) queued.')
+            queued += 1
+        if queued:
+            self.message_user(request, f'{queued} download task(s) queued.')
+        if skipped:
+            self.message_user(
+                request,
+                f'{skipped} LOCAL_AUDIO job(s) skipped — Step 1 (Download) does not apply.',
+                level=messages.WARNING,
+            )
 
     @admin.action(description='▶ Re-run Step 2a (Upload to Gemini)')
     def action_rerun_upload(self, request, queryset):
@@ -567,19 +650,67 @@ class TranscriptJobAdmin(admin.ModelAdmin):
                 level=messages.WARNING,
             )
 
+    def _setup_local_audio_job(self, request, job, uploaded_file):
+        """
+        Move the temp-uploaded file to transcripts/<pk>/audio.<ext>,
+        set audio_file and step1_status=SKIPPED on the job.
+        """
+        from .models import StepStatus
+        original_name = uploaded_file.name if hasattr(uploaded_file, 'name') else ''
+        ext = os.path.splitext(original_name)[1].lower() or '.audio'
+        src = os.path.join(settings.MEDIA_ROOT, str(job.uploaded_audio))
+        dest_dir  = os.path.join(settings.MEDIA_ROOT, 'transcripts', str(job.pk))
+        dest_name = f'audio{ext}'
+        dest      = os.path.join(dest_dir, dest_name)
+        os.makedirs(dest_dir, exist_ok=True)
+        if not os.path.exists(src):
+            messages.error(request, f'Job {job.pk}: uploaded file not found at {src}.')
+            return
+        try:
+            shutil.move(src, dest)
+        except (OSError, shutil.Error) as exc:
+            messages.error(request, f'Job {job.pk}: could not move audio file — {exc}')
+            return
+        try:
+            os.rmdir(os.path.dirname(src))
+        except OSError:
+            pass
+
+        job.audio_file   = f'transcripts/{job.pk}/{dest_name}'
+        job.step1_status = StepStatus.SKIPPED
+        if not job.title and original_name:
+            job.title = os.path.splitext(original_name)[0][:500]
+        job.save(update_fields=['audio_file', 'step1_status', 'title', 'updated_at'])
+
     # --- Auto-start pipeline on create ---
     def save_model(self, request, obj, form, change):
+        from .models import StepStatus
         is_new = obj.pk is None
+        if is_new and obj.source_type == SourceType.LOCAL_AUDIO:
+            # Mark step1 SKIPPED before initial save so overall_status is consistent
+            obj.step1_status = StepStatus.SKIPPED
         super().save_model(request, obj, form, change)
         if is_new:
-            pipeline = (
-                task_download_audio.si(obj.pk)
-                | task_upload_to_gemini.si(obj.pk)
-                | task_transcribe_audio.si(obj.pk)
-                | task_translate_transcript.si(obj.pk)
-            )
-            pipeline.delay()
-            messages.info(request, f'Job {obj.pk}: Full pipeline queued.')
+            if obj.source_type == SourceType.LOCAL_AUDIO:
+                uploaded_file = form.cleaned_data.get('uploaded_audio')
+                if uploaded_file:
+                    self._setup_local_audio_job(request, obj, uploaded_file)
+                pipeline = (
+                    task_upload_to_gemini.si(obj.pk)
+                    | task_transcribe_audio.si(obj.pk)
+                    | task_translate_transcript.si(obj.pk)
+                )
+                pipeline.delay()
+                messages.info(request, f'Job {obj.pk}: LOCAL_AUDIO pipeline (Steps 2a→3) queued.')
+            else:
+                pipeline = (
+                    task_download_audio.si(obj.pk)
+                    | task_upload_to_gemini.si(obj.pk)
+                    | task_transcribe_audio.si(obj.pk)
+                    | task_translate_transcript.si(obj.pk)
+                )
+                pipeline.delay()
+                messages.info(request, f'Job {obj.pk}: Full pipeline queued.')
 
     # --- Cleanup audio file on delete ---
     def _delete_audio_file(self, job):

@@ -328,8 +328,8 @@ def task_upload_to_gemini(self, job_id: int):
         logger.info('task_upload_to_gemini: job %s — file still valid, skipped upload, queued step 2b', job_id)
         return
 
-    if job.step1_status != StepStatus.DONE or not job.audio_file:
-        logger.error('task_upload_to_gemini: job %s step1 not done', job_id)
+    if job.step1_status not in (StepStatus.DONE, StepStatus.SKIPPED) or not job.audio_file:
+        logger.error('task_upload_to_gemini: job %s step1 not done or skipped', job_id)
         return
 
     job.step2a_status = StepStatus.UPLOADING
