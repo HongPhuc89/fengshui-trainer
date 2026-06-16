@@ -338,6 +338,7 @@ def task_upload_to_gemini(self, job_id: int):
     job.step2a_finished_at = None
     job.save(update_fields=['step2a_status', 'step2a_error', 'step2a_started_at', 'step2a_finished_at', 'updated_at'])
 
+    key_pk = None
     try:
         client, key_pk, usage_pk = _get_gemini_client(GEMINI_FILE_API_MODEL)
         try:
@@ -376,6 +377,7 @@ def task_upload_to_gemini(self, job_id: int):
         task_transcribe_audio.apply_async(args=[job_id])
         logger.info('task_upload_to_gemini: job %s — queued step 2b', job_id)
     except Exception as exc:
+        logger.error('task_upload_to_gemini: job %s key_pk=%s FAILED: %s', job_id, key_pk, exc)
         _fail_step(job, 'step2a', str(exc))
 
 
@@ -401,15 +403,19 @@ def _transcribe_single_file(job, model: str, prompt: str) -> str:
     logger.info('[job %s] single-file transcribe start — file=%s models=%s',
                 job.pk, job.gemini_file_name, models_to_try)
 
+    # The upload key owns the Gemini file — must use it for files.get() throughout.
+    upload_client, _upload_key_pk, _upload_usage_pk = _get_gemini_client_for_job(job)
+
     for attempt, m in enumerate(models_to_try):
         try:
             if attempt == 0:
-                client, key_pk, usage_pk = _get_gemini_client_for_job(job)
+                client, key_pk, usage_pk = upload_client, _upload_key_pk, _upload_usage_pk
             else:
                 client, key_pk, usage_pk = _get_gemini_client(m)
             logger.info('[job %s] attempt %d/%d model=%s key_pk=%s — calling generate_content',
                         job.pk, attempt + 1, len(models_to_try), m, key_pk)
-            file_ref = client.files.get(name=job.gemini_file_name)
+            # Always use upload_client to fetch the file — only the owning key has access
+            file_ref = upload_client.files.get(name=job.gemini_file_name)
             try:
                 response = client.models.generate_content(model=m, contents=[file_ref, prompt])
             except GeminiClientError as exc:
@@ -421,7 +427,8 @@ def _transcribe_single_file(job, model: str, prompt: str) -> str:
                 client, key_pk, usage_pk = _get_gemini_client(m)
                 logger.info('[job %s] attempt %d retrying model=%s key_pk=%s',
                             job.pk, attempt + 1, m, key_pk)
-                file_ref = client.files.get(name=job.gemini_file_name)
+                # Still use upload_client for files.get — rotated key cannot access the file
+                file_ref = upload_client.files.get(name=job.gemini_file_name)
                 response = client.models.generate_content(model=m, contents=[file_ref, prompt])
 
             if not response.text:
