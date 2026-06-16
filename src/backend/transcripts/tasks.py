@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 GEMINI_MAX_OUTPUT_TOKENS    = 65536
 GEMINI_FILE_API_MODEL       = 'gemini-file-api'  # synthetic name to track file upload quota separately
-TRANSCRIPT_MIN_COVERAGE     = 0.90               # warn if transcript covers < 90% of audio duration
+TRANSCRIPT_MIN_COVERAGE     = 0.85               # warn if transcript covers < 85% of audio duration
 TRANSCRIPT_ESCALATION_MODEL = 'gemini-3-flash-preview'  # model to retry step 2b when coverage is low
 
 # Model fallback order for transcription: tried in sequence when primary model fails.
