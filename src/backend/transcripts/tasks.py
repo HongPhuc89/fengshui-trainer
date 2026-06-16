@@ -534,9 +534,12 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
         ])
 
         coverage_ok = job.transcript_coverage is not None and job.transcript_coverage >= TRANSCRIPT_MIN_COVERAGE
-        if coverage_ok:
+        # coverage=None with "far exceeds" warning = anomalous timestamps, not truncation — escalation won't help
+        unverifiable = job.transcript_coverage is None and 'far exceeds' in job.step2b_warning
+        if coverage_ok or unverifiable:
             task_translate_transcript.apply_async(args=[job_id])
-            logger.info('task_transcribe_audio: job %s coverage OK — queued step 3', job_id)
+            logger.info('task_transcribe_audio: job %s coverage=%s unverifiable=%s — queued step 3',
+                        job_id, job.transcript_coverage, unverifiable)
         elif job.step2b_model != TRANSCRIPT_ESCALATION_MODEL:
             logger.warning(
                 'task_transcribe_audio: job %s coverage=%s — escalating to %s',
@@ -545,9 +548,10 @@ def task_transcribe_audio(self, job_id: int, model_override: 'str | None' = None
             task_transcribe_audio.apply_async(args=[job_id], kwargs={'model_override': TRANSCRIPT_ESCALATION_MODEL})
         else:
             logger.warning(
-                'task_transcribe_audio: job %s coverage=%s after escalation — giving up',
+                'task_transcribe_audio: job %s coverage=%s after escalation — giving up, queuing step 3 anyway',
                 job_id, job.transcript_coverage,
             )
+            task_translate_transcript.apply_async(args=[job_id])
     except Exception as exc:
         _fail_step(job, 'step2b', str(exc))
 
