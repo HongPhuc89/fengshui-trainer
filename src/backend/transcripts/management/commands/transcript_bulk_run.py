@@ -33,9 +33,8 @@ from django.core.management.base import BaseCommand
 # Index 0 is a sentinel — the actual config model is used at runtime; only indices 1+ are overrides.
 # gemini-3.5-flash excluded — high failure rate in practice.
 STEP2B_FALLBACK_MODELS = [
-    'gemini-3.0-flash',
+    'gemini-3.1-flash-lite',
     'gemini-3-flash-preview',
-    'gemini-3.0-flash-lite',
 ]
 
 
@@ -154,7 +153,7 @@ def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
     Retries with each model in STEP2B_FALLBACK_MODELS before giving up.
     Returns True if any attempt succeeded, False if all attempts failed.
     """
-    from transcripts.models import StepStatus, TranscriptConfig, ConfigType
+    from transcripts.models import StepStatus
 
     def _reset_step3(job):
         job.step3_status = StepStatus.PENDING
@@ -162,25 +161,12 @@ def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
         job.translated_transcript = ''
         job.save(update_fields=['step3_status', 'step3_error', 'translated_transcript', 'updated_at'])
 
-    try:
-        config_model = TranscriptConfig.get(ConfigType.TRANSLATE_PROMPT).model
-    except Exception:
-        config_model = ''
-
     attempts = [(None, 'attempt 1 / config model')] + [
         (m, f'attempt {i} / {m}')
         for i, m in enumerate(STEP2B_FALLBACK_MODELS, start=2)
     ]
 
-    from transcripts.tasks import _has_db_key_for_model
-
     for model_override, label in attempts:
-        effective_model = model_override or config_model
-
-        if not _has_db_key_for_model(effective_model):
-            stdout_fn(f'  step3 : no DB key for {effective_model}, skipping')
-            continue
-
         stdout_fn(f'  step3 : translating ({label})...', ending=' ')
         _reset_step3(job)
         task_translate_transcript(job.pk, model_override=model_override)

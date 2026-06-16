@@ -17,7 +17,8 @@
       "WebFetch(domain:ai.google.dev)",
       "Bash(grep -v \"^$\")",
       "Skill(claude-api)",
-      "Bash(sort -t'-' -k2 -n)"
+      "Bash(sort -t'-' -k2 -n)",
+      "Bash(python3 -c \"import sys,json; [print\\(m['name'], '-', m.get\\('displayName',''\\)\\) for m in json.load\\(sys.stdin\\).get\\('models',[]\\) if 'flash' in m['name'].lower\\(\\)]\")"
     ]
   }
 }
