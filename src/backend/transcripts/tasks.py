@@ -578,6 +578,8 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
     job.step3_finished_at = None
     job.save(update_fields=['step3_status', 'step3_error', 'step3_started_at', 'step3_finished_at', 'updated_at'])
 
+    model  = model_override or '(unknown)'
+    key_pk = None
     try:
         from .models import TranscriptConfig, ConfigType
         from google.genai.errors import ClientError as GeminiClientError
@@ -589,7 +591,7 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
             + '\n\n---\n\nNội dung cần dịch:\n\n'
             + job.raw_transcript
         )
-        client, _key_pk, usage_pk = _get_gemini_client(model)
+        client, key_pk, usage_pk = _get_gemini_client(model)
         try:
             response = client.models.generate_content(
                 model=model,
@@ -600,7 +602,7 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
             if _quota_exc.code != 429:
                 raise
             _mark_key_model_exhausted(usage_pk)
-            client, _key_pk, usage_pk = _get_gemini_client(model)
+            client, key_pk, usage_pk = _get_gemini_client(model)
             response = client.models.generate_content(
                 model=model,
                 contents=[full_prompt],
@@ -611,6 +613,7 @@ def task_translate_transcript(self, job_id: int, model_override: 'str | None' = 
         job.step3_finished_at = tz3.now()
         job.save(update_fields=['translated_transcript', 'step3_status', 'step3_finished_at', 'updated_at'])
     except Exception as exc:
+        logger.error('task_translate_transcript: job %s model=%s key_pk=%s FAILED: %s', job_id, model, key_pk, exc)
         _fail_step(job, 'step3', str(exc))
 
 

@@ -179,7 +179,7 @@ def _run_step3_with_escalation(job, stdout_fn, task_translate_transcript):
     return False
 
 
-MIN_JOB_ID = 106   # only process jobs with id > this value
+MIN_JOB_ID = 143   # only process jobs with id > this value
 MAX_JOBS   = 10  # max jobs per run (0 = unlimited); override with --limit
 
 
