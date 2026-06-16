@@ -31,9 +31,11 @@ from django.core.management.base import BaseCommand
 
 # Models to try for step 2b, in escalation order (index 0 = default from config, then fallbacks).
 # Index 0 is a sentinel — the actual config model is used at runtime; only indices 1+ are overrides.
+# gemini-3.5-flash excluded — high failure rate in practice.
 STEP2B_FALLBACK_MODELS = [
+    'gemini-3.0-flash',
     'gemini-3-flash-preview',
-    'gemini-3.5-flash',
+    'gemini-3.0-flash-lite',
 ]
 
 

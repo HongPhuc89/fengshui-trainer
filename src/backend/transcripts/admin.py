@@ -766,7 +766,7 @@ class TranscriptApiKeyUsageInline(admin.TabularInline):
 class TranscriptApiKeyAdmin(admin.ModelAdmin):
     list_display    = [
         'label', 'is_active', 'request_count', 'last_used_at',
-        'usage_flash25', 'usage_flash35', 'usage_flash30', 'usage_file_api',
+        'usage_flash25', 'usage_flash30_lite', 'usage_flash30', 'usage_flash30_prv', 'usage_file_api',
         'key_status',
     ]
     list_editable   = ['is_active']
@@ -808,12 +808,16 @@ class TranscriptApiKeyAdmin(admin.ModelAdmin):
     def usage_flash25(self, obj):
         return self._usage_badge(obj, 'gemini-2.5-flash')
 
-    @admin.display(description='3.5-flash')
-    def usage_flash35(self, obj):
-        return self._usage_badge(obj, 'gemini-3.5-flash')
-
-    @admin.display(description='3-flash')
+    @admin.display(description='3.0-flash')
     def usage_flash30(self, obj):
+        return self._usage_badge(obj, 'gemini-3.0-flash')
+
+    @admin.display(description='3.0-lite')
+    def usage_flash30_lite(self, obj):
+        return self._usage_badge(obj, 'gemini-3.0-flash-lite')
+
+    @admin.display(description='3-flash-prv')
+    def usage_flash30_prv(self, obj):
         return self._usage_badge(obj, 'gemini-3-flash-preview')
 
     @admin.display(description='File API')

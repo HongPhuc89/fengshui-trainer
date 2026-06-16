@@ -58,11 +58,13 @@ class TranscriptApiKeyUsage(models.Model):
 
 
 class GeminiModel(models.TextChoices):
-    FLASH_35 = 'gemini-3.5-flash', 'Gemini 3.5 Flash'
-    FLASH_30 = 'gemini-3-flash-preview', 'Gemini 3 Flash'
-    FLASH_25 = 'gemini-2.5-flash', 'Gemini 2.5 Flash'
-    FLASH_20 = 'gemini-2.0-flash', 'Gemini 2.0 Flash'
-    PRO_25   = 'gemini-2.5-pro',   'Gemini 2.5 Pro'
+    FLASH_30_LITE = 'gemini-3.0-flash-lite', 'Gemini 3.0 Flash Lite'
+    FLASH_30      = 'gemini-3.0-flash',      'Gemini 3.0 Flash'
+    FLASH_30_PRV  = 'gemini-3-flash-preview', 'Gemini 3 Flash Preview'
+    FLASH_35      = 'gemini-3.5-flash',      'Gemini 3.5 Flash'
+    FLASH_25      = 'gemini-2.5-flash',      'Gemini 2.5 Flash'
+    FLASH_20      = 'gemini-2.0-flash',      'Gemini 2.0 Flash'
+    PRO_25        = 'gemini-2.5-pro',        'Gemini 2.5 Pro'
 
 
 class ConfigType(models.TextChoices):

@@ -14,9 +14,12 @@ TRANSCRIPT_MIN_COVERAGE     = 0.85               # warn if transcript covers < 8
 TRANSCRIPT_ESCALATION_MODEL = 'gemini-3-flash-preview'  # model to retry step 2b when coverage is low
 
 # Model fallback order for transcription: tried in sequence when primary model fails.
+# Order: primary (from config) → 3.0-flash → 3-flash-preview → 3.0-flash-lite
+# gemini-3.5-flash excluded — high failure rate in practice.
 TRANSCRIBE_FALLBACK_MODELS = [
+    'gemini-3.0-flash',
     'gemini-3-flash-preview',
-    'gemini-3.5-flash',
+    'gemini-3.0-flash-lite',
 ]
 
 
