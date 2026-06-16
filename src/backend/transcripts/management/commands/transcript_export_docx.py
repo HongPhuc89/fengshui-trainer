@@ -5,7 +5,7 @@ Export the translated transcript of every TranscriptJob (step3 DONE) to a
 DOCX file.  One file per job; filename is derived from the job title.
 
 File structure:
-  Line 1 : Link clip: <youtube_url>
+  Line 1 : Link clip: <youtube_url or playlist_url>
   Line 2 : (blank)
   Line 3+: translated transcript text
 
@@ -14,7 +14,9 @@ Usage:
         python manage.py transcript_export_docx
 
 Options:
-    --output-dir DIR      Directory to write .docx files (default: /tmp/transcript_exports)
+    --playlist-url URL    Filter jobs by playlist_url (exports only that playlist)
+    --output-dir DIR      Directory to write .docx files
+                          (default: media/exports or media/exports/<playlist-slug>)
     --job-ids IDS         Comma-separated job IDs to export (default: all DONE jobs)
     --exclude-ids IDS     Comma-separated job IDs to skip (applied when --job-ids is not set)
     --force               Overwrite existing files (default: skip if file already exists)
@@ -23,6 +25,7 @@ Options:
 import os
 import re
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 
@@ -38,10 +41,16 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--playlist-url',
+            default='',
+            metavar='URL',
+            help='Filter jobs by playlist_url',
+        )
+        parser.add_argument(
             '--output-dir',
-            default='/tmp/transcript_exports',
+            default='',
             metavar='DIR',
-            help='Directory to write .docx files (default: /tmp/transcript_exports)',
+            help='Directory to write .docx files (default: MEDIA_ROOT/exports or MEDIA_ROOT/exports/<playlist-slug>)',
         )
         parser.add_argument(
             '--job-ids',
@@ -76,12 +85,21 @@ class Command(BaseCommand):
 
         from transcripts.models import TranscriptJob, StepStatus
 
-        output_dir = options['output_dir']
+        playlist_url    = options['playlist_url'].strip()
+        job_ids_raw     = options['job_ids'].strip()
+        exclude_ids_raw = options['exclude_ids'].strip()
+
+        # Resolve output dir
+        if options['output_dir']:
+            output_dir = options['output_dir']
+        elif playlist_url:
+            slug = _sanitize_filename(playlist_url.split('list=')[-1] if 'list=' in playlist_url else playlist_url)
+            output_dir = os.path.join(settings.MEDIA_ROOT, 'exports', slug[:60])
+        else:
+            output_dir = os.path.join(settings.MEDIA_ROOT, 'exports')
         os.makedirs(output_dir, exist_ok=True)
 
         # Resolve job queryset
-        job_ids_raw = options['job_ids'].strip()
-        exclude_ids_raw = options['exclude_ids'].strip()
         if job_ids_raw:
             ids = [int(i.strip()) for i in job_ids_raw.split(',') if i.strip()]
             jobs = list(TranscriptJob.objects.filter(pk__in=ids).order_by('pk'))
@@ -90,12 +108,16 @@ class Command(BaseCommand):
                 return
         else:
             qs = TranscriptJob.objects.filter(step3_status=StepStatus.DONE)
+            if playlist_url:
+                qs = qs.filter(playlist_url=playlist_url)
             if exclude_ids_raw:
                 exclude_ids = [int(i.strip()) for i in exclude_ids_raw.split(',') if i.strip()]
                 qs = qs.exclude(pk__in=exclude_ids)
-            jobs = list(qs.order_by('pk'))
+            jobs = list(qs.order_by('title', 'pk'))
             if not jobs:
-                self.stdout.write(self.style.WARNING('No jobs with step3=DONE found.'))
+                msg = f'No jobs with step3=DONE found'
+                msg += f' for playlist: {playlist_url}' if playlist_url else ''
+                self.stdout.write(self.style.WARNING(msg + '.'))
                 return
 
         self.stdout.write(f'Exporting {len(jobs)} job(s) to: {output_dir}')
@@ -134,9 +156,10 @@ class Command(BaseCommand):
                     p = para._element
                     p.getparent().remove(p)
 
-                # Line 1: clip URL
+                # Line 1: clip URL (youtube_url for YT jobs, playlist_url for LOCAL_AUDIO)
+                source_ref = job.youtube_url or job.playlist_url or f'job #{job.pk}'
                 url_para = doc.add_paragraph()
-                run = url_para.add_run(f'Link clip: {job.youtube_url}')
+                run = url_para.add_run(f'Link clip: {source_ref}')
                 run.font.size = Pt(12)
 
                 # Line 2: blank
