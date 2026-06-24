@@ -60,8 +60,8 @@ class VideoLessonInline(admin.TabularInline):
 
 @admin.register(VideoCourse)
 class VideoCourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'category', 'price_lt', 'level', 'total_lessons', 'published_date', 'learner_progress_link')
-    list_filter = ('is_free', 'level', 'category')
+    list_display = ('title', 'slug', 'category', 'price_lt', 'is_public', 'level', 'total_lessons', 'published_date', 'learner_progress_link')
+    list_filter = ('is_free', 'is_public', 'level', 'category')
     search_fields = ('title', 'instructor')
     inlines = [VideoLessonInline, UserVideoPurchaseInline]
     readonly_fields = ('recalculate_totals_btn',)

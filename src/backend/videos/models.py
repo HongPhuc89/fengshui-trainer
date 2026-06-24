@@ -60,6 +60,10 @@ class VideoCourse(BaseModel):
         blank=True,
         help_text="Public ID of linked Exam (exams.Exam). No FK to avoid migration dependency.",
     )
+    is_public = models.BooleanField(
+        default=True,
+        help_text="If False, only owners (purchased or VIP) can see this course in lists and detail.",
+    )
 
     class Meta:
         verbose_name = "Video Course"

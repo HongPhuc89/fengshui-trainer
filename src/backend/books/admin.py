@@ -53,8 +53,8 @@ class BookChapterInline(admin.TabularInline):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_new_release', 'published_date', 'reader_progress_link')
-    list_filter = ('is_free', 'is_new_release', 'category')
+    list_display = ('title', 'slug', 'category', 'price_lt', 'is_free', 'is_public', 'is_new_release', 'published_date', 'reader_progress_link')
+    list_filter = ('is_free', 'is_public', 'is_new_release', 'category')
     search_fields = ('title', 'author')
     readonly_fields = ('slug', 'small_cover_preview')
     inlines = [BookChapterInline, UserBookPurchaseInline]

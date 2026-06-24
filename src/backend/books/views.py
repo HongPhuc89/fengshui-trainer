@@ -1,6 +1,6 @@
 import base64
 
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -43,12 +43,16 @@ class RecentlyReadBooksView(views.APIView):
             .order_by('-last_read')
             .values('id')[:1]
         )
-        recent = (
+        recent_qs = (
             UserChapterProgress.objects
             .filter(user=request.user, id=Subquery(latest_per_book))
             .select_related('chapter__book')
-            .order_by('-last_read')[:3]
+            .order_by('-last_read')
         )
+        if request.user.user_type != 'VIP':
+            owned_ids = UserBookPurchase.objects.filter(user=request.user).values_list('book_id', flat=True)
+            recent_qs = recent_qs.filter(Q(chapter__book__is_public=True) | Q(chapter__book_id__in=owned_ids))
+        recent = recent_qs[:3]
         data = []
         for p in recent:
             book = p.chapter.book
@@ -85,6 +89,16 @@ class BookListView(generics.ListAPIView):
     def get_queryset(self):
         today = timezone.now().date()
         qs = Book.objects.filter(published_date__lte=today).select_related('category')
+
+        user = self.request.user
+        if user.is_authenticated and user.user_type == 'VIP':
+            pass  # VIP sees all
+        elif user.is_authenticated:
+            owned_ids = UserBookPurchase.objects.filter(user=user).values_list('book_id', flat=True)
+            qs = qs.filter(Q(is_public=True) | Q(id__in=owned_ids))
+        else:
+            qs = qs.filter(is_public=True)
+
         category_slug = self.request.query_params.get('category')
         if category_slug:
             qs = qs.filter(category__slug=category_slug)
@@ -115,6 +129,20 @@ class BookDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         today = timezone.now().date()
         return Book.objects.filter(published_date__lte=today).select_related('category').prefetch_related('chapters')
+
+    def get_object(self):
+        obj = super().get_object()
+        if not obj.is_public:
+            user = self.request.user
+            allowed = False
+            if user.is_authenticated:
+                if user.user_type == 'VIP':
+                    allowed = True
+                elif UserBookPurchase.objects.filter(user=user, book=obj).exists():
+                    allowed = True
+            if not allowed:
+                raise Http404
+        return obj
 
     def get_serializer_class(self):
         if self.request.user.is_authenticated:

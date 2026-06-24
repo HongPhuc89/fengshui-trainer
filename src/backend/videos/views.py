@@ -35,12 +35,19 @@ class RecentlyWatchedCoursesView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        course_progresses = (
+        from django.db.models import Q
+        course_progresses_qs = (
             UserCourseProgress.objects
             .filter(user=request.user)
             .select_related('course', 'last_lesson')
-            .order_by('-updated_at')[:2]
+            .order_by('-updated_at')
         )
+        if request.user.user_type != 'VIP':
+            owned_ids = UserVideoPurchase.objects.filter(user=request.user).values_list('video_id', flat=True)
+            course_progresses_qs = course_progresses_qs.filter(
+                Q(course__is_public=True) | Q(course_id__in=owned_ids)
+            )
+        course_progresses = course_progresses_qs[:2]
 
         data = []
         for cp in course_progresses:
@@ -81,8 +88,19 @@ class VideoCourseListView(generics.ListAPIView):
     queryset = VideoCourse.objects.all().select_related('category')
 
     def get_queryset(self):
+        from django.db.models import Q
         today = timezone.now().date()
         qs = VideoCourse.objects.filter(published_date__lte=today).select_related('category')
+
+        user = self.request.user
+        if user.is_authenticated and user.user_type == 'VIP':
+            pass  # VIP sees all
+        elif user.is_authenticated:
+            owned_ids = UserVideoPurchase.objects.filter(user=user).values_list('video_id', flat=True)
+            qs = qs.filter(Q(is_public=True) | Q(id__in=owned_ids))
+        else:
+            qs = qs.filter(is_public=True)
+
         category_slug = self.request.query_params.get('category')
         if category_slug:
             qs = qs.filter(category__slug=category_slug)
@@ -106,12 +124,26 @@ class VideoCourseListView(generics.ListAPIView):
 class VideoCourseDetailView(generics.RetrieveAPIView):
     """GET /api/videos/{slug}/ - Course detail with lessons; has_purchased if auth."""
     permission_classes = (AllowAny,)
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'slug'
 
     def get_queryset(self):
         today = timezone.now().date()
         return VideoCourse.objects.filter(published_date__lte=today).select_related('category').prefetch_related('lessons')
-    lookup_field = 'slug'
-    lookup_url_kwarg = 'slug'
+
+    def get_object(self):
+        obj = super().get_object()
+        if not obj.is_public:
+            user = self.request.user
+            allowed = False
+            if user.is_authenticated:
+                if user.user_type == 'VIP':
+                    allowed = True
+                elif UserVideoPurchase.objects.filter(user=user, video=obj).exists():
+                    allowed = True
+            if not allowed:
+                raise Http404
+        return obj
 
     def get_serializer_class(self):
         if self.request.user.is_authenticated:

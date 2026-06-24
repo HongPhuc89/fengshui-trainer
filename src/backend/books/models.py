@@ -65,6 +65,10 @@ class Book(BaseModel):
         blank=True,
         help_text="Public Bunny CDN URL for resized WebP cover (auto-generated). Do not edit manually.",
     )
+    is_public = models.BooleanField(
+        default=True,
+        help_text="If False, only owners (purchased or VIP) can see this book in lists and detail.",
+    )
 
     class Meta:
         verbose_name = "Book"
