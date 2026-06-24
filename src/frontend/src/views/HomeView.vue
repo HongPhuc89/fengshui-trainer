@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
@@ -75,6 +75,17 @@ onActivated(async () => {
   clearApiCache()
   await loadRecentItems()
 })
+
+const failedSmallCovers = reactive(new Set())
+
+function getBookImgSrc(item) {
+  const key = item.slug || item.public_id
+  return (item.small_cover && !failedSmallCovers.has(key)) ? item.small_cover : item.cover_image
+}
+
+function onBookImgError(item) {
+  failedSmallCovers.add(item.slug || item.public_id)
+}
 
 function badgeType(book) {
   if (book?.is_free) return 'free'
@@ -154,7 +165,7 @@ function prefetchLastLesson(item) {
           @mouseenter="prefetchLastLesson(item)"
         >
           <div class="home-book-card__cover">
-            <img v-if="item.cover_image || item.small_cover" :src="item.small_cover || item.cover_image" :alt="item.title" />
+            <img v-if="item.cover_image || item.small_cover" :src="getBookImgSrc(item)" @error="onBookImgError(item)" :alt="item.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
 
             <!-- Badge: chapter number for books, progress % for videos -->
@@ -196,7 +207,7 @@ function prefetchLastLesson(item) {
           @click="goBook(b.slug)"
         >
           <div class="home-book-card__cover">
-            <img v-if="b.cover_image || b.small_cover" :src="b.small_cover || b.cover_image" :alt="b.title" />
+            <img v-if="b.cover_image || b.small_cover" :src="getBookImgSrc(b)" @error="onBookImgError(b)" :alt="b.title" />
             <div v-else class="home-book-card__cover-placeholder"></div>
             <span class="home-book-card__badge" :class="`home-book-card__badge--${badgeType(b)}`">
               {{ badgeLabel(b) }}

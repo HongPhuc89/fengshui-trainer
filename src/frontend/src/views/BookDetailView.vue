@@ -15,6 +15,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const bookSlug = route.params.slug
+const coverFailed = ref(false)
 
 // ── State ─────────────────────────────────────────────────
 const book = ref(null)
@@ -31,6 +32,16 @@ const purchaseError = ref(null)
 
 // ── Computed ──────────────────────────────────────────────
 const isVip = computed(() => authStore.user?.user_type === 'VIP')
+
+const coverStyle = computed(() => {
+  if (!book.value) return ''
+  const url = (book.value.small_cover && !coverFailed.value)
+    ? book.value.small_cover
+    : book.value.cover_image
+  return url
+    ? `background-image:url(${url})`
+    : 'background:linear-gradient(135deg,#1a1a2e,#e94560)'
+})
 
 const isUnlocked = computed(() =>
   !!(book.value?.is_free || book.value?.has_purchased || isVip.value),
@@ -194,12 +205,13 @@ function closeModal() {
     <template v-else-if="book">
       <!-- Hero: cover + info -->
       <div class="book-detail__hero">
-        <div
-          class="book-detail__cover"
-          :style="(book.small_cover || book.cover_image)
-            ? `background-image:url(${book.small_cover || book.cover_image})`
-            : `background:linear-gradient(135deg,#1a1a2e,#e94560)`"
-        >
+        <div class="book-detail__cover" :style="coverStyle">
+          <img
+            v-if="book.small_cover"
+            :src="book.small_cover"
+            style="display:none;position:absolute"
+            @error="coverFailed = true"
+          />
           <div v-if="!book.cover_image && !book.small_cover" class="book-detail__cover-initial">
             {{ book.title?.charAt(0) }}
           </div>

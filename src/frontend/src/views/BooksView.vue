@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { booksService } from '../services/books.service'
@@ -120,6 +120,15 @@ const COVER_GRADIENTS = [
   'linear-gradient(135deg,#1565c0,#b92b27)',
 ]
 
+const failedSmallCovers = reactive(new Set())
+
+function bookCoverStyle(book) {
+  const url = (book.small_cover && !failedSmallCovers.has(book.slug))
+    ? book.small_cover
+    : book.cover_image
+  return url ? `background-image:url(${url})` : `background:${coverGradient(book)}`
+}
+
 function coverGradient(book) {
   const idx = (book.title?.charCodeAt(0) ?? 0) % COVER_GRADIENTS.length
   return COVER_GRADIENTS[idx]
@@ -226,12 +235,13 @@ function coverGradient(book) {
         @keydown.enter="router.push({ name: 'BookDetail', params: { slug: book.slug } })"
       >
         <!-- Cover -->
-        <div
-          class="books__cover"
-          :style="(book.small_cover || book.cover_image)
-            ? `background-image:url(${book.small_cover || book.cover_image})`
-            : `background:${coverGradient(book)}`"
-        >
+        <div class="books__cover" :style="bookCoverStyle(book)">
+          <img
+            v-if="book.small_cover"
+            :src="book.small_cover"
+            style="display:none;position:absolute"
+            @error="failedSmallCovers.add(book.slug)"
+          />
           <span v-if="book.is_new_release" class="books__badge-hot">Mới</span>
           <span v-if="readingSet.has(book.slug)" class="books__badge-reading">Đang đọc</span>
           <div v-if="!book.cover_image && !book.small_cover" class="books__cover-initial">
