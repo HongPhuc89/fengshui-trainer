@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   chapter: { type: Object, required: true },
@@ -10,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['toggle'])
 
 const copiedIndex = ref(null)
+const hasContent = computed(() => props.chapter.items?.length > 0)
 
 async function copyLink(url, idx) {
   await navigator.clipboard.writeText(url)
@@ -19,8 +20,13 @@ async function copyLink(url, idx) {
 </script>
 
 <template>
-  <div class="accordion-item" :class="{ 'accordion-item--open': isOpen }">
-    <button class="accordion-item__header" @click="emit('toggle', chapter.chapter_label)">
+  <div class="accordion-item" :class="{ 'accordion-item--open': isOpen && hasContent }">
+    <button
+      class="accordion-item__header"
+      :class="{ 'accordion-item__header--static': !hasContent }"
+      :disabled="!hasContent"
+      @click="hasContent && emit('toggle', chapter.chapter_label)"
+    >
       <div class="accordion-item__header-inner">
         <div class="accordion-item__num">{{ chapterNumber }}</div>
         <div class="accordion-item__meta">
@@ -30,7 +36,7 @@ async function copyLink(url, idx) {
           </span>
         </div>
       </div>
-      <span class="material-symbols-outlined accordion-item__arrow" aria-hidden="true">expand_more</span>
+      <span v-if="hasContent" class="material-symbols-outlined accordion-item__arrow" aria-hidden="true">expand_more</span>
     </button>
 
     <div class="accordion-item__body">
@@ -85,8 +91,12 @@ async function copyLink(url, idx) {
   gap: 1rem;
 }
 
-.accordion-item__header:hover .accordion-item__title {
+.accordion-item__header:hover:not(.accordion-item__header--static) .accordion-item__title {
   color: #f2ca50;
+}
+
+.accordion-item__header--static {
+  cursor: default;
 }
 
 .accordion-item__header-inner {
