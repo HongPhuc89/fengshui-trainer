@@ -8,6 +8,7 @@ import 'flag-icons/css/flag-icons.min.css'
 import { useAuthStore } from './stores/auth'
 import { setAuthStore } from './api/client'
 import * as Sentry from '@sentry/vue'
+import { consoleLoggingIntegration } from '@sentry/browser'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -20,7 +21,7 @@ Sentry.init({
             maskAllText: true,
             blockAllMedia: false,
         }),
-        Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+        consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
     ],
 
     enableLogs: true,
