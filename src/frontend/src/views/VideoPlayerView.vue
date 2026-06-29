@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useWatermark } from '../composables/useWatermark'
 import { videosService } from '../services/videos.service'
-import * as Sentry from '@sentry/vue'
+import { sentryService } from '../services/sentry.service'
 import VideoPlayerArea from '../components/video/VideoPlayerArea.vue'
 import LessonMeta      from '../components/video/LessonMeta.vue'
 import LessonNav       from '../components/video/LessonNav.vue'
@@ -83,10 +83,7 @@ onMounted(async () => {
   if (lessonRes.status === 'fulfilled') {
     lesson.value = lessonRes.value.data
     videosService.setLastLesson(route.params.slug, route.params.lessonSlug).catch(() => {})
-    Sentry.metrics.count('video.load.success', 1, {
-      attributes: { course_slug: route.params.slug, lesson_slug: route.params.lessonSlug },
-    })
-    console.log('[video] load success', { course: route.params.slug, lesson: route.params.lessonSlug })
+    sentryService.trackVideoLoad(route.params.slug, route.params.lessonSlug)
   } else {
     error.value = 'Không thể tải bài học.'
   }

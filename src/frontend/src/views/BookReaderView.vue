@@ -9,6 +9,7 @@ import { useWatermark } from '../composables/useWatermark'
 import { usePdfDecryption } from '../composables/usePdfDecryption'
 import { api } from '../api/client'
 import * as Sentry from '@sentry/vue'
+import { sentryService } from '../services/sentry.service'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
 
@@ -176,10 +177,7 @@ async function loadChapter(order, page = 1) {
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
     await loadPdf(order, page)
-    Sentry.metrics.count('pdf.load.success', 1, {
-      attributes: { book_slug: bookSlug, chapter_order: order },
-    })
-    console.log('[pdf] load success', { book: bookSlug, chapter: order })
+    sentryService.trackPdfLoad(bookSlug, order)
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)

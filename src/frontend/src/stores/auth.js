@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { authService } from '../services/auth.service'
 import { clearApiCache } from '../api/cache-storage'
+import { sentryService } from '../services/sentry.service'
 
 const ACCESS_KEY = 'access'
 const REFRESH_KEY = 'refresh'
@@ -38,6 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = u
     if (u) localStorage.setItem(USER_KEY, JSON.stringify(u))
     else localStorage.removeItem(USER_KEY)
+    sentryService.setUser(u)
   }
 
   function clearAuth() {
@@ -50,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_KEY)
     // Clear API cache on logout — prevents stale is_purchased data leaking to next user
     clearApiCache()
+    sentryService.clearUser()
   }
 
   async function doRefresh() {
