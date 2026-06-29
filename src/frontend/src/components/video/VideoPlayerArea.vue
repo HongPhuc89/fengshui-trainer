@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { videosService } from '../../services/videos.service'
 import FullscreenIcon from './FullscreenIcon.vue'
 
@@ -15,9 +15,8 @@ const videoRef      = ref(null)
 const playerWrapRef = ref(null)
 const lastSavedAt   = ref(0)
 const SAVE_INTERVAL = 15_000
-const isFullscreen     = ref(false)
-const isFakeFullscreen = ref(false)
-const isFullscreenActive = computed(() => isFullscreen.value || isFakeFullscreen.value)
+const isFullscreen  = ref(false)
+const isZaloWebView = /ZaloApp|ZBROWSER|zalo/i.test(navigator.userAgent)
 
 // ── Progress saving ───────────────────────────────────────────
 async function saveProgress() {
@@ -76,37 +75,19 @@ function stopEmbedTimer() {
 // Use a custom overlay button instead of the native iframe/video fullscreen button.
 // Reason: requestFullscreen() must be called DIRECTLY from a user gesture.
 // Calling it inside exitFullscreen().then(requestFullscreen) is rejected by the browser.
-// Zalo WebView and some mobile browsers block the Fullscreen API entirely —
-// fallback to a CSS fake-fullscreen (position: fixed; inset: 0) in that case.
-function enterFakeFullscreen() { isFakeFullscreen.value = true }
-function exitFakeFullscreen()  { isFakeFullscreen.value = false }
-
+// Button is hidden in Zalo WebView where the Fullscreen API is unavailable.
 function toggleFullscreen() {
   const wrap = playerWrapRef.value
   if (!wrap) return
-
-  if (isFullscreen.value || isFakeFullscreen.value) {
-    // Exit
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      exitFakeFullscreen()
-    }
-    return
-  }
-
-  // Enter — try native first, fall back to fake on failure
-  if (document.fullscreenEnabled && wrap.requestFullscreen) {
-    wrap.requestFullscreen().catch(() => enterFakeFullscreen())
+  if (document.fullscreenElement) {
+    document.exitFullscreen()
   } else {
-    enterFakeFullscreen()
+    wrap.requestFullscreen()
   }
 }
 
 function onFullscreenChange() {
   isFullscreen.value = !!document.fullscreenElement
-  // Native fullscreen exited — make sure fake state is also cleared
-  if (!document.fullscreenElement) isFakeFullscreen.value = false
 }
 
 onMounted(() => {
@@ -127,7 +108,7 @@ defineExpose({ saveProgress })
 </script>
 
 <template>
-  <div ref="playerWrapRef" class="player-area" :class="{ 'player-area--fake-fullscreen': isFakeFullscreen }">
+  <div ref="playerWrapRef" class="player-area">
 
     <!-- Watermark overlay -->
     <div v-if="watermarkText" class="player-area__watermark" aria-hidden="true">
@@ -136,12 +117,12 @@ defineExpose({ saveProgress })
 
     <!-- Custom fullscreen button (works for both iframe and native video) -->
     <button
-      v-if="lesson.video_url"
+      v-if="lesson.video_url && !isZaloWebView"
       class="player-area__fs-btn"
-      :aria-label="isFullscreenActive ? 'Exit fullscreen' : 'Fullscreen'"
+      :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
       @click="toggleFullscreen"
     >
-      <FullscreenIcon :compressed="isFullscreenActive" />
+      <FullscreenIcon :compressed="isFullscreen" />
     </button>
 
     <!-- Embed iframe (Bunny Stream) — no allowfullscreen so the iframe cannot -->
@@ -193,20 +174,10 @@ defineExpose({ saveProgress })
 /* When the container enters fullscreen, fill the entire screen */
 .player-area:fullscreen,
 .player-area:-webkit-full-screen,
-.player-area:-moz-full-screen,
-.player-area--fake-fullscreen {
+.player-area:-moz-full-screen {
   aspect-ratio: unset;
   width: 100%;
   height: 100%;
-}
-
-/* Fake fullscreen for WebView environments that block the Fullscreen API */
-.player-area--fake-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 9999 !important;
 }
 
 .player-area__player {
@@ -256,8 +227,7 @@ defineExpose({ saveProgress })
 }
 .player-area:hover .player-area__fs-btn,
 .player-area:fullscreen .player-area__fs-btn,
-.player-area:-webkit-full-screen .player-area__fs-btn,
-.player-area--fake-fullscreen .player-area__fs-btn {
+.player-area:-webkit-full-screen .player-area__fs-btn {
   opacity: 1;
 }
 .player-area__fs-btn:hover {
