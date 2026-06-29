@@ -16,7 +16,7 @@ const playerWrapRef = ref(null)
 const lastSavedAt   = ref(0)
 const SAVE_INTERVAL = 15_000
 const isFullscreen  = ref(false)
-const isZaloWebView = /ZaloApp|ZBROWSER|zalo/i.test(navigator.userAgent)
+const isZaloWebView = /ZaloApp|ZBROWSER|Zalo\s*iOS|Zalo\s*Android/i.test(navigator.userAgent)
 
 // ── Progress saving ───────────────────────────────────────────
 async function saveProgress() {
