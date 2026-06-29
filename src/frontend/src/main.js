@@ -24,6 +24,16 @@ Sentry.init({
 
     replaysSessionSampleRate: 0.0,
     replaysOnErrorSampleRate: 1.0,
+
+    // Suppress errors from third-party scripts outside the app (Zalo SDK, browser extensions, etc.)
+    ignoreErrors: [
+        /zaloJSV2/,
+        /Can't find variable: zalo/i,
+    ],
+    denyUrls: [
+        /sp\.zalo\.me/,
+        /zalo\.me\/plugins/,
+    ],
 })
 
 app.use(pinia)
