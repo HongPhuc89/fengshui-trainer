@@ -260,6 +260,9 @@ BUNNY_ACCOUNT_API_KEY = env('BUNNY_ACCOUNT_API_KEY', default='')
 #          syd (Sydney), br (São Paulo), jh (Johannesburg)
 BUNNY_STORAGE_REGION = env('BUNNY_STORAGE_REGION', default='sg')
 
+# ipinfo.io — IP geolocation for UserDevice. Token optional for free tier (50k req/month).
+IPINFO_TOKEN = env("IPINFO_TOKEN", default="")
+
 # Forgot-password OTP settings
 OTP_EXPIRY_MINUTES = env.int("OTP_EXPIRY_MINUTES", default=5)
 OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)

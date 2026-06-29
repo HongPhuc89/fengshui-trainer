@@ -37,6 +37,7 @@
 | 30 | [feature-30-lesson-infographic.md](design/feature-30-lesson-infographic.md) | Lesson Infographic — Đính kèm lược đồ PDF hoặc video tóm tắt vào VideoLesson; tab "Lược đồ" trong player | 📝 |
 | 31 | [feature-31-book-cover-image-optimization.md](design/feature-31-book-cover-image-optimization.md) | Book Cover Image Optimization — Thêm `small_cover` CharField (WebP, Bunny CDN) giữ nguyên `cover_image` gốc trên Supabase | 📝 |
 | 32 | [feature-32-change-password.md](design/feature-32-change-password.md) | Change Password — Đổi mật khẩu từ màn hình Profile (IsAuthenticated, verify current_password, Django validate_password) | 📝 |
+| 33 | [feature-33-device-geo-location.md](design/feature-33-device-geo-location.md) | Device IP Geolocation — Lưu city/region/country vào UserDevice từ last_ip qua ipinfo.io; async trigger khi tạo device + management command backfill | 📝 |
 
 ---
 

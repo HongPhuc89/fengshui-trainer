@@ -26,6 +26,12 @@ class UserDevice(BaseModel):
     user_agent = models.TextField(null=True, blank=True)
     last_active = models.DateTimeField(auto_now=True)
 
+    # Geo location derived from last_ip (populated async after device creation)
+    geo_city = models.CharField(max_length=100, null=True, blank=True)
+    geo_region = models.CharField(max_length=100, null=True, blank=True)
+    geo_country_code = models.CharField(max_length=2, null=True, blank=True)
+    geo_fetched_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"{self.device_name or self.device_id} ({self.user.username})"
 
