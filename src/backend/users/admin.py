@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.forms import AdminUserCreationForm as DjangoAdminUserCreationForm
+from django.contrib.auth.forms import AdminUserCreationForm as DjangoAdminUserCreationForm, UserChangeForm as DjangoUserChangeForm
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
@@ -21,6 +21,31 @@ class AdminUserCreationForm(DjangoAdminUserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = True
+        self.fields['username'].label = 'Email đăng nhập'
+
+    def clean_username(self):
+        return self.cleaned_data.get('username', '').lower()
+
+    def clean_email(self):
+        return self.cleaned_data.get('email', '').lower()
+
+
+class AdminUserChangeForm(DjangoUserChangeForm):
+    """User change form for Django admin: labels username as login email and lowercases it."""
+
+    class Meta(DjangoUserChangeForm.Meta):
+        model = User
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].label = 'Email đăng nhập'
+
+    def clean_username(self):
+        return self.cleaned_data.get('username', '').lower()
+
+    def clean_email(self):
+        value = self.cleaned_data.get('email', '')
+        return value.lower() if value else value
 
 
 class PendingApprovalFilter(admin.SimpleListFilter):
@@ -70,6 +95,8 @@ class OwnedVideoInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    form = AdminUserChangeForm
+    add_form = AdminUserCreationForm
     list_display = ('id', 'username', 'phone_number', 'email', 'first_name', 'last_name', 'user_type', 'is_active', 'created_at', 'is_device_locked', 'is_staff')
     list_filter = (PendingApprovalFilter, 'user_type', 'is_device_locked', 'is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone_number', 'public_id')
@@ -77,7 +104,6 @@ class UserAdmin(BaseUserAdmin):
     inlines = [OwnedBookInline, OwnedVideoInline]
     change_form_template = 'admin/users/user/change_form.html'
     actions = ['activate_users', 'deactivate_users']
-    add_form = AdminUserCreationForm
 
     add_fieldsets = (
         (None, {
