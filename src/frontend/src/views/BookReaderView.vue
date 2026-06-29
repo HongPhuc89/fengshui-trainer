@@ -176,6 +176,9 @@ async function loadChapter(order, page = 1) {
     await nextTick()
     await new Promise(resolve => requestAnimationFrame(resolve))
     await loadPdf(order, page)
+    Sentry.metrics.count('pdf.load.success', 1, {
+      attributes: { book_slug: bookSlug, chapter_order: order },
+    })
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
