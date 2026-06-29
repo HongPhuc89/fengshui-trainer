@@ -9,6 +9,7 @@ import { useAuthStore } from './stores/auth'
 import { setAuthStore } from './api/client'
 import * as Sentry from '@sentry/vue'
 import { consoleLoggingIntegration } from '@sentry/browser'
+import { sentryService } from './services/sentry.service'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -48,6 +49,9 @@ app.mount('#app')
 const auth = useAuthStore()
 setAuthStore(auth)
 auth.startAutoRefresh()
+
+// Restore Sentry user context from persisted session (page reload, direct URL access)
+if (auth.user) sentryService.setUser(auth.user)
 
 globalThis.addEventListener('auth:logout', () => {
   router.push({ name: 'Login' })
