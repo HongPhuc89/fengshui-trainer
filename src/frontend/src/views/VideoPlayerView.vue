@@ -86,6 +86,7 @@ onMounted(async () => {
     Sentry.metrics.count('video.load.success', 1, {
       attributes: { course_slug: route.params.slug, lesson_slug: route.params.lessonSlug },
     })
+    console.log('[video] load success', { course: route.params.slug, lesson: route.params.lessonSlug })
   } else {
     error.value = 'Không thể tải bài học.'
   }

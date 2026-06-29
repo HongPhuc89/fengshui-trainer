@@ -19,11 +19,13 @@ Sentry.init({
         Sentry.replayIntegration({
             maskAllText: true,
             blockAllMedia: false,
-        })
+        }),
+        Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
     ],
 
-    replaysSessionSampleRate: 0.0,
-    replaysOnErrorSampleRate: 1.0,
+    enableLogs: true,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 1,
 
     // Suppress errors from third-party scripts outside the app (Zalo SDK, browser extensions, etc.)
     ignoreErrors: [

@@ -179,6 +179,7 @@ async function loadChapter(order, page = 1) {
     Sentry.metrics.count('pdf.load.success', 1, {
       attributes: { book_slug: bookSlug, chapter_order: order },
     })
+    console.log('[pdf] load success', { book: bookSlug, chapter: order })
     chapterLoading.value = false
   } catch (e) {
     console.error('[BookReader] chapter error:', e)
