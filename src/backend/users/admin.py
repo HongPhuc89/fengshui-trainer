@@ -321,8 +321,8 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(UserDevice)
 class UserDeviceAdmin(admin.ModelAdmin):
-    list_display = ('device_name', 'user', 'device_type', 'geo_city', 'geo_country_code', 'is_primary_bound', 'status', 'last_active')
-    list_filter = ('device_type', 'is_primary_bound', 'status', 'geo_country_code')
+    list_display = ('device_name', 'user', 'geo_city', 'is_primary_bound', 'status', 'last_active')
+    list_filter = ('device_type', 'is_primary_bound', 'status')
     search_fields = ('device_id', 'device_name', 'user__username', 'user__phone_number')
     readonly_fields = ('device_id', 'last_ip', 'user_agent', 'last_active', 'geo_city', 'geo_region', 'geo_country_code', 'geo_fetched_at')
     actions = ['revoke_devices']
