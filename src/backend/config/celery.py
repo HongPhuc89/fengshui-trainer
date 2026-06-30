@@ -17,6 +17,10 @@ app.conf.beat_schedule = {
         "task": "core.backup_database",
         "schedule": crontab(hour=12, minute=0),  # 12h UTC (19h ICT)
     },
+    "backfill-device-geo": {
+        "task": "users.backfill_device_geo",
+        "schedule": crontab(hour=17, minute=0),  # 17h UTC (0h ICT) daily
+    },
 }
 
 

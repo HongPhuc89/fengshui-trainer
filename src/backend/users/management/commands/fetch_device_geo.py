@@ -1,10 +1,12 @@
+import logging
 import time
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
 from users.models import UserDevice
-from users.services.geo import fetch_geo_by_ip
+from users.services.geo import save_geo_to_device
+
+logger = logging.getLogger(__name__)
 
 RATE_LIMIT_DELAY = 0.1  # seconds between requests to avoid bursting ipinfo.io
 
@@ -34,22 +36,14 @@ class Command(BaseCommand):
             qs = qs.filter(geo_fetched_at=None)
 
         total = qs.count()
-        self.stdout.write(f"Processing {total} device(s)...")
+        logger.info("fetch_device_geo: processing %d device(s)", total)
 
         success = 0
         for device in qs.iterator():
-            geo = fetch_geo_by_ip(device.last_ip)
-            if geo:
-                device.geo_city = geo["city"]
-                device.geo_region = geo["region"]
-                device.geo_country_code = geo["country_code"]
-                device.geo_fetched_at = timezone.now()
-                device.save(update_fields=[
-                    "geo_city", "geo_region", "geo_country_code", "geo_fetched_at",
-                ])
+            if save_geo_to_device(device):
                 success += 1
             else:
-                self.stdout.write(f"  skip device {device.pk} (IP: {device.last_ip})")
+                logger.info("fetch_device_geo: skip device %s (IP: %s)", device.pk, device.last_ip)
             time.sleep(RATE_LIMIT_DELAY)
 
-        self.stdout.write(self.style.SUCCESS(f"Done: {success}/{total} updated."))
+        logger.info("fetch_device_geo: %d/%d updated", success, total)
