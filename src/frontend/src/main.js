@@ -23,6 +23,7 @@ Sentry.init({
         }),
     ],
 
+    enableLogs: true,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1,
 
