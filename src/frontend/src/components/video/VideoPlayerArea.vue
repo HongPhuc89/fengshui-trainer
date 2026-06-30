@@ -16,7 +16,6 @@ const playerWrapRef = ref(null)
 const lastSavedAt   = ref(0)
 const SAVE_INTERVAL = 15_000
 const isFullscreen  = ref(false)
-const isZaloWebView = /ZaloApp|ZBROWSER|Zalo\s*iOS|Zalo\s*Android/i.test(navigator.userAgent)
 
 // ── Progress saving ───────────────────────────────────────────
 async function saveProgress() {
@@ -117,7 +116,7 @@ defineExpose({ saveProgress })
 
     <!-- Custom fullscreen button (works for both iframe and native video) -->
     <button
-      v-if="lesson.video_url && !isZaloWebView"
+      v-if="lesson.video_url"
       class="player-area__fs-btn"
       :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
       @click="toggleFullscreen"
@@ -232,6 +231,12 @@ defineExpose({ saveProgress })
 }
 .player-area__fs-btn:hover {
   background: rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 768px) {
+  .player-area__fs-btn {
+    display: none;
+  }
 }
 
 /* ── Watermark ──────────────────────────────────────────────── */
