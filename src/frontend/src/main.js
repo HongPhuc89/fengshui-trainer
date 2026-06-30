@@ -8,7 +8,6 @@ import 'flag-icons/css/flag-icons.min.css'
 import { useAuthStore } from './stores/auth'
 import { setAuthStore } from './api/client'
 import * as Sentry from '@sentry/vue'
-import { consoleLoggingIntegration } from '@sentry/browser'
 import { sentryService } from './services/sentry.service'
 
 const app = createApp(App)
@@ -22,10 +21,8 @@ Sentry.init({
             maskAllText: true,
             blockAllMedia: false,
         }),
-        consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
     ],
 
-    enableLogs: true,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1,
 

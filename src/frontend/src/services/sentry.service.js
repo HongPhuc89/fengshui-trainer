@@ -20,12 +20,31 @@ const sentryService = {
     Sentry.setUser(null)
   },
 
+  trackLogin(user) {
+    Sentry.addBreadcrumb({
+      category: 'auth',
+      message: 'User logged in',
+      data: { email: user.email },
+      level: 'info',
+    })
+  },
+
   trackVideoLoad(courseSlug, lessonSlug) {
-    console.log('[video] load success', { course: courseSlug, lesson: lessonSlug })
+    Sentry.addBreadcrumb({
+      category: 'video',
+      message: 'Video load success',
+      data: { course: courseSlug, lesson: lessonSlug },
+      level: 'info',
+    })
   },
 
   trackPdfLoad(bookSlug, chapterOrder) {
-    console.log('[pdf] load success', { book: bookSlug, chapter: chapterOrder })
+    Sentry.addBreadcrumb({
+      category: 'pdf',
+      message: 'PDF load success',
+      data: { book: bookSlug, chapter: chapterOrder },
+      level: 'info',
+    })
   },
 }
 

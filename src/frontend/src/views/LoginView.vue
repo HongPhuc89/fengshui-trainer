@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useDeviceId } from '../composables/useDeviceId'
 import { authService } from '../services/auth.service'
+import { sentryService } from '../services/sentry.service'
 import AppLogo from '../components/auth/AppLogo.vue'
 import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
@@ -40,6 +41,7 @@ async function submit() {
     )
     auth.setTokens({ access: data.access, refresh: data.refresh })
     auth.setUser(data.user)
+    sentryService.trackLogin(data.user)
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } catch (e) {
