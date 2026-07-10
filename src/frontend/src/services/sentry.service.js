@@ -40,6 +40,13 @@ const sentryService = {
       attributes: { book_slug: bookSlug, chapter_order: chapterOrder },
     })
   },
+
+  trackImageLoadError(src) {
+    Sentry.logger.error('CDN image load failed', { src })
+    Sentry.metrics.count('image.load.error', 1, {
+      attributes: { src },
+    })
+  },
 }
 
 export { sentryService }

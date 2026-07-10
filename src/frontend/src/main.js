@@ -16,6 +16,7 @@ const pinia = createPinia()
 Sentry.init({
     app,
     dsn: 'https://1984e26259654c3c91ae8ccb8b17bc85@o212840.ingest.us.sentry.io/5720762',
+    environment: import.meta.env.MODE,
     integrations: [
         Sentry.replayIntegration({
             maskAllText: true,
@@ -41,6 +42,23 @@ Sentry.init({
 app.use(pinia)
 app.use(router)
 app.use(i18n)
+
+// Report the first CDN image load failure per browser session (image errors
+// don't bubble, so this must be registered on the capture phase).
+const IMAGE_ERROR_SESSION_KEY = 'sentry_image_load_error_reported'
+window.addEventListener(
+  'error',
+  (event) => {
+    const target = event.target
+    if (target?.tagName !== 'IMG' || !target.src) return
+    if (new URL(target.src, window.location.href).hostname === window.location.hostname) return
+    if (sessionStorage.getItem(IMAGE_ERROR_SESSION_KEY)) return
+
+    sessionStorage.setItem(IMAGE_ERROR_SESSION_KEY, '1')
+    sentryService.trackImageLoadError(target.src)
+  },
+  true,
+)
 
 app.mount('#app')
 
