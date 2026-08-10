@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
+from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from ..models import User, UserDevice
-from ..utils import get_client_ip, parse_device_name
+from ..utils import get_client_ip, normalize_device_key, parse_device_name
 
 MAX_DEVICES = 5
 
@@ -83,25 +84,35 @@ class CustomLoginSerializer(serializers.Serializer):
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
+        # Match the device on its stable key rather than the raw device_id, so a
+        # browser that lost its localStorage UUID is not registered as a new device.
+        current_device_key = normalize_device_key(current_device_id)
+        key_match = Q(device_id=current_device_key) | Q(device_id__startswith=f"{current_device_key}_")
+
+        # Meta.ordering is ['-last_active'], so the most recently used row wins if
+        # duplicates for this key were already created before key matching existed.
+        device = user.devices.filter(key_match).first()
+
         # Check device limit before creating a new record
-        is_new_device = not user.devices.filter(device_id=current_device_id).exists()
-        if is_new_device and user.devices.count() >= MAX_DEVICES:
+        if device is None and user.devices.count() >= MAX_DEVICES:
             raise serializers.ValidationError({"detail": f"Tài khoản đã đăng ký tối đa {MAX_DEVICES} thiết bị."})
 
-        device, created = UserDevice.objects.get_or_create(
-            user=user,
-            device_id=current_device_id,
-            defaults={
-                'device_type': device_type,
-                'device_name': device_name,
-                'user_agent': ua_string,
-                'last_ip': client_ip,
-                'is_primary_bound': False,
-                'status': 'ACTIVE',
-            }
-        )
-
-        if not created:
+        if device is None:
+            device = UserDevice.objects.create(
+                user=user,
+                device_id=current_device_id,
+                device_type=device_type,
+                device_name=device_name,
+                user_agent=ua_string,
+                last_ip=client_ip,
+                is_primary_bound=False,
+                status='ACTIVE',
+            )
+        else:
+            # device_id is deliberately left untouched: it keeps the raw value first
+            # seen for this device for debugging, and rewriting it to the value sent
+            # by this request could collide with an existing duplicate row under the
+            # (user, device_id) unique constraint.
             device.device_type = device_type
             device.device_name = device_name
             device.user_agent = ua_string
@@ -113,15 +124,18 @@ class CustomLoginSerializer(serializers.Serializer):
         for token in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=token)
 
-        # Mark all other devices as REVOKED so DeviceJWTAuthentication rejects their tokens
-        user.devices.exclude(device_id=current_device_id).update(status='REVOKED')
+        # Mark all other devices as REVOKED so DeviceJWTAuthentication rejects their
+        # tokens. Excluded by key so the row we just matched is never revoked, even
+        # when its stored device_id differs from the one sent by this request.
+        user.devices.exclude(key_match).update(status='REVOKED')
 
         # Update last_login timestamp (django.contrib.auth.login() is not called in JWT flow)
         update_last_login(None, user)
 
-        # Issue new token with device_id claim embedded
+        # Issue new token with device_id claim embedded. Must be the stored value —
+        # DeviceJWTAuthentication looks the device up by exact device_id.
         refresh = RefreshToken.for_user(user)
-        refresh['device_id'] = current_device_id
+        refresh['device_id'] = device.device_id
         return {
             'user': user,
             'refresh': str(refresh),

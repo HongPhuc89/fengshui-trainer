@@ -13,6 +13,25 @@ def get_client_ip(request) -> str | None:
     return request.META.get('REMOTE_ADDR') or None
 
 
+def normalize_device_key(device_id: str) -> str:
+    """
+    Reduce a client device_id to the part that stably identifies the device.
+
+    Web clients send "web_<fingerprint>_<uuid8>", where the trailing segment is
+    derived from a localStorage UUID and gets regenerated whenever the browser
+    clears site data (private window, Safari ITP eviction, manual clear). Only
+    the first two segments identify the physical device, so device lookups match
+    on this key instead of the full string.
+
+    IDs with fewer than three segments (e.g. the fingerprint-less fallback
+    "web_<uuid>") are returned unchanged.
+    """
+    parts = (device_id or '').split('_')
+    if len(parts) > 2:
+        return '_'.join(parts[:2])
+    return device_id or ''
+
+
 def parse_device_name(ua_string: str) -> str:
     """
     Parse a User-Agent string into a human-readable device name.
