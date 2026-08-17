@@ -285,13 +285,69 @@ class BunnyVideoStorage(VideoStorageBackend):
             logger.warning('BunnyVideoStorage: thumbnail fetch failed: %s', exc)
             return None
 
+    # ── Collection helpers ────────────────────────────────────────────────────
+
+    def get_collection(self, collection_id: str) -> dict | None:
+        """Return the Bunny collection object, or None when it does not exist."""
+        resp = http.get(
+            f'{self._API_BASE}/{self._library_id}/collections/{collection_id}',
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=30,
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_video_collection_id(self, guid: str) -> str:
+        """Return the collection GUID assigned to a video ('' when unassigned)."""
+        resp = http.get(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}',
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return (resp.json().get('collectionId') or '').strip()
+
+    def set_video_collection(self, guid: str, collection_id: str) -> str:
+        """
+        Assign a video to a collection and return the collection GUID read back
+        from Bunny.
+
+        Bunny uses POST (not PUT) to update a video record — PUT on the same
+        path uploads raw bytes. The update response is a generic status
+        envelope that does not echo the new value, and a GUID belonging to
+        another library is accepted without being applied, so the value is
+        always read back to confirm.
+        """
+        resp = http.post(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}',
+            json={'collectionId': collection_id},
+            headers={
+                'AccessKey': self._api_key,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        applied = self.get_video_collection_id(guid)
+        logger.info(
+            'BunnyVideoStorage: set collection guid=%s collection=%s applied=%s',
+            guid, collection_id, applied,
+        )
+        return applied
+
     # ── Direct TUS upload helpers ─────────────────────────────────────────────
 
-    def create_entry(self, title: str) -> str:
+    def create_entry(self, title: str, collection_id: str = '') -> str:
         """Create a video entry in Bunny library and return its GUID."""
+        payload = {'title': title}
+        if collection_id:
+            payload['collectionId'] = collection_id
         resp = http.post(
             f'{self._API_BASE}/{self._library_id}/videos',
-            json={'title': title},
+            json=payload,
             headers={
                 'AccessKey': self._api_key,
                 'Content-Type': 'application/json',

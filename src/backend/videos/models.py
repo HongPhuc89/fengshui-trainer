@@ -64,6 +64,15 @@ class VideoCourse(BaseModel):
         default=True,
         help_text="If False, only owners (purchased or VIP) can see this course in lists and detail.",
     )
+    bunny_collection_id = models.CharField(
+        max_length=64,
+        blank=True,
+        verbose_name='Bunny Collection ID',
+        help_text=(
+            "Bunny Stream collection GUID that this course's lessons belong to. "
+            "Run `sync_bunny_collection` to apply it to the lessons on Bunny."
+        ),
+    )
 
     class Meta:
         verbose_name = "Video Course"
