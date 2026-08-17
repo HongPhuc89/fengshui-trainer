@@ -285,6 +285,51 @@ class BunnyVideoStorage(VideoStorageBackend):
             logger.warning('BunnyVideoStorage: thumbnail fetch failed: %s', exc)
             return None
 
+    # ── Storage cleanup helpers ───────────────────────────────────────────────
+
+    def get_video(self, guid: str) -> dict:
+        """Return the full Bunny video object."""
+        resp = http.get(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}',
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def cleanup_video_storage(
+        self,
+        guid: str,
+        *,
+        delete_original: bool = True,
+        delete_mp4: bool = True,
+        dry_run: bool = False,
+    ) -> dict:
+        """
+        Delete the source file and/or MP4 fallback renditions of a video,
+        keeping every transcoded HLS resolution intact.
+
+        Returns the `data` payload Bunny reports for the operation, which lists
+        the storage objects it removed (or would remove when dry_run is set).
+        """
+        resp = http.post(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}/resolutions/cleanup',
+            params={
+                'deleteOriginal':  str(bool(delete_original)).lower(),
+                'deleteMp4Files':  str(bool(delete_mp4)).lower(),
+                'dryRun':          str(bool(dry_run)).lower(),
+            },
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data = resp.json().get('data') or {}
+        logger.info(
+            'BunnyVideoStorage: cleanup guid=%s dry_run=%s objects=%s',
+            guid, dry_run, data.get('storageObjectsToDelete'),
+        )
+        return data
+
     # ── Collection helpers ────────────────────────────────────────────────────
 
     def get_collection(self, collection_id: str) -> dict | None:
