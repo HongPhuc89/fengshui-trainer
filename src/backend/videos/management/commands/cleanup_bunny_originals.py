@@ -1,14 +1,21 @@
 """
 Management command: cleanup_bunny_originals
 
-Reclaims Bunny Stream storage by deleting the uploaded source file (and MP4
-fallback renditions when present) of videos that have already finished
-transcoding. Every HLS resolution stays untouched, so playback is unaffected.
+Reclaims Bunny Stream storage by deleting two kinds of dead weight from videos
+that have already finished transcoding:
+
+  * the uploaded source file ("original")
+  * the MP4 fallback renditions ("play_<res>.mp4")
+
+Every HLS resolution stays untouched, so playback is unaffected.
 
 The source file is only kept by Bunny for re-transcoding to a resolution that
-was not generated at upload time. Once a video is transcoded and the library's
-resolution set is settled, it is dead weight — typically several times the size
-of all playable renditions combined.
+was not generated at upload time. The MP4 files are a second full copy of every
+rendition, only needed for direct-play/download on clients that cannot handle
+HLS — the Bunny iframe player does not use them.
+
+Both are produced by library settings that were later turned off; disabling
+those settings does not clean up videos uploaded while they were on.
 
 DESTRUCTIVE: deleting the source file cannot be undone through the API. Keep an
 off-Bunny copy of the masters, and always inspect --dry-run output first.
@@ -180,10 +187,10 @@ class Command(BaseCommand):
                 continue
 
             try:
-                data = storage.cleanup_video_storage(
+                objects = storage.cleanup_video_storage(
                     lesson.video_id,
-                    delete_original=True,
-                    delete_mp4=not keep_mp4,
+                    delete_original=has_original,
+                    delete_mp4=has_mp4 and not keep_mp4,
                     dry_run=dry_run,
                 )
             except Exception as exc:
@@ -191,8 +198,12 @@ class Command(BaseCommand):
                 errors += 1
                 continue
 
-            objects = data.get('storageObjectsToDelete') or []
-            kept    = data.get('availableResolutionsAfter') or []
+            # Read the surviving renditions back so the log proves playback is intact.
+            try:
+                kept = storage.get_video(lesson.video_id).get('availableResolutions') or ''
+                kept = [r for r in kept.split(',') if r]
+            except Exception:
+                kept = []
 
             if not objects:
                 self.stdout.write(f'  -> Bunny reports nothing to delete\n')

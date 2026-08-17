@@ -297,6 +297,50 @@ class BunnyVideoStorage(VideoStorageBackend):
         resp.raise_for_status()
         return resp.json()
 
+    def _cleanup_call(self, guid: str, params: dict) -> dict:
+        """Run one resolutions/cleanup request and return Bunny's `data` payload."""
+        resp = http.post(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}/resolutions/cleanup',
+            params=params,
+            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+            timeout=120,
+        )
+        resp.raise_for_status()
+        return resp.json().get('data') or {}
+
+    def delete_video_original(self, guid: str, *, dry_run: bool = False) -> list[str]:
+        """
+        Delete the uploaded source file, keeping every playable rendition.
+
+        Returns the storage objects Bunny removed (or would remove).
+        """
+        data = self._cleanup_call(guid, {
+            'deleteOriginal': 'true',
+            'dryRun':         str(bool(dry_run)).lower(),
+        })
+        return data.get('storageObjectsToDelete') or []
+
+    def delete_video_mp4_files(self, guid: str, *, dry_run: bool = False) -> list[str]:
+        """
+        Delete the MP4 fallback renditions (play_<res>.mp4), keeping the HLS
+        stream intact.
+
+        `outputs=mp4` scopes the request to MP4 outputs only, so this cannot be
+        combined with deleting the original in a single call — Bunny silently
+        ignores `deleteOriginal` when `outputs` is set. `deleteMp4Files` alone
+        is also a no-op; `outputs` plus `allResolutions` is what actually
+        selects the MP4 files.
+
+        Never pass `outputs=all` with `allResolutions` here: that also wipes the
+        HLS renditions and leaves the video unplayable.
+        """
+        data = self._cleanup_call(guid, {
+            'outputs':        'mp4',
+            'allResolutions': 'true',
+            'dryRun':         str(bool(dry_run)).lower(),
+        })
+        return data.get('storageObjectsToDelete') or []
+
     def cleanup_video_storage(
         self,
         guid: str,
@@ -304,31 +348,30 @@ class BunnyVideoStorage(VideoStorageBackend):
         delete_original: bool = True,
         delete_mp4: bool = True,
         dry_run: bool = False,
-    ) -> dict:
+    ) -> list[str]:
         """
-        Delete the source file and/or MP4 fallback renditions of a video,
+        Delete the source file and/or the MP4 fallback renditions of a video,
         keeping every transcoded HLS resolution intact.
 
-        Returns the `data` payload Bunny reports for the operation, which lists
-        the storage objects it removed (or would remove when dry_run is set).
+        Bunny needs one request per output kind, so this issues up to two calls
+        and returns the combined list of storage objects removed (or that would
+        be removed when dry_run is set).
         """
-        resp = http.post(
-            f'{self._API_BASE}/{self._library_id}/videos/{guid}/resolutions/cleanup',
-            params={
-                'deleteOriginal':  str(bool(delete_original)).lower(),
-                'deleteMp4Files':  str(bool(delete_mp4)).lower(),
-                'dryRun':          str(bool(dry_run)).lower(),
-            },
-            headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
-            timeout=120,
-        )
-        resp.raise_for_status()
-        data = resp.json().get('data') or {}
+        removed: list[str] = []
+        if delete_original:
+            removed += self.delete_video_original(guid, dry_run=dry_run)
+        if delete_mp4:
+            # Bunny echoes the pending original in the MP4 response too, so
+            # de-duplicate while preserving order.
+            removed += [
+                obj for obj in self.delete_video_mp4_files(guid, dry_run=dry_run)
+                if obj not in removed
+            ]
         logger.info(
             'BunnyVideoStorage: cleanup guid=%s dry_run=%s objects=%s',
-            guid, dry_run, data.get('storageObjectsToDelete'),
+            guid, dry_run, removed,
         )
-        return data
+        return removed
 
     # ── Collection helpers ────────────────────────────────────────────────────
 
