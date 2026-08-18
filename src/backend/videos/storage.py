@@ -297,6 +297,32 @@ class BunnyVideoStorage(VideoStorageBackend):
         resp.raise_for_status()
         return resp.json()
 
+    def set_video_title(self, guid: str, title: str) -> str:
+        """
+        Rename a video on Bunny and return the title read back afterwards.
+
+        Like `set_video_collection`, the update uses POST (PUT uploads bytes)
+        and returns a generic status envelope, so the value is read back to
+        confirm it was applied.
+        """
+        resp = http.post(
+            f'{self._API_BASE}/{self._library_id}/videos/{guid}',
+            json={'title': title},
+            headers={
+                'AccessKey': self._api_key,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        applied = (self.get_video(guid).get('title') or '').strip()
+        logger.info(
+            'BunnyVideoStorage: set title guid=%s title=%r applied=%r',
+            guid, title, applied,
+        )
+        return applied
+
     def _cleanup_call(self, guid: str, params: dict) -> dict:
         """Run one resolutions/cleanup request and return Bunny's `data` payload."""
         resp = http.post(
