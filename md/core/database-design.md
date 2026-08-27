@@ -93,6 +93,79 @@ CREATE TABLE users_userdevice (
 );
 
 CREATE INDEX idx_userdevice_uuid ON users_userdevice(uuid);
+```
+
+> **Web only since feature-34.** Mobile handsets live in `users_mobiledevice`
+> below, so `user.devices` in the ORM means "web devices" and nothing else.
+> `is_primary_bound` is a dead column, dropped in the follow-up cleanup commit.
+
+#### `users_mobiledevice`
+```sql
+CREATE TABLE users_mobiledevice (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    user_id BIGINT REFERENCES users_user(id) ON DELETE CASCADE,
+    client_code VARCHAR(16) UNIQUE NOT NULL,   -- MC-7F3A2B91, shown to support
+    device_id VARCHAR(255) NOT NULL,           -- opaque UUID from Keychain/Keystore
+    hardware_hash VARCHAR(64),                 -- SHA-256(ANDROID_ID | IDFV)
+    device_type VARCHAR(10) NOT NULL,          -- IOS | ANDROID
+    device_name VARCHAR(255),
+    device_model VARCHAR(128),
+    os_version VARCHAR(64),
+    app_version VARCHAR(32),
+    status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE',
+    revoked_reason VARCHAR(20),                -- ADMIN_UNBIND | REPLACED
+    last_ip INET,
+    bound_at TIMESTAMP,
+    revoked_at TIMESTAMP,
+    last_active TIMESTAMP,
+    geo_city VARCHAR(100),
+    geo_region VARCHAR(100),
+    geo_country_code CHAR(2),
+    geo_fetched_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    UNIQUE (user_id, device_id)
+);
+
+-- One bound handset per user, enforced in the database rather than in the
+-- serializer: two concurrent logins must not both succeed. Revoked rows stay
+-- out of the index so the handset history is preserved.
+CREATE UNIQUE INDEX uniq_active_mobile_device_per_user
+    ON users_mobiledevice(user_id) WHERE status = 'ACTIVE';
+
+CREATE UNIQUE INDEX uniq_mobile_hardware_per_user
+    ON users_mobiledevice(user_id, hardware_hash) WHERE hardware_hash IS NOT NULL;
+
+CREATE INDEX idx_mobiledevice_user_status ON users_mobiledevice(user_id, status);
+CREATE INDEX idx_mobiledevice_hardware ON users_mobiledevice(hardware_hash);
+```
+
+#### `users_deviceactivationkey`
+```sql
+CREATE TABLE users_deviceactivationkey (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    user_id BIGINT REFERENCES users_user(id) ON DELETE CASCADE,
+    key VARCHAR(20) UNIQUE NOT NULL,           -- TT-4KM9-X7QP-2N5R
+    status VARCHAR(10) NOT NULL DEFAULT 'ISSUED', -- ISSUED|USED|REVOKED|EXPIRED
+    issued_by_id BIGINT REFERENCES users_user(id) ON DELETE SET NULL,
+    issued_reason VARCHAR(255),
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    used_device_id BIGINT REFERENCES users_mobiledevice(id) ON DELETE SET NULL,
+    used_ip INET,
+    revoked_at TIMESTAMP,
+    revoked_by_id BIGINT REFERENCES users_user(id) ON DELETE SET NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- At most one live code per user, so support never sees two valid codes for the
+-- same person; issuing a new one revokes the old.
+CREATE UNIQUE INDEX uniq_issued_activation_key_per_user
+    ON users_deviceactivationkey(user_id) WHERE status = 'ISSUED';
 
 #### `admin_auditlog`
 ```sql

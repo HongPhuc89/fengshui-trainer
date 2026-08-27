@@ -17,27 +17,48 @@ logger = getLogger(__name__)
 
 class DeviceTokenRefreshView(TokenRefreshView):
     """
-    Extends TokenRefreshView to forward the device_id claim from the refresh
-    token into the newly issued access token, so DeviceJWTAuthentication can
-    still validate the device session after a token refresh.
+    Extends TokenRefreshView to forward the device_id and platform claims from
+    the refresh token into the newly issued access token, so
+    DeviceJWTAuthentication can still validate the device session after a refresh.
     """
     permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
+        # Read the device claims BEFORE validating. With ROTATE_REFRESH_TOKENS and
+        # BLACKLIST_AFTER_ROTATION both on, is_valid() blacklists the incoming
+        # token, so re-parsing it afterwards raises "Token is blacklisted".
+        try:
+            incoming = RefreshToken(request.data.get('refresh'))
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+        device_id = incoming.get('device_id')
+        platform = incoming.get('platform')
+
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
             raise InvalidToken(e.args[0])
 
-        refresh = RefreshToken(request.data['refresh'])
-        device_id = refresh.get('device_id')
+        # Rotation hands back a fresh refresh token; mint the access token from it
+        # so the device claims survive the rotation.
+        rotated = serializer.validated_data.get('refresh')
+        source = RefreshToken(rotated) if rotated else incoming
 
-        access = refresh.access_token
+        access = source.access_token
         if device_id:
             access['device_id'] = device_id
+        # Forward the platform claim too, otherwise DeviceJWTAuthentication would
+        # look a mobile device up in the web table and reject a valid session.
+        if platform:
+            access['platform'] = platform
 
-        return Response({'access': str(access)})
+        payload = {'access': str(access)}
+        if rotated:
+            # The old refresh token is now blacklisted, so the client has to store
+            # this one or it can never refresh again.
+            payload['refresh'] = str(source)
+        return Response(payload)
 
 
 class RegisterView(generics.CreateAPIView):

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mã kích hoạt thiết bị — Thiên Thư</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; color: #333;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 480px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #1a1a1a; padding: 24px 32px; text-align: center;">
+              <h1 style="margin: 0; color: #c9a84c; font-size: 1.4rem; font-weight: 700; letter-spacing: 1px;">
+                Thiên Thư
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 16px; font-size: 1rem; color: #333;">
+                Xin chào <strong>{{ display_name }}</strong>,
+              </p>
+              <p style="margin: 0 0 24px; font-size: 0.95rem; color: #555; line-height: 1.6;">
+                Quản trị viên đã cấp cho bạn một mã kích hoạt để sử dụng ứng dụng trên thiết bị mới.
+                Mở ứng dụng Thiên Thư trên thiết bị đó, đăng nhập, rồi nhập mã bên dưới vào màn hình
+                <strong>&ldquo;Thiết bị chưa được kích hoạt&rdquo;</strong>:
+              </p>
+
+              <div style="margin: 0 0 24px; padding: 20px; background-color: #faf8f0; border: 1px solid #e5dcc0; border-radius: 8px; text-align: center;">
+                <span style="font-size: 1.6rem; font-weight: 700; letter-spacing: 3px; color: #1a1a1a; font-family: 'Courier New', monospace;">
+                  {{ activation_key }}
+                </span>
+              </div>
+
+              <p style="margin: 0 0 8px; font-size: 0.9rem; color: #555; line-height: 1.6;">
+                Mã có hiệu lực trong <strong>{{ ttl_days }} ngày</strong>, đến hết ngày
+                <strong>{{ expires_at|date:"d/m/Y H:i" }}</strong>.
+              </p>
+              <p style="margin: 0 0 24px; font-size: 0.9rem; color: #555; line-height: 1.6;">
+                Mã chỉ dùng được <strong>một lần</strong> và chỉ dùng được cho tài khoản của bạn.
+                Sau khi kích hoạt, thiết bị cũ sẽ tự động đăng xuất.
+              </p>
+
+              <p style="margin: 0; padding: 16px; background-color: #fdf3f3; border-left: 3px solid #c0392b; font-size: 0.85rem; color: #7b2d26; line-height: 1.6;">
+                <strong>Không chia sẻ mã này với bất kỳ ai.</strong>
+                Nếu bạn không yêu cầu đổi thiết bị, vui lòng liên hệ quản trị viên ngay.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #faf8f0; text-align: center; font-size: 0.8rem; color: #888;">
+              Email tự động từ hệ thống Thiên Thư. Vui lòng không trả lời email này.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

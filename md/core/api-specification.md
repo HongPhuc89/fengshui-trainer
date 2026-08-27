@@ -872,3 +872,141 @@ All list endpoints support pagination:
 ```
 GET /api/books/?search=kỳ môn&ordering=-published_date
 ```
+
+---
+
+## Mobile Auth (feature-34)
+
+Mobile has its own login. One account binds to exactly one handset, and moving to
+another handset requires an activation code issued by staff — there is no
+self-service path. Web keeps using `/auth/login/` unchanged.
+
+### POST `/auth/mobile/login/`
+
+**Request:**
+```json
+{
+  "email": "string",
+  "password": "string",
+  "device_id": "string",
+  "platform_os": "ios|android",
+  "hardware_hash": "sha256 hex, optional",
+  "device_name": "string, optional",
+  "device_model": "string, optional",
+  "os_version": "string, optional",
+  "app_version": "string, optional"
+}
+```
+
+`hardware_hash` is SHA-256 of `Settings.Secure.ANDROID_ID` (Android) or
+`identifierForVendor` (iOS). It lets a reinstalled app be recognised as the same
+handset instead of a new one. Treated as a hint that *relaxes* the device check;
+it never grants access on its own.
+
+**Response 200:**
+```json
+{
+  "user": { "...": "UserSerializer" },
+  "access": "jwt",
+  "refresh": "jwt",
+  "client_code": "MC-7F3A2B91",
+  "rebound": false
+}
+```
+
+`rebound: true` means the client id was lost (app reinstall) but the hardware
+anchor matched, so the existing binding was kept.
+
+**Response 400 — another handset holds the binding:**
+```json
+{
+  "code": "ACTIVATION_REQUIRED",
+  "detail": "Tài khoản đang liên kết với thiết bị khác (mã MC-7F3A2B91)...",
+  "bound_device": {
+    "client_code": "MC-7F3A2B91",
+    "device_name": "iPhone 15 Pro",
+    "last_active": "2026-08-26T09:12:44Z"
+  },
+  "support_email": "admin@huyenhoc.pro"
+}
+```
+
+The payload deliberately does not reveal whether a code has already been issued.
+
+---
+
+### POST `/auth/mobile/activate/`
+
+Redeem a staff-issued code so this handset becomes the account's device. Takes
+credentials rather than a token: the user could not log in.
+
+**Request:** same envelope as mobile login, plus `"activation_key": "TT-4KM9-X7QP-2N5R"`.
+
+**Response 200:** same shape as mobile login. The previous handset is revoked and
+its refresh tokens blacklisted.
+
+**Response 400:**
+
+| `code` | Meaning |
+|---|---|
+| `ACTIVATION_FAILED` | Wrong, expired, or already-spent code. `detail` carries the attempts remaining. Five wrong attempts revoke the code. |
+| `ALREADY_BOUND` | This handset can already log in normally; the code is **not** consumed. |
+
+---
+
+### POST `/auth/refresh/`
+
+**Response 200:**
+```json
+{ "access": "jwt", "refresh": "jwt" }
+```
+
+`refresh` is returned because `ROTATE_REFRESH_TOKENS` is on: the token sent in
+the request is blacklisted, so the client must store the new one or the next
+refresh fails.
+
+Access tokens carry `device_id` and `platform` (`MOBILE` or `WEB`) claims. The
+platform claim tells the authentication layer which device table to validate
+against; both claims survive rotation.
+
+---
+
+### POST `/auth/register/`
+
+`device_id`, `device_type` and `device_name` are no longer read. They were
+validated and then discarded, and the `device_type` choices rejected the value
+the mobile app sends. Clients may still send them; they are ignored.
+
+---
+
+### GET `/users/me/device-status/`
+
+Adds `mobile_device` (or `null`), and `bound_device` now reports the bound mobile
+handset instead of always being `null`:
+
+```json
+{
+  "is_device_locked": false,
+  "bound_device": { "device_id": "...", "device_type": "IOS", "device_name": "...", "last_active": "..." },
+  "mobile_device": {
+    "client_code": "MC-7F3A2B91",
+    "device_name": "iPhone 15 Pro",
+    "device_type": "IOS",
+    "device_model": "iPhone16,1",
+    "app_version": "1.4.2+31",
+    "os_version": "iOS 17.4",
+    "bound_at": "2026-08-01T10:20:30Z",
+    "last_active": "2026-08-27T08:00:00Z"
+  },
+  "last_device_reset": "2026-01-01T00:00:00Z",
+  "next_reset_available_at": null,
+  "can_reset_now": false,
+  "web_devices_count": 3,
+  "web_devices_quota": 5
+}
+```
+
+`can_reset_now` is permanently `false` and `next_reset_available_at` permanently
+`null`: the 365-day self-reset was removed with the one-handset policy. The
+fields remain so older clients keep parsing the payload. `/users/me/device-reset/`
+never existed on the server and has been removed from the app.

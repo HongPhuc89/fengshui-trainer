@@ -51,6 +51,12 @@ dependencies:
   device_info_plus: ^10.1.2
   screen_protector: ^1.5.1
   uuid: ^4.4.0
+  # device_info_plus does NOT expose Settings.Secure.ANDROID_ID; its
+  # AndroidDeviceInfo.id is Build.ID, which is identical on every phone running
+  # the same ROM and must never be used as a device identifier.
+  android_id: ^0.4.0
+  package_info_plus: ^8.0.2
+  crypto: ^3.0.3
 
   # Utils
   intl: ^0.20.2

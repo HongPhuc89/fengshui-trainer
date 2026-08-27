@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below. The secure-storage prefs hold the device client id; if a
+  backup restored it onto a second phone, both handsets would present the same
+  identity to the server.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+</full-backup-content>

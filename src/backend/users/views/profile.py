@@ -1,5 +1,4 @@
 import io
-from datetime import timedelta
 from logging import getLogger
 
 from django.contrib.auth.password_validation import validate_password
@@ -14,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..serializers import UserSerializer
+from ..serializers.auth import MAX_DEVICES
 from ..serializers.user import ChangePasswordSerializer
 from ..throttles import LoginRateThrottle
 
@@ -131,34 +131,47 @@ class ChangePasswordView(views.APIView):
     'properties': {
         'is_device_locked': {'type': 'boolean'},
         'bound_device': {'type': 'object', 'nullable': True},
+        'mobile_device': {'type': 'object', 'nullable': True},
         'last_device_reset': {'type': 'string', 'format': 'date-time', 'nullable': True},
         'next_reset_available_at': {'type': 'string', 'format': 'date-time', 'nullable': True},
         'can_reset_now': {'type': 'boolean'},
     },
 }})
 class DeviceStatusView(views.APIView):
-    """GET /api/users/me/device-status/ - Show bound device and next reset date."""
+    """GET /api/users/me/device-status/ - Show the bound mobile handset and web device usage."""
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         user = request.user
-        bound = user.devices.filter(is_primary_bound=True, status='ACTIVE').first()
-        next_reset = None
-        can_reset = False
-        if user.last_device_reset:
-            reset_available_at = user.last_device_reset + timedelta(days=365)
-            next_reset = reset_available_at.isoformat()
-            can_reset = timezone.now() >= reset_available_at
+        # "Bound device" now means the mobile handset. is_primary_bound was never
+        # set anywhere, so this used to be null for everyone; a web device is a
+        # disposable slot, not a binding.
+        mobile = user.mobile_devices.filter(status='ACTIVE').first()
 
         return Response({
             'is_device_locked': user.is_device_locked,
             'bound_device': {
-                'device_id': bound.device_id,
-                'device_type': bound.device_type,
-                'device_name': bound.device_name or bound.device_id,
-                'last_active': bound.last_active.isoformat() if bound else None,
-            } if bound else None,
+                'device_id': mobile.device_id,
+                'device_type': mobile.device_type,
+                'device_name': mobile.device_name or mobile.device_id,
+                'last_active': mobile.last_active.isoformat(),
+            } if mobile else None,
+            'mobile_device': {
+                'client_code': mobile.client_code,
+                'device_name': mobile.device_name,
+                'device_type': mobile.device_type,
+                'device_model': mobile.device_model,
+                'app_version': mobile.app_version,
+                'os_version': mobile.os_version,
+                'bound_at': mobile.bound_at.isoformat() if mobile.bound_at else None,
+                'last_active': mobile.last_active.isoformat(),
+            } if mobile else None,
             'last_device_reset': user.last_device_reset.isoformat() if user.last_device_reset else None,
-            'next_reset_available_at': next_reset,
-            'can_reset_now': can_reset,
+            # The 365-day self-reset was removed with feature-34: a handset change
+            # is staff-gated. The fields stay so older clients keep parsing the
+            # payload, but they can no longer advertise an available reset.
+            'next_reset_available_at': None,
+            'can_reset_now': False,
+            'web_devices_count': user.devices.filter(status='ACTIVE').count(),
+            'web_devices_quota': MAX_DEVICES,
         })

@@ -217,6 +217,8 @@ REST_FRAMEWORK = {
         "register": "5/hour",    # Max 5 registration attempts per IP per hour
         "login": "30/hour",      # Max 30 login attempts per IP per hour (accommodates mobile token refresh)
         "otp_request": "20/hour",  # IP-level guard for OTP request/verify endpoints
+        "mobile_login": "30/hour",       # Mobile login, mirrors the web login budget
+        "device_activation": "10/hour",  # Activation-key redemption, deliberately tight
     },
 }
 
@@ -269,6 +271,12 @@ OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)
 OTP_DAILY_LIMIT = env.int("OTP_DAILY_LIMIT", default=5)
 PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = env.int("PASSWORD_RESET_TOKEN_EXPIRY_MINUTES", default=15)
 
+# Mobile device activation keys (feature-34). A handset change is staff-gated:
+# there is deliberately no self-service path.
+DEVICE_ACTIVATION_KEY_TTL_DAYS = env.int("DEVICE_ACTIVATION_KEY_TTL_DAYS", default=7)
+DEVICE_ACTIVATION_MAX_ATTEMPTS = env.int("DEVICE_ACTIVATION_MAX_ATTEMPTS", default=5)
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="admin@huyenhoc.pro")
+
 # SimpleJWT Configuration
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=4),
@@ -315,7 +323,9 @@ JAZZMIN_SETTINGS = {
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
         "users.User": "fas fa-user-graduate",
-        "users.UserDevice": "fas fa-mobile-alt",
+        "users.UserDevice": "fas fa-desktop",
+        "users.MobileDevice": "fas fa-mobile-alt",
+        "users.DeviceActivationKey": "fas fa-key",
         "users.AdminAuditLog": "fas fa-clipboard-list",
         "books.BookCategory": "fas fa-tags",
         "books.Book": "fas fa-book",
