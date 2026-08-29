@@ -64,6 +64,7 @@ dependencies:
   dartz: ^0.10.1
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -77,3 +78,15 @@ flutter:
   generate: true
   assets:
     - assets/images/
+
+# Launcher icons generated from the same mark the web app uses
+# (src/frontend/public/favicon.svg), so both surfaces read as one product.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  # Android 8+ masks the foreground to a launcher-chosen shape, so the artwork is
+  # inset in app_icon_foreground.png and sits on the white ground the web mark uses.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
