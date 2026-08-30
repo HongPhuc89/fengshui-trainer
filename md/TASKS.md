@@ -269,7 +269,9 @@
 - [x] **36.6** Verdict dính — kiểm tra thất bại không mở khoá được máy đang bị chặn
 - [x] **36.7** Nút "Bỏ qua" ghi nhớ theo `version_code`, tự dọn bản ghi cũ
 - [x] **36.8** Android: tải bằng dio + verify sha256 theo stream + MethodChannel gọi trình cài đặt; iOS: `itms-services://`
-- [x] **36.9** Test — 22 backend (77/77 toàn suite) + 15 Flutter unit
+- [x] **36.9** Giữ file 3 bản mới nhất mỗi nền tảng (xoá file, giữ row) + command `prune_app_releases`
+- [x] **36.10** Sửa `LocalFirstSupabaseStorage.delete()` — trước đó xoá file chỉ xoá bản local, object trên Supabase còn mãi (ảnh hưởng mọi `FileField`)
+- [x] **36.11** Test — 29 backend (86/86 toàn suite) + 15 Flutter unit
 
 > **Design doc**: `md/design/feature-36-app-version-update.md` (v4)
 > ⚠️ **Vận hành**: APK phải ký đúng keystore hiện tại (D1/D3). Mỗi lần build IPA phải export lại profile với UDID hiện hành (O1). Không bao giờ dùng lại một `version_code` đã publish.

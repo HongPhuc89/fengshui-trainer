@@ -2,9 +2,10 @@
 
 ## Document Information
 - **Feature**: Server giữ bản phát hành mới nhất cho từng nền tảng; app so `versionCode`, thấp hơn thì tải bản mới về cài. Hai mức: nhắc (bỏ qua được) và chặn (`min_supported_version_code`).
-- **Status**: **v5 — Implemented (Stage 3, 2026-08-30)**. 77/77 test backend + 15 test Flutter xanh.
+- **Status**: **v6 — Implemented (Stage 3, 2026-08-30)**. 86/86 test backend + 15 test Flutter xanh.
 - **Created**: 2026-08-30
 - **Updated**: 2026-08-30
+  - v6: Thêm **§5.2 giữ file 3 bản mới nhất** mỗi nền tảng (xoá file, giữ row). Kéo theo một sửa ngoài phạm vi: `LocalFirstSupabaseStorage` chưa từng override `delete()` nên mọi `FileField` bị xoá đều để lại object mồ côi trên bucket. T36-28…T36-34.
   - v5: Implement xong. Prerequisite §2 (`INTERNET`) làm cùng đợt thay vì tách riêng — không có nó thì không test được gì trên bản release. Xác minh lại bằng build release: manifest giờ có `INTERNET`, `REQUEST_INSTALL_PACKAGES` và `FileProvider`.
   - v4: Bỏ cổng chặn ở mobile login; dồn toàn bộ việc kiểm tra về sự kiện mở app/resume (§6.3, §7.5). Bù bằng **verdict dính** lưu local để một lần gọi hỏng không mở khoá máy đang bị chặn. T36-9…T36-11 đổi, thêm T36-25…T36-27.
   - v3: "Để sau" (hoãn 24 giờ) đổi thành "Bỏ qua" ghi nhớ **theo `version_code`** — §7.6, §7.7 mới, T36-21…T36-24.
@@ -208,6 +209,39 @@ Hai quy tắc rút ra, phải tuân thủ tuyệt đối:
 **Bản "hiện hành"** của một nền tảng = row `is_published=True` có `version_code` lớn nhất. Không có cờ `is_current` riêng — một cờ như vậy sẽ cần cưỡng chế "chỉ một true mỗi platform", trong khi `max(version_code)` đã cho kết quả tương đương mà không thêm trạng thái.
 
 ---
+
+### 5.2 Chỉ giữ file của 3 bản mới nhất mỗi nền tảng
+
+Mỗi APK ~60MB. Giữ mọi bản đã phát hành là để bucket phình vô hạn trong khi không có gì phục vụ những bản đó nữa.
+
+**Xoá FILE, không xoá ROW.** Row mang lịch sử admin cần — `version_code` nào đã dùng, khi nào, ghi chú gì, sha256 bao nhiêu — và `UniqueConstraint(platform, version_code)` chính là thứ ngăn một số bị dùng lại. Xoá row để tiết kiệm dung lượng là đánh đổi một cơ chế an toàn thật lấy vài chục MB.
+
+Lùi bản cũng **không** cần file cũ: §5.1 đã chốt đường lùi duy nhất là build một `version_code` cao hơn từ source cũ, chứ không phải phát lại APK cũ.
+
+```
+APP_RELEASE_KEEP_FILES = 3   # settings, đổi được qua env
+```
+
+Hai lớp bảo vệ:
+
+- Giữ file của `keep` bản có `version_code` cao nhất mỗi nền tảng.
+- **Luôn giữ file của bản đang được phục vụ** (`current_for()`), kể cả khi có nhiều bản nháp `version_code` cao hơn đẩy nó ra khỏi cửa sổ ba bản.
+
+Chạy tự động sau **mỗi** lần lưu trong admin, cộng một management command cho vận hành:
+
+```bash
+docker-compose -f docker/docker-compose.yml exec web python manage.py prune_app_releases --dry-run
+```
+
+Bản đã bị xoá file thì không publish lại được — `clean()` vốn đã từ chối publish khi thiếu file, và đó là hành vi đúng.
+
+#### Điều kiện tiên quyết: `LocalFirstSupabaseStorage` chưa xoá được file trên Supabase
+
+`LocalFirstSupabaseStorage` override `_save()` và `url()` nhưng **không** override `delete()`. `FileSystemStorage.delete()` chỉ biết tới file local, nên mọi lần xoá từ trước tới nay đều để lại object trên Supabase — bucket vẫn tính tiền cho những byte không còn đường nào chạm tới.
+
+Ảnh hưởng **không chỉ** feature này: mọi model có `FileField` (PDF sách, thumbnail, video) đều đang rò rỉ y hệt khi xoá bản ghi.
+
+Đã thêm `delete()` xoá cả object trên Supabase lẫn hai cache key (`supabase_sync:`, `supabase_url:`). Lỗi phía Supabase được **log chứ không raise**: người gọi đã quyết định file này biến mất rồi, để lại một object mồ côi trên bucket vẫn tốt hơn là để lại một bản ghi xoá dở.
 
 ## 6. Backend (Django)
 
@@ -522,6 +556,13 @@ Trạng thái trong lúc tải: tiến trình %, và **lỗi phải nói rõ là
 | T36-18 | `platform` thiếu / không hợp lệ | `400` |
 | T36-19 | Bỏ `is_published` của bản mới nhất | Endpoint quay về trả bản published kế trước (§5.1) |
 | T36-20 | `version_spread()` | Đếm đúng số máy theo từng `app_version`, chỉ tính `status='ACTIVE'` |
+| T36-28 | 5 bản, `keep=3` | Xoá file 2 bản cũ nhất, **giữ đủ 5 row** |
+| T36-29 | Bản đang publish bị 4 bản nháp cao hơn đẩy ra khỏi cửa sổ | **Vẫn giữ file** |
+| T36-30 | Hai nền tảng | Đếm tách biệt, không ảnh hưởng nhau |
+| T36-31 | Chạy prune hai lần | Lần hai không xoá gì thêm |
+| T36-32 | Publish lại một bản đã bị xoá file | `ValidationError` |
+| T36-33 | `storage.delete()` | Gọi `delete_object` đúng Key trên Supabase |
+| T36-34 | Supabase lỗi lúc xoá | File local vẫn bị xoá, không raise |
 | T36-21 | Bỏ qua bản 12, mở lại app | Dialog **không** hiện |
 | T36-22 | Bỏ qua bản 12, server publish bản 13 | Dialog hiện lại |
 | T36-23 | Bỏ qua bản 12, sau đó bản 12 thành `BLOCKED` | Màn chặn vẫn hiện — skip không thắng được ngưỡng chặn |
@@ -548,6 +589,10 @@ Luồng tải + cài trên Android và OTA iOS **phải test tay trên máy th�
 | `src/backend/templates/app/manifest.plist` | Mới |
 | `src/backend/config/urls.py` | `path('api/app/', include('core.urls_app'))` |
 | `src/backend/core/services/app_version.py` | `parse_version_code()` — dùng bởi endpoint §6.1 |
+| `src/backend/config/storage.py` | `delete()` — xoá cả object Supabase (§5.2), ảnh hưởng mọi `FileField` |
+| `src/backend/core/services/release_pruning.py` | Giữ 3 bản mới nhất mỗi nền tảng |
+| `src/backend/core/management/commands/prune_app_releases.py` | Dọn thủ công, có `--dry-run` |
+| `src/backend/core/tests/test_release_pruning.py` | T36-28…T36-34 |
 | `src/backend/users/admin.py` | `MobileDeviceAdmin`: `app_version` vào `list_display` + `list_filter` (C3) |
 | `src/backend/core/services/version_spread.py` | Đếm số máy theo `app_version`, hiện trên form `AppRelease` (C3) |
 | `src/backend/core/tests/test_app_release.py` | T36-1…T36-20 |

@@ -1,10 +1,13 @@
 import hashlib
 
+from django.conf import settings
+
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.utils.html import format_html
 
 from .models import AppRelease, DatabaseBackupProxy
+from .services.release_pruning import prune_release_files
 from .services.version_spread import version_spread
 from .tasks import backup_database
 
@@ -34,7 +37,8 @@ class DatabaseBackupAdmin(admin.ModelAdmin):
 @admin.register(AppRelease)
 class AppReleaseAdmin(admin.ModelAdmin):
     list_display = ('platform', 'version_code', 'version_name',
-                    'min_supported_version_code', 'is_published', 'created_at')
+                    'min_supported_version_code', 'is_published', 'file_state',
+                    'created_at')
     list_filter = ('platform', 'is_published')
     search_fields = ('version_name', 'release_notes')
     readonly_fields = ('sha256', 'file_size', 'version_spread_display')
@@ -54,6 +58,11 @@ class AppReleaseAdmin(admin.ModelAdmin):
         ('Nội dung', {'fields': ('release_notes',)}),
         ('Tự tính', {'fields': ('sha256', 'file_size'), 'classes': ('collapse',)}),
     )
+
+    @admin.display(description='File', boolean=True)
+    def file_state(self, obj):
+        """False means the binary was pruned; the row is kept for history."""
+        return bool(obj.file)
 
     @admin.display(description='Thiết bị đang chạy bản nào')
     def version_spread_display(self, obj):
@@ -80,6 +89,17 @@ class AppReleaseAdmin(admin.ModelAdmin):
             obj.sha256 = self._digest(obj.file)
             obj.file_size = obj.file.size
         super().save_model(request, obj, form, change)
+
+        # Runs on every save so the bucket cannot drift: a 60MB binary per
+        # release adds up fast, and nothing serves builds this old.
+        pruned = prune_release_files(obj.platform)
+        if pruned:
+            self.message_user(
+                request,
+                f'Đã xoá file của {pruned} bản cũ (giữ '
+                f'{settings.APP_RELEASE_KEEP_FILES} bản mới nhất mỗi nền tảng). '
+                f'Bản ghi vẫn còn để tra lịch sử.',
+            )
 
         if obj.is_published:
             self.message_user(
