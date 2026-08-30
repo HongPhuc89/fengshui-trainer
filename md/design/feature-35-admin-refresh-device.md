@@ -2,9 +2,10 @@
 
 ## Document Information
 - **Feature**: Hai việc trên `MobileDeviceAdmin` — (1) nút **Thêm thiết bị**: chọn user, hệ thống tự sinh mã ghép cặp; (2) action **Làm mới thiết bị**: reset slot về `UNCLAIMED` tại chỗ, giữ `client_code` và lịch sử, sinh mã mới, xoá ràng buộc phần cứng.
-- **Status**: **v4 — Implemented (Stage 3, 2026-08-30)**. 50/50 test backend xanh.
+- **Status**: **v5 — Implemented (Stage 3, 2026-08-30)**. 55/55 test backend xanh.
 - **Created**: 2026-08-30
 - **Updated**: 2026-08-30
+  - v5: Bổ sung **§6.5** — nút "Làm mới thiết bị" ngay trên change form kèm pop-up xác nhận, thay vì chỉ có bulk action ở changelist. Kéo theo T35-17…T35-21.
   - v4: Implement xong. Phát sinh một sửa ngoài §10: §4.2(d) — `issue_tokens_for_device()` ghi `OutstandingToken` trước khi gắn claim `device_id`, khiến `blacklist_tokens_for_devices()` chưa bao giờ khớp được gì (ảnh hưởng cả `revoke_slots` có sẵn). T35-6 điều chỉnh theo hành vi thật của `resolve_mobile_device`.
   - v3: **Xử lý PO review v2** — 3 Critical (C1 snippet gán `None` vào field `NOT NULL`, C2 `_serialise()` thiếu định nghĩa khiến `JSONField` ném `TypeError`, C3 T35-6 không có code xử lý) và 4 Suggestion. Chốt 6 quyết định ở §11, trong đó **§4.2 đổi sang CÓ blacklist token**.
   - v2: bổ sung **§6.4 Thêm thiết bị từ admin** theo yêu cầu — nút Add trên `MobileDevice` với form chọn user, thay cho việc phải sang danh sách User chạy bulk action. Kéo theo P5/R6, phạm vi, T35-13…T35-16.
@@ -630,6 +631,40 @@ Mã mới hiện trong `django.contrib.messages` sau khi redirect — giống h�
 
 ---
 
+### 6.5 Nút "Làm mới thiết bị" trên change form
+
+Bulk action chỉ xuất hiện ở changelist. Admin đang mở đúng một slot ở
+`/admin/users/mobiledevice/<pk>/change/` phải quay ra danh sách, tick lại đúng dòng đó,
+rồi tìm action trong dropdown — cùng kiểu ma sát như P5.
+
+**Ba mảnh:**
+
+1. `get_urls()` thêm `<int:pk>/refresh-slot/` → `refresh_slot_view`, **POST-only**. GET
+   redirect về change form mà không đổi gì: một link prefetch hoặc F5 không được phép
+   reset thiết bị của user.
+2. `change_view()` đưa `refresh_slot_url` vào `extra_context` **chỉ khi** slot còn
+   `OCCUPYING`. Slot `REVOKED`/`EXPIRED` không hiện nút, vì bấm vào cũng chỉ dội lại
+   guard trong `refresh_slot()`.
+3. `change_form_template = 'admin/users/mobiledevice/change_form.html'` — khối nút nằm
+   trong `{% block after_related_objects %}`, cùng pattern với
+   `admin/users/user/change_form.html` đang có.
+
+**Pop-up xác nhận** dùng `<dialog>` gốc của trình duyệt, không thêm thư viện. Nội dung
+liệt kê đúng bốn hệ quả để admin không bấm nhầm:
+
+- Máy đang dùng bị đăng xuất ngay (chỉ hiện khi slot `ACTIVE`).
+- Mã ghép cặp hiện tại hết hiệu lực, sinh mã mới.
+- Phải gửi mã mới cho user thì họ mới đăng nhập lại được.
+- Mã slot và lịch sử giữ nguyên; slot vẫn chiếm một chỗ trong hạn mức.
+
+Fallback về `window.confirm()` nếu `showModal` không dùng được.
+
+**Quyền:** `has_change_permission`. Staff chỉ có `view_mobiledevice` nhận 403 —
+xem T35-21.
+
+`refresh_slot_view` và action `refresh_slots` dùng chung `_refresh_one()`, nên audit log
+và message của hai đường đi giống hệt nhau.
+
 ## 7. Luồng end-to-end
 
 ### 7.1 Cấp slot cho user mới
@@ -703,6 +738,11 @@ File: `src/backend/users/tests/test_mobile_device.py` (nối vào các class có
 | T35-14 | POST add với user **đã hết** `mobile_max_devices` | 200 (render lại form), lỗi gắn vào field `user`, **không** tạo row |
 | T35-15 | GET add bằng staff không có `users.add_mobiledevice` | `PermissionDenied` (403) |
 | T35-16 | Add ghi audit | Một `AdminAuditLog` `MOBILE_SLOT`, `change_log['after']['client_code']` khớp slot vừa tạo; cùng shape với audit của bulk action `issue_slot` |
+| T35-17 | Change form của slot `OCCUPYING` | Hiện nút + URL `refresh-slot` |
+| T35-18 | Change form của slot `REVOKED` | **Không** hiện URL `refresh-slot` |
+| T35-19 | POST `refresh-slot` | Redirect về change form; slot về `UNCLAIMED`, mã đổi, có `AdminAuditLog` `DEVICE_RESET` |
+| T35-20 | GET `refresh-slot` | Redirect, **không** đổi gì — mã ghép cặp giữ nguyên |
+| T35-21 | POST bằng staff chỉ có `view_mobiledevice` | 403, slot không đổi |
 
 ---
 
@@ -713,8 +753,9 @@ File: `src/backend/users/tests/test_mobile_device.py` (nối vào các class có
 | `src/backend/users/services/mobile_slot.py` | Thêm `refresh_slot()`, `_HANDSET_FIELDS`; thay `_check_slot()` bằng `_match_slot()`; sửa `verify_pairing_code()` |
 | `src/backend/users/admin.py` | Thêm `MobileDeviceIssueForm`; `MobileDeviceAdmin`: `actions` thêm `refresh_slots`, `autocomplete_fields = ['user']`, bỏ override `has_add_permission`, thêm `add_view()`; tách `_log_issue()` khỏi `IssueSlotMixin.issue_slot`; import `refresh_slot`, `AutocompleteSelect`, `PermissionDenied`, `TemplateResponse` |
 | `src/backend/templates/admin/users/mobiledevice/issue_slot.html` | **Mới** — form cấp slot |
+| `src/backend/templates/admin/users/mobiledevice/change_form.html` | **Mới** — nút "Làm mới thiết bị" + `<dialog>` xác nhận (§6.5) |
 | `src/backend/users/services/auth.py` | `issue_tokens_for_device()` đồng bộ lại `OutstandingToken.token` sau khi gắn claim — xem §4.2(d). Ngoài dự kiến ban đầu, nhưng không có nó thì blacklist không chạy |
-| `src/backend/users/tests/test_mobile_device.py` | T35-1 … T35-16 |
+| `src/backend/users/tests/test_mobile_device.py` | T35-1 … T35-21 |
 | `md/TASKS.md` | Ghi Feature 35 |
 
 **Không** có migration. **Không** đổi app Flutter. **Không** đổi API contract.

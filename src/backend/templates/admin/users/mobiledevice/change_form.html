@@ -1,0 +1,59 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if refresh_slot_url %}
+<div style="margin-top:16px;padding:12px;border:1px solid #ddd;border-radius:4px">
+  <h3 style="margin-top:0">Làm mới thiết bị</h3>
+  <p style="color:#555;font-size:13px;margin:0 0 12px">
+    Giải phóng máy đang giữ slot này và cấp mã ghép cặp mới, nhưng <strong>giữ nguyên
+    mã slot</strong> và toàn bộ lịch sử. Dùng khi user đổi máy hoặc cần cấp lại mã.
+  </p>
+  <button type="button" class="button default" id="refresh-slot-open">
+    Làm mới thiết bị
+  </button>
+</div>
+
+<dialog id="refresh-slot-dialog"
+        style="border:none;border-radius:6px;padding:0;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+  <form method="post" action="{{ refresh_slot_url }}" style="margin:0">
+    {% csrf_token %}
+    <div style="padding:20px">
+      <h2 style="margin:0 0 12px;font-size:16px">Xác nhận làm mới thiết bị?</h2>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:13px;color:#333;line-height:1.7">
+        {% if refresh_slot_is_active %}
+          <li><strong>Máy đang dùng sẽ bị đăng xuất ngay lập tức.</strong></li>
+        {% endif %}
+        <li>Mã ghép cặp hiện tại <strong>hết hiệu lực</strong>, hệ thống sinh mã mới.</li>
+        <li>Bạn phải gửi mã mới cho user qua Zalo/điện thoại thì họ mới đăng nhập lại được.</li>
+        <li>Mã slot và lịch sử được giữ nguyên; slot vẫn chiếm một chỗ trong hạn mức.</li>
+      </ul>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button type="button" id="refresh-slot-cancel" class="button"
+                style="background:#6c757d;color:#fff">Huỷ</button>
+        <button type="submit" class="button default">Làm mới thiết bị</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  var dialog = document.getElementById('refresh-slot-dialog');
+  document.getElementById('refresh-slot-open').addEventListener('click', function () {
+    // showModal() is unavailable when the dialog is already open or unsupported;
+    // submitting the form directly after a native confirm still gets the job done.
+    if (dialog.showModal) { dialog.showModal(); }
+    else if (window.confirm('Làm mới thiết bị? Máy cũ sẽ bị đăng xuất và mã ghép cặp sẽ đổi.')) {
+      dialog.querySelector('form').submit();
+    }
+  });
+  document.getElementById('refresh-slot-cancel').addEventListener('click', function () {
+    dialog.close();
+  });
+})();
+</script>
+{% endif %}
+
+{% endblock %}

@@ -222,6 +222,7 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
     ordering = ('-last_active',)
     autocomplete_fields = ['user']
     actions = ['issue_slot', 'refresh_slots', 'revoke_slots']
+    change_form_template = 'admin/users/mobiledevice/change_form.html'
 
     def has_delete_permission(self, request, obj=None):
         # Revoking preserves the audit trail; deleting destroys it.
@@ -246,6 +247,40 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
                 and request.user.has_perm('users.view_activation_key_secret')):
             return format_html('<code style="user-select:all">{}</code>', obj.pairing_code)
         return f'{obj.pairing_code[:7]}-****-****'
+
+    def get_urls(self):
+        custom = [
+            path(
+                '<int:pk>/refresh-slot/',
+                self.admin_site.admin_view(self.refresh_slot_view),
+                name='users_mobiledevice_refresh_slot',
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def refresh_slot_view(self, request, pk):
+        """POST-only counterpart of the refresh_slots action, for a single slot."""
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+
+        change_url = reverse('admin:users_mobiledevice_change', args=[pk])
+        if request.method != 'POST':
+            return redirect(change_url)
+
+        self._refresh_one(request, get_object_or_404(MobileDevice, pk=pk))
+        return redirect(change_url)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        slot = self.get_object(request, object_id)
+        # Only an occupying slot can be refreshed; offering the button on a dead
+        # one would just bounce off the guard in refresh_slot().
+        if slot is not None and slot.status in MobileDevice.OCCUPYING:
+            extra_context['refresh_slot_url'] = reverse(
+                'admin:users_mobiledevice_refresh_slot', args=[slot.pk],
+            )
+            extra_context['refresh_slot_is_active'] = slot.status == 'ACTIVE'
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def add_view(self, request, form_url='', extra_context=None):
         """
@@ -301,34 +336,40 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
         carry it in a form the admin can copy in one go.
         """
         for slot in queryset.select_related('user'):
-            try:
-                before = refresh_slot(slot)
-            except SlotError as exc:
-                self.message_user(request, f'{slot.client_code}: {exc}', level=messages.ERROR)
-                continue
+            self._refresh_one(request, slot)
 
-            slot.refresh_from_db()
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=slot.user,
-                action_category='DEVICE_RESET',
-                action_detail=f'Admin refreshed mobile slot {slot.client_code}',
-                change_log={'before': before,
-                            'after': {'status': slot.status,
-                                      'pairing_code': slot.pairing_code,
-                                      'expires_at': slot.expires_at.isoformat()}},
-                ip_address=_get_client_ip(request),
-            )
-            self.message_user(
-                request,
-                format_html(
-                    '{} → slot <strong>{}</strong> đã làm mới, mã mới '
-                    '<code style="user-select:all">{}</code> (hết hạn {}). '
-                    'Máy cũ đã bị đăng xuất.',
-                    slot.user.email, slot.client_code, slot.pairing_code,
-                    slot.expires_at.strftime('%d/%m/%Y'),
-                ),
-            )
+    def _refresh_one(self, request, slot) -> bool:
+        """Refresh one slot, then log it and report the new code. Shared by the
+        bulk action and the button on the change form."""
+        try:
+            before = refresh_slot(slot)
+        except SlotError as exc:
+            self.message_user(request, f'{slot.client_code}: {exc}', level=messages.ERROR)
+            return False
+
+        slot.refresh_from_db()
+        AdminAuditLog.objects.create(
+            staff=request.user,
+            target_user=slot.user,
+            action_category='DEVICE_RESET',
+            action_detail=f'Admin refreshed mobile slot {slot.client_code}',
+            change_log={'before': before,
+                        'after': {'status': slot.status,
+                                  'pairing_code': slot.pairing_code,
+                                  'expires_at': slot.expires_at.isoformat()}},
+            ip_address=_get_client_ip(request),
+        )
+        self.message_user(
+            request,
+            format_html(
+                '{} → slot <strong>{}</strong> đã làm mới, mã mới '
+                '<code style="user-select:all">{}</code> (hết hạn {}). '
+                'Máy cũ đã bị đăng xuất.',
+                slot.user.email, slot.client_code, slot.pairing_code,
+                slot.expires_at.strftime('%d/%m/%Y'),
+            ),
+        )
+        return True
 
     @admin.action(description='Gỡ liên kết / huỷ slot')
     def revoke_slots(self, request, queryset):

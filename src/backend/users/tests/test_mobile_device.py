@@ -555,3 +555,84 @@ class MobileDeviceAdminAddTests(APITestCase):
         log = AdminAuditLog.objects.get(target_user=self.target, action_category='MOBILE_SLOT')
         self.assertEqual(log.staff, self.admin)
         self.assertEqual(log.change_log['after']['client_code'], slot.client_code)
+
+
+class MobileDeviceAdminRefreshButtonTests(APITestCase):
+    """The refresh button on the change form (feature-35 §6.5)."""
+
+    def setUp(self):
+        self.target = User.objects.create_user(
+            username='target@example.com', email='target@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.admin = User.objects.create_superuser(
+            username='admin@example.com', email='admin@example.com', password=PASSWORD,
+        )
+        self.slot = issue_slot(self.target, staff=self.admin)
+        self.client.force_login(self.admin)
+
+    def change_url(self):
+        return reverse('admin:users_mobiledevice_change', args=[self.slot.pk])
+
+    def refresh_url(self):
+        return reverse('admin:users_mobiledevice_refresh_slot', args=[self.slot.pk])
+
+    def test_t35_17_change_form_offers_the_button_for_an_occupying_slot(self):
+        """T35-17: an unclaimed or active slot can still be refreshed."""
+        response = self.client.get(self.change_url())
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Làm mới thiết bị')
+        self.assertContains(response, self.refresh_url())
+
+    def test_t35_18_change_form_hides_the_button_on_a_dead_slot(self):
+        """T35-18: refresh_slot() would refuse, so do not offer the button."""
+        MobileDevice.objects.filter(pk=self.slot.pk).update(status='REVOKED')
+
+        response = self.client.get(self.change_url())
+
+        self.assertNotContains(response, self.refresh_url())
+
+    def test_t35_19_posting_the_button_refreshes_the_slot(self):
+        """T35-19: the button and the bulk action share _refresh_one()."""
+        old_pairing = self.slot.pairing_code
+
+        response = self.client.post(self.refresh_url())
+
+        self.assertRedirects(response, self.change_url())
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, 'UNCLAIMED')
+        self.assertNotEqual(self.slot.pairing_code, old_pairing)
+        self.assertTrue(
+            AdminAuditLog.objects.filter(
+                target_user=self.target, action_category='DEVICE_RESET',
+            ).exists()
+        )
+
+    def test_t35_20_get_never_mutates(self):
+        """T35-20: a refresh must not fire from a link prefetch or a stray GET."""
+        old_pairing = self.slot.pairing_code
+
+        response = self.client.get(self.refresh_url())
+
+        self.assertRedirects(response, self.change_url())
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.pairing_code, old_pairing)
+
+    def test_t35_21_refresh_requires_the_change_permission(self):
+        """T35-21: read-only staff must not be able to reset a device."""
+        weak = User.objects.create_user(
+            username='weak@example.com', email='weak@example.com',
+            password=PASSWORD, is_active=True, is_staff=True,
+        )
+        weak.user_permissions.add(
+            Permission.objects.get(codename='view_mobiledevice',
+                                   content_type=ContentType.objects.get_for_model(MobileDevice)),
+        )
+        self.client.force_login(weak)
+
+        response = self.client.post(self.refresh_url())
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, 'UNCLAIMED')

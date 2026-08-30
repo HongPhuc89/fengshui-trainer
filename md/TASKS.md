@@ -249,7 +249,8 @@
 - [x] **35.3** `verify_pairing_code()` khớp slot **theo mã** thay vì theo `created_at`
 - [x] **35.4** `claim_slot()` bọc `IntegrityError` thành `SlotError` (400 thay vì 500)
 - [x] **35.5** Sửa bug có sẵn: `issue_tokens_for_device()` ghi `OutstandingToken` trước khi gắn claim `device_id` → `blacklist_tokens_for_devices()` chưa bao giờ khớp (ảnh hưởng cả `revoke_slots` từ feature-34)
-- [x] **35.6** Test T35-1…T35-16 — 50/50 test backend xanh
+- [x] **35.6** Nút "Làm mới thiết bị" trên change form kèm pop-up xác nhận, POST-only, ẩn với slot đã chết
+- [x] **35.7** Test T35-1…T35-21 — 55/55 test backend xanh
 
 > **Design doc**: `md/design/feature-35-admin-refresh-device.md` (v4)
 > **Không có migration** — chỉ đổi giá trị trong cột đã có của `users_mobiledevice`
