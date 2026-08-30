@@ -23,10 +23,11 @@ void main() {
     expect(format('tt4km9x7qp2n5r').text, '4KM9-X7QP-2N5R');
   });
 
-  test('keeps a body that legitimately starts with TT', () {
-    // Only a full 14-character paste is treated as prefixed, so a 12-character
-    // body beginning with TT survives intact.
-    expect(format('TTAB-CDEF-GHJK').text, 'TTAB-CDEF-GHJK');
+  test('strips the prefix while it is being typed one character at a time', () {
+    // Typing never shows the formatter the whole code at once, so a rule based
+    // on total length would keep TT as part of the body and truncate the tail.
+    expect(format('TTY').text, 'Y');
+    expect(format('TTY41P7A52P15B').text, 'Y41P-7A52-P15B');
   });
 
   test('folds look-alike glyphs onto the alphabet', () {

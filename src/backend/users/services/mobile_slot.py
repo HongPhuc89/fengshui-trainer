@@ -28,9 +28,18 @@ class SlotError(Exception):
 
 
 def _generate_unique_pairing_code() -> str:
-    """Draw a Crockford Base32 body until it is unused, then format it in groups of four."""
+    """
+    Draw a Crockford Base32 body until it is unused, then format it in groups of four.
+
+    Bodies starting with the prefix are rejected. Both sides strip a leading "TT"
+    when normalising, so a body of "TTAB..." would normalise differently
+    depending on whether the user typed the prefix — and the code could never be
+    redeemed. Excluding them costs ~0.1% of the keyspace and removes the ambiguity.
+    """
     for _ in range(_MAX_CODE_ATTEMPTS):
         body = ''.join(secrets.choice(PAIRING_ALPHABET) for _ in range(PAIRING_BODY_LENGTH))
+        if body.startswith(PAIRING_PREFIX):
+            continue
         code = f'{PAIRING_PREFIX}-{body[0:4]}-{body[4:8]}-{body[8:12]}'
         if not MobileDevice.objects.filter(pairing_code=code).exists():
             return code

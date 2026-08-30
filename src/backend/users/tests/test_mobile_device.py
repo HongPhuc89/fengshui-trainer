@@ -189,6 +189,18 @@ class SlotIssueTests(MobileSlotTestCase):
         self.assertEqual(MobileDevice.objects.get(pk=slot.pk).status, 'EXPIRED')
         self.issue()  # quota is free again
 
+    def test_generated_body_never_starts_with_the_prefix(self):
+        """
+        Both sides strip a leading "TT" when normalising, so a body that also
+        starts with TT would normalise differently depending on whether the user
+        typed the prefix, and the code could never be redeemed.
+        """
+        from users.services.mobile_slot import _generate_unique_pairing_code
+
+        for _ in range(200):
+            body = _generate_unique_pairing_code().removeprefix('TT-').replace('-', '')
+            self.assertFalse(body.startswith('TT'), body)
+
     def test_t21_code_normalisation_tolerates_lookalike_glyphs(self):
         """T21: a code read out over the phone still matches if I/O/L are misheard."""
         self.assertEqual(normalize_code('tt-4km9 x7qp-2n5r'), normalize_code('TT4KM9X7QP2N5R'))
