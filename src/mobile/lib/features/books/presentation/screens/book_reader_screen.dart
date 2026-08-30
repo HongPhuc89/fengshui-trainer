@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:screen_protector/screen_protector.dart';
 
+import '../../../../core/security/screen_guard.dart';
 import '../../../../../core/auth/auth_cubit.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -44,8 +44,8 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     ));
 
     // Enable screenshot prevention for this screen
-    ScreenProtector.preventScreenshotOn();
-    ScreenProtector.protectDataLeakageOn();
+    ScreenGuard.preventCapture();
+    ScreenGuard.protectDataLeakage();
 
     // Full screen immersive
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -59,7 +59,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     _bloc.close();
     // Restore system UI
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    ScreenProtector.protectDataLeakageOff();
+    ScreenGuard.allowDataLeakage();
     super.dispose();
   }
 

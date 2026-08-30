@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:screen_protector/screen_protector.dart';
+import 'core/security/screen_guard.dart';
 
 import 'core/utils/constants.dart';
 
@@ -30,7 +30,7 @@ void main() async {
   await getIt<AuthCubit>().restoreSession();
 
   // Prevent screenshots on both platforms
-  await ScreenProtector.preventScreenshotOn();
+  await ScreenGuard.preventCapture();
 
   // Force portrait
   await SystemChrome.setPreferredOrientations([
@@ -68,7 +68,7 @@ class _FengShuiAppState extends State<FengShuiApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      ScreenProtector.preventScreenshotOn();
+      ScreenGuard.preventCapture();
     }
   }
 

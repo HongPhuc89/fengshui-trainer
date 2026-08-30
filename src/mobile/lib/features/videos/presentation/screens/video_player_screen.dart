@@ -2,9 +2,9 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:screen_protector/screen_protector.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/security/screen_guard.dart';
 import '../../../../../core/auth/auth_cubit.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -35,8 +35,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    ScreenProtector.preventScreenshotOn();
-    ScreenProtector.protectDataLeakageOn();
+    ScreenGuard.preventCapture();
+    ScreenGuard.protectDataLeakage();
     _bloc = getIt<VideoPlayerBloc>()
       ..add(LoadLesson(
         courseSlug: widget.courseSlug,
@@ -49,7 +49,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _chewieController?.dispose();
     _videoController?.dispose();
     _bloc.close();
-    ScreenProtector.protectDataLeakageOff();
+    ScreenGuard.allowDataLeakage();
     super.dispose();
   }
 
