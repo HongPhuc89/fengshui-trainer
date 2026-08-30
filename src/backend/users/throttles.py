@@ -20,12 +20,3 @@ class MobileLoginRateThrottle(AnonRateThrottle):
     """Throttle for the mobile login endpoint — mirrors the web login budget."""
     scope = 'mobile_login'
 
-
-class ActivationRateThrottle(AnonRateThrottle):
-    """
-    Throttle for activation-key redemption.
-
-    Deliberately tighter than login: combined with the per-key attempt counter
-    and the code's 60 bits of entropy, it makes guessing impractical.
-    """
-    scope = 'device_activation'

@@ -17,7 +17,9 @@ class AbstractDevice(BaseModel):
         ('REVOKED', 'Revoked'),
     ]
 
-    device_id = models.CharField(max_length=255)
+    # device_id is NOT here: a web device always has one, a mobile slot has none
+    # until a handset claims it, and the two values mean different things
+    # (browser fingerprint vs Keychain UUID). Each concrete model declares it.
     device_name = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
     last_ip = models.GenericIPAddressField(null=True, blank=True)

@@ -39,22 +39,23 @@ def backfill_device_geo():
     logger.info("backfill_device_geo: %d/%d updated", success, total)
 
 
-@shared_task(name="users.expire_activation_keys")
-def expire_activation_keys():
+@shared_task(name="users.expire_mobile_slots")
+def expire_mobile_slots():
     """
-    Mark overdue activation keys EXPIRED.
+    Mark overdue unclaimed slots EXPIRED so they release their place in the
+    user's device quota.
 
-    Cosmetic only — it keeps the admin list readable. Redemption never trusts the
-    status alone: verify_activation_key() re-checks expires_at on every attempt.
+    Redemption never trusts the status alone — verify_pairing_code() re-checks
+    expires_at on every attempt — but the quota count does, so this has to run.
     """
     from django.utils import timezone
 
-    from users.models import DeviceActivationKey
+    from users.models import MobileDevice
 
-    updated = DeviceActivationKey.objects.filter(
-        status='ISSUED', expires_at__lt=timezone.now(),
+    updated = MobileDevice.objects.filter(
+        status='UNCLAIMED', expires_at__lt=timezone.now(),
     ).update(status='EXPIRED')
-    logger.info("expire_activation_keys: %d key(s) expired", updated)
+    logger.info("expire_mobile_slots: %d slot(s) expired", updated)
     return updated
 
 

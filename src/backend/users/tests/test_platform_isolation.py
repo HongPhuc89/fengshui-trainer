@@ -2,7 +2,10 @@
 Web and mobile sessions must not disturb each other (feature-34 §13, T3/T4, T22-T27).
 """
 
+from datetime import timedelta
+
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -32,9 +35,14 @@ class PlatformIsolationTests(APITestCase):
         }, format='json')
 
     def _mobile_login(self, device_id='device-a', hardware_hash=HW_A):
+        """Issue a slot and claim it — the only way a handset gets in."""
+        from users.services.mobile_slot import issue_slot
+
+        slot = issue_slot(self.user, staff=None)
         return self.client.post(reverse('mobile_login'), {
             'email': self.user.email, 'password': PASSWORD,
             'device_id': device_id, 'platform_os': 'ios', 'hardware_hash': hardware_hash,
+            'pairing_code': slot.pairing_code,
         }, format='json')
 
     def _authed_get(self, access):
@@ -81,6 +89,8 @@ class PlatformIsolationTests(APITestCase):
         )
         MobileDevice.objects.create(
             user=self.user, device_id=shared_id, device_type='IOS', status='REVOKED',
+            client_code='MC-DEADBEEF', pairing_code='TT-0000-0000-0001',
+            expires_at=timezone.now() + timedelta(days=7),
         )
         tokens = issue_tokens_for_device(self.user, web_device, PLATFORM_WEB)
 
@@ -117,6 +127,8 @@ class PlatformIsolationTests(APITestCase):
         with patch('users.tasks.trigger_geo_fetch') as trigger:
             MobileDevice.objects.create(
                 user=self.user, device_id='device-geo', device_type='IOS', last_ip='8.8.8.8',
+                client_code='MC-CAFEBABE', pairing_code='TT-0000-0000-0002',
+                expires_at=timezone.now() + timedelta(days=7),
             )
         trigger.assert_called_once()
         self.assertEqual(trigger.call_args[0][0], 'users.MobileDevice')
@@ -162,6 +174,8 @@ class DeviceStatusTests(APITestCase):
     def test_bound_device_reports_the_mobile_handset(self):
         MobileDevice.objects.create(
             user=self.user, device_id='device-a', device_type='IOS', device_name='iPhone 15',
+            client_code='MC-12345678', pairing_code='TT-0000-0000-0003',
+            expires_at=timezone.now() + timedelta(days=7), status='ACTIVE',
         )
         response = self.client.get(reverse('user_device_status'))
 

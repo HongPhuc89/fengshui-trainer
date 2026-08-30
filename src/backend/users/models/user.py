@@ -36,6 +36,10 @@ class User(AbstractUser, BaseModel):
     # Password change rate limiting — one change allowed per calendar day
     password_changed_at = models.DateField(null=True, blank=True)
 
+    # How many mobile slots this user may hold at once (UNCLAIMED + ACTIVE).
+    # Reaching it stops staff allocating another; it never silently replaces one.
+    mobile_max_devices = models.PositiveSmallIntegerField(default=1)
+
     # Use public_id as the primary identifier for external relations
     # but keep standard Django id (BaseModel.id) for internal performance
     

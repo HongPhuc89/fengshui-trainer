@@ -12,7 +12,7 @@ class AdminAuditLog(BaseModel):
         ('DEVICE_RESET', 'Device Un-link'),
         ('CONTENT_GRANT', 'Manual Content Grant'),
         ('USER_ACTIVATION', 'User Account Activation'),
-        ('DEVICE_ACTIVATION', 'Device Activation Key'),
+        ('MOBILE_SLOT', 'Mobile Device Slot'),
     ]
 
     staff = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_audits')

@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:huyenhoc/features/auth/presentation/screens/device_activation_screen.dart';
+import 'package:huyenhoc/features/auth/presentation/widgets/pairing_code_field.dart';
 
 /// M6: the field has to accept a code the way a person types it after hearing it
 /// read out — lowercase, ungrouped, with the glyphs the alphabet excludes.
@@ -12,7 +12,7 @@ void main() {
         TextEditingValue(text: input),
       );
 
-  setUp(() => formatter = activationKeyFormatterForTest());
+  setUp(() => formatter = pairingCodeFormatterForTest());
 
   test('groups the body in fours and uppercases it', () {
     expect(format('4km9x7qp2n5r').text, '4KM9-X7QP-2N5R');

@@ -6,10 +6,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from .models import (
-    AdminAuditLog, DeviceActivationKey, MobileDevice, PasswordResetOTP, User, UserDevice,
-)
-from .services.activation import issue_key
+from .models import AdminAuditLog, MobileDevice, PasswordResetOTP, User, UserDevice
+from .services.mobile_slot import SlotError, issue_slot
 from .services.tokens import blacklist_tokens_for_devices
 from .utils import get_client_ip as _get_client_ip
 from books.models import UserBookPurchase
@@ -99,72 +97,58 @@ class OwnedVideoInline(admin.TabularInline):
 
 
 class MobileDeviceInline(admin.TabularInline):
-    """The user's bound handset, visible without leaving the user page."""
+    """The user's device slots, visible without leaving the user page."""
     model = MobileDevice
+    fk_name = 'user'
     extra = 0
     can_delete = False
-    fields = ('client_code', 'device_name', 'device_type', 'os_version',
-              'app_version', 'status', 'revoked_reason', 'last_active')
+    fields = ('client_code', 'status', 'device_name', 'device_type',
+              'os_version', 'expires_at', 'last_active')
     readonly_fields = fields
     ordering = ('-last_active',)
 
     def has_add_permission(self, request, obj=None):
+        # Slots are only created through the action, so the quota check always runs.
         return False
 
 
-class ActivationKeyInline(admin.TabularInline):
-    """History of handset changes for this user."""
-    model = DeviceActivationKey
-    fk_name = 'user'
-    extra = 0
-    can_delete = False
-    fields = ('key', 'status', 'issued_by', 'issued_reason', 'expires_at', 'used_at', 'attempts')
-    readonly_fields = fields
-    ordering = ('-created_at',)
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-
-class IssueActivationKeyMixin:
+class IssueSlotMixin:
     """
-    Shared admin action: hand a user a single-use code for a new handset.
+    Shared admin action: allocate a device slot and show its pairing code.
 
-    Deliberately does NOT unbind the current device. The old handset is revoked
-    only when the code is actually redeemed — cutting it off at issue time would
-    leave the user without the app while they wait, and they may never use it.
+    The code is delivered out of band (Zalo / phone), so the message has to carry
+    it in a form the admin can copy in one go.
     """
 
-    @admin.action(description='Cấp mã kích hoạt thiết bị mới')
-    def issue_activation_keys(self, request, queryset):
+    @admin.action(description='Cấp slot thiết bị mới')
+    def issue_slot(self, request, queryset):
         for user in self._target_users(queryset):
             try:
-                key = issue_key(
+                slot = issue_slot(
                     user,
                     staff=request.user,
                     reason=f'Issued from {self.model._meta.verbose_name} admin',
-                    notify_email=True,
                 )
-            except Exception as exc:
-                self.message_user(
-                    request, f'{user.email}: không cấp được mã ({exc})', level=messages.ERROR
-                )
+            except SlotError as exc:
+                self.message_user(request, f'{user.email}: {exc}', level=messages.ERROR)
                 continue
 
             AdminAuditLog.objects.create(
                 staff=request.user,
                 target_user=user,
-                action_category='DEVICE_ACTIVATION',
-                action_detail=f'Issued activation key {key.key}',
-                change_log={'before': {}, 'after': {'activation_key': key.key,
-                                                    'expires_at': key.expires_at.isoformat()}},
+                action_category='MOBILE_SLOT',
+                action_detail=f'Issued slot {slot.client_code}',
+                change_log={'before': {}, 'after': {'client_code': slot.client_code,
+                                                    'expires_at': slot.expires_at.isoformat()}},
                 ip_address=_get_client_ip(request),
             )
             self.message_user(
                 request,
                 format_html(
-                    '{} → mã kích hoạt: <strong>{}</strong> (hết hạn {}). Đã gửi email cho user.',
-                    user.email, key.key, key.expires_at.strftime('%d/%m/%Y'),
+                    '{} → slot <strong>{}</strong>, mã <code style="user-select:all">{}</code> '
+                    '(hết hạn {})',
+                    user.email, slot.client_code, slot.pairing_code,
+                    slot.expires_at.strftime('%d/%m/%Y'),
                 ),
             )
 
@@ -173,17 +157,105 @@ class IssueActivationKeyMixin:
         raise NotImplementedError
 
 
+@admin.register(MobileDevice)
+class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
+    list_display = ('client_code', 'pairing_code_display', 'user_email', 'status',
+                    'device_name', 'os_version', 'geo_city', 'expires_at', 'last_active')
+    list_filter = ('status', 'device_type', 'geo_country_code')
+    search_fields = ('client_code', 'pairing_code', 'device_id', 'hardware_hash',
+                     'device_model', 'user__email', 'user__username')
+    readonly_fields = ('user', 'client_code', 'pairing_code', 'device_id', 'hardware_hash',
+                       'device_type', 'device_name', 'device_model', 'os_version',
+                       'app_version', 'last_ip', 'geo_city', 'geo_region',
+                       'geo_country_code', 'geo_fetched_at', 'issued_by', 'issued_reason',
+                       'expires_at', 'claimed_at', 'claim_ip', 'claim_attempts',
+                       'bound_at', 'revoked_at', 'revoked_reason', 'last_active')
+    ordering = ('-last_active',)
+    actions = ['issue_slot', 'revoke_slots']
+
+    def has_add_permission(self, request):
+        # Slots are only created through the action, so the quota check always runs.
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Revoking preserves the audit trail; deleting destroys it.
+        return False
+
+    def get_queryset(self, request):
+        # ModelAdmin has no `request` attribute; pairing_code_display needs one to
+        # check the permission, and this is the earliest per-request hook.
+        self.request = request
+        return super().get_queryset(request).select_related('user', 'issued_by')
+
+    @admin.display(description='User', ordering='user__email')
+    def user_email(self, obj):
+        return obj.user.email
+
+    @admin.display(description='Mã ghép cặp')
+    def pairing_code_display(self, obj):
+        # Only a live code is worth reading, and only to staff cleared for it.
+        # A claimed slot's code is spent, so showing it would only leak.
+        request = getattr(self, 'request', None)
+        if (obj.status == 'UNCLAIMED' and request
+                and request.user.has_perm('users.view_activation_key_secret')):
+            return format_html('<code style="user-select:all">{}</code>', obj.pairing_code)
+        return f'{obj.pairing_code[:7]}-****-****'
+
+    @staticmethod
+    def _target_users(queryset):
+        seen = {}
+        for slot in queryset.select_related('user'):
+            seen.setdefault(slot.user.pk, slot.user)
+        return seen.values()
+
+    @admin.action(description='Gỡ liên kết / huỷ slot')
+    def revoke_slots(self, request, queryset):
+        """
+        Release a slot so a new one can be issued.
+
+        ACTIVE slots are revoked and their tokens blacklisted so the app signs out
+        immediately; UNCLAIMED slots simply expire, burning a code nobody used.
+        """
+        count = 0
+        for slot in queryset.filter(status__in=MobileDevice.OCCUPYING).select_related('user'):
+            with transaction.atomic():
+                if slot.status == 'ACTIVE':
+                    slot.status = 'REVOKED'
+                    slot.revoked_at = timezone.now()
+                    slot.revoked_reason = 'ADMIN_UNBIND'
+                    blacklist_tokens_for_devices(slot.user, [slot.device_id])
+                    action_detail = f'Admin un-linked mobile slot {slot.client_code}'
+                else:
+                    slot.status = 'EXPIRED'
+                    action_detail = f'Admin cancelled unclaimed slot {slot.client_code}'
+                slot.save(update_fields=['status', 'revoked_at', 'revoked_reason'])
+
+                AdminAuditLog.objects.create(
+                    staff=request.user,
+                    target_user=slot.user,
+                    action_category='DEVICE_RESET',
+                    action_detail=action_detail,
+                    change_log={'before': {'client_code': slot.client_code},
+                                'after': {'status': slot.status}},
+                    ip_address=_get_client_ip(request),
+                )
+            count += 1
+        self.message_user(request, f'Đã giải phóng {count} slot. Có thể cấp slot mới ngay.')
+
+
 @admin.register(User)
-class UserAdmin(IssueActivationKeyMixin, BaseUserAdmin):
+class UserAdmin(IssueSlotMixin, BaseUserAdmin):
     form = AdminUserChangeForm
     add_form = AdminUserCreationForm
     list_display = ('id', 'username', 'email', 'user_type', 'is_active', 'is_device_locked', 'last_login', 'created_at')
     list_filter = (PendingApprovalFilter, 'user_type', 'is_active', 'groups')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone_number', 'public_id')
     ordering = ('-created_at',)
-    inlines = [OwnedBookInline, OwnedVideoInline, MobileDeviceInline, ActivationKeyInline]
+    inlines = [OwnedBookInline, OwnedVideoInline, MobileDeviceInline]
     change_form_template = 'admin/users/user/change_form.html'
     actions = None
+
+    actions = ['issue_slot']
 
     @staticmethod
     def _target_users(queryset):
@@ -403,125 +475,6 @@ class UserDeviceAdmin(admin.ModelAdmin):
         if xff:
             return xff.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
-
-
-@admin.register(MobileDevice)
-class MobileDeviceAdmin(IssueActivationKeyMixin, admin.ModelAdmin):
-    list_display = ('client_code', 'user_email', 'device_name', 'device_type',
-                    'os_version', 'app_version', 'geo_city', 'status', 'last_active')
-    list_filter = ('status', 'device_type', 'revoked_reason', 'geo_country_code')
-    search_fields = ('client_code', 'device_id', 'hardware_hash', 'device_model',
-                     'user__email', 'user__username', 'user__phone_number')
-    readonly_fields = ('user', 'client_code', 'device_id', 'hardware_hash', 'device_type',
-                       'device_name', 'device_model', 'os_version', 'app_version', 'last_ip',
-                       'geo_city', 'geo_region', 'geo_country_code', 'geo_fetched_at',
-                       'bound_at', 'revoked_at', 'revoked_reason', 'last_active')
-    ordering = ('-last_active',)
-    actions = ['issue_activation_keys', 'unbind_devices']
-
-    def has_add_permission(self, request):
-        # A mobile device exists only as the result of a real device login.
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        # Revoking preserves the audit trail; deleting destroys it.
-        return False
-
-    @admin.display(description='User', ordering='user__email')
-    def user_email(self, obj):
-        return obj.user.email
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('user')
-
-    @staticmethod
-    def _target_users(queryset):
-        seen = {}
-        for device in queryset.select_related('user'):
-            seen.setdefault(device.user.pk, device.user)
-        return seen.values()
-
-    @admin.action(description='Gỡ liên kết thiết bị (cắt phiên ngay)')
-    def unbind_devices(self, request, queryset):
-        """
-        Cut the session now, without issuing a code.
-
-        The user can log back in on this same handset afterwards: the row is kept
-        and no other device is active, so the login gate lets them through.
-        """
-        count = 0
-        for device in queryset.filter(status='ACTIVE').select_related('user'):
-            with transaction.atomic():
-                device.status = 'REVOKED'
-                device.revoked_at = timezone.now()
-                device.revoked_reason = 'ADMIN_UNBIND'
-                device.save(update_fields=['status', 'revoked_at', 'revoked_reason'])
-                blacklist_tokens_for_devices(device.user, [device.device_id])
-
-                user = device.user
-                user.is_device_locked = False
-                user.last_device_reset = timezone.now()
-                user.save(update_fields=['is_device_locked', 'last_device_reset'])
-
-                AdminAuditLog.objects.create(
-                    staff=request.user,
-                    target_user=user,
-                    action_category='DEVICE_RESET',
-                    action_detail=f'Admin un-linked mobile device {device.client_code}',
-                    change_log={
-                        'before': {'client_code': device.client_code, 'status': 'ACTIVE'},
-                        'after': {'status': 'REVOKED', 'revoked_reason': 'ADMIN_UNBIND'},
-                    },
-                    ip_address=_get_client_ip(request),
-                )
-            count += 1
-        self.message_user(
-            request, f'Đã gỡ liên kết {count} thiết bị. User có thể đăng nhập lại trên chính máy đó.'
-        )
-
-
-@admin.register(DeviceActivationKey)
-class DeviceActivationKeyAdmin(admin.ModelAdmin):
-    list_display = ('masked_key', 'user_email', 'status', 'issued_by',
-                    'expires_at', 'used_at', 'attempts', 'created_at')
-    list_filter = ('status',)
-    search_fields = ('key', 'user__email', 'user__username', 'issued_reason')
-    readonly_fields = ('key', 'user', 'issued_by', 'issued_reason', 'expires_at', 'used_at',
-                       'used_device', 'used_ip', 'revoked_at', 'revoked_by', 'attempts')
-    ordering = ('-created_at',)
-    actions = ['revoke_keys']
-
-    def has_add_permission(self, request):
-        # Codes are issued from the user/device page so they are always tied to a
-        # concrete support case, never created free-standing.
-        return False
-
-    def get_queryset(self, request):
-        # ModelAdmin has no `request` attribute; masked_key() needs one to check
-        # the permission, and this is the earliest per-request hook that runs
-        # before the list columns are rendered.
-        self.request = request
-        return super().get_queryset(request).select_related('user', 'issued_by')
-
-    @admin.display(description='User', ordering='user__email')
-    def user_email(self, obj):
-        return obj.user.email
-
-    @admin.display(description='Mã kích hoạt')
-    def masked_key(self, obj):
-        # Only a live code is worth reading, and only to staff cleared for it.
-        request = getattr(self, 'request', None)
-        if (obj.status == 'ISSUED' and request
-                and request.user.has_perm('users.view_activation_key_secret')):
-            return obj.key
-        return f'{obj.key[:7]}-****-****'
-
-    @admin.action(description='Thu hồi mã đã cấp')
-    def revoke_keys(self, request, queryset):
-        count = queryset.filter(status='ISSUED').update(
-            status='REVOKED', revoked_at=timezone.now(), revoked_by=request.user,
-        )
-        self.message_user(request, f'Đã thu hồi {count} mã kích hoạt.')
 
 
 @admin.register(PasswordResetOTP)

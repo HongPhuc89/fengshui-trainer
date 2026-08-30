@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import RegisterView, LoginView, LogoutView, DeviceTokenRefreshView
 from .views import RequestOTPView, VerifyOTPView, ConfirmResetView
-from .views import MobileLoginView, MobileActivateView
+from .views import MobileLoginView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='auth_register'),
@@ -15,5 +15,4 @@ urlpatterns = [
     # Mobile-only auth: one bound handset per user, changed only with a
     # staff-issued activation key (feature-34).
     path('mobile/login/', MobileLoginView.as_view(), name='mobile_login'),
-    path('mobile/activate/', MobileActivateView.as_view(), name='mobile_activate'),
 ]

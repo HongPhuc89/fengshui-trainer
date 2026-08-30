@@ -1,9 +1,9 @@
 """
-Mobile login and device activation (feature-34 §7.6, §7.7).
+Mobile login, including first-time pairing (feature-34 §7.6).
 
-Kept separate from CustomLoginSerializer so the mobile policy — one active
-device, hardware-anchored identity, staff-issued handset changes — never has to
-branch inside the web login path.
+One endpoint: pairing_code is optional and only sent the first time a handset
+appears. Kept separate from CustomLoginSerializer so the mobile policy never has
+to branch inside the web login path.
 """
 
 import logging
@@ -11,76 +11,37 @@ import logging
 from django.conf import settings
 from django.contrib.auth.models import update_last_login
 from django.db import transaction
-from django.utils import timezone
 from rest_framework import serializers
 
 from ..constants import PLATFORM_MOBILE
 from ..exceptions import MobileDeviceError
-from ..models import AdminAuditLog, MobileDevice
-from ..services.activation import consume_activation_key, verify_activation_key
+from ..models import AdminAuditLog
 from ..services.auth import authenticate_user, issue_tokens_for_device
 from ..services.client_id import normalize_hardware_hash
-from ..services.mobile_device import requires_activation, resolve_mobile_device
-from ..services.tokens import blacklist_tokens_for_devices
+from ..services.mobile_device import resolve_mobile_device
+from ..services.mobile_slot import claim_slot, rebind_known_handset, verify_pairing_code
 from ..utils import get_client_ip
 
 logger = logging.getLogger(__name__)
 
 
-def activation_required_error(active) -> dict:
-    """Body of the 400 that sends the client to the activation screen."""
+def pairing_required_error(user) -> dict:
+    """
+    Body of the 400 that asks the client for a pairing code.
+
+    has_unclaimed_slot only says whether a slot is waiting, not whether a code was
+    ever issued — the user already knows, since they are the one who asked for it.
+    """
     return {
-        'code': 'ACTIVATION_REQUIRED',
-        'detail': (
-            f'Tài khoản đang liên kết với thiết bị khác (mã {active.client_code}). '
-            f'Vui lòng liên hệ admin để nhận mã kích hoạt cho thiết bị này.'
-        ),
-        'bound_device': {
-            'client_code': active.client_code,
-            'device_name': active.device_name,
-            'last_active': active.last_active.isoformat(),
-        },
+        'code': 'PAIRING_CODE_REQUIRED',
+        'detail': 'Thiết bị này chưa được ghép cặp. Vui lòng nhập mã do quản trị viên cấp.',
+        'has_unclaimed_slot': user.mobile_devices.filter(status='UNCLAIMED').exists(),
         'support_email': settings.SUPPORT_EMAIL,
     }
 
 
-@transaction.atomic
-def bind_mobile_device(user, device, attrs, hardware_hash, request):
-    """
-    Make `device` the user's one active mobile handset.
-
-    The outgoing device is stood down BEFORE the incoming one is saved:
-    uniq_active_mobile_device_per_user rejects a second ACTIVE row, so saving
-    first would raise IntegrityError on every real device change.
-    """
-    outgoing = user.mobile_devices.exclude(status='REVOKED')
-    if device.pk:
-        outgoing = outgoing.exclude(pk=device.pk)
-    stale = list(outgoing.values_list('device_id', flat=True))
-
-    if stale:
-        user.mobile_devices.filter(device_id__in=stale).update(
-            status='REVOKED', revoked_at=timezone.now(), revoked_reason='REPLACED',
-        )
-        blacklist_tokens_for_devices(user, stale)
-
-    device.device_type = 'IOS' if attrs['platform_os'] == 'ios' else 'ANDROID'
-    # device_name comes from the client: the Dio User-Agent ("Dart/3.x") tells us
-    # nothing, so parse_device_name() is deliberately not used here.
-    device.device_name = attrs.get('device_name') or attrs.get('device_model') or 'Mobile'
-    device.hardware_hash = hardware_hash or device.hardware_hash
-    device.app_version = attrs.get('app_version') or None
-    device.os_version = attrs.get('os_version') or None
-    device.device_model = attrs.get('device_model') or None
-    device.last_ip = get_client_ip(request)
-    device.status = 'ACTIVE'
-    device.revoked_at = None
-    device.revoked_reason = None
-    device.save()
-
-
-class MobileDevicePayloadMixin(serializers.Serializer):
-    """Device fields both mobile endpoints accept."""
+class MobileLoginSerializer(serializers.Serializer):
+    """POST /api/auth/mobile/login/"""
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
@@ -91,109 +52,69 @@ class MobileDevicePayloadMixin(serializers.Serializer):
     app_version = serializers.CharField(required=False, write_only=True, allow_blank=True)
     os_version = serializers.CharField(required=False, write_only=True, allow_blank=True)
     device_model = serializers.CharField(required=False, write_only=True, allow_blank=True)
-
-
-class MobileLoginSerializer(MobileDevicePayloadMixin):
-    """POST /api/auth/mobile/login/"""
+    # Only needed the first time this handset appears.
+    pairing_code = serializers.CharField(required=False, write_only=True, allow_blank=True)
 
     def validate(self, attrs):
         request = self.context['request']
         user = authenticate_user(attrs['email'].lower(), attrs['password'])
         hardware_hash = normalize_hardware_hash(attrs.get('hardware_hash'))
+
         device, outcome = resolve_mobile_device(user, attrs['device_id'], hardware_hash)
 
-        # Applies to EVERY outcome, not just 'new'. Checking only 'new' would let
-        # a user whose old handset was replaced through an activation key simply
-        # log back in on it: the old row still matches by device_id, and binding
-        # it would silently revoke the current one.
-        if requires_activation(user, device):
-            active = user.mobile_devices.filter(status='ACTIVE').first()
-            raise MobileDeviceError(activation_required_error(active))
+        # Known handset on a live slot: no code, ever again.
+        if device is not None and device.status == 'ACTIVE':
+            rebind_known_handset(device, attrs, hardware_hash, request)
+            return self._session(user, device, outcome, claimed=False)
 
-        if device is None:
-            device = MobileDevice(user=user, device_id=attrs['device_id'])
+        # Anything else — unknown handset, or one whose slot was revoked or
+        # expired — needs a slot staff allocated for this account.
+        code = attrs.get('pairing_code')
+        if not code:
+            raise MobileDeviceError(pairing_required_error(user))
 
-        bind_mobile_device(user, device, attrs, hardware_hash, request)
+        # Phase 1 — OUTSIDE the write transaction so a wrong code still commits
+        # its attempt counter (see services.mobile_slot).
+        slot = verify_pairing_code(user, code)
+
+        # Phase 2 — the code is good; bind the handset and spend the slot together.
+        with transaction.atomic():
+            device = claim_slot(slot, attrs, hardware_hash, request)
+            self._log_claim(user, slot, device, request)
+
+        return self._session(user, device, outcome, claimed=True)
+
+    def _session(self, user, device, outcome, claimed: bool) -> dict:
         update_last_login(None, user)
-
         # Structured line for metric M1 (design §12): a rebound rate near zero on
         # Android means the hardware anchor is not working.
         logger.info(
-            'mobile_login outcome=%s platform=%s client_code=%s',
-            outcome, attrs['platform_os'], device.client_code,
+            'mobile_login outcome=%s claimed=%s client_code=%s',
+            outcome, claimed, device.client_code,
         )
         return {
             'user': user,
             'device': device,
             'rebound': outcome == 'rebound',
-            **issue_tokens_for_device(user, device, PLATFORM_MOBILE),
-        }
-
-
-class MobileActivateSerializer(MobileDevicePayloadMixin):
-    """POST /api/auth/mobile/activate/ — the only path to a different handset."""
-
-    activation_key = serializers.CharField(required=True, write_only=True, max_length=32)
-
-    def validate(self, attrs):
-        request = self.context['request']
-        user = authenticate_user(attrs['email'].lower(), attrs['password'])
-        hardware_hash = normalize_hardware_hash(attrs.get('hardware_hash'))
-        device, outcome = resolve_mobile_device(user, attrs['device_id'], hardware_hash)
-
-        # Same gate as login, read the other way round. Refusing here keeps a
-        # single-use key from being spent on a handset that could simply log in.
-        if not requires_activation(user, device):
-            raise MobileDeviceError({
-                'code': 'ALREADY_BOUND',
-                'detail': 'Thiết bị này đăng nhập được bình thường, không cần mã kích hoạt.',
-            })
-
-        # Phase 1 — OUTSIDE any write transaction, so a wrong code still commits
-        # its attempt counter. Raises ActivationError on failure.
-        key = verify_activation_key(user, attrs['activation_key'])
-
-        # Phase 2 — the key is good; bind the handset and spend the key together.
-        with transaction.atomic():
-            old = user.mobile_devices.filter(status='ACTIVE').first()
-            # A handset this user has owned before keeps its original row and
-            # client_code: the code identifies the physical device (§6.5), and a
-            # new row would collide with unique_together(user, device_id) anyway.
-            if outcome == 'new':
-                device = MobileDevice(user=user, device_id=attrs['device_id'])
-
-            bind_mobile_device(user, device, attrs, hardware_hash, request)
-            consume_activation_key(key, device, get_client_ip(request))
-            self._log_activation(user, key, old, device, request)
-
-        update_last_login(None, user)
-        return {
-            'user': user,
-            'device': device,
-            'rebound': outcome == 'rebound',
+            'claimed': claimed,
             **issue_tokens_for_device(user, device, PLATFORM_MOBILE),
         }
 
     @staticmethod
-    def _log_activation(user, key, old, device, request):
+    def _log_claim(user, slot, device, request):
         AdminAuditLog.objects.create(
-            staff=key.issued_by,
+            staff=slot.issued_by,
             target_user=user,
-            action_category='DEVICE_ACTIVATION',
-            action_detail=f'User activated device {device.client_code} with key {key.key}',
+            action_category='MOBILE_SLOT',
+            action_detail=f'Handset claimed slot {device.client_code}',
             change_log={
-                'before': {
-                    'client_code': old.client_code if old else None,
-                    'device_name': old.device_name if old else None,
-                },
+                'before': {'status': 'UNCLAIMED'},
                 'after': {
+                    'status': 'ACTIVE',
                     'client_code': device.client_code,
                     'device_name': device.device_name,
-                    'returning_handset': device.pk is not None and old is not None
-                                         and device.pk != old.pk,
                 },
-                'activation_key': key.key,
-                'issued_by': key.issued_by.email if key.issued_by else None,
+                'issued_by': slot.issued_by.email if slot.issued_by else None,
             },
             ip_address=get_client_ip(request),
         )

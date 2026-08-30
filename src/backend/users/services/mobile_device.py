@@ -35,16 +35,3 @@ def resolve_mobile_device(user, device_id: str, hardware_hash: str | None):
             return device, 'rebound'
 
     return None, 'new'
-
-
-def requires_activation(user, device) -> bool:
-    """
-    True when binding `device` would displace a DIFFERENT handset that is still
-    bound — the one and only situation that needs a staff-issued key.
-
-    Deliberately shared by both mobile endpoints so their gates cannot drift:
-    whatever login refuses is exactly what activate accepts, and vice versa.
-    `device is None` means a handset never seen before.
-    """
-    active = user.mobile_devices.filter(status='ACTIVE').first()
-    return active is not None and (device is None or active.pk != device.pk)

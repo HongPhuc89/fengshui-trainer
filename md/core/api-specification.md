@@ -877,13 +877,12 @@ GET /api/books/?search=kỳ môn&ordering=-published_date
 
 ## Mobile Auth (feature-34)
 
-Mobile has its own login. One account binds to exactly one handset, and moving to
-another handset requires an activation code issued by staff — there is no
-self-service path. Web keeps using `/auth/login/` unchanged.
+Mobile has its own login. A handset may only be used after staff allocate a
+**device slot** for the account and the user redeems its pairing code once. Web
+keeps using `/auth/login/` unchanged.
 
 ### POST `/auth/mobile/login/`
 
-**Request:**
 ```json
 {
   "email": "string",
@@ -891,72 +890,54 @@ self-service path. Web keeps using `/auth/login/` unchanged.
   "device_id": "string",
   "platform_os": "ios|android",
   "hardware_hash": "sha256 hex, optional",
-  "device_name": "string, optional",
-  "device_model": "string, optional",
-  "os_version": "string, optional",
-  "app_version": "string, optional"
+  "pairing_code": "TT-4KM9-X7QP-2N5R, only on the first login of a handset",
+  "device_name": "optional", "device_model": "optional",
+  "os_version": "optional", "app_version": "optional"
 }
 ```
 
 `hardware_hash` is SHA-256 of `Settings.Secure.ANDROID_ID` (Android) or
-`identifierForVendor` (iOS). It lets a reinstalled app be recognised as the same
-handset instead of a new one. Treated as a hint that *relaxes* the device check;
-it never grants access on its own.
+`identifierForVendor` (iOS). It lets a reinstalled app keep its slot instead of
+needing a new code. Treated as a hint that *relaxes* the device check; it never
+grants access on its own.
 
 **Response 200:**
+
 ```json
 {
   "user": { "...": "UserSerializer" },
-  "access": "jwt",
-  "refresh": "jwt",
+  "access": "jwt", "refresh": "jwt",
   "client_code": "MC-7F3A2B91",
-  "rebound": false
+  "rebound": false,
+  "claimed": false
 }
 ```
 
-`rebound: true` means the client id was lost (app reinstall) but the hardware
-anchor matched, so the existing binding was kept.
+`claimed: true` on the login that redeemed the code. `rebound: true` when the
+client id was lost (app reinstall) but the hardware anchor matched.
 
-**Response 400 — another handset holds the binding:**
+**Response 400 — handset not paired:**
+
 ```json
 {
-  "code": "ACTIVATION_REQUIRED",
-  "detail": "Tài khoản đang liên kết với thiết bị khác (mã MC-7F3A2B91)...",
-  "bound_device": {
-    "client_code": "MC-7F3A2B91",
-    "device_name": "iPhone 15 Pro",
-    "last_active": "2026-08-26T09:12:44Z"
-  },
+  "code": "PAIRING_CODE_REQUIRED",
+  "detail": "Thiết bị này chưa được ghép cặp. Vui lòng nhập mã do quản trị viên cấp.",
+  "has_unclaimed_slot": true,
   "support_email": "admin@huyenhoc.pro"
 }
 ```
 
-The payload deliberately does not reveal whether a code has already been issued.
+`has_unclaimed_slot` tells the client whether to show the code field or point the
+user at support. It reveals only whether a slot is waiting — not whether a code
+was ever issued.
 
----
-
-### POST `/auth/mobile/activate/`
-
-Redeem a staff-issued code so this handset becomes the account's device. Takes
-credentials rather than a token: the user could not log in.
-
-**Request:** same envelope as mobile login, plus `"activation_key": "TT-4KM9-X7QP-2N5R"`.
-
-**Response 200:** same shape as mobile login. The previous handset is revoked and
-its refresh tokens blacklisted.
-
-**Response 400:**
-
-| `code` | Meaning |
-|---|---|
-| `ACTIVATION_FAILED` | Wrong, expired, or already-spent code. `detail` carries the attempts remaining. Five wrong attempts revoke the code. |
-| `ALREADY_BOUND` | This handset can already log in normally; the code is **not** consumed. |
+**Response 400 — bad code:** `{"code": "PAIRING_FAILED", "detail": "Mã không đúng. Bạn còn 3 lần thử."}`
+Five wrong attempts burn the slot; staff must allocate a new one.
 
 ---
 
 ### POST `/auth/refresh/`
 
-**Response 200:**
 ```json
 { "access": "jwt", "refresh": "jwt" }
 ```
@@ -981,22 +962,14 @@ the mobile app sends. Clients may still send them; they are ignored.
 
 ### GET `/users/me/device-status/`
 
-Adds `mobile_device` (or `null`), and `bound_device` now reports the bound mobile
-handset instead of always being `null`:
-
 ```json
 {
   "is_device_locked": false,
   "bound_device": { "device_id": "...", "device_type": "IOS", "device_name": "...", "last_active": "..." },
   "mobile_device": {
-    "client_code": "MC-7F3A2B91",
-    "device_name": "iPhone 15 Pro",
-    "device_type": "IOS",
-    "device_model": "iPhone16,1",
-    "app_version": "1.4.2+31",
-    "os_version": "iOS 17.4",
-    "bound_at": "2026-08-01T10:20:30Z",
-    "last_active": "2026-08-27T08:00:00Z"
+    "client_code": "MC-7F3A2B91", "device_name": "iPhone 15 Pro", "device_type": "IOS",
+    "device_model": "iPhone16,1", "app_version": "1.4.2+31", "os_version": "iOS 17.4",
+    "bound_at": "...", "last_active": "..."
   },
   "last_device_reset": "2026-01-01T00:00:00Z",
   "next_reset_available_at": null,
@@ -1007,6 +980,6 @@ handset instead of always being `null`:
 ```
 
 `can_reset_now` is permanently `false` and `next_reset_available_at` permanently
-`null`: the 365-day self-reset was removed with the one-handset policy. The
-fields remain so older clients keep parsing the payload. `/users/me/device-reset/`
-never existed on the server and has been removed from the app.
+`null`: the 365-day self-reset was removed with the slot policy. The fields
+remain so older clients keep parsing the payload. `/users/me/device-reset/` never
+existed on the server and has been removed from the app.
