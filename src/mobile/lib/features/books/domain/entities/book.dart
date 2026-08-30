@@ -1,0 +1,156 @@
+import 'package:equatable/equatable.dart';
+
+class BookCategory extends Equatable {
+  final int id;
+  final String name;
+  final String slug;
+
+  const BookCategory({
+    required this.id,
+    required this.name,
+    required this.slug,
+  });
+
+  @override
+  List<Object?> get props => [id, name, slug];
+}
+
+class Book extends Equatable {
+  final String slug;
+  final String title;
+  final String author;
+  final String? coverImageUrl;
+  final BookCategory? category;
+  final int priceLt;
+  final bool isVipOnly;
+  final bool hasPurchased;
+  final bool isNewRelease;
+  final int chapterCount;
+  final String? description;
+
+  const Book({
+    required this.slug,
+    required this.title,
+    required this.author,
+    this.coverImageUrl,
+    this.category,
+    required this.priceLt,
+    required this.isVipOnly,
+    required this.hasPurchased,
+    required this.isNewRelease,
+    required this.chapterCount,
+    this.description,
+  });
+
+  @override
+  List<Object?> get props => [slug, title, author];
+}
+
+class BookChapterMeta extends Equatable {
+  final int order;
+  final String title;
+  final int pageCount;
+  final bool isDemo;
+  final bool canAccess;
+  final bool isCompleted;
+  final bool hasTrainingSet;
+
+  const BookChapterMeta({
+    required this.order,
+    required this.title,
+    required this.pageCount,
+    required this.isDemo,
+    required this.canAccess,
+    required this.isCompleted,
+    required this.hasTrainingSet,
+  });
+
+  @override
+  List<Object?> get props => [order, title];
+}
+
+class BookDetail extends Equatable {
+  final String slug;
+  final String title;
+  final String author;
+  final String? coverImageUrl;
+  final BookCategory? category;
+  final int priceLt;
+  final bool isVipOnly;
+  final bool hasPurchased;
+  final bool isNewRelease;
+  final String? description;
+  final List<BookChapterMeta> chapters;
+  final int? lastReadChapterOrder;
+
+  const BookDetail({
+    required this.slug,
+    required this.title,
+    required this.author,
+    this.coverImageUrl,
+    this.category,
+    required this.priceLt,
+    required this.isVipOnly,
+    required this.hasPurchased,
+    required this.isNewRelease,
+    this.description,
+    required this.chapters,
+    this.lastReadChapterOrder,
+  });
+
+  @override
+  List<Object?> get props => [slug, title];
+}
+
+class BookChapterContent extends Equatable {
+  final int order;
+  final String title;
+  final int pageCount;
+  final bool hasTrainingSet;
+  final String encryptedFileUrl;
+  final String decryptKeyBase64;
+
+  const BookChapterContent({
+    required this.order,
+    required this.title,
+    required this.pageCount,
+    required this.hasTrainingSet,
+    required this.encryptedFileUrl,
+    required this.decryptKeyBase64,
+  });
+
+  @override
+  List<Object?> get props => [order, title];
+}
+
+class ReadingProgress extends Equatable {
+  final String bookSlug;
+  final int chapterOrder;
+  final int currentPage;
+  final DateTime? updatedAt;
+
+  const ReadingProgress({
+    required this.bookSlug,
+    required this.chapterOrder,
+    required this.currentPage,
+    this.updatedAt,
+  });
+
+  @override
+  List<Object?> get props => [bookSlug, chapterOrder, currentPage];
+}
+
+class RecentlyReadBook extends Equatable {
+  final Book book;
+  final int chapterOrder;
+  final int currentPage;
+
+  const RecentlyReadBook({
+    required this.book,
+    required this.chapterOrder,
+    required this.currentPage,
+  });
+
+  @override
+  List<Object?> get props => [book.slug, chapterOrder, currentPage];
+}
