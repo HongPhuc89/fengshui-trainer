@@ -1,11 +1,23 @@
 class AppConfig {
   AppConfig._();
 
-  // Update this per environment (dev/staging/prod)
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://api.huyenhoc.pro',
-  );
+  /// Base URL of the API, including the server's `/api` prefix.
+  ///
+  /// Supplied at build time and deliberately has NO default: an omitted
+  /// --dart-define-from-file used to fall back to the production host, so a
+  /// local build could silently talk to the live server. assertConfigured()
+  /// turns that into a loud failure at startup instead.
+  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  /// Call once at startup, before anything builds a client.
+  static void assertConfigured() {
+    if (apiBaseUrl.isEmpty) {
+      throw StateError(
+        'API_BASE_URL is not set. Build with '
+        '--dart-define-from-file=env.local.json (local) or env.dev.json (server).',
+      );
+    }
+  }
 }
 
 class CacheTtl {

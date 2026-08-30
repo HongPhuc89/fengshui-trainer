@@ -1,6 +1,10 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
+  // Every path here is relative to AppConfig.apiBaseUrl, which must include the
+  // server's /api prefix. Do not repeat /api in the constants: Dio concatenates
+  // baseUrl + path verbatim, so it would produce /api/api/... and 404.
+
   // Auth
   // Mobile has its own login: one bound handset per account, and a change of
   // handset requires a code issued by an administrator.
@@ -21,42 +25,42 @@ class ApiEndpoints {
   static const walletHistory = '/wallet/history/';
 
   // Books
-  static const bookCategories = '/api/books/categories/';
-  static const books = '/api/books/';
-  static const recentlyRead = '/api/books/recently-read/';
-  static String bookDetail(String slug) => '/api/books/$slug/';
-  static String bookProgress(String slug) => '/api/books/$slug/progress/';
+  static const bookCategories = '/books/categories/';
+  static const books = '/books/';
+  static const recentlyRead = '/books/recently-read/';
+  static String bookDetail(String slug) => '/books/$slug/';
+  static String bookProgress(String slug) => '/books/$slug/progress/';
   static String chapter(String slug, int order) =>
-      '/api/books/$slug/chapters/$order/';
+      '/books/$slug/chapters/$order/';
   static String chapterDecryptKey(String slug, int order) =>
-      '/api/books/$slug/chapters/$order/decrypt-key/';
+      '/books/$slug/chapters/$order/decrypt-key/';
   static String chapterEncryptedFile(String slug, int order) =>
-      '/api/books/$slug/chapters/$order/encrypted-file/';
+      '/books/$slug/chapters/$order/encrypted-file/';
   static String chapterProgress(String slug, int order) =>
-      '/api/books/$slug/chapters/$order/progress/';
+      '/books/$slug/chapters/$order/progress/';
 
   // Videos
-  static const videoCategories = '/api/videos/categories/';
-  static const videos = '/api/videos/';
-  static const recentlyWatched = '/api/videos/recently-watched/';
-  static String videoDetail(String slug) => '/api/videos/$slug/';
+  static const videoCategories = '/videos/categories/';
+  static const videos = '/videos/';
+  static const recentlyWatched = '/videos/recently-watched/';
+  static String videoDetail(String slug) => '/videos/$slug/';
   static String lesson(String courseSlug, String lessonSlug) =>
-      '/api/videos/$courseSlug/lessons/$lessonSlug/';
+      '/videos/$courseSlug/lessons/$lessonSlug/';
   static String lessonProgress(String courseSlug, String lessonSlug) =>
-      '/api/videos/$courseSlug/lessons/$lessonSlug/progress/';
-  static String courseProgress(String slug) => '/api/videos/$slug/progress/';
+      '/videos/$courseSlug/lessons/$lessonSlug/progress/';
+  static String courseProgress(String slug) => '/videos/$slug/progress/';
   static String lastLesson(String slug) =>
-      '/api/videos/$slug/progress/last-lesson/';
+      '/videos/$slug/progress/last-lesson/';
 
   // Training
   static String trainingByLesson(String lessonSlug) =>
-      '/api/training/lesson/$lessonSlug/';
+      '/training/lesson/$lessonSlug/';
   static String trainingByChapter(String bookSlug, int order) =>
-      '/api/training/chapter/$bookSlug/$order/';
+      '/training/chapter/$bookSlug/$order/';
   static String activityFlashcards(String activityId) =>
-      '/api/training/activities/$activityId/flashcards/';
+      '/training/activities/$activityId/flashcards/';
   static String activityExam(String activityId) =>
-      '/api/training/activities/$activityId/exam/';
+      '/training/activities/$activityId/exam/';
 
   // Payments
   static const purchaseBook = '/payments/purchase-book/';

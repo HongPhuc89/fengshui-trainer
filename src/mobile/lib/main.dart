@@ -5,6 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:screen_protector/screen_protector.dart';
 
+import 'core/utils/constants.dart';
+
 import 'core/auth/auth_cubit.dart';
 import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
@@ -16,6 +18,10 @@ void main() async {
 
   // Init Hive
   await Hive.initFlutter();
+
+  // Fail loudly if the build carried no API_BASE_URL, rather than quietly
+  // defaulting to the production host.
+  AppConfig.assertConfigured();
 
   // Setup DI
   await configureDependencies();
