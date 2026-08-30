@@ -37,12 +37,16 @@ class CacheKeys {
   static const videoCategories = 'video_categories';
   static String books({String? category, String? search}) =>
       'books_${category ?? ''}_${search ?? ''}';
+  // The suffix is bumped whenever the cached shape changes. v2: the course
+  // banner moved from 'thumbnail' to 'cover_image', so entries written by an
+  // older build would deserialise to a null image and show a blank card for the
+  // whole TTL after an update.
   static String videos({String? category, String? search}) =>
-      'videos_${category ?? ''}_${search ?? ''}';
+      'videos_v2_${category ?? ''}_${search ?? ''}';
   static String bookDetail(String slug) => 'book_$slug';
-  static String videoDetail(String slug) => 'video_$slug';
+  static String videoDetail(String slug) => 'video_v2_$slug';
   static const recentlyRead = 'recently_read';
-  static const recentlyWatched = 'recently_watched';
+  static const recentlyWatched = 'recently_watched_v2';
   static String trainingByLesson(String slug) => 'training_lesson_$slug';
   static String trainingByChapter(String bookSlug, int order) =>
       'training_chapter_${bookSlug}_$order';
