@@ -3,14 +3,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/router/app_router.dart';
 import '../domain/update_models.dart';
 import 'update_cubit.dart';
 import 'update_view.dart';
 
 /// Wraps the app and reacts to whatever the last check decided.
 ///
-/// Listens rather than builds: the block screen is pushed over the router so a
-/// blocked client cannot keep using the screen it was already on.
+/// Listens rather than builds: the dialog is pushed over the router so a blocked
+/// client cannot keep using the screen it was already on. It goes through
+/// rootNavigatorKey because this widget lives in MaterialApp.router's builder,
+/// above the Navigator, so its own context cannot open a route.
 class UpdateGate extends StatefulWidget {
   const UpdateGate({super.key, required this.child});
 
@@ -27,13 +30,16 @@ class _UpdateGateState extends State<UpdateGate> {
   Widget build(BuildContext context) {
     return BlocListener<UpdateCubit, UpdateState>(
       listenWhen: (a, b) => a.decision.runtimeType != b.decision.runtimeType,
-      listener: (context, state) => _present(context, state.decision),
+      listener: (context, state) => _present(state.decision),
       child: widget.child,
     );
   }
 
-  Future<void> _present(BuildContext context, UpdateDecision decision) async {
+  Future<void> _present(UpdateDecision decision) async {
     if (_showing) return;
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) return;
+
     switch (decision) {
       case BlockUpdate(:final info):
         _showing = true;

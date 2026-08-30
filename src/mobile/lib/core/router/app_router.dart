@@ -18,10 +18,16 @@ import '../../features/store/presentation/screens/store_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
+/// Exposed so widgets living above the Navigator — UpdateGate sits in
+/// MaterialApp.router's builder — can still open a dialog. A context taken from
+/// that builder has no Navigator ancestor.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 GoRouter buildAppRouter() {
   final authCubit = getIt<AuthCubit>();
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     refreshListenable: _AuthCubitListenable(authCubit),
     redirect: (context, state) {
       final isAuth = authCubit.isAuthenticated;
