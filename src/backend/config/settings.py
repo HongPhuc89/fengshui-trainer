@@ -246,6 +246,10 @@ VIDEO_STORAGE_BACKEND = env('VIDEO_STORAGE_BACKEND', default='local')
 BUNNY_LIBRARY_ID = env('BUNNY_LIBRARY_ID', default='')
 BUNNY_API_KEY = env('BUNNY_API_KEY', default='')
 BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net')
+# The Bunny pull zone rejects requests without an allowed Referer. A browser
+# sends one automatically from the embed iframe; a native mobile player has to
+# be told, so the API hands it out alongside the stream URL.
+BUNNY_STREAM_REFERER = env('BUNNY_STREAM_REFERER', default='https://huyenhoc.pro/')
 
 # Bunny Storage Zone — for encrypted .bin chapter files (Feature 26)
 # Create a Storage Zone + Pull Zone at: https://dash.bunny.net/storage

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Sum
 from rest_framework import serializers
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
@@ -97,11 +98,38 @@ class VideoCourseDetailWithPurchaseSerializer(VideoCourseDetailSerializer):
 
 class VideoLessonDetailSerializer(serializers.ModelSerializer):
     video_url = serializers.SerializerMethodField()
+    hls_url = serializers.SerializerMethodField()
+    hls_headers = serializers.SerializerMethodField()
     infographic_pdf_url = serializers.SerializerMethodField()
 
     def get_video_url(self, obj):
         # Can be overridden by view to inject signed URL
         return getattr(obj, '_resolved_video_url', obj.video_url) or obj.video_url
+
+    def get_hls_url(self, obj):
+        """
+        Direct HLS master playlist, for clients that decode media themselves.
+
+        video_url is a Bunny iframe embed *page*: a browser can drop it into an
+        <iframe>, but ExoPlayer and AVPlayer cannot decode HTML. Native clients
+        need the playlist instead. Returns None when Bunny is not the backend or
+        the lesson has no Bunny id, so callers can fall back to video_url.
+        """
+        if settings.VIDEO_STORAGE_BACKEND != 'bunny' or not obj.video_id:
+            return None
+        return f'https://{settings.BUNNY_CDN_HOSTNAME}/{obj.video_id}/playlist.m3u8'
+
+    def get_hls_headers(self, obj):
+        """
+        Headers the player must send with hls_url.
+
+        The pull zone answers 403 to an empty Referer. Serving the header from
+        here keeps the policy on the server: if Bunny is later switched to token
+        auth, clients need no change.
+        """
+        if not self.get_hls_url(obj):
+            return None
+        return {'Referer': settings.BUNNY_STREAM_REFERER}
 
     def get_infographic_pdf_url(self, obj):
         if not obj.infographic_pdf_key:
@@ -116,7 +144,8 @@ class VideoLessonDetailSerializer(serializers.ModelSerializer):
         model = VideoLesson
         fields = (
             'public_id', 'title', 'slug', 'order', 'description',
-            'video_url', 'video_id', 'duration_seconds', 'transcript', 'summary',
+            'video_url', 'hls_url', 'hls_headers', 'video_id',
+            'duration_seconds', 'transcript', 'summary',
             'thumbnail', 'small_thumbnail', 'is_free', 'infographic_pdf_url', 'infographic_video_url',
         )
 

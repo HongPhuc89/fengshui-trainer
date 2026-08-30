@@ -123,7 +123,7 @@ class _VideosViewState extends State<_VideosView> {
                               padding:
                                   const EdgeInsets.only(right: 8),
                               child: FilterChip(
-                                label: Text(cat.name),
+                                label: Text(cat.title),
                                 selected: state.selectedCategory ==
                                     cat.slug,
                                 onSelected: (_) => context

@@ -57,8 +57,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _videoController?.dispose();
     _chewieController?.dispose();
 
-    _videoController =
-        VideoPlayerController.networkUrl(Uri.parse(lesson.videoUrl));
+    // Prefer the HLS playlist: videoUrl is a Bunny iframe embed *page*, which
+    // ExoPlayer/AVPlayer cannot decode. The headers carry the Referer the pull
+    // zone requires — without it Bunny answers 403.
+    final source = lesson.hlsUrl ?? lesson.videoUrl;
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(source),
+      httpHeaders: lesson.hlsHeaders,
+    );
 
     _chewieController = ChewieController(
       videoPlayerController: _videoController!,

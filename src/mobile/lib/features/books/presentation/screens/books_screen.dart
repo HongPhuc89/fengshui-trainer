@@ -120,7 +120,7 @@ class _BooksViewState extends State<_BooksView> {
                         ...state.categories.map((cat) => Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: FilterChip(
-                                label: Text(cat.name),
+                                label: Text(cat.title),
                                 selected:
                                     state.selectedCategory == cat.slug,
                                 onSelected: (_) => context

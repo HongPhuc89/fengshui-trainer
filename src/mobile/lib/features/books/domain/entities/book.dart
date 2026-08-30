@@ -1,18 +1,21 @@
 import 'package:equatable/equatable.dart';
 
 class BookCategory extends Equatable {
-  final int id;
-  final String name;
+  // The API exposes public_id/title, never the internal integer pk — see
+  // BaseModel on the server. Field names mirror the wire format so the cache
+  // and the network response can share one fromJson.
+  final String publicId;
+  final String title;
   final String slug;
 
   const BookCategory({
-    required this.id,
-    required this.name,
+    required this.publicId,
+    required this.title,
     required this.slug,
   });
 
   @override
-  List<Object?> get props => [id, name, slug];
+  List<Object?> get props => [publicId, title, slug];
 }
 
 class Book extends Equatable {

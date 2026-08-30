@@ -110,7 +110,7 @@ class _VideoDetailView extends StatelessWidget {
                       const SizedBox(height: 8),
                       if (detail.category != null)
                         Chip(
-                            label: Text(detail.category!.name,
+                            label: Text(detail.category!.title,
                                 style:
                                     const TextStyle(fontSize: 12))),
                       const SizedBox(height: 12),
