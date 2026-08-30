@@ -2,14 +2,18 @@
 
 ## Document Information
 - **Feature**: Bảng `MobileDevice` riêng + endpoint login riêng + Client ID bền vững + đổi máy bắt buộc qua mã kích hoạt do admin cấp
-- **Status**: Draft v6 — đã xử lý feedback vòng PO review v5
+- **Status**: Draft v9.1 — đã chốt kênh gửi mã và gộp bảng; sẵn sàng implement
 - **Created**: 2026-08-27
 - **Updated**: 2026-08-27
   - v2: tách endpoint mobile theo góp ý PO
   - v3: PO chốt không cho tự đổi máy — thay OTP self-rebind bằng `DeviceActivationKey`
-  - v6.1: Chốt mô hình phân phối (Android APK tự ký, iOS **ad-hoc**) và bổ sung §4.4 — ràng buộc của ad-hoc, 4 quy tắc bảo vệ hardware anchor, hệ quả với auto-update và attestation.
+  - v9.1: PO chốt — mã gửi **qua Zalo/điện thoại** (bỏ email tự động, §5.4); **gộp một bảng** vì mỗi slot chỉ một mã (§6.1); bỏ `mobile_enabled` (§6.2).
+  - v9: **Ghép cặp bằng mã cấp trước** theo góp ý PO. Admin cấp slot thiết bị → sinh mã → user nhập một lần ở lần login đầu → các lần sau khớp `device_id`, không nhập lại. Slot chính là row `MobileDevice` trạng thái `UNCLAIMED`. Mã **không** lưu trên máy (§4.1). So sánh dứt điểm với mô hình duyệt-sau của v8 ở cuối §4.1.
+  - v8: **Duyệt từng thiết bị (`PENDING` → `ACTIVE`)** theo góp ý PO. Login máy lạ tạo row `PENDING` kèm đầy đủ metadata và trả `client_code` — vá vòng luẩn quẩn "admin không biết duyệt cái gì" của v7. Hạn mức chuyển sang kiểm lúc duyệt. Bỏ `mobile_enabled` và `DeviceActivationKey` (§4.1, câu 12/14 §15).
+  - v7: **Entitlement mobile theo user** — `User.mobile_enabled` (mặc định `False`) và `User.mobile_max_devices` (mặc định 1). Chạm hạn mức thì chặn login thay vì thay máy ngầm. Ba hệ quả: bind bỏ auto-revoke, bỏ partial unique index đổi sang row lock, tắt entitlement phải revoke device. Mã kích hoạt đổi vai trò thành đường bind nguyên tử khi đã ở max (§4.1).
+  - v6.1: Chốt mô hình phân phối (Android APK tự ký, iOS **ad-hoc**) và bổ sung §4.5 — ràng buộc của ad-hoc, 4 quy tắc bảo vệ hardware anchor, hệ quả với auto-update và attestation.
   - v6: **Xử lý PO review v5** — 1 Critical: C5 (activate trên máy đã từng dùng vi phạm 2 constraint → 500), sinh ra từ chính bản vá C3. Sửa gốc bằng cổng chung `requires_activation()` cho cả hai endpoint (§7.4) + quy tắc "quay lại máy cũ giữ `client_code`" (§6.5). 4 Suggestion: cảnh báo `@transaction.atomic` (§7.7), dọn luồng device-reset đã chết (§7.15), thêm T36–T39, chủ sở hữu metric (§12).
-  - v5: **Xử lý PO review v4** — 4 Critical: thứ tự revoke/save trong `bind_mobile_device` (§7.6), tách `verify`/`consume` để `attempts` không bị rollback (§7.5), chặn re-login máy đã bị thay thế (§4.1), sửa luồng register mobile (§7.8). 9 Suggestion: P6 (§7.14), metric (§12), `masked_key` (§8.2), bỏ `has_pending_key`, bổ sung helper còn thiếu, ghi chú `AbstractDevice` trong migration, logout giữ binding (§7.15), phạm vi in/out (§2.5), contract `authenticate_user` (§3.1).
+  - v5: **Xử lý PO review v4** — 4 Critical: thứ tự revoke/save trong `bind_mobile_device` (§7.6), tách `verify`/`consume` để `attempts` không bị rollback (§7.5), chặn re-login máy đã bị thay thế (§4.2), sửa luồng register mobile (§7.8). 9 Suggestion: P6 (§7.14), metric (§12), `masked_key` (§8.2), bỏ `has_pending_key`, bổ sung helper còn thiếu, ghi chú `AbstractDevice` trong migration, logout giữ binding (§7.15), phạm vi in/out (§2.5), contract `authenticate_user` (§3.1).
   - v4: **PO đề xuất tách bảng riêng — chấp nhận.** Bổ sung §3.3 (lập luận dài hạn, tách khỏi chi phí chuyển đổi) và §3.4 (`AbstractDevice`). Bỏ `platform` discriminator, bỏ proxy model, tạo bảng `users_mobiledevice` độc lập. Xem §3.2 để biết vì sao kết luận đổi so với v1–v3.
 - **Related**: `feature-1-auth.md`, `feature-20-mobile-app.md`, `feature-32-forgot-password-otp.md`, `feature-33-device-geo-location.md`
 
@@ -83,7 +87,8 @@ choices=[('MOBILE_IOS', 'iOS'), ('MOBILE_ANDROID', 'Android'), ('WEB', 'Web')]
 
 ### 2.4 Yêu cầu nghiệp vụ
 
-- **R1** — Mỗi user có tối đa **1 mobile device ACTIVE** tại một thời điểm.
+- **R0** — *(v9)* Mobile **tắt mặc định**: tài khoản chưa được admin cấp slot thiết bị nào thì không dùng được app. Trạng thái mặc định này là hệ quả tự nhiên của mô hình cấp slot, không cần cờ `mobile_enabled` riêng.
+- **R1** — Mỗi user có tối đa `mobile_max_devices` mobile device `ACTIVE` (mặc định **1**). Chạm hạn mức thì **không cho login** máy mới.
 - **R2** — Mobile device có mã định danh ngắn, đọc được, tra cứu được trên Admin.
 - **R3** — Đếm/giới hạn mobile **độc lập hoàn toàn** với web device.
 - **R4** — Admin xem, tra cứu, **gỡ liên kết** mobile device, có audit log.
@@ -107,7 +112,7 @@ choices=[('MOBILE_IOS', 'iOS'), ('MOBILE_ANDROID', 'Android'), ('WEB', 'Web')]
 | Admin: `MobileDeviceAdmin`, `DeviceActivationKeyAdmin`, 2 action, email cấp mã | §8 |
 | Mobile: `DeviceService` + hardware anchor + `DeviceActivationScreen` | §9 |
 
-**Tiền đề đã chốt** — không phải hạng mục thực thi, nhưng thiết kế dựa hẳn vào chúng: Android phân phối bằng **APK tự ký**, iOS bằng **ad-hoc (UDID)**. Bốn quy tắc bảo vệ hardware anchor ở §4.4 phải giữ suốt vòng đời sản phẩm, không chỉ trong release này.
+**Tiền đề đã chốt** — không phải hạng mục thực thi, nhưng thiết kế dựa hẳn vào chúng: Android phân phối bằng **APK tự ký**, iOS bằng **ad-hoc (UDID)**. Bốn quy tắc bảo vệ hardware anchor ở §4.5 phải giữ suốt vòng đời sản phẩm, không chỉ trong release này.
 
 **Out of scope** — cố ý không làm ở release này
 
@@ -386,7 +391,110 @@ Làm thành **commit dọn dẹp riêng sau khi feature này chạy ổn**: lúc
 | **S2** | Cài lại app / wipe app data / đổi ROM | **Bị mất** | ✅ | ❌ Không |
 | **S3** | **Đổi sang điện thoại khác** | Khác thật | ❌ | ✅ **Có** |
 
-### 4.1 S1 — Re-login cùng máy
+### 4.1 Ghép cặp bằng mã do Admin cấp trước
+
+Admin tạo sẵn một **slot thiết bị** cho user, hệ thống sinh mã ghép cặp. User nhập mã đúng một lần ở lần đăng nhập đầu; từ đó máy được ghi nhận và không phải nhập lại.
+
+```
+Admin: "Cấp slot thiết bị" cho user X
+   └─ Sinh MobileDevice(status='UNCLAIMED', device_id=NULL, pairing_code='TT-4KM9-X7QP-2N5R')
+        └─ Admin gửi mã cho user (cùng lúc gửi bản cài — xem 4.5)
+             └─ User login lần đầu: email + mật khẩu + MÃ
+                  └─ Server ghi device_id + hardware_hash vào slot, status='ACTIVE'
+                       └─ Mọi lần sau: app gửi device_id → khớp → vào thẳng
+```
+
+#### Không lưu mã trên máy
+
+Đề xuất ban đầu là "mã lưu ở máy để không phải nhập lại". **Không cần, và không nên.**
+
+Cái làm cho lần sau không phải nhập lại là **binding phía server**: slot đã có `device_id` của máy này, nên login sau chỉ cần gửi `device_id` như thường lệ. Mã đã hết vai trò ngay khi ghép cặp xong.
+
+Lưu lại thì được gì? Không gì cả — nhưng thêm một bí mật nằm trong app. Và nó cũng **không cứu được tình huống cài lại app**: mã sẽ nằm cùng chỗ với `device_id` trong secure storage, mất thì mất cả hai. Tình huống đó do `hardware_hash` xử lý (§4.3), không phải do mã.
+
+⟹ App chỉ lưu `device_id` như hiện tại. Mã là thứ dùng một lần rồi quên.
+
+#### Slot chính là row `MobileDevice`
+
+Không tách thành model riêng. Admin cấp slot = tạo một `MobileDevice` chưa có chủ:
+
+| Trạng thái | `device_id` | Ý nghĩa | Chiếm slot? |
+|---|---|---|---|
+| `UNCLAIMED` | `NULL` | Admin đã cấp, chờ user ghép cặp | ✅ |
+| `ACTIVE` | đã điền | Đang dùng | ✅ |
+| `REVOKED` | đã điền | Đã bị cắt | ❌ |
+| `EXPIRED` | `NULL` | Slot cấp ra quá hạn mà không ai nhận | ❌ |
+
+Mô hình tinh thần của admin khớp đúng với dữ liệu: *"tôi đã cấp cho user này một slot thiết bị"*. Và `mobile_max_devices` được enforce ngay lúc **cấp slot**, chứ không phải lúc login — admin không tạo được slot thứ hai khi hạn mức là 1.
+
+> `UNCLAIMED` **chiếm slot** là điểm dễ bỏ sót. Không tính thì admin cấp 5 slot rồi user nhận cả 5, vượt hạn mức mà không đường nào chặn.
+
+**Hệ quả lên `device_id`:** hiện `device_id` nằm ở `AbstractDevice` và `NOT NULL`. Slot chưa nhận thì chưa có giá trị đó, nên `device_id` phải chuyển xuống từng model con — web giữ `NOT NULL`, mobile cho `NULL` tới khi ghép cặp. `unique_together` đổi thành partial unique index `WHERE device_id IS NOT NULL`. Đây cũng là cách khai báo đúng hơn về mặt ngữ nghĩa: `device_id` của web là fingerprint trình duyệt, của mobile là UUID trong Keychain — hai thứ khác hẳn nhau.
+
+#### Luồng login
+
+```python
+def validate(self, attrs):
+    user = authenticate_user(attrs['email'].lower(), attrs['password'])
+    hardware_hash = normalize_hardware_hash(attrs.get('hardware_hash'))
+
+    with transaction.atomic():
+        locked_user = User.objects.select_for_update().get(pk=user.pk)
+        device, outcome = resolve_mobile_device(locked_user, attrs['device_id'], hardware_hash)
+
+        # Known handset: the slot already carries this device_id (or its hardware
+        # anchor). No code, ever again.
+        if device is not None and device.status == 'ACTIVE':
+            bind_mobile_device(locked_user, device, attrs, hardware_hash, request)
+            return _session(locked_user, device, outcome)
+
+        # Unknown handset: it may only take a slot an admin allocated for this user.
+        code = attrs.get('pairing_code')
+        if not code:
+            raise MobileDeviceError(pairing_required_error(locked_user))
+        slot = claim_slot(locked_user, code, attrs, hardware_hash, request)
+        return _session(locked_user, slot, 'claimed')
+```
+
+`claim_slot()` tái dùng gần như nguyên vẹn `verify_activation_key()` / `consume_activation_key()` đã viết ở v6 — cùng ranh giới transaction, cùng bộ đếm số lần nhập sai, cùng `select_for_update`. Chi tiết ở §7.5, chỉ đổi chỗ ghi kết quả: thay vì tạo row mới thì điền `device_id` vào slot đang `UNCLAIMED`.
+
+#### Response khi thiếu mã
+
+```json
+{
+  "code": "PAIRING_CODE_REQUIRED",
+  "detail": "Thiết bị này chưa được ghép cặp. Vui lòng nhập mã kích hoạt do quản trị viên cấp.",
+  "has_unclaimed_slot": true,
+  "support_email": "admin@huyenhoc.pro"
+}
+```
+
+`has_unclaimed_slot` cho app biết nên hiện ô nhập mã (`true`) hay màn hình "liên hệ admin để được cấp" (`false`). Khác với `has_pending_key` đã bị bỏ ở v5: chỗ đó tiết lộ **đã cấp mã hay chưa** cho bất kỳ ai biết mật khẩu; chỗ này chỉ nói **có slot trống hay không**, mà user vốn đã biết vì chính họ đi xin.
+
+#### So sánh với mô hình duyệt sau (v8)
+
+| | **A — Duyệt sau** (v8) | **B — Cấp mã trước** (v9) ✅ |
+|---|---|---|
+| Thứ tự | User thử → bị từ chối → admin duyệt → thử lại | Admin cấp mã → user nhập → vào luôn |
+| Số vòng của user | **2** lần đăng nhập, có một lần chờ ở giữa | **1** |
+| Admin thấy gì khi quyết định | Metadata thật của máy (tên, model, IP, thành phố) | Chưa thấy gì — cấp quyền cho *người cầm mã* |
+| Cái được cấp quyền | Một `device_id` cụ thể | Người giữ mã (bearer) |
+| Cần truyền bí mật | Không | Có — qua email/Zalo/điện thoại |
+| Khớp quy trình ad-hoc iOS | Thêm một vòng lên trên quy trình vốn đã thủ công | **Gộp chung**: gửi mã cùng lúc gửi bản cài |
+| Hàng chờ admin | Có thể bị spam, cần TTL + giới hạn 1 row/user | Không có hàng chờ |
+
+**Chọn B**, và lý do quyết định là §4.5: iOS phát hành ad-hoc nên admin **đã bắt buộc** phải làm việc thủ công với từng user — thu UDID, ký lại IPA, gửi bản cài. Gửi kèm mã ghép cặp trong đúng lần trao đổi đó tốn thêm 0 bước. Mô hình A thì thêm hẳn một vòng: cài → thử → hỏng → gọi lại → chờ → thử lại.
+
+**Cái phải chấp nhận khi chọn B:** mã là bearer credential, ai cầm cũng dùng được. Bốn lớp hạn chế thiệt hại, giống lập luận đã dùng ở §5.2:
+
+1. Gắn cứng một user — mã của người khác vô dụng
+2. Vẫn phải có **mật khẩu** của chính tài khoản đó
+3. Dùng một lần, hết hạn sau `DEVICE_ACTIVATION_KEY_TTL_DAYS`
+4. Sai quá `DEVICE_ACTIVATION_MAX_ATTEMPTS` lần thì mã tự huỷ
+
+Và điều A làm tốt hơn — admin nhìn thấy metadata thiết bị — thực ra **vẫn có**, chỉ là sau khi ghép cặp thay vì trước. Admin mở trang mobile device lên là thấy đủ tên máy, model, OS, IP, thành phố; nếu sai với thực tế thì gỡ liên kết. Mất mát thật sự nhỏ hơn vẻ ngoài.
+
+### 4.2 S1 — Re-login cùng máy
 
 Tra cứu theo `device_id` và **không lọc `status`**: row `REVOKED` của chính máy đó được tìm thấy và **reactivate**, thay vì tạo row mới. Nếu vô tình thêm `status='ACTIVE'` vào filter thì user bị admin gỡ liên kết sẽ không đăng nhập lại được trên **chính máy cũ** của mình.
 
@@ -413,14 +521,14 @@ Hàm này là **cổng chung của cả hai endpoint mobile** (§7.4): `login` t
 
 `revoked_reason` không tham gia quyết định (điều kiện trên đã đủ) nhưng được lưu để admin đọc được lịch sử: nhìn một row `REVOKED` là biết ngay nó bị cắt phiên hay bị thay máy.
 
-### 4.2 S2 — Hardware anchor (giải quyết P8)
+### 4.3 S2 — Hardware anchor (giải quyết P8)
 
 Bên cạnh `device_id` (UUID trong secure storage), mobile gửi thêm `hardware_hash` = SHA-256 của một định danh phần cứng **sống sót qua việc cài lại app**:
 
 | Nền tảng | Nguồn | Sống sót reinstall? | Đổi khi nào |
 |---|---|---|---|
-| **Android** | `Settings.Secure.ANDROID_ID` | ✅ Có (từ API 26, scoped theo app signing key) | Factory reset, hoặc **đổi signing key** (§4.4 D1) |
-| **iOS** | Keychain (`device_id` gốc) là chính; `identifierForVendor` là phụ | ✅ Keychain sống sót gỡ app | IDFV đổi khi gỡ hết app của vendor; `device_id` mất nếu **đổi bundle ID** (§4.4 D2) |
+| **Android** | `Settings.Secure.ANDROID_ID` | ✅ Có (từ API 26, scoped theo app signing key) | Factory reset, hoặc **đổi signing key** (§4.5 D1) |
+| **iOS** | Keychain (`device_id` gốc) là chính; `identifierForVendor` là phụ | ✅ Keychain sống sót gỡ app | IDFV đổi khi gỡ hết app của vendor; `device_id` mất nếu **đổi bundle ID** (§4.5 D2) |
 
 > ⚠️ **Đã kiểm chứng trong `.pub-cache`:** `device_info_plus` (repo pin `10.1.2`) **không** expose `ANDROID_ID`. Field `AndroidDeviceInfo.id` là `Build.ID` — mã bản build của ROM, **giống nhau trên mọi máy cùng ROM**, tuyệt đối không dùng làm định danh. `serialNumber` trả `"unknown"` từ Android 10 nếu không có quyền đặc quyền.
 > → Phải thêm package **`android_id: ^0.4.0`** (hoặc `MethodChannel` ~15 dòng). `identifierForVendor` đã có sẵn trong `IosDeviceInfo`.
@@ -437,11 +545,11 @@ Bên cạnh `device_id` (UUID trong secure storage), mobile gửi thêm `hardwar
 **Lợi ích bảo mật phụ (chống P7):** trên iOS, restore backup sang máy mới **có** mang theo Keychain (client_id giống) nhưng IDFV thì **khác**. `device_id` khớp mà `hardware_hash` lệch → dấu hiệu client id bị clone sang máy khác → xử lý như **máy mới** (S3, phải xin mã). Không có tín hiệu này thì hai máy vật lý dùng chung một client ID mà hệ thống không biết — đúng thứ chính sách khoá thiết bị muốn chặn.
 
 **Giới hạn phải chấp nhận:**
-- Đổi app signing key (chuyển sang Play App Signing) làm `ANDROID_ID` đổi cho **toàn bộ** user Android → tất cả rơi vào S3 cùng lúc. Kênh phân phối đã chốt và bốn quy tắc bảo vệ anchor nằm ở **§4.4**.
+- Đổi app signing key (chuyển sang Play App Signing) làm `ANDROID_ID` đổi cho **toàn bộ** user Android → tất cả rơi vào S3 cùng lúc. Kênh phân phối đã chốt và bốn quy tắc bảo vệ anchor nằm ở **§4.5**.
 - Một số ROM cũ trả `ANDROID_ID` null hoặc hằng số lỗi `9774d56d682e549c`. Backend **blacklist giá trị này**, coi như không có anchor — bỏ sót thì mọi máy dính lỗi nhận nhau là cùng một thiết bị.
 - `hardware_hash` do client gửi nên **giả mạo được**. Chỉ dùng để *nới lỏng* (nhận ra máy cũ), không bao giờ để *cấp quyền*. Chống giả mạo thật cần Play Integrity / App Attest — mục "cân nhắc sau".
 
-### 4.3 S3 — Đổi máy bằng mã kích hoạt (R7)
+### 4.4 S3 — Đổi máy bằng mã kích hoạt (R7)
 
 ```
 User login trên máy mới
@@ -461,9 +569,9 @@ User login trên máy mới
 
 **Không có bất kỳ đường tự phục vụ nào.** Mã chỉ do staff sinh từ Django Admin.
 
-### 4.4 Mô hình phân phối và ảnh hưởng tới hardware anchor
+### 4.5 Mô hình phân phối và ảnh hưởng tới hardware anchor
 
-Cả hai anchor ở §4.2 đều gắn với **danh tính ký app**, không phải với store. Vì vậy kênh phân phối quyết định anchor có ổn định hay không, và phải chốt trước khi code.
+Cả hai anchor ở §4.3 đều gắn với **danh tính ký app**, không phải với store. Vì vậy kênh phân phối quyết định anchor có ổn định hay không, và phải chốt trước khi code.
 
 **Kênh đã chốt:** Android — APK tự ký, tự phân phối. iOS — **ad-hoc** (UDID).
 
@@ -512,13 +620,27 @@ Phương án đầu tốt hơn nhiều và **quyết định được ngay hôm 
 
 **Phương án dự phòng attestation gần như mất trên Android.** Play Integrity trả `appRecognitionVerdict = UNRECOGNIZED_VERSION` cho app không phát hành qua Play, nên mục "cân nhắc sau" ở §11 chỉ còn dùng được tín hiệu device integrity, không dùng được tín hiệu app authenticity. iOS App Attest gắn với App ID nên về lý thuyết vẫn chạy với ad-hoc, nhưng **cần kiểm chứng thực tế trước khi tin**.
 
-Điều này củng cố lập luận sẵn có ở §4.2: `hardware_hash` là tín hiệu để **nới lỏng**, không bao giờ để **cấp quyền**. Không có đường nâng cấp nó thành bằng chứng mạnh trong mô hình phân phối hiện tại.
+Điều này củng cố lập luận sẵn có ở §4.3: `hardware_hash` là tín hiệu để **nới lỏng**, không bao giờ để **cấp quyền**. Không có đường nâng cấp nó thành bằng chứng mạnh trong mô hình phân phối hiện tại.
 
 ---
 
-## 5. Thiết kế mã kích hoạt
+## 5. Mã ghép cặp
 
-### 5.1 Định dạng
+### 5.1 Hai mã, hai vai trò khác nhau
+
+Một slot mang **hai** mã, và không gộp được vì chúng khác nhau về bản chất:
+
+| | `client_code` | `pairing_code` |
+|---|---|---|
+| Dạng | `MC-7F3A2B91` | `TT-4KM9-X7QP-2N5R` |
+| Là gì | **Định danh** công khai | **Bí mật** dùng một lần |
+| Vòng đời | Vĩnh viễn, bất biến | Hết tác dụng ngay khi ghép cặp xong |
+| Ai thấy | User (màn hình Settings), admin, CSKH | Chỉ admin và user, trong lúc ghép cặp |
+| Dùng để | Đối chiếu khi hỗ trợ: *"máy em mã MC-7F3A2B91"* | Chứng minh được quyền nhận slot |
+
+Dùng chung một mã cho cả hai việc là sai: định danh phải hiện thường trực và lặp lại được, bí mật thì phải dùng một lần rồi thôi.
+
+### 5.2 Định dạng `pairing_code`
 
 ```
 TT-4KM9-X7QP-2N5R
@@ -527,89 +649,122 @@ TT-4KM9-X7QP-2N5R
 └── prefix cố định "TT" (Thiên Thư)
 ```
 
-- Entropy 32¹² ≈ 1.15 × 10¹⁸ (~60 bit) — dò mù bất khả thi.
-- Chia nhóm 4 ký tự: đọc qua điện thoại được, gõ tay ít sai.
-- Chuẩn hoá đầu vào: viết hoa, bỏ khoảng trắng và gạch nối, map `I→1`, `L→1`, `O→0` trước khi so khớp.
+Entropy 32¹² ≈ 1.15 × 10¹⁸ (~60 bit). Chia nhóm 4 và bỏ ký tự dễ nhầm là yêu cầu bắt buộc chứ không phải cho đẹp: **mã được đọc qua điện thoại hoặc gõ lại từ Zalo** (§5.4), nên nhầm `O` với `0` là chuyện sẽ xảy ra.
 
-### 5.2 Lưu plaintext hay hash?
+Server chuẩn hoá đầu vào trước khi so khớp: viết hoa, bỏ gạch nối và khoảng trắng, map `I`/`L` → `1`, `O` → `0`.
 
-| | Lưu **hash** (như `PasswordResetOTP`) | **Lưu plaintext** ✅ |
-|---|---|---|
-| DB bị lộ | Mã vô dụng | Mã lộ theo |
-| Admin xem lại mã | ❌ Chỉ **một lần** lúc tạo | ✅ Xem lại bất cứ lúc nào |
-| User gọi lại "em làm mất mã" | Phải sinh mã mới | Đọc lại mã cũ |
+### 5.3 Lưu plaintext — và giờ là bắt buộc
 
-**Chọn plaintext**, vì: **mã kích hoạt không phải credential độc lập.** Endpoint activate yêu cầu `email + password + mã`. Kẻ có mã mà không có mật khẩu thì không làm được gì; kẻ có mật khẩu thì đã đăng nhập được trên máy cũ rồi. Mã là **yếu tố thứ hai gắn cứng với một user**, dùng một lần, có hạn.
+Ở các bản trước đây là một đánh đổi. Với kênh gửi đã chốt ở §5.4 thì nó thành **yêu cầu chức năng**: admin phải mở mã ra đọc để dán vào Zalo hoặc đọc qua điện thoại. Lưu hash thì admin chỉ nhìn được mã **đúng một lần** lúc tạo, và mất là phải huỷ slot cấp lại.
 
-Bù bằng kiểm soát truy cập: cột mã chỉ hiện với user có permission `users.view_activation_key_secret`; mã đã `USED`/`REVOKED`/`EXPIRED` hiện dạng che `TT-4KM9-****-****`.
+Rủi ro vẫn được chặn bằng lập luận cũ: **mã không phải credential độc lập.** Nhận slot cần `email + mật khẩu + mã`. Ai có mã mà không có mật khẩu thì vô dụng; ai có mật khẩu thì đã vào được máy cũ rồi.
 
-*Nếu PO ưu tiên bảo mật hơn tiện lợi, chuyển sang hash chỉ là đổi `services/activation.py`. Xem câu 3 §15.*
+Kiểm soát bù lại:
+- Chỉ hiện mã của slot **`UNCLAIMED`**. Slot đã nhận thì che `TT-4KM9-****-****` — mã đã hết tác dụng, hiện ra chỉ tổ rò rỉ.
+- Cột mã chỉ mở cho user có permission `users.view_activation_key_secret`.
 
-### 5.3 Tham số cấu hình
+### 5.4 Kênh gửi: ngoài luồng, không gửi email tự động
+
+**Admin tự gửi mã qua Zalo hoặc số điện thoại.** Hệ thống không gửi email.
+
+Lý do khớp với §4.5: iOS phát hành ad-hoc nên admin **đã** phải liên hệ trực tiếp từng user để lấy UDID và gửi bản cài. Mã đi kèm trong đúng cuộc trao đổi đó. Thêm một email tự động vào giữa chỉ tạo thêm một kênh có thể rơi vào spam mà không rút ngắn được bước nào.
+
+Hệ quả lên thiết kế:
+
+| | Ảnh hưởng |
+|---|---|
+| Bỏ `send_activation_email()` và template `device_activation_key.html` | Bớt một phụ thuộc vào SMTP cho luồng này |
+| Admin **phải** copy được mã dễ dàng | Cột mã trong admin có nút copy, không bắt bôi đen thủ công |
+| Không có xác nhận đã gửi | TTL quan trọng hơn: slot không ai nhận sẽ tự hết hạn và **trả lại chỗ** trong hạn mức |
+| Không có dấu vết gửi | `issued_by` + `issued_reason` là toàn bộ audit ta có. Nên bắt admin ghi lý do khi cấp |
+
+### 5.5 Tham số cấu hình
 
 | Tham số | Mặc định | Config key |
 |---|---|---|
-| Hiệu lực của mã | 7 ngày | `DEVICE_ACTIVATION_KEY_TTL_DAYS` |
-| Số lần nhập sai tối đa | 5 | `DEVICE_ACTIVATION_MAX_ATTEMPTS` |
-| Throttle endpoint activate | 10 req/giờ/IP | scope `device_activation` |
+| Hạn nhận slot | 7 ngày | `DEVICE_PAIRING_TTL_DAYS` |
+| Số lần nhập sai tối đa | 5 | `DEVICE_PAIRING_MAX_ATTEMPTS` |
+| Throttle endpoint login mobile | 30 req/giờ/IP | scope `mobile_login` |
 
-### 5.4 Vòng đời
+### 5.6 Vòng đời slot
 
 ```
-      ┌──────────────────────────────────────────────┐
-      │                                              │
-[admin cấp] ──► ISSUED ──► (nhập đúng) ──► USED      │
-                  │                                  │
-                  ├──► (quá expires_at) ──► EXPIRED  │
-                  ├──► (sai > 5 lần) ─────► REVOKED ─┘ (phải xin mã mới)
-                  └──► (admin cấp mã mới / thu hồi) ► REVOKED
+[admin cấp slot] ──► UNCLAIMED ──(nhập đúng mã)──► ACTIVE ──(gỡ/tắt)──► REVOKED
+                          │                                                │
+                          ├──(quá expires_at)────► EXPIRED                 │
+                          ├──(sai > 5 lần)───────► EXPIRED                 │
+                          └──(admin huỷ)─────────► EXPIRED          (login lại cần
+                                                                     slot mới)
 ```
 
-Cron `expire_activation_keys` (Celery beat, hằng ngày) chuyển `ISSUED` quá hạn sang `EXPIRED` — chỉ để danh sách admin sạch; `is_valid` đã tự kiểm `expires_at` nên logic không phụ thuộc cron.
+`UNCLAIMED` và `ACTIVE` **chiếm chỗ** trong `mobile_max_devices`; `EXPIRED` và `REVOKED` thì không. Nhờ vậy một slot cấp nhầm rồi bỏ đó sẽ tự trả lại chỗ sau `DEVICE_PAIRING_TTL_DAYS` mà không cần ai dọn.
+
+Cron `expire_mobile_slots` (Celery beat, hằng ngày) chuyển `UNCLAIMED` quá hạn sang `EXPIRED`. Logic nhận slot vẫn tự kiểm `expires_at` mỗi lần, nên không phụ thuộc cron chạy đúng giờ — cron chỉ để hạn mức được trả lại đúng lúc và danh sách admin sạch.
 
 ---
 
 ## 6. Database (PostgreSQL)
 
-### 6.1 Bảng mới `users_mobiledevice`
+### 6.1 Bảng `users_mobiledevice` — một bảng, không tách key
 
-`src/backend/users/models/mobile_device.py` — kế thừa `AbstractDevice` (§3.4), chỉ khai báo phần riêng của mobile:
+Slot và thiết bị là **một thực thể ở hai giai đoạn**, nên nằm chung một bảng. Mỗi slot mang đúng một `pairing_code`, nên tách ra bảng riêng chỉ tạo quan hệ 1-1 vô nghĩa.
 
 ```python
 class MobileDevice(AbstractDevice):
-    # A user's bound mobile handset. One ACTIVE row per user, enforced in the database.
+    # A device slot allocated by staff, then claimed by a handset.
     #
-    # Separate from UserDevice on purpose: the two share ten columns (declared in
-    # AbstractDevice) but no policy. Web devices are cheap and plentiful (quota 5,
-    # identified by a volatile browser fingerprint); a mobile device is a single
-    # long-lived binding that only staff can move to another handset.
+    # UNCLAIMED: staff created it, pairing_code issued, no handset yet.
+    # ACTIVE:    a handset redeemed the code and is bound.
+    # REVOKED:   was active, staff cut it off.
+    # EXPIRED:   never claimed — the code timed out or was burnt by wrong tries.
+    STATUS_CHOICES = [
+        ('UNCLAIMED', 'Unclaimed'),
+        ('ACTIVE', 'Active'),
+        ('REVOKED', 'Revoked'),
+        ('EXPIRED', 'Expired'),
+    ]
     DEVICE_TYPE_CHOICES = [('IOS', 'iOS'), ('ANDROID', 'Android')]
-
-    # Declared here rather than on the base so the related_name reads correctly
-    # and `user.devices` keeps meaning "web devices" for existing code.
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mobile_devices')
-
-    # Short, speakable identifier for support. Generated once, never recomputed:
-    # device_id can change in place when a client re-binds after a reinstall.
-    client_code = models.CharField(max_length=16, unique=True)
-
-    # SHA-256 of a hardware anchor (ANDROID_ID / identifierForVendor). Lets a
-    # reinstalled app be recognised as the same handset instead of a new one.
-    hardware_hash = models.CharField(max_length=64, null=True, blank=True, db_index=True)
-
-    device_type = models.CharField(max_length=10, choices=DEVICE_TYPE_CHOICES)
-    device_model = models.CharField(max_length=128, null=True, blank=True)
-    os_version = models.CharField(max_length=64, null=True, blank=True)
-    app_version = models.CharField(max_length=32, null=True, blank=True)
-    bound_at = models.DateTimeField(null=True, blank=True)
-
-    # Why the row was stood down. Not consulted by the login rule (see 4.1), but
-    # it is what lets an admin tell "support cut the session" apart from
-    # "another handset took over" when reading a user's device history.
     REVOKED_REASON_CHOICES = [
         ('ADMIN_UNBIND', 'Admin unbind'),
         ('REPLACED', 'Replaced by another handset'),
+        ('MOBILE_DISABLED', 'Mobile access turned off'),
     ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mobile_devices')
+
+    # Permanent public identity of the slot. Generated at creation from a random
+    # seed (device_id does not exist yet) and never recomputed.
+    client_code = models.CharField(max_length=16, unique=True)
+
+    # One-time secret the user types to claim this slot. Kept after the claim for
+    # audit; the admin UI masks it once status leaves UNCLAIMED.
+    pairing_code = models.CharField(max_length=20, unique=True)
+
+    # NULL until a handset claims the slot. Declared here rather than on
+    # AbstractDevice because a web device always has one, and the two ids mean
+    # different things: a browser fingerprint versus a Keychain UUID.
+    device_id = models.CharField(max_length=255, null=True, blank=True)
+    hardware_hash = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+
+    # Slot lifecycle
+    issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='issued_mobile_slots')
+    issued_reason = models.CharField(max_length=255, blank=True)
+    expires_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    claim_ip = models.GenericIPAddressField(null=True, blank=True)
+    # Wrong-code attempts. The slot burns itself past the limit so a leaked
+    # password cannot be used to grind through codes.
+    claim_attempts = models.IntegerField(default=0)
+
+    # Filled in at claim time from the handset
+    device_type = models.CharField(max_length=10, choices=DEVICE_TYPE_CHOICES, blank=True)
+    device_model = models.CharField(max_length=128, null=True, blank=True)
+    os_version = models.CharField(max_length=64, null=True, blank=True)
+    app_version = models.CharField(max_length=32, null=True, blank=True)
+
+    bound_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
     revoked_reason = models.CharField(max_length=20, choices=REVOKED_REASON_CHOICES,
                                       null=True, blank=True)
 
@@ -617,12 +772,14 @@ class MobileDevice(AbstractDevice):
         verbose_name = 'Mobile Device'
         verbose_name_plural = 'Mobile Devices'
         ordering = ['-last_active']
-        unique_together = ['user', 'device_id']
         constraints = [
+            # Only claimed slots carry a device_id, so the uniqueness has to be
+            # conditional; a plain unique_together would collide on the NULLs in
+            # every unclaimed slot on some backends.
             models.UniqueConstraint(
-                fields=['user'],
-                condition=Q(status='ACTIVE'),
-                name='uniq_active_mobile_device_per_user',
+                fields=['user', 'device_id'],
+                condition=Q(device_id__isnull=False),
+                name='uniq_mobile_device_id_per_user',
             ),
             models.UniqueConstraint(
                 fields=['user', 'hardware_hash'],
@@ -630,103 +787,75 @@ class MobileDevice(AbstractDevice):
                 name='uniq_mobile_hardware_per_user',
             ),
         ]
-
-    def __str__(self):
-        return f'{self.client_code} — {self.device_name or self.device_id} ({self.user.email})'
-
-    def save(self, *args, **kwargs):
-        if not self.client_code:
-            self.client_code = generate_client_code(self.device_id)
-        if not self.bound_at:
-            self.bound_at = timezone.now()
-        return super().save(*args, **kwargs)   # AbstractDevice.save() stamps revoked_at
+        indexes = [
+            models.Index(fields=['user', 'status'], name='idx_mobiledevice_user_status'),
+            models.Index(fields=['status', 'expires_at'], name='idx_mobiledevice_expiry'),
+        ]
 ```
 
-Kế thừa từ `AbstractDevice` (§3.4 — abstract nên **không sinh bảng riêng**, các cột này nằm ngay trong `users_mobiledevice`): `device_id`, `device_name`, `status`, `last_ip`, `last_active`, `revoked_at`, và 4 field `geo_*`.
+Kế thừa từ `AbstractDevice`: `device_name`, `status`, `last_ip`, `last_active`, và 4 field `geo_*`. **`device_id` chuyển xuống model con** — xem chú thích trong code.
 
-So với v3 (chung bảng): **không có** `platform`, `user_agent`, `is_primary_bound`; `client_code` là `NOT NULL` nên không cần `CheckConstraint`; hai `UniqueConstraint` mất mệnh đề `platform='MOBILE'`.
+#### Hạn mức đếm ở đâu
 
-> `revoked_at` được set trong `save()` nên sẽ **không chạy** với `queryset.update()`. Mọi chỗ revoke hàng loạt phải truyền `revoked_at` tường minh.
-
-### 6.2 Bảng mới `users_deviceactivationkey`
-
-`src/backend/users/models/activation.py`:
+`mobile_max_devices` tính trên các slot **đang chiếm chỗ**:
 
 ```python
-class DeviceActivationKey(BaseModel):
-    """
-    A single-use code, issued by staff, that lets one user bind a new mobile device.
-
-    This is the only path through which a user can move to a different handset —
-    there is deliberately no self-service alternative.
-    """
-    STATUS_CHOICES = [
-        ('ISSUED', 'Issued'), ('USED', 'Used'),
-        ('REVOKED', 'Revoked'), ('EXPIRED', 'Expired'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activation_keys')
-    key = models.CharField(max_length=20, unique=True, db_index=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ISSUED')
-
-    issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
-                                  related_name='issued_activation_keys')
-    issued_reason = models.CharField(max_length=255, blank=True)
-    expires_at = models.DateTimeField()
-
-    used_at = models.DateTimeField(null=True, blank=True)
-    used_device = models.ForeignKey(MobileDevice, on_delete=models.SET_NULL,
-                                    null=True, blank=True, related_name='+')
-    used_ip = models.GenericIPAddressField(null=True, blank=True)
-
-    revoked_at = models.DateTimeField(null=True, blank=True)
-    revoked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
-                                   related_name='revoked_activation_keys')
-
-    # Wrong-code attempts. The key self-revokes past the limit so a leaked user
-    # account cannot be used to grind through codes.
-    attempts = models.IntegerField(default=0)
-
-    class Meta:
-        verbose_name = 'Device Activation Key'
-        verbose_name_plural = 'Device Activation Keys'
-        ordering = ['-created_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user'], condition=Q(status='ISSUED'),
-                name='uniq_issued_activation_key_per_user',
-            ),
-        ]
-
-    @property
-    def is_valid(self) -> bool:
-        return self.status == 'ISSUED' and timezone.now() < self.expires_at
+OCCUPYING = ('UNCLAIMED', 'ACTIVE')
 ```
 
-`uniq_issued_activation_key_per_user` — mỗi user chỉ có **một** mã còn hiệu lực; cấp mã mới tự revoke mã cũ. Không bao giờ có chuyện CSKH nhìn hai mã mà không biết mã nào đúng.
+Kiểm ở **lúc admin cấp slot**, không phải lúc login — vì lúc login không còn gì để quyết định, slot có hay không có mà thôi:
 
-`used_device` trỏ thẳng `MobileDevice` — ở phương án chung bảng thì FK này trỏ vào bảng lẫn lộn hai loại thực thể.
+```python
+with transaction.atomic():
+    # Row lock serialises count-then-create: two admins clicking at once would
+    # otherwise both read the same count and both allocate.
+    locked = User.objects.select_for_update().get(pk=user.pk)
+    if locked.mobile_devices.filter(status__in=OCCUPYING).count() >= locked.mobile_max_devices:
+        raise ValidationError('Đã dùng hết số thiết bị cho phép. Gỡ liên kết máy cũ trước.')
+```
 
-### 6.3 Thay đổi trên bảng cũ
+Không có partial unique index nào diễn đạt được "đếm không vượt N", nên khoá dòng `users_user` là cách đúng. Đổi lại, **mọi** đường tạo slot phải đi qua service này.
+
+> `UNCLAIMED` chiếm chỗ là điểm dễ bỏ sót: không tính thì admin cấp 5 slot, user nhận cả 5, vượt hạn mức mà không đường nào chặn. Bù lại, slot không ai nhận sẽ `EXPIRED` sau `DEVICE_PAIRING_TTL_DAYS` và **tự trả lại chỗ**.
+
+### 6.2 Thay đổi trên bảng cũ
 
 **`users_userdevice`: không thêm cột nào.** Chỉ cập nhật docstring nói rõ đây là bảng web-only, và bỏ `MOBILE_IOS`/`MOBILE_ANDROID` khỏi `DEVICE_TYPE_CHOICES` (còn lại `WEB`).
 
 > Nếu §2.3 đúng thì không có row nào mang device_type mobile, nên thu hẹp choices là an toàn. Nếu PO không xác nhận được, **giữ nguyên bộ choices** — đây là thay đổi làm đẹp, không đáng để đánh cược. *(Câu 1 §15.)*
 
-**`users_user`: không thêm cột nào.** v2 từng đề xuất `mobile_rebind_count` / `last_mobile_rebind_at`; v3 bỏ vì không còn self-service. Lịch sử đổi máy đọc từ `DeviceActivationKey` — giàu thông tin hơn (ai cấp, lý do gì, dùng lúc nào, từ IP nào).
+**`users_user`: thêm một cột hạn mức** *(v9)*.
 
-**`AdminAuditLog.ACTION_CHOICES`**: thêm `('DEVICE_ACTIVATION', 'Device Activation Key')`. Hiện chỉ có `DEVICE_RESET`, không phân biệt được "admin gỡ liên kết" với "user đổi máy bằng mã".
+```sql
+ALTER TABLE users_user
+    ADD COLUMN mobile_max_devices SMALLINT NOT NULL DEFAULT 1;
+```
 
-### 6.4 Migration
+```python
+# How many mobile slots this user may hold at once (UNCLAIMED + ACTIVE).
+# Reaching it blocks staff from allocating another, never silently replaces one.
+mobile_max_devices = models.PositiveSmallIntegerField(default=1)
+```
+
+**Không có `mobile_enabled`.** Bản nháp v7 từng đề xuất cờ này, nhưng ở mô hình cấp slot thì "chưa được cấp slot nào" **đã là** trạng thái tắt — thêm cờ nữa là hai lớp duyệt cho cùng một việc. Sau migration không ai dùng được app cho tới khi admin cấp slot đầu tiên, và hiện production chưa có mobile device nào (§2.3) nên không ai mất quyền đang có.
+
+*(Nếu sau này có cổng thương mại riêng — ví dụ chỉ VIP mới được dùng app — thì thêm lại cờ này là chuyện nhỏ, vì nó chặn ở tầng khác: ngăn admin cấp slot, chứ không ngăn login.)*
+
+> v2 từng đề xuất `mobile_rebind_count` / `last_mobile_rebind_at`; v3 bỏ vì không còn self-service. Lịch sử đổi máy đọc từ `DeviceActivationKey` — giàu thông tin hơn (ai cấp, lý do gì, dùng lúc nào, từ IP nào).
+
+**`AdminAuditLog.ACTION_CHOICES`**: thêm `('MOBILE_SLOT', 'Mobile Device Slot')` — ghi lại việc cấp slot, huỷ slot và nhận slot. Hiện chỉ có `DEVICE_RESET`, không phân biệt được "admin gỡ liên kết" với "admin cấp slot mới".
+
+**Không còn bảng `users_deviceactivationkey`.** Mỗi slot mang đúng một mã, nên mã là cột của chính slot đó (§6.1). Đây là thay đổi so với bản nháp v3–v8.
+
+### 6.3 Migration
 
 Chỉ **một** file, `0009_mobile_device_and_activation_key.py`:
 
 ```python
 operations = [
-    migrations.CreateModel(name='MobileDevice', ...),        # incl. revoked_reason
-    migrations.CreateModel(name='DeviceActivationKey', ...),
+    migrations.CreateModel(name='MobileDevice', ...),   # slot + pairing code in one table
+    migrations.AddField(model_name='user', name='mobile_max_devices', ...),
     migrations.AddConstraint(model_name='mobiledevice', constraint=...),  # x2
-    migrations.AddConstraint(model_name='deviceactivationkey', constraint=...),
     migrations.AlterField(model_name='adminauditlog', name='action_category', ...),
     migrations.AlterField(model_name='userdevice', name='device_type', ...),  # WEB only
 ]
@@ -742,13 +871,15 @@ operations = [
 
 **Rollback:** migration chỉ tạo bảng mới, `migrate users 0008` xoá sạch. Không có dữ liệu cũ nào bị đụng tới → rollback thực sự không mất gì, khác hẳn v3.
 
-### 6.5 `client_code` định danh **máy vật lý**
+### 6.4 `client_code` định danh **máy vật lý**
 
 | Tình huống | Row | `client_code` |
 |---|---|---|
 | S1, S2 — cùng máy vật lý | Dùng lại row cũ | **Giữ nguyên** |
 | S3 — máy **chưa từng thấy**, dùng mã kích hoạt | **Row mới** | **Mã mới** |
 | S3 — **quay lại máy đã từng dùng**, dùng mã kích hoạt | **Dùng lại row cũ** | **Giữ nguyên** |
+
+> *(v7)* Bind **không** còn tự revoke máy khác. Slot chỉ được giải phóng bằng hành động tường minh: admin gỡ liên kết, admin tắt `mobile_enabled`, hoặc mã kích hoạt (revoke máy `last_active` cũ nhất). Xem §4.1.
 
 > Dòng thứ ba là hệ quả bắt buộc của chính nguyên tắc "`client_code` định danh máy vật lý": cùng một chiếc điện thoại thì phải nhận lại đúng mã cũ, nếu không admin sẽ thấy một máy mang hai mã khác nhau — đúng thứ nguyên tắc này sinh ra để tránh. Nó cũng là ràng buộc kỹ thuật: tạo row mới cho máy cũ sẽ vi phạm `unique_together(user, device_id)` và `uniq_mobile_hardware_per_user` cùng lúc.
 
@@ -1139,6 +1270,101 @@ def bind_mobile_device(user, device, attrs, hardware_hash, request):
 >
 > Web session nằm ở bảng khác hoàn toàn nên không bị đụng — đây là điểm khác biệt so với hành vi hiện tại (P3).
 
+
+#### Thay đổi v7 — cổng entitlement và hạn mức đếm được
+
+`requires_activation()` của v6 trả lời câu "có máy **khác** đang giữ liên kết không". Với `mobile_max_devices` thì câu hỏi đổi thành "bind máy này có vượt hạn mức không", nên hàm được thay bằng một cổng ba bước:
+
+```python
+class MobileGateError(Exception):
+    """Carries the response body for a refused mobile login."""
+    def __init__(self, payload): self.payload = payload
+
+
+def check_mobile_gate(locked_user, device) -> None:
+    """
+    Decide whether `device` may bind for this user. Call INSIDE the transaction
+    that holds a row lock on the user, so the count cannot change underneath.
+
+    `device is None` means a handset never seen before; an existing row — even a
+    revoked one — already owns its slot and never re-pays for it.
+    """
+    if not locked_user.mobile_enabled:
+        raise MobileGateError({
+            'code': 'MOBILE_NOT_ENABLED',
+            'detail': 'Tài khoản chưa được cấp quyền sử dụng ứng dụng di động. '
+                      'Vui lòng liên hệ admin.',
+            'support_email': settings.SUPPORT_EMAIL,
+        })
+
+    if device is not None and device.status == 'ACTIVE':
+        return  # already holds a slot
+
+    active = locked_user.mobile_devices.filter(status='ACTIVE')
+    if active.count() >= locked_user.mobile_max_devices:
+        raise MobileGateError(device_limit_error(locked_user, active))
+```
+
+> Điều kiện `device.status == 'ACTIVE'` mới là chỗ tinh tế. Một row `REVOKED` **không** đang giữ slot, nên máy cũ quay lại vẫn phải qua kiểm tra hạn mức như máy mới — đúng như vậy, vì slot của nó đã được giải phóng cho máy khác.
+
+Login gọi cổng này bên trong khoá dòng:
+
+```python
+def validate(self, attrs):
+    request = self.context['request']
+    user = authenticate_user(attrs['email'].lower(), attrs['password'])
+    hardware_hash = normalize_hardware_hash(attrs.get('hardware_hash'))
+
+    with transaction.atomic():
+        # Row lock serialises count-then-bind: two concurrent logins from two new
+        # handsets would otherwise both read the same count and both bind.
+        locked_user = User.objects.select_for_update().get(pk=user.pk)
+        device, outcome = resolve_mobile_device(locked_user, attrs['device_id'], hardware_hash)
+
+        try:
+            check_mobile_gate(locked_user, device)
+        except MobileGateError as e:
+            raise MobileDeviceError(e.payload)
+
+        if device is None:
+            device = MobileDevice(user=locked_user, device_id=attrs['device_id'])
+        bind_mobile_device(locked_user, device, attrs, hardware_hash, request)
+    ...
+```
+
+Và `bind_mobile_device()` **bỏ hẳn** đoạn revoke máy khác:
+
+```python
+def bind_mobile_device(user, device, attrs, hardware_hash, request):
+    """
+    Persist the row. Callers must already have passed check_mobile_gate().
+
+    Unlike v6 this does NOT revoke the user's other handsets: with a real cap,
+    being under it means the extra device is allowed, and being at it means the
+    gate already refused. A slot is only ever freed explicitly (4.1).
+    """
+    device.device_type = 'IOS' if attrs['platform_os'] == 'ios' else 'ANDROID'
+    ...
+    device.status = 'ACTIVE'
+    device.revoked_at = None
+    device.revoked_reason = None
+    device.save()
+```
+
+Luồng activate (§7.7) là chỗ **duy nhất** còn revoke tự động, và chỉ khi đang ở đúng hạn mức:
+
+```python
+# The code buys one slot: retire the least recently used handset so the rule is
+# deterministic and explainable to the user, and correct when max > 1.
+if active.count() >= locked_user.mobile_max_devices:
+    oldest = active.order_by('last_active').first()
+    oldest.status = 'REVOKED'
+    oldest.revoked_at = timezone.now()
+    oldest.revoked_reason = 'REPLACED'
+    oldest.save(update_fields=['status', 'revoked_at', 'revoked_reason'])
+    blacklist_tokens_for_devices(locked_user, [oldest.device_id])
+```
+
 **Response 200:**
 
 ```json
@@ -1453,11 +1679,16 @@ mobile = user.mobile_devices.filter(status='ACTIVE').first()
     "last_active": "2026-08-27T08:00:00Z"
   },
 
+  "mobile_enabled": true,
+  "mobile_max_devices": 1,
+  "mobile_devices_count": 1,
+
   "web_devices_count": 3,
   "web_devices_quota": 5
 }
 ```
 
+- `mobile_enabled` / `mobile_max_devices` / `mobile_devices_count` cho app biết vì sao nó bị chặn mà không phải suy ra từ mã lỗi.
 - `bound_device` **giữ nguyên shape cũ** (4 field) để client hiện tại không vỡ, nhưng từ nay có dữ liệu thật thay vì luôn `null`. **P6 được giải quyết.**
 - `mobile_device` là dạng đầy đủ, có `client_code` cho app hiển thị ở Settings (§9.5). `null` khi user chưa từng đăng nhập mobile.
 - `UserDevice.is_primary_bound` trở thành **field chết** — không code nào đọc nữa. Gỡ cột ở commit dọn dẹp cùng với việc đổi tên `WebDevice` (§3.5), không gỡ trong release này.
@@ -1547,9 +1778,18 @@ class MobileDeviceAdmin(admin.ModelAdmin):
 
 > Action này **không** đồng thời gỡ liên kết máy cũ. Máy cũ chỉ bị revoke khi user thực sự dùng mã trên máy mới. Gỡ ngay lúc cấp mã thì user mất quyền dùng app trong lúc chờ — trong khi có thể họ chưa mua máy mới, hoặc gọi hỏi rồi thôi.
 
+**Action 3 — quản lý entitlement** *(v7, trên `UserAdmin`)*:
+
+| Action | Việc | Ghi chú |
+|---|---|---|
+| `enable_mobile_access` | `mobile_enabled = True` | Ghi `AdminAuditLog` category `MOBILE_ENTITLEMENT`. User đăng nhập app được ngay, không cần thao tác gì thêm |
+| `disable_mobile_access` | `mobile_enabled = False` **và revoke mọi device đang ACTIVE** với `revoked_reason='MOBILE_DISABLED'` + blacklist token | Cắt phiên tức thì. Không revoke thì phiên hiện tại sống thêm tới 4 giờ (§4.1 hệ quả 3) |
+
+`mobile_enabled` và `mobile_max_devices` cũng hiện trong fieldset "Quyền dùng ứng dụng di động" của `UserAdmin` để sửa từng user; `list_filter` thêm `mobile_enabled` để lọc nhanh ai đang được cấp quyền.
+
 **Action 2 — `unbind_devices`** *(cắt phiên ngay, không cấp mã)*:
 
-1. `status='REVOKED'`, `revoked_at=now()`, **`revoked_reason='ADMIN_UNBIND'`** — giá trị này là thứ phân biệt "cắt phiên" với "bị máy khác thay thế" khi admin đọc lịch sử (§4.1).
+1. `status='REVOKED'`, `revoked_at=now()`, **`revoked_reason='ADMIN_UNBIND'`** — giá trị này là thứ phân biệt "cắt phiên" với "bị máy khác thay thế" khi admin đọc lịch sử (§4.2).
 2. `blacklist_tokens_for_devices(user, [device_id])` → app đăng xuất ngay.
 3. Ghi `AdminAuditLog(action_category='DEVICE_RESET')`.
 4. Sau đó user đăng nhập lại **trên chính máy cũ** vẫn được (S1). Dùng khi cần cắt phiên khẩn cấp, không phải khi đổi máy.
@@ -1672,7 +1912,7 @@ Thay đổi: `platformOs` khớp endpoint mới (**P1**); `getHardwareHash()` m�
     android:fullBackupContent="@xml/backup_rules">
 ```
 
-`res/xml/backup_rules.xml` + `res/xml/data_extraction_rules.xml` loại trừ prefs `FlutterSecureStorage`. Thiếu bước này, restore backup sang máy mới mang theo client id cũ và user vào được máy mới **mà không cần mã** — thủng R7. Đối chiếu `hardware_hash` (§4.2) là lớp chặn thứ hai, nhưng chặn từ gốc vẫn tốt hơn.
+`res/xml/backup_rules.xml` + `res/xml/data_extraction_rules.xml` loại trừ prefs `FlutterSecureStorage`. Thiếu bước này, restore backup sang máy mới mang theo client id cũ và user vào được máy mới **mà không cần mã** — thủng R7. Đối chiếu `hardware_hash` (§4.3) là lớp chặn thứ hai, nhưng chặn từ gốc vẫn tốt hơn.
 
 ### 9.4 Màn hình mới `DeviceActivationScreen`
 
@@ -1722,16 +1962,16 @@ Thay đổi: `platformOs` khớp endpoint mới (**P1**); `getHardwareHash()` m�
 
 | Rủi ro | Đánh giá | Xử lý |
 |---|---|---|
-| **Mọi ca đổi máy đều thành ticket CSKH** | Hệ quả trực tiếp và cố ý của R7 | Hardware anchor (§4.2) loại S1/S2 khỏi luồng ticket — chỉ đổi máy thật mới cần mã. Cấp mã là 2 click + email tự gửi |
+| **Mọi ca đổi máy đều thành ticket CSKH** | Hệ quả trực tiếp và cố ý của R7 | Hardware anchor (§4.3) loại S1/S2 khỏi luồng ticket — chỉ đổi máy thật mới cần mã. Cấp mã là 2 click + email tự gửi |
 | **Không có admin ngoài giờ** → user kẹt qua đêm/cuối tuần | Trung bình | Cần PO quyết SLA cấp mã và ai trực. Vấn đề quy trình, không phải kỹ thuật |
 | **Giả định "chưa có mobile device nào"** (§2.3) sai | Thấp nhưng ảnh hưởng thiết kế | Kiểm chứng bằng `SELECT count(*) FROM users_userdevice WHERE device_type LIKE 'MOBILE%'` trên production **trước** khi code. Nếu >0: thêm data migration chuyển row, và đổi fallback ở §7.10 thành tra cả hai bảng |
 | **Token cũ không có claim `platform`** | Thấp | Fallback về `UserDevice` (§7.10) — đúng vì mobile chưa từng phát hành token nào. Tự hết sau khi refresh token cũ hết hạn |
 | `hardware_hash` **giả mạo được** | Chấp nhận | Chỉ dùng để *nới lỏng*, không để *cấp quyền*. Chống giả mạo thật cần Play Integrity / App Attest |
-| **Mất hoặc đổi Android keystore** → `ANDROID_ID` đổi hàng loạt | Thấp nhưng ảnh hưởng rộng nhất trong toàn feature | §4.4 D1: keystore là tài sản quan trọng nhất của dự án, phải backup ngoài máy dev. Nếu lên Play, dùng chính keystore này làm app signing key để tránh hẳn đợt S3 |
-| **Đổi iOS bundle ID** khi chuyển ad-hoc → App Store | Thấp | §4.4 D2: giữ nguyên bundle ID thì Team ID không đổi, keychain sống sót, không có đợt S3 |
-| **Trần 100 thiết bị/năm của ad-hoc** chặn trần user iOS | Trung bình — giới hạn của mô hình phân phối, không phải của feature | §4.4. Slot chỉ giảm trong một năm thành viên, xoá UDID không hoàn lại. PO cần biết trước khi đặt mục tiêu tăng trưởng iOS (câu 10 §15) |
-| **Profile ad-hoc hết hạn hằng năm** → cài lại hàng loạt | Thấp | Cùng Team ID + bundle ID nên keychain sống sót → toàn bộ rơi vào **S1**, không ai cần mã. Ghi rõ ở §4.4 để đến kỳ gia hạn không ai hoảng |
-| **Không qua store → không có auto-update** | Trung bình | §4.4: phải tự làm màn hình "có bản mới"; backend chịu client cũ lâu hơn. iOS có kỳ gia hạn hằng năm làm dịp ép cập nhật |
+| **Mất hoặc đổi Android keystore** → `ANDROID_ID` đổi hàng loạt | Thấp nhưng ảnh hưởng rộng nhất trong toàn feature | §4.5 D1: keystore là tài sản quan trọng nhất của dự án, phải backup ngoài máy dev. Nếu lên Play, dùng chính keystore này làm app signing key để tránh hẳn đợt S3 |
+| **Đổi iOS bundle ID** khi chuyển ad-hoc → App Store | Thấp | §4.5 D2: giữ nguyên bundle ID thì Team ID không đổi, keychain sống sót, không có đợt S3 |
+| **Trần 100 thiết bị/năm của ad-hoc** chặn trần user iOS | Trung bình — giới hạn của mô hình phân phối, không phải của feature | §4.5. Slot chỉ giảm trong một năm thành viên, xoá UDID không hoàn lại. PO cần biết trước khi đặt mục tiêu tăng trưởng iOS (câu 10 §15) |
+| **Profile ad-hoc hết hạn hằng năm** → cài lại hàng loạt | Thấp | Cùng Team ID + bundle ID nên keychain sống sót → toàn bộ rơi vào **S1**, không ai cần mã. Ghi rõ ở §4.5 để đến kỳ gia hạn không ai hoảng |
+| **Không qua store → không có auto-update** | Trung bình | §4.5: phải tự làm màn hình "có bản mới"; backend chịu client cũ lâu hơn. iOS có kỳ gia hạn hằng năm làm dịp ép cập nhật |
 | ROM lỗi trả `ANDROID_ID` hằng số | Trung bình | `ANDROID_ID_DENYLIST` — bỏ sót thì mọi máy dính lỗi nhận nhau là cùng thiết bị |
 | **Mã lưu plaintext** trong DB | Thấp (§5.2) | Vô dụng nếu không có mật khẩu; single-use; có hạn; che với staff không đủ quyền |
 | Race hai request activate song song | Thấp | `select_for_update()` ở **cả** `verify_activation_key` lẫn `consume_activation_key` (§7.5) + partial unique index. `consume` lọc lại `status='ISSUED'` vì hai hàm nằm ở hai transaction |
@@ -1746,7 +1986,7 @@ Thay đổi: `platformOs` khớp endpoint mới (**P1**); `getHardwareHash()` m�
 ### Cân nhắc sau (ngoài scope)
 
 - **Cho `UserDevice` kế thừa `AbstractDevice` + đổi tên thành `WebDevice`** (§3.4, §3.5) — cùng một commit dọn dẹp riêng sau khi feature chạy ổn. Bắt buộc `makemigrations --dry-run` xác nhận migration rỗng.
-- **Device attestation thật** — iOS DeviceCheck/App Attest, Android Play Integrity. **Mô hình phân phối đã chốt làm phương án này yếu đi đáng kể** (§4.4): Play Integrity trả `appRecognitionVerdict = UNRECOGNIZED_VERSION` cho APK không phát hành qua Play, nên chỉ còn dùng được tín hiệu device integrity, mất tín hiệu app authenticity. App Attest trên iOS ad-hoc về lý thuyết vẫn chạy nhưng cần kiểm chứng thực tế. Chỉ làm nếu số liệu cho thấy có tình trạng lách bằng `hardware_hash` giả.
+- **Device attestation thật** — iOS DeviceCheck/App Attest, Android Play Integrity. **Mô hình phân phối đã chốt làm phương án này yếu đi đáng kể** (§4.5): Play Integrity trả `appRecognitionVerdict = UNRECOGNIZED_VERSION` cho APK không phát hành qua Play, nên chỉ còn dùng được tín hiệu device integrity, mất tín hiệu app authenticity. App Attest trên iOS ad-hoc về lý thuyết vẫn chạy nhưng cần kiểm chứng thực tế. Chỉ làm nếu số liệu cho thấy có tình trạng lách bằng `hardware_hash` giả.
 
 ### Rollback
 
@@ -1827,6 +2067,16 @@ Cách lấy tối thiểu, không cần hạ tầng mới: `logger.info` một d
 | **T37** | Activate khi user **không** có device ACTIVE nào (admin vừa `unbind` hết) | 400 `ALREADY_BOUND`; mã **vẫn `ISSUED`**, không bị tiêu phí cho việc chỉ cần login thường |
 | **T38** | `requires_activation()` — bảng chân trị: không device nào ACTIVE / chính device đó ACTIVE / device **khác** ACTIVE | `False` / `False` / `True`. Login và activate phải cho kết quả **ngược nhau** trên cùng đầu vào |
 | **T39** | **S11** — `GET /me/device-status/` | `can_reset_now: false`, `next_reset_available_at: null` bất kể `last_device_reset` cũ tới đâu |
+| **T40** | **v7** — login mobile khi `mobile_enabled = False` | 403 `MOBILE_NOT_ENABLED`; **không** row `MobileDevice` nào được tạo và `last_active` không đổi |
+| **T41** | **v7** — bật `mobile_enabled`, login lần đầu | 200, tạo device, `mobile_devices_count = 1` |
+| **T42** | **v7** — `max = 1`, đã có 1 máy ACTIVE, login máy thứ hai | 400 `MOBILE_DEVICE_LIMIT`, `bound_devices` là **mảng** 1 phần tử; máy cũ vẫn `ACTIVE` (**không** bị revoke ngầm) |
+| **T43** | **v7** — `max = 2`, đã có 1 máy, login máy thứ hai | 200; **cả hai** máy `ACTIVE`; máy đầu không bị đụng |
+| **T44** | **v7** — đang ở max, login lại trên **chính máy cũ** | 200 — S1 không tiêu slot (thứ tự bước 3 trước bước 4, §4.1) |
+| **T45** | **v7** — đang ở max, máy cũ cài lại app (`hardware_hash` khớp) | 200, `rebound: true` — S2 cũng không tiêu slot |
+| **T46** | **v7** — tắt `mobile_enabled` khi user đang có device ACTIVE | Device → `REVOKED/MOBILE_DISABLED`, token bị blacklist, request tiếp theo 401 |
+| **T47** | **v7** — bật lại `mobile_enabled` rồi login trên máy cũ | 200, row cũ reactivate, `client_code` không đổi |
+| **T48** | **v7 race** — hai request login song song từ hai máy mới, `max = 1` | Đúng **1** thành công, 1 trả `MOBILE_DEVICE_LIMIT`. Test này là lý do có row lock; không có nó cả hai cùng bind |
+| **T49** | **v7** — activate khi đang ở max, `max = 2` | Máy `last_active` cũ nhất → `REVOKED/REPLACED`; máy còn lại **không** bị đụng |
 
 ### Mobile — `test/core/device/device_service_test.dart`
 
@@ -1855,7 +2105,7 @@ Cách lấy tối thiểu, không cần hạ tầng mới: `logger.info` một d
 | **BE-7** | Geo cho 2 model: `signals.py`, `tasks.py`, `fetch_device_geo` + test T26 |
 | **BE-8** | `MobileDeviceAdmin`, `DeviceActivationKeyAdmin`, inline trong `UserAdmin`, permission `view_activation_key_secret`, icon Jazzmin |
 | **BE-9** | Email template + `_send_activation_email`; task `expire_activation_keys` + Celery beat |
-| **BE-10** | `DeviceStatusView` — `bound_device` trỏ vào mobile device (§7.14, giải P6) + đóng băng `can_reset_now` (§7.15) + test T32, T39; log có cấu trúc cho M1 (§12); chạy T1–T39; cập nhật `md/core/api-specification.md`, `md/core/database-design.md` |
+| **BE-10** | `DeviceStatusView` — `bound_device` trỏ vào mobile device (§7.14, giải P6) + đóng băng `can_reset_now` (§7.15) + test T32, T39; log có cấu trúc cho M1 (§12); chạy T1–T49; cập nhật `md/core/api-specification.md`, `md/core/database-design.md` |
 | **MB-1** | Dependency `android_id`, `package_info_plus`; `DeviceService`; Android backup rules |
 | **MB-2** | Datasource đổi endpoint + payload; `ActivationRequiredException`; `AuthBloc` state/event |
 | **MB-3** | `DeviceActivationScreen` + ô nhập mã có format |
@@ -1875,5 +2125,11 @@ Cách lấy tối thiểu, không cần hạ tầng mới: `logger.info` một d
 7. **Quota web = 5** giữ nguyên hay điều chỉnh, khi đã tách khỏi mobile?
 8. **Có gửi email tự động** kèm mã cho user không (đề xuất: có, tái dùng SMTP Resend của feature-32), hay admin tự gửi qua kênh khác?
 9. **Chỉ số M1 (tỷ lệ `rebound`) có ai theo dõi không?** (§12) — nó là cảnh báo sớm duy nhất cho việc hardware anchor không hoạt động. Nếu không ai nhìn, ticket sẽ tăng dần mà không ai biết nguyên nhân.
-10. **Trần 100 thiết bị iOS/năm của ad-hoc** (§4.4) — mục tiêu số user iOS trong 12 tháng tới là bao nhiêu? Nếu vượt 100 thì phải tính chuyện lên TestFlight hoặc App Store **trước** khi chạm trần, không phải sau. Đây là ràng buộc phân phối chứ không phải của feature, nhưng R1 (1 user = 1 máy) làm hai con số trùng nhau.
-11. **Keystore Android đang backup ở đâu?** (§4.4 D1) — mất nó là mất khả năng cập nhật app **và** toàn bộ user Android rơi vào S3 cùng lúc. Nếu hiện chỉ nằm trên một máy dev thì nên xử lý trước khi release, không đợi sau.
+10. **Trần 100 thiết bị iOS/năm của ad-hoc** (§4.5) — mục tiêu số user iOS trong 12 tháng tới là bao nhiêu? Nếu vượt 100 thì phải tính chuyện lên TestFlight hoặc App Store **trước** khi chạm trần, không phải sau. Đây là ràng buộc phân phối chứ không phải của feature, nhưng R1 (1 user = 1 máy) làm hai con số trùng nhau.
+12. ✅ **Đã chốt** — gộp `DeviceActivationKey` vào `MobileDevice`. Mỗi slot mang đúng một mã nên hai bảng là tách đôi thứ vốn là một (§6.1).
+15. ✅ **Đã chốt** — mã gửi **ngoài luồng qua Zalo / điện thoại**, hệ thống không gửi email. Hệ quả: bỏ template email, admin phải copy được mã dễ dàng, và TTL quan trọng hơn vì không có xác nhận đã gửi (§5.4).
+12b. ~~Bỏ `DeviceActivationKey`?~~ (§4.1) — mã kích hoạt sinh ra để bịt khoảng trống "admin gỡ máy cũ rồi ai login trước cũng chiếm được slot". Mô hình duyệt `PENDING` bịt khoảng trống đó chặt hơn: admin duyệt **một `device_id` cụ thể**, không phải một quyền mà máy bất kỳ tiêu thụ được. Giữ cả hai là hai lớp duyệt cho cùng một việc. Bỏ được: 1 model, 1 endpoint, 1 màn hình app, template email, ~10 test.
+14. ✅ **Đã chốt theo hệ quả của câu 12** — bỏ `mobile_enabled`; "chưa được cấp slot" đã là trạng thái tắt (§6.2).
+12b. ~~Có giữ `DeviceActivationKey` không?~~ (§4.1 hệ quả 4) — giờ đã có `mobile_max_devices`, đường đơn giản hơn đã tồn tại: admin gỡ máy cũ, user đăng nhập máy mới. Mã kích hoạt vẫn đáng giữ vì nó đóng khoảng trống giữa hai bước đó — không có mã thì **ai đăng nhập trước cũng chiếm được slot**, kể cả người đang share tài khoản. Nếu PO chấp nhận rủi ro đó thì bỏ được hẳn một model, một endpoint, một màn hình và ~10 test.
+13. **`mobile_max_devices` có bao giờ khác 1 không?** — nếu luôn là 1, tôi giữ lại partial unique index (mạnh hơn row lock) và biến field thành hằng số. Nếu có thể là 2+ thì phải bỏ index như §4.1 mô tả. Câu trả lời quyết định độ chắc của ràng buộc.
+11. **Keystore Android đang backup ở đâu?** (§4.5 D1) — mất nó là mất khả năng cập nhật app **và** toàn bộ user Android rơi vào S3 cùng lúc. Nếu hiện chỉ nằm trên một máy dev thì nên xử lý trước khi release, không đợi sau.
