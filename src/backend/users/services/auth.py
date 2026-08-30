@@ -2,6 +2,8 @@
 
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from ..models import User
@@ -54,4 +56,12 @@ def issue_tokens_for_device(user, device, platform: str) -> dict:
     refresh = RefreshToken.for_user(user)
     refresh['device_id'] = device.device_id
     refresh['platform'] = platform
+    # for_user() writes the OutstandingToken row before these claims exist, so the
+    # stored copy carries no device_id and blacklist_tokens_for_devices() could
+    # never match it. Re-sync the row with the token actually handed out; rotation
+    # in TokenRefreshSerializer calls outstand() after the claims are already on
+    # the payload, so only this first token needs the fix.
+    OutstandingToken.objects.filter(jti=refresh[api_settings.JTI_CLAIM]).update(
+        token=str(refresh),
+    )
     return {'refresh': str(refresh), 'access': str(refresh.access_token)}

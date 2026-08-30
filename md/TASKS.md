@@ -237,6 +237,25 @@
 
 ---
 
+### Feature 35: Admin quản lý thiết bị mobile ✅ COMPLETE
+**Priority**: High | **Status**: ✅ Implemented (2026-08-30)
+
+- [x] **35.1** Nút **Thêm thiết bị** trên `MobileDeviceAdmin` — chọn user, hệ thống tự sinh `client_code` + `pairing_code`
+  - `add_view()` thay form ModelAdmin chuẩn, route qua `issue_slot()` để giữ kiểm tra quota dưới row lock
+  - Quota đầy → lỗi trên form, không phải 500
+- [x] **35.2** Action **Làm mới thiết bị** — reset slot về `UNCLAIMED` tại chỗ, giữ `client_code` và lịch sử
+  - Sinh mã mới, xoá `device_id`/`hardware_hash`, gia hạn TTL, reset `claim_attempts`
+  - Blacklist token máy cũ để app đăng xuất sạch
+- [x] **35.3** `verify_pairing_code()` khớp slot **theo mã** thay vì theo `created_at`
+- [x] **35.4** `claim_slot()` bọc `IntegrityError` thành `SlotError` (400 thay vì 500)
+- [x] **35.5** Sửa bug có sẵn: `issue_tokens_for_device()` ghi `OutstandingToken` trước khi gắn claim `device_id` → `blacklist_tokens_for_devices()` chưa bao giờ khớp (ảnh hưởng cả `revoke_slots` từ feature-34)
+- [x] **35.6** Test T35-1…T35-16 — 50/50 test backend xanh
+
+> **Design doc**: `md/design/feature-35-admin-refresh-device.md` (v4)
+> **Không có migration** — chỉ đổi giá trị trong cột đã có của `users_mobiledevice`
+
+---
+
 ### Admin Panel — Django Jazzmin ✅
 **Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
 - [x] Books, Videos, Exams admin đầy đủ

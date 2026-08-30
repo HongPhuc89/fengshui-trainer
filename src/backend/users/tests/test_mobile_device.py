@@ -9,13 +9,15 @@ appear when there is a real request boundary.
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from users.models import MobileDevice, User, UserDevice
-from users.services.mobile_slot import SlotError, issue_slot, normalize_code
+from users.models import AdminAuditLog, MobileDevice, User, UserDevice
+from users.services.mobile_slot import SlotError, issue_slot, normalize_code, refresh_slot
 from users.tests.utils import no_throttling
 
 PASSWORD = 'str0ng-pass-word'
@@ -304,3 +306,252 @@ class SlotClaimTests(MobileSlotTestCase):
         self.assertFalse(response.data['claimed'])
         if spare:
             self.assertEqual(MobileDevice.objects.get(pk=spare.pk).status, 'UNCLAIMED')
+
+
+@no_throttling
+class SlotRefreshTests(MobileSlotTestCase):
+    """Admin refresh of a device slot (feature-35 §3, §6.1)."""
+
+    def test_t35_1_refresh_releases_the_handset_but_keeps_the_slot(self):
+        """T35-1: client_code is the slot's identity and must survive a refresh."""
+        self.pair()
+        slot = self.user.mobile_devices.get()
+        old_code, old_pairing = slot.client_code, slot.pairing_code
+
+        refresh_slot(slot)
+        slot.refresh_from_db()
+
+        self.assertEqual(slot.status, 'UNCLAIMED')
+        self.assertIsNone(slot.device_id)
+        self.assertIsNone(slot.hardware_hash)
+        self.assertEqual(slot.client_code, old_code)
+        self.assertNotEqual(slot.pairing_code, old_pairing)
+        self.assertEqual(slot.claim_attempts, 0)
+        self.assertGreater(slot.expires_at, timezone.now())
+
+    def test_t35_2_refresh_rescues_a_slot_burnt_by_wrong_attempts(self):
+        """T35-2: an unclaimed slot with spent attempts gets a clean code."""
+        slot = self.issue()
+        MobileDevice.objects.filter(pk=slot.pk).update(claim_attempts=4)
+        slot.refresh_from_db()
+
+        refresh_slot(slot)
+        slot.refresh_from_db()
+
+        self.assertEqual(slot.claim_attempts, 0)
+        self.assertEqual(slot.status, 'UNCLAIMED')
+
+    def test_t35_3_refresh_refuses_a_dead_slot(self):
+        """T35-3: reviving a non-occupying slot would hand out quota by the back door."""
+        slot = self.issue()
+        MobileDevice.objects.filter(pk=slot.pk).update(status='REVOKED')
+        slot.refresh_from_db()
+
+        with self.assertRaises(SlotError):
+            refresh_slot(slot)
+        slot.refresh_from_db()
+        self.assertEqual(slot.status, 'REVOKED')
+
+    def test_t35_4_refresh_does_not_free_the_quota(self):
+        """T35-4: the slot is still the user's, so it still occupies its place."""
+        self.pair()
+        slot = self.user.mobile_devices.get()
+
+        refresh_slot(slot)
+
+        with self.assertRaises(SlotError):
+            issue_slot(self.user, staff=None)
+
+    def test_t35_5_new_handset_claims_the_refreshed_slot(self):
+        """T35-5: a device change must not fragment the history into a new row."""
+        self.pair()
+        slot = self.user.mobile_devices.get()
+        old_code = slot.client_code
+
+        refresh_slot(slot)
+        slot.refresh_from_db()
+        response = self.login('device-b', HW_B, code=slot.pairing_code)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['client_code'], old_code)
+        self.assertEqual(self.user.mobile_devices.count(), 1)
+
+    def test_t35_6_duplicate_device_id_is_a_400_not_a_500(self):
+        """
+        T35-6: the unique constraint is right to refuse; only the 500 was wrong.
+
+        Reaching claim_slot with a device_id that is already live needs the clone
+        branch of resolve_mobile_device: same device_id, different hardware
+        anchor, so the handset reads as unknown and is sent to a second slot.
+        """
+        self.user.mobile_max_devices = 2
+        self.user.save(update_fields=['mobile_max_devices'])
+        self.pair()  # slot #1 ACTIVE on device-a / HW_A
+        spare = self.issue()
+
+        response = self.login('device-a', HW_B, code=spare.pairing_code)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'PAIRING_FAILED')
+        # Pin the message so this keeps testing the constraint guard rather than
+        # some other SlotError the flow might start raising first.
+        self.assertIn('đang dùng một slot khác', response.data['detail'])
+        self.assertEqual(MobileDevice.objects.get(pk=spare.pk).status, 'UNCLAIMED')
+
+    def test_t35_7_old_tokens_stop_working(self):
+        """T35-7: the old handset must be signed out, not left in a broken state."""
+        tokens = self.pair().data
+        slot = self.user.mobile_devices.get()
+
+        refresh_slot(slot)
+
+        # The API is closed by DeviceJWTAuthentication (status left ACTIVE)...
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+        self.assertEqual(
+            self.client.get(reverse('user_profile')).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        # ...and the refresh path is closed by the blacklist, which is what makes
+        # the app call clearAuth() instead of looping on a token it cannot use.
+        self.client.credentials()
+        self.assertEqual(
+            self.client.post(reverse('token_refresh'),
+                             {'refresh': tokens['refresh']}, format='json').status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_t35_8_snapshot_is_json_safe(self):
+        """T35-8: change_log is a plain JSONField, so datetimes must be stringified."""
+        self.pair()
+        slot = self.user.mobile_devices.get()
+        device_id = slot.device_id
+
+        before = refresh_slot(slot)
+
+        self.assertEqual(before['device_id'], device_id)
+        self.assertEqual(before['status'], 'ACTIVE')
+        self.assertIsInstance(before['claimed_at'], str)
+        AdminAuditLog.objects.create(
+            staff=None, target_user=self.user, action_category='DEVICE_RESET',
+            action_detail='test', change_log={'before': before, 'after': {}},
+        )
+
+    def test_t35_9_refresh_respects_not_null_columns(self):
+        """T35-9: device_type is blank=True but null=False."""
+        self.pair()
+        slot = self.user.mobile_devices.get()
+
+        refresh_slot(slot)
+        slot.refresh_from_db()
+
+        self.assertEqual(slot.device_type, '')
+        self.assertIsNone(slot.device_name)
+
+    def test_t35_10_code_picks_its_own_slot_not_the_oldest(self):
+        """T35-10: a refreshed slot keeps its created_at, so ordering would misfire."""
+        self.user.mobile_max_devices = 2
+        self.user.save(update_fields=['mobile_max_devices'])
+        older = self.issue()
+        newer = self.issue()
+        MobileDevice.objects.filter(pk=older.pk).update(
+            created_at=timezone.now() - timedelta(days=30),
+        )
+
+        response = self.login('device-b', HW_B, code=newer.pairing_code)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(MobileDevice.objects.get(pk=newer.pk).status, 'ACTIVE')
+        self.assertEqual(MobileDevice.objects.get(pk=older.pk).claim_attempts, 0)
+
+    def test_t35_11_a_wrong_code_burns_every_live_slot(self):
+        """T35-11: counting on one slot only would leave the others grindable."""
+        self.user.mobile_max_devices = 2
+        self.user.save(update_fields=['mobile_max_devices'])
+        first, second = self.issue(), self.issue()
+
+        response = self.login('device-b', HW_B, code='TT-0000-0000-0000')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(MobileDevice.objects.get(pk=first.pk).claim_attempts, 1)
+        self.assertEqual(MobileDevice.objects.get(pk=second.pk).claim_attempts, 1)
+        remaining = settings.DEVICE_PAIRING_MAX_ATTEMPTS - 1
+        self.assertIn(f'còn {remaining} lần thử', response.data['detail'])
+
+
+class MobileDeviceAdminAddTests(APITestCase):
+    """The admin Add button routes through issue_slot() (feature-35 §6.3)."""
+
+    def setUp(self):
+        self.target = User.objects.create_user(
+            username='target@example.com', email='target@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.admin = User.objects.create_superuser(
+            username='admin@example.com', email='admin@example.com', password=PASSWORD,
+        )
+        self.add_url = reverse('admin:users_mobiledevice_add')
+
+    def test_t35_12_add_allocates_a_slot_with_a_code(self):
+        """T35-12: selecting a user is enough; the system mints both codes."""
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            self.add_url, {'user': self.target.pk, 'issued_reason': 'user đổi sang iPhone'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        slot = MobileDevice.objects.get(user=self.target)
+        self.assertEqual(slot.status, 'UNCLAIMED')
+        self.assertTrue(slot.client_code)
+        self.assertTrue(slot.pairing_code)
+        self.assertEqual(slot.issued_by, self.admin)
+
+    def test_t35_13_add_shows_the_pairing_code_to_the_admin(self):
+        """T35-13: the code is delivered out of band, so it has to be readable once."""
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            self.add_url, {'user': self.target.pk, 'issued_reason': ''}, follow=True,
+        )
+
+        slot = MobileDevice.objects.get(user=self.target)
+        self.assertContains(response, slot.pairing_code)
+
+    def test_t35_14_add_refuses_a_user_that_is_out_of_quota(self):
+        """T35-14: the quota error belongs on the form, not in a 500."""
+        issue_slot(self.target, staff=None)
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            self.add_url, {'user': self.target.pk, 'issued_reason': ''},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFormError(response.context['form'], 'user',
+                             [msg for msg in response.context['form'].errors['user']])
+        self.assertEqual(MobileDevice.objects.filter(user=self.target).count(), 1)
+
+    def test_t35_15_add_requires_the_add_permission(self):
+        """T35-15: staff without users.add_mobiledevice must not allocate slots."""
+        weak = User.objects.create_user(
+            username='weak@example.com', email='weak@example.com',
+            password=PASSWORD, is_active=True, is_staff=True,
+        )
+        weak.user_permissions.add(
+            Permission.objects.get(codename='view_mobiledevice',
+                                   content_type=ContentType.objects.get_for_model(MobileDevice)),
+        )
+        self.client.force_login(weak)
+
+        response = self.client.get(self.add_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(MobileDevice.objects.exists())
+
+    def test_t35_16_add_writes_the_same_audit_row_as_the_bulk_action(self):
+        """T35-16: both entry points go through _log_issue, so shapes must match."""
+        self.client.force_login(self.admin)
+        self.client.post(self.add_url, {'user': self.target.pk, 'issued_reason': ''})
+
+        slot = MobileDevice.objects.get(user=self.target)
+        log = AdminAuditLog.objects.get(target_user=self.target, action_category='MOBILE_SLOT')
+        self.assertEqual(log.staff, self.admin)
+        self.assertEqual(log.change_log['after']['client_code'], slot.client_code)

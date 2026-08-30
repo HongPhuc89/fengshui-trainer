@@ -1,13 +1,17 @@
+from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm as DjangoAdminUserCreationForm, UserChangeForm as DjangoUserChangeForm
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from .models import AdminAuditLog, MobileDevice, PasswordResetOTP, User, UserDevice
-from .services.mobile_slot import SlotError, issue_slot
+from .services.mobile_slot import SlotError, issue_slot, refresh_slot
 from .services.tokens import blacklist_tokens_for_devices
 from .utils import get_client_ip as _get_client_ip
 from books.models import UserBookPurchase
@@ -133,28 +137,73 @@ class IssueSlotMixin:
                 self.message_user(request, f'{user.email}: {exc}', level=messages.ERROR)
                 continue
 
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=user,
-                action_category='MOBILE_SLOT',
-                action_detail=f'Issued slot {slot.client_code}',
-                change_log={'before': {}, 'after': {'client_code': slot.client_code,
-                                                    'expires_at': slot.expires_at.isoformat()}},
-                ip_address=_get_client_ip(request),
-            )
-            self.message_user(
-                request,
-                format_html(
-                    '{} → slot <strong>{}</strong>, mã <code style="user-select:all">{}</code> '
-                    '(hết hạn {})',
-                    user.email, slot.client_code, slot.pairing_code,
-                    slot.expires_at.strftime('%d/%m/%Y'),
-                ),
-            )
+            self._log_issue(request, slot)
+            self.message_user(request, self._slot_message(slot))
+
+    @staticmethod
+    def _log_issue(request, slot):
+        AdminAuditLog.objects.create(
+            staff=request.user,
+            target_user=slot.user,
+            action_category='MOBILE_SLOT',
+            action_detail=f'Issued slot {slot.client_code}',
+            change_log={'before': {}, 'after': {'client_code': slot.client_code,
+                                                'expires_at': slot.expires_at.isoformat()}},
+            ip_address=_get_client_ip(request),
+        )
+
+    @staticmethod
+    def _slot_message(slot):
+        return format_html(
+            '{} → slot <strong>{}</strong>, mã <code style="user-select:all">{}</code> '
+            '(hết hạn {})',
+            slot.user.email, slot.client_code, slot.pairing_code,
+            slot.expires_at.strftime('%d/%m/%Y'),
+        )
 
     @staticmethod
     def _target_users(queryset):
         raise NotImplementedError
+
+
+class MobileDeviceIssueForm(forms.Form):
+    """
+    Add form for MobileDeviceAdmin.
+
+    A plain Form, not a ModelForm: the row is created by issue_slot(), which
+    fills client_code, pairing_code and expires_at itself. Nothing the admin
+    types maps onto a column except issued_reason.
+    """
+
+    # Widget built here, not in __init__: ModelChoiceField wires widget.choices
+    # to the field at construction time, and a widget swapped in afterwards keeps
+    # a plain list that AutocompleteSelect.optgroups() cannot read.
+    user = forms.ModelChoiceField(
+        queryset=User.objects.order_by('email'),
+        label='Người dùng',
+        widget=AutocompleteSelect(MobileDevice._meta.get_field('user'), admin.site),
+    )
+    issued_reason = forms.CharField(
+        label='Lý do cấp', max_length=255, required=False,
+        help_text='Ví dụ: "user đổi sang iPhone", "cấp máy thứ 2 theo hợp đồng".',
+    )
+
+    def clean_user(self):
+        """
+        Pre-check the quota so a full user gets a form error instead of a 500.
+
+        NOT authoritative — issue_slot() re-counts under a row lock. This only
+        buys a readable message in the common, uncontended case.
+        """
+        user = self.cleaned_data['user']
+        taken = user.mobile_devices.filter(status__in=MobileDevice.OCCUPYING).count()
+        if taken >= user.mobile_max_devices:
+            raise forms.ValidationError(
+                f'{user.email} đã dùng hết {user.mobile_max_devices} thiết bị cho phép. '
+                f'Nếu user đổi máy: làm mới hoặc gỡ liên kết slot cũ. '
+                f'Nếu user được phép dùng thêm máy: nâng "mobile_max_devices" ở trang User.'
+            )
+        return user
 
 
 @admin.register(MobileDevice)
@@ -171,11 +220,8 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
                        'expires_at', 'claimed_at', 'claim_ip', 'claim_attempts',
                        'bound_at', 'revoked_at', 'revoked_reason', 'last_active')
     ordering = ('-last_active',)
-    actions = ['issue_slot', 'revoke_slots']
-
-    def has_add_permission(self, request):
-        # Slots are only created through the action, so the quota check always runs.
-        return False
+    autocomplete_fields = ['user']
+    actions = ['issue_slot', 'refresh_slots', 'revoke_slots']
 
     def has_delete_permission(self, request, obj=None):
         # Revoking preserves the audit trail; deleting destroys it.
@@ -201,12 +247,88 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
             return format_html('<code style="user-select:all">{}</code>', obj.pairing_code)
         return f'{obj.pairing_code[:7]}-****-****'
 
+    def add_view(self, request, form_url='', extra_context=None):
+        """
+        Replace the ModelAdmin add form: allocating a slot is a service call, not
+        a row edit (feature-35 §6.3).
+
+        Routing add through issue_slot() is what lets has_add_permission stay at
+        the Django default: the locked quota count and the code generation still
+        run, so a slot is never created by a plain form save.
+        """
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+
+        form = MobileDeviceIssueForm(request.POST or None)
+        if request.method == 'POST' and form.is_valid():
+            try:
+                slot = issue_slot(
+                    form.cleaned_data['user'],
+                    staff=request.user,
+                    reason=form.cleaned_data['issued_reason'] or 'Issued from Mobile Device admin',
+                )
+            except SlotError as exc:
+                # Lost the race with a concurrent issue: clean_user() passed but
+                # the locked re-count inside issue_slot() did not.
+                form.add_error('user', str(exc))
+            else:
+                self._log_issue(request, slot)
+                self.message_user(request, self._slot_message(slot))
+                return redirect(reverse('admin:users_mobiledevice_changelist'))
+
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Cấp slot thiết bị mới',
+            'form': form,
+            'opts': self.model._meta,
+        }
+        return TemplateResponse(request, 'admin/users/mobiledevice/issue_slot.html', context)
+
     @staticmethod
     def _target_users(queryset):
         seen = {}
         for slot in queryset.select_related('user'):
             seen.setdefault(slot.user.pk, slot.user)
         return seen.values()
+
+    @admin.action(description='Làm mới thiết bị (giữ slot, cấp mã mới)')
+    def refresh_slots(self, request, queryset):
+        """
+        Release the handset but keep the slot, so a device change costs neither a
+        new row nor a new client_code.
+
+        The new code goes out of band like issue_slot's, so the message has to
+        carry it in a form the admin can copy in one go.
+        """
+        for slot in queryset.select_related('user'):
+            try:
+                before = refresh_slot(slot)
+            except SlotError as exc:
+                self.message_user(request, f'{slot.client_code}: {exc}', level=messages.ERROR)
+                continue
+
+            slot.refresh_from_db()
+            AdminAuditLog.objects.create(
+                staff=request.user,
+                target_user=slot.user,
+                action_category='DEVICE_RESET',
+                action_detail=f'Admin refreshed mobile slot {slot.client_code}',
+                change_log={'before': before,
+                            'after': {'status': slot.status,
+                                      'pairing_code': slot.pairing_code,
+                                      'expires_at': slot.expires_at.isoformat()}},
+                ip_address=_get_client_ip(request),
+            )
+            self.message_user(
+                request,
+                format_html(
+                    '{} → slot <strong>{}</strong> đã làm mới, mã mới '
+                    '<code style="user-select:all">{}</code> (hết hạn {}). '
+                    'Máy cũ đã bị đăng xuất.',
+                    slot.user.email, slot.client_code, slot.pairing_code,
+                    slot.expires_at.strftime('%d/%m/%Y'),
+                ),
+            )
 
     @admin.action(description='Gỡ liên kết / huỷ slot')
     def revoke_slots(self, request, queryset):
