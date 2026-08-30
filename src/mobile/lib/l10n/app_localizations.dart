@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @navStore.
   ///
   /// In en, this message translates to:
-  /// **'Treasure'**
+  /// **'Donate'**
   String get navStore;
 
   /// No description provided for @navVideos.

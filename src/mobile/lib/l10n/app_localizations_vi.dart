@@ -130,7 +130,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get navBooks => 'Sách';
 
   @override
-  String get navStore => 'Kho báu';
+  String get navStore => 'Đóng Góp';
 
   @override
   String get navVideos => 'Video';

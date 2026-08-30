@@ -128,7 +128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navBooks => 'Library';
 
   @override
-  String get navStore => 'Treasure';
+  String get navStore => 'Donate';
 
   @override
   String get navVideos => 'Videos';

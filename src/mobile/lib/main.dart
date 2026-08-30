@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/security/screen_guard.dart';
 
 import 'core/utils/constants.dart';
@@ -19,6 +20,10 @@ import 'shared/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // DateFormat with an explicit locale throws unless its symbols are loaded;
+  // the store screen formats dates in Vietnamese.
+  await initializeDateFormatting('vi_VN');
 
   // Init Hive
   await Hive.initFlutter();
