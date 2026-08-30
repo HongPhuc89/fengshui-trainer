@@ -71,6 +71,7 @@ import '../auth/auth_cubit.dart' as _i761;
 import '../cache/cache_service.dart' as _i981;
 import '../device/device_service.dart' as _i202;
 import '../pdf/pdf_decryption_service.dart' as _i367;
+import '../update/installer.dart' as _i393;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -86,6 +87,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i367.PdfDecryptionService>(
       () => _i367.PdfDecryptionService(),
     );
+    gh.singleton<_i393.AndroidInstaller>(() => const _i393.AndroidInstaller());
     await gh.singletonAsync<_i968.UpdateStore>(() {
       final i = _i968.UpdateStore();
       return i.init().then((_) => i);
@@ -107,12 +109,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i161.AuthRemoteDataSourceImpl(
         gh<_i277.ApiClient>(),
         gh<_i202.DeviceService>(),
-      ),
-    );
-    gh.singleton<_i128.UpdateCubit>(
-      () => _i128.UpdateCubit(
-        gh<_i11.UpdateRepository>(),
-        gh<_i968.UpdateStore>(),
       ),
     );
     gh.factory<_i787.AuthRepository>(
@@ -141,6 +137,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i997.BooksRepositoryImpl(
         gh<_i776.BooksRemoteDataSource>(),
         gh<_i981.CacheService>(),
+      ),
+    );
+    gh.singleton<_i128.UpdateCubit>(
+      () => _i128.UpdateCubit(
+        gh<_i11.UpdateRepository>(),
+        gh<_i968.UpdateStore>(),
+        gh<_i393.AndroidInstaller>(),
       ),
     );
     gh.factory<_i836.VideosRepository>(

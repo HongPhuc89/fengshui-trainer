@@ -55,10 +55,12 @@ class UpdateState extends Equatable {
 
 @singleton
 class UpdateCubit extends Cubit<UpdateState> {
-  UpdateCubit(this._repository, this._store) : super(const UpdateState());
+  UpdateCubit(this._repository, this._store, this._installer)
+      : super(const UpdateState());
 
   final UpdateRepository _repository;
   final UpdateStore _store;
+  final AndroidInstaller _installer;
   static const _decider = UpdateDecider();
 
   /// Never awaited by main(): a slow network must not hold the app on a blank
@@ -110,43 +112,53 @@ class UpdateCubit extends Cubit<UpdateState> {
   }
 
   Future<void> _downloadAndInstall(AppVersionInfo info) async {
-    emit(state.copyWith(phase: DownloadPhase.downloading, progress: 0, clearError: true));
+    // Asked before downloading, not after: 160MB is a lot to spend on a build
+    // the system will then refuse to install.
+    if (!await _installer.canInstall()) {
+      emit(state.copyWith(
+        phase: DownloadPhase.idle,
+        needsInstallPermission: true,
+        error: 'Cần cho phép cài đặt từ nguồn này, sau đó bấm Cập nhật lại.',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      phase: DownloadPhase.downloading,
+      progress: 0,
+      needsInstallPermission: false,
+      clearError: true,
+    ));
 
     try {
       final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/huyenhoc-${info.versionCode}.apk';
+      final file = File('${dir.path}/huyenhoc-${info.versionCode}.apk');
+      final expected = info.sha256 ?? '';
 
-      // The signed URL may simply have expired mid-flight; a fresh one costs one
-      // request and avoids blaming the user's network (feature-36 §7.2).
-      var url = info.downloadUrl;
-      try {
-        await _repository.download(url, path, onProgress: _emitProgress);
-      } catch (_) {
-        url = await _repository.refreshDownloadUrl() ?? url;
-        await _repository.download(url, path, onProgress: _emitProgress);
+      // A retry — after the permission prompt, or after the user backed out of
+      // the system installer — must not pay for the download a second time. The
+      // digest is what makes reuse safe: a half-written file never matches.
+      final reusable = expected.isNotEmpty &&
+          await file.exists() &&
+          await _matchesDigest(file, expected);
+
+      if (!reusable) {
+        await _fetch(info, file.path);
+        if (expected.isNotEmpty) {
+          emit(state.copyWith(phase: DownloadPhase.verifying));
+          if (!await _matchesDigest(file, expected)) {
+            await file.delete();
+            emit(state.copyWith(
+              phase: DownloadPhase.failed,
+              error: 'File tải về không toàn vẹn. Vui lòng thử lại.',
+            ));
+            return;
+          }
+        }
       }
 
-      emit(state.copyWith(phase: DownloadPhase.verifying));
-      if (!await _digestMatches(File(path), info.sha256)) {
-        await File(path).delete();
-        emit(state.copyWith(
-          phase: DownloadPhase.failed,
-          error: 'File tải về không toàn vẹn. Vui lòng thử lại.',
-        ));
-        return;
-      }
-
-      if (!await AndroidInstaller.canInstall()) {
-        emit(state.copyWith(
-          phase: DownloadPhase.ready,
-          needsInstallPermission: true,
-          error: 'Cần cho phép cài đặt từ nguồn này để tiếp tục.',
-        ));
-        return;
-      }
-
-      emit(state.copyWith(phase: DownloadPhase.ready, needsInstallPermission: false));
-      await AndroidInstaller.install(path);
+      emit(state.copyWith(phase: DownloadPhase.ready, progress: 1));
+      await _installer.install(file.path);
     } catch (_) {
       emit(state.copyWith(
         phase: DownloadPhase.failed,
@@ -155,19 +167,29 @@ class UpdateCubit extends Cubit<UpdateState> {
     }
   }
 
+  /// The signed URL may simply have expired mid-flight; a fresh one costs one
+  /// request and avoids blaming the user's network (feature-36 §7.2).
+  Future<void> _fetch(AppVersionInfo info, String path) async {
+    try {
+      await _repository.download(info.downloadUrl, path, onProgress: _emitProgress);
+    } catch (_) {
+      final fresh = await _repository.refreshDownloadUrl() ?? info.downloadUrl;
+      await _repository.download(fresh, path, onProgress: _emitProgress);
+    }
+  }
+
   void _emitProgress(int received, int total) {
     if (total <= 0) return;
     emit(state.copyWith(progress: received / total));
   }
 
-  /// Streamed so a 60MB build never lands in memory in one piece. Catches a
+  /// Streamed so a 160MB build never lands in memory in one piece. Catches a
   /// truncated or swapped file — not a compromised server, since the hash comes
   /// from the same place (feature-36 §7.2).
-  Future<bool> _digestMatches(File file, String? expected) async {
-    if (expected == null || expected.isEmpty) return true;
+  Future<bool> _matchesDigest(File file, String expected) async {
     final digest = await sha256.bind(file.openRead()).first;
     return digest.toString() == expected;
   }
 
-  Future<void> openInstallSettings() => AndroidInstaller.openInstallSettings();
+  Future<void> openInstallSettings() => _installer.openInstallSettings();
 }
