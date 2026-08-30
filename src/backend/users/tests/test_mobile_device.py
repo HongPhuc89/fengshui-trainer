@@ -636,3 +636,33 @@ class MobileDeviceAdminRefreshButtonTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.slot.refresh_from_db()
         self.assertEqual(self.slot.status, 'UNCLAIMED')
+
+
+@no_throttling
+class MobileLoginIgnoresAppVersionTests(MobileSlotTestCase):
+    """Login must not enforce the update floor (feature-36 §6.3)."""
+
+    def test_t36_9_stale_client_still_gets_a_session(self):
+        """
+        T36-9: enforcement lives in the app-open check, not here.
+
+        Pinned as a test because the natural instinct is to gate the one call
+        that always reaches the server; §6.3 explains why it does not.
+        """
+        from core.models import AppRelease
+        AppRelease.objects.create(
+            platform='ANDROID', version_code=12, version_name='1.2.0',
+            min_supported_version_code=12, is_published=True,
+        )
+
+        response = self.login('device-a', HW_A, code=self.issue().pairing_code,
+                              platform_os='android', app_version='1.0.0+7')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_t36_10_login_records_the_version_it_was_told(self):
+        """T36-10: version_spread() is only as good as what login stores."""
+        self.login('device-a', HW_A, code=self.issue().pairing_code,
+                   app_version='1.0.0+7')
+
+        self.assertEqual(self.user.mobile_devices.get().app_version, '1.0.0+7')

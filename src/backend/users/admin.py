@@ -209,8 +209,11 @@ class MobileDeviceIssueForm(forms.Form):
 @admin.register(MobileDevice)
 class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
     list_display = ('client_code', 'pairing_code_display', 'user_email', 'status',
-                    'device_name', 'os_version', 'geo_city', 'expires_at', 'last_active')
-    list_filter = ('status', 'device_type', 'geo_country_code')
+                    'device_name', 'os_version', 'app_version', 'geo_city',
+                    'expires_at', 'last_active')
+    # app_version is filterable so staff can answer "who is still on the old
+    # build" before raising the update threshold (feature-36 §6.4).
+    list_filter = ('status', 'device_type', 'app_version', 'geo_country_code')
     search_fields = ('client_code', 'pairing_code', 'device_id', 'hardware_hash',
                      'device_model', 'user__email', 'user__username')
     readonly_fields = ('user', 'client_code', 'pairing_code', 'device_id', 'hardware_hash',

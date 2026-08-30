@@ -52,6 +52,9 @@ import '../../features/training/domain/repositories/training_repository.dart'
 import '../../features/training/presentation/bloc/flashcard_bloc.dart' as _i344;
 import '../../features/training/presentation/bloc/quiz_bloc.dart' as _i240;
 import '../../features/training/presentation/bloc/training_bloc.dart' as _i669;
+import '../../features/update/data/update_repository.dart' as _i11;
+import '../../features/update/data/update_store.dart' as _i968;
+import '../../features/update/presentation/update_cubit.dart' as _i128;
 import '../../features/videos/data/datasources/videos_remote_datasource.dart'
     as _i888;
 import '../../features/videos/data/repositories/videos_repository_impl.dart'
@@ -83,6 +86,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i367.PdfDecryptionService>(
       () => _i367.PdfDecryptionService(),
     );
+    await gh.singletonAsync<_i968.UpdateStore>(() {
+      final i = _i968.UpdateStore();
+      return i.init().then((_) => i);
+    }, preResolve: true);
     gh.singleton<_i761.AuthCubit>(
       () => _i761.AuthCubit(
         gh<_i558.FlutterSecureStorage>(),
@@ -90,6 +97,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i277.ApiClient>(() => _i277.ApiClient(gh<_i761.AuthCubit>()));
+    gh.singleton<_i11.UpdateRepository>(
+      () => _i11.UpdateRepository(gh<_i277.ApiClient>()),
+    );
     gh.singleton<_i202.DeviceService>(
       () => _i202.DeviceService(gh<_i558.FlutterSecureStorage>()),
     );
@@ -97,6 +107,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i161.AuthRemoteDataSourceImpl(
         gh<_i277.ApiClient>(),
         gh<_i202.DeviceService>(),
+      ),
+    );
+    gh.singleton<_i128.UpdateCubit>(
+      () => _i128.UpdateCubit(
+        gh<_i11.UpdateRepository>(),
+        gh<_i968.UpdateStore>(),
       ),
     );
     gh.factory<_i787.AuthRepository>(

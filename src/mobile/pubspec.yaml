@@ -47,6 +47,10 @@ dependencies:
   image_cropper: ^11.0.0
   image_picker: ^1.1.2
 
+  # In-app update (feature-36)
+  path_provider: ^2.1.4
+  url_launcher: ^6.3.0
+
   # Device
   device_info_plus: ^10.1.2
   screen_protector: ^1.5.1

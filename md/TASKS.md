@@ -257,6 +257,25 @@
 
 ---
 
+### Feature 36: Quản lý phiên bản app & cập nhật trong app ✅ COMPLETE
+**Priority**: High | **Status**: ✅ Implemented (2026-08-30)
+
+- [x] **36.0** 🔴 **Hotfix**: `INTERNET` chỉ có trong manifest debug → APK release chưa từng gọi được API. Thêm vào manifest `main`
+- [x] **36.1** Model `AppRelease` + migration — `version_code` là đơn vị so sánh duy nhất; `CheckConstraint` chặn `min_supported > version_code`
+- [x] **36.2** `GET /api/app/version/` (AllowAny) — trả verdict `BLOCKED` / `AVAILABLE` / `UP_TO_DATE`
+- [x] **36.3** `GET /api/app/ios/manifest.plist` — sinh động, ký lại URL IPA mỗi request
+- [x] **36.4** `AppReleaseAdmin` — sha256 + file_size tự tính, chặn publish lùi version, hiện phân bố phiên bản đang chạy
+- [x] **36.5** Flutter: kiểm tra lúc mở app + resume (throttle 6h), **không** móc vào login
+- [x] **36.6** Verdict dính — kiểm tra thất bại không mở khoá được máy đang bị chặn
+- [x] **36.7** Nút "Bỏ qua" ghi nhớ theo `version_code`, tự dọn bản ghi cũ
+- [x] **36.8** Android: tải bằng dio + verify sha256 theo stream + MethodChannel gọi trình cài đặt; iOS: `itms-services://`
+- [x] **36.9** Test — 22 backend (77/77 toàn suite) + 15 Flutter unit
+
+> **Design doc**: `md/design/feature-36-app-version-update.md` (v4)
+> ⚠️ **Vận hành**: APK phải ký đúng keystore hiện tại (D1/D3). Mỗi lần build IPA phải export lại profile với UDID hiện hành (O1). Không bao giờ dùng lại một `version_code` đã publish.
+
+---
+
 ### Admin Panel — Django Jazzmin ✅
 **Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
 - [x] Books, Videos, Exams admin đầy đủ

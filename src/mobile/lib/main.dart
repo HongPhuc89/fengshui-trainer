@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +12,8 @@ import 'core/utils/constants.dart';
 import 'core/auth/auth_cubit.dart';
 import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
+import 'features/update/presentation/update_cubit.dart';
+import 'features/update/presentation/update_gate.dart';
 import 'l10n/l10n.dart';
 import 'shared/theme/app_theme.dart';
 
@@ -31,6 +35,10 @@ void main() async {
 
   // Prevent screenshots on both platforms
   await ScreenGuard.preventCapture();
+
+  // Deliberately not awaited: a slow network must not hold the app on a blank
+  // screen. The result arrives through UpdateGate when it arrives (§7.5).
+  unawaited(getIt<UpdateCubit>().check());
 
   // Force portrait
   await SystemChrome.setPreferredOrientations([
@@ -70,12 +78,20 @@ class _FengShuiAppState extends State<FengShuiApp> with WidgetsBindingObserver {
         state == AppLifecycleState.paused) {
       ScreenGuard.preventCapture();
     }
+    if (state == AppLifecycleState.resumed) {
+      // force: false leaves the 6-hour throttle in charge, so switching apps
+      // does not turn into a request each time (§7.5).
+      unawaited(getIt<UpdateCubit>().check(force: false));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: getIt<AuthCubit>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: getIt<AuthCubit>()),
+        BlocProvider.value(value: getIt<UpdateCubit>()),
+      ],
       child: MaterialApp.router(
         title: 'Huyền Học',
         debugShowCheckedModeBanner: false,
@@ -88,6 +104,7 @@ class _FengShuiAppState extends State<FengShuiApp> with WidgetsBindingObserver {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => UpdateGate(child: child ?? const SizedBox()),
       ),
     );
   }
