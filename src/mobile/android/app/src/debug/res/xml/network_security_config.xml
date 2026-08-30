@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only. Android 9+ blocks cleartext HTTP by default, which stops the
+  app talking to a Django dev server over the LAN.
+
+  This file lives under src/debug/, so the release build never sees it and keeps
+  the strict default. Do not move it to src/main/.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
