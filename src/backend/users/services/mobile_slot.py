@@ -12,6 +12,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from django.utils import timezone
 
 from ..constants import PAIRING_ALPHABET, PAIRING_BODY_LENGTH, PAIRING_PREFIX
@@ -60,6 +61,52 @@ def normalize_code(raw: str) -> str:
     if value.startswith(PAIRING_PREFIX):
         value = value[len(PAIRING_PREFIX):]
     return value
+
+
+# Offered on the admin add form. Free text stays free text — this is an audit
+# note, not a taxonomy — but typing the same sentence by hand every time invites
+# near-duplicates that make the log hard to read later (feature-35 §6.3).
+ISSUED_REASON_PRESETS = (
+    'User đổi máy mới',
+    'Máy cũ hỏng hoặc bị mất',
+    'Cấp thêm máy theo hợp đồng',
+    'Khách hàng mới onboard',
+)
+
+# Written by the add form when the admin leaves the field empty; suggesting it
+# back would just spread a placeholder.
+AUTO_ISSUED_REASON = 'Issued from Mobile Device admin'
+
+
+def issued_reason_suggestions(limit: int = 12) -> list[str]:
+    """
+    Presets first, then reasons this deployment has actually used.
+
+    Ordered by how often each has been used so the common ones surface, and
+    de-duplicated case-insensitively against the presets — otherwise a preset
+    typed once by hand would come back as a second, near-identical option.
+    """
+    seen = {preset.casefold() for preset in ISSUED_REASON_PRESETS}
+    suggestions = list(ISSUED_REASON_PRESETS)
+
+    used = (
+        MobileDevice.objects
+        .exclude(issued_reason='')
+        .exclude(issued_reason=AUTO_ISSUED_REASON)
+        .values('issued_reason')
+        .annotate(uses=Count('id'))
+        .order_by('-uses', 'issued_reason')
+    )
+    for row in used:
+        reason = row['issued_reason'].strip()
+        key = reason.casefold()
+        if not reason or key in seen:
+            continue
+        seen.add(key)
+        suggestions.append(reason)
+        if len(suggestions) >= limit:
+            break
+    return suggestions
 
 
 def issue_slot(user, staff, reason: str = '') -> MobileDevice:

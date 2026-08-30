@@ -38,6 +38,11 @@
       </div>
     {% endfor %}
 
+    {# Suggestions for "Lý do cấp": presets plus reasons already used here. #}
+    <datalist id="{{ reason_list_id }}">
+      {% for reason in reason_suggestions %}<option value="{{ reason }}"></option>{% endfor %}
+    </datalist>
+
     <div style="margin-top:20px">
       <input type="submit" value="Cấp slot" class="default">
       <a href="{% url 'admin:users_mobiledevice_changelist' %}"

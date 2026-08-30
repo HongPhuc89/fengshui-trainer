@@ -11,7 +11,9 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from .models import AdminAuditLog, MobileDevice, PasswordResetOTP, User, UserDevice
-from .services.mobile_slot import SlotError, issue_slot, refresh_slot
+from .services.mobile_slot import (
+    AUTO_ISSUED_REASON, SlotError, issue_slot, issued_reason_suggestions, refresh_slot,
+)
 from .services.tokens import blacklist_tokens_for_devices
 from .utils import get_client_ip as _get_client_ip
 from books.models import UserBookPurchase
@@ -185,8 +187,22 @@ class MobileDeviceIssueForm(forms.Form):
     )
     issued_reason = forms.CharField(
         label='Lý do cấp', max_length=255, required=False,
-        help_text='Ví dụ: "user đổi sang iPhone", "cấp máy thứ 2 theo hợp đồng".',
+        help_text='Chọn một gợi ý hoặc tự gõ. Ghi rõ giúp tra lại lịch sử cấp slot sau này.',
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A datalist, not a select: the field is an audit note, so an unforeseen
+        # reason must still be typeable. The list only saves keystrokes and keeps
+        # repeat wording identical.
+        self.reason_suggestions = issued_reason_suggestions()
+        self.fields['issued_reason'].widget.attrs.update({
+            'list': self._REASON_LIST_ID,
+            'autocomplete': 'off',
+            'placeholder': 'Ví dụ: User đổi máy mới',
+        })
+
+    _REASON_LIST_ID = 'issued-reason-options'
 
     def clean_user(self):
         """
@@ -303,7 +319,7 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
                 slot = issue_slot(
                     form.cleaned_data['user'],
                     staff=request.user,
-                    reason=form.cleaned_data['issued_reason'] or 'Issued from Mobile Device admin',
+                    reason=form.cleaned_data['issued_reason'] or AUTO_ISSUED_REASON,
                 )
             except SlotError as exc:
                 # Lost the race with a concurrent issue: clean_user() passed but
@@ -318,6 +334,8 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
             **self.admin_site.each_context(request),
             'title': 'Cấp slot thiết bị mới',
             'form': form,
+            'reason_list_id': MobileDeviceIssueForm._REASON_LIST_ID,
+            'reason_suggestions': form.reason_suggestions,
             'opts': self.model._meta,
         }
         return TemplateResponse(request, 'admin/users/mobiledevice/issue_slot.html', context)

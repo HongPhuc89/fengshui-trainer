@@ -666,3 +666,78 @@ class MobileLoginIgnoresAppVersionTests(MobileSlotTestCase):
                    app_version='1.0.0+7')
 
         self.assertEqual(self.user.mobile_devices.get().app_version, '1.0.0+7')
+
+
+@no_throttling
+class IssuedReasonSuggestionTests(MobileSlotTestCase):
+    """Suggestions on the admin add form (feature-35 §6.3)."""
+
+    def suggestions(self, **kwargs):
+        from users.services.mobile_slot import issued_reason_suggestions
+        return issued_reason_suggestions(**kwargs)
+
+    def issue_with_reason(self, reason):
+        slot = issue_slot(self.user, staff=None, reason=reason)
+        MobileDevice.objects.filter(pk=slot.pk).update(status='REVOKED')
+        return slot
+
+    def test_presets_come_first_even_with_nothing_used_yet(self):
+        from users.services.mobile_slot import ISSUED_REASON_PRESETS
+
+        self.assertEqual(self.suggestions()[:len(ISSUED_REASON_PRESETS)],
+                         list(ISSUED_REASON_PRESETS))
+
+    def test_reasons_already_used_here_are_offered_back(self):
+        self.issue_with_reason('Chuyển sang máy công ty cấp')
+
+        self.assertIn('Chuyển sang máy công ty cấp', self.suggestions())
+
+    def test_more_used_reasons_come_before_rarer_ones(self):
+        for _ in range(3):
+            self.issue_with_reason('Đổi sang iPhone')
+        self.issue_with_reason('Máy dính nước')
+
+        used = [s for s in self.suggestions() if s.startswith(('Đổi', 'Máy dính'))]
+        self.assertEqual(used, ['Đổi sang iPhone', 'Máy dính nước'])
+
+    def test_the_placeholder_the_form_writes_is_never_suggested(self):
+        """Suggesting it back would spread a value nobody chose."""
+        from users.services.mobile_slot import AUTO_ISSUED_REASON
+
+        self.issue_with_reason(AUTO_ISSUED_REASON)
+
+        self.assertNotIn(AUTO_ISSUED_REASON, self.suggestions())
+
+    def test_a_preset_typed_by_hand_does_not_appear_twice(self):
+        from users.services.mobile_slot import ISSUED_REASON_PRESETS
+
+        self.issue_with_reason(ISSUED_REASON_PRESETS[0].lower())
+
+        result = self.suggestions()
+        self.assertEqual(sum(1 for r in result if r.casefold()
+                             == ISSUED_REASON_PRESETS[0].casefold()), 1)
+
+    def test_the_list_is_capped(self):
+        for i in range(20):
+            self.issue_with_reason(f'Lý do số {i}')
+
+        self.assertEqual(len(self.suggestions(limit=6)), 6)
+
+
+class IssueFormSuggestionRenderTests(APITestCase):
+    """The datalist has to reach the page, not just the form object."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username='admin@example.com', email='admin@example.com', password=PASSWORD,
+        )
+        self.client.force_login(self.admin)
+
+    def test_add_page_renders_the_suggestions(self):
+        from users.services.mobile_slot import ISSUED_REASON_PRESETS
+
+        response = self.client.get(reverse('admin:users_mobiledevice_add'))
+
+        self.assertContains(response, 'id="issued-reason-options"')
+        self.assertContains(response, 'list="issued-reason-options"')
+        self.assertContains(response, ISSUED_REASON_PRESETS[0])
