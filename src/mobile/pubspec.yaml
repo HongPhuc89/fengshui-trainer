@@ -85,8 +85,10 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
-  # Android 8+ masks the foreground to a launcher-chosen shape, so the artwork is
-  # inset in app_icon_foreground.png and sits on the white ground the web mark uses.
+  # flutter_launcher_icons wraps the foreground in <inset android:inset="16%">, so the
+  # drawable covers 68% of the 108dp adaptive canvas and it — not this PNG — supplies the
+  # mask safe zone. The artwork therefore fills app_icon_foreground.png edge to edge and
+  # lands on the 72dp mask edge, over the white ground the web mark uses.
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
   remove_alpha_ios: true
