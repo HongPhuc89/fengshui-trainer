@@ -25,10 +25,15 @@ class ReaderTopBar extends StatelessWidget {
       child: Container(
         height: 56,
         decoration: const BoxDecoration(
+          // Solid through the icon row, fading only in the last stretch —
+          // a straight top→bottom fade left the tap targets themselves
+          // (TOC/back/training icons, roughly mid-height) sitting on
+          // already-faded black, low-contrast against light PDF pages.
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black87, Colors.transparent],
+            colors: [Colors.black, Colors.black, Colors.transparent],
+            stops: [0.0, 0.75, 1.0],
           ),
         ),
         child: Row(
@@ -108,6 +113,11 @@ class ReaderBottomBar extends StatelessWidget {
     final atFirstPage = currentPage <= 1;
 
     return SafeArea(
+      // `minimum` guarantees clearance even when the OS under-reports the
+      // bottom inset (seen on at least one gesture-nav device in testing —
+      // SafeArea's own padding was 0 there, leaving the page indicator and
+      // nav-bar tap targets flush against the gesture strip).
+      minimum: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -173,28 +183,31 @@ class ReaderBottomBar extends StatelessWidget {
                 onChanged: (v) => bloc.add(ChangePage(v.round())),
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon:
-                      const Icon(Icons.chevron_left, color: Colors.white),
-                  onPressed: currentPage > 1
-                      ? () => bloc.add(ChangePage(currentPage - 1))
-                      : null,
-                ),
-                Text(
-                  '$currentPage / $totalPages',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                IconButton(
-                  icon:
-                      const Icon(Icons.chevron_right, color: Colors.white),
-                  onPressed: currentPage < totalPages
-                      ? () => bloc.add(ChangePage(currentPage + 1))
-                      : null,
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon:
+                        const Icon(Icons.chevron_left, color: Colors.white),
+                    onPressed: currentPage > 1
+                        ? () => bloc.add(ChangePage(currentPage - 1))
+                        : null,
+                  ),
+                  Text(
+                    '$currentPage / $totalPages',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  IconButton(
+                    icon:
+                        const Icon(Icons.chevron_right, color: Colors.white),
+                    onPressed: currentPage < totalPages
+                        ? () => bloc.add(ChangePage(currentPage + 1))
+                        : null,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

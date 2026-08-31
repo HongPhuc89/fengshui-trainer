@@ -116,6 +116,15 @@ class _BookReaderScreenState extends State<BookReaderScreen>
                             state is BookReaderLoaded &&
                                 _bloc.pdfController != null
                             ? PdfViewPinch(
+                                // pdfx's PdfViewPinch has no didUpdateWidget
+                                // — without a key that changes per chapter,
+                                // Flutter reuses the old State when the
+                                // `controller` prop is swapped on chapter
+                                // change, so it silently keeps rendering the
+                                // PREVIOUS chapter's pages. Keying on the
+                                // controller instance forces a fresh State
+                                // (and initState/_attach) every load.
+                                key: ValueKey(_bloc.pdfController),
                                 controller: _bloc.pdfController!,
                                 onPageChanged: (page) =>
                                     _bloc.add(PageScrolled(page)),
