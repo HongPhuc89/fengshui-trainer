@@ -41,15 +41,22 @@ class VideoPlayerBloc extends Bloc<VideoPlayerEvent, VideoPlayerState> {
 
     lessonResult.fold(
       (failure) => emit(VideoPlayerError(failure.message)),
-      (lesson) => emit(
-        VideoPlayerLoaded(
-          courseSlug: event.courseSlug,
-          lesson: lesson,
-          // A failed course fetch must not block playback of a lesson that
-          // loaded fine — it only costs the sidebar list.
-          lessons: detailResult.fold((_) => const [], (d) => d.lessons),
-        ),
-      ),
+      (lesson) {
+        // Fire-and-forget, matches web's setLastLesson(...).catch(() => {})
+        // in VideoPlayerView.vue — must not block/delay playback, and a
+        // failure here only means the course-detail CTA and Home's
+        // "continue watching" card stay a step behind, not a real error.
+        _repository.setLastLesson(event.courseSlug, event.lessonSlug);
+        emit(
+          VideoPlayerLoaded(
+            courseSlug: event.courseSlug,
+            lesson: lesson,
+            // A failed course fetch must not block playback of a lesson
+            // that loaded fine — it only costs the sidebar list.
+            lessons: detailResult.fold((_) => const [], (d) => d.lessons),
+          ),
+        );
+      },
     );
   }
 

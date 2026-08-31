@@ -13,6 +13,13 @@ abstract class VideosRemoteDataSource {
   Future<CourseProgressModel> getCourseProgress(String slug);
   Future<LessonContentModel> getLesson(
       String courseSlug, String lessonSlug);
+  Future<void> setLastLesson(String courseSlug, String lessonSlug);
+
+  /// Returns the order of the course's last-watched lesson — defaults to
+  /// the first lesson server-side if the user has never watched any (see
+  /// CourseLastLessonView.get), so `null` here means the course has no
+  /// lessons at all, not "hasn't started".
+  Future<int?> getLastLessonOrder(String courseSlug);
   Future<void> saveLessonProgress(
       String courseSlug, String lessonSlug, int seconds);
   Future<void> purchaseVideo(String slug);
@@ -112,6 +119,29 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
           .get(ApiEndpoints.lesson(courseSlug, lessonSlug));
       return LessonContentModel.fromJson(
           resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw parseDioError(e);
+    }
+  }
+
+  @override
+  Future<int?> getLastLessonOrder(String courseSlug) async {
+    try {
+      final resp =
+          await _apiClient.get(ApiEndpoints.lastLesson(courseSlug));
+      return (resp.data as Map<String, dynamic>)['lesson_order'] as int?;
+    } on DioException catch (e) {
+      throw parseDioError(e);
+    }
+  }
+
+  @override
+  Future<void> setLastLesson(String courseSlug, String lessonSlug) async {
+    try {
+      await _apiClient.post(
+        ApiEndpoints.lastLesson(courseSlug),
+        data: {'lesson_slug': lessonSlug},
+      );
     } on DioException catch (e) {
       throw parseDioError(e);
     }

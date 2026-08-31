@@ -166,12 +166,27 @@ Bố cục mới theo đúng `VideoDetailView.vue` §template, **giữ nguyên `
 
 ## 5. Trade-off & quyết định cần PO xác nhận
 
-- **Giữ `SliverAppBar` hero-image**: web đã bỏ hẳn banner lớn trong bản redesign này, nhưng user chỉ nói "bổ sung phần thông tin phía trên" (thêm, không nói bỏ ảnh bìa) — đề xuất **giữ nguyên hero-image mobile đang có**, chỉ thêm khối info bên dưới nó. Rủi ro thấp, không cần xác nhận nếu PO đồng ý; nêu ở đây để tránh hiểu nhầm là copy 100% pixel web.
+- ~~**Giữ `SliverAppBar` hero-image**~~ — **đảo quyết định (2026-09-02, theo yêu cầu trực tiếp của user/PO)**: bỏ hẳn `SliverAppBar`/ảnh bìa lớn, thay bằng back-link đơn giản "‹ Khóa học" (icon + text, màu gold, không phải `AppBar` mặc định) đặt ngay trên tiêu đề — đúng 100% pixel web (`.vd__nav`/`.vd__back-btn` trong `VideoDetailView.vue`), không giữ hero-image như quyết định v2 ban đầu.
 - **Bỏ `_PriceSection` hiển thị giá thường trực**: hiện mobile luôn hiện giá/VIP-badge phía trên nút, kể cả khi đã mua (dư thừa). Web chỉ hiện giá khi CHƯA mua (gộp vào chính nút CTA "Mở khoá với X LT"). Đề xuất theo web — **cần PO xác nhận** vì đây là thay đổi hành vi hiển thị đã có, không phải thuần thêm mới.
 - **Giữ order-number + thêm thumbnail** (không thay số bằng icon lock/play như web) — giữ affordance sẵn có, ít rủi ro hơn đổi hẳn cách hiển thị trạng thái. Nêu để PO xác nhận không muốn đổi luôn theo web.
 - **Không cache riêng course-progress**: gọi lại mỗi lần vào trang (giống web — không thấy web cache progress). Nhất quán, đơn giản.
 - **Test**: thêm test cho `VideoDetailModel.fromJson` (4 field mới) và bloc test cho nhánh progress lỗi không chặn `VideoDetailLoaded` — module `videos` cũng chưa có tiền lệ bloc test (giống tình trạng `books` ở feature-39), có thể defer nếu PO không yêu cầu.
 - **Rollout & rollback**: thuần thay đổi client (mobile app), không có backend/DB đi kèm nên không có feature flag/kill-switch server — rollback là phát hành bản kế tiếp, chịu độ trễ duyệt app store (giống feature-39).
+
+## 5b. Phát hiện trong lúc test trên máy thật — CTA "Tiếp tục học" sai nguồn dữ liệu
+
+Test trên device thật lộ ra: `VideoCourseDetailSerializer`/`VideoCourseDetailWithPurchaseSerializer` (backend) **chưa từng có field `last_watched_lesson`** trong `Meta.fields` — dù mobile's `VideoDetailModel.fromJson` đã có sẵn code đọc `json['last_watched_lesson']` từ TRƯỚC feature-40 (verify qua `VideoCourseDetailWithPurchaseSerializer(...).data` trong Django shell: `'last_watched_lesson' in data` → `False`). §4.5 bản đầu dùng field này để quyết định label CTA — sai, vì field này luôn `null`.
+
+**Cách đúng (đối chiếu `VideoPlayerView.vue`/`VideoDetailView.vue`)**: web KHÔNG BAO GIỜ đọc last-lesson từ response course-detail — label CTA dùng `progress.completed_lessons > 0` (đã đúng ở `progress` — chỉ label là sai), còn ĐÍCH ĐẾN khi bấm nút gọi `GET /videos/{slug}/progress/last-lesson/` **lazy, ngay lúc click**, không preload. Và `POST` cùng endpoint đó (`setLastLesson`) chưa từng được mobile gọi ở đâu — nghĩa là `UserCourseProgress.last_lesson` chưa từng được set từ phía mobile trước feature-40.
+
+**Fix áp dụng** (không đổi Backend — endpoint GET/POST last-lesson đã có sẵn, đúng vai trò):
+- `VideoPlayerBloc._onLoadLesson`: gọi `setLastLesson(courseSlug, lessonSlug)` fire-and-forget khi 1 lesson load thành công (mirror `VideoPlayerView.vue`'s `.catch(() => {})`).
+- `videos_repository_impl.setLastLesson`: xoá cache `CacheKeys.videoDetail(slug)` sau khi set — để lần load course-detail kế tiếp không bị cache TTL cũ che khuất (tuy không còn quan trọng bằng trước vì CTA giờ không đọc field đó từ response nữa, nhưng vẫn đúng để giữ cache nhất quán).
+- `video_detail_screen.dart`: label CTA đổi từ `detail.lastWatchedLessonSlug != null` → `progress != null && progress.completedLessons > 0` (khớp web). Đích đến đổi từ đọc field tĩnh sang `_startOrContinue()` gọi `getLastLessonOrder()` lazy lúc bấm, map `lesson_order` → tìm trong `detail.lessons`, fallback bài đầu nếu lỗi/không khớp.
+- Thêm `_openLesson()` helper: `await context.push(...)` rồi `forceRefresh` lại `LoadVideoDetail` khi quay về — vì Flutter Navigator (khác Vue Router) giữ nguyên bloc/state khi pop về route đã tồn tại, không tự remount/refetch như web.
+- `VideoDetail.lastWatchedLessonSlug` (entity/model) **giữ nguyên, không xoá** — trở thành field chết (backend không bao giờ trả), nhưng xoá nó là dọn dẹp ngoài phạm vi fix này.
+
+Đã verify qua DB (`UserCourseProgress.last_lesson`) + qua device thật: mở bài 1 → set last-lesson=1 → bấm CTA → vào đúng bài 1; mở bài 3 → set last-lesson=3 → bấm CTA → vào đúng bài 3 (không phải fallback trùng hợp).
 
 ## 6. Bước tiếp theo
 

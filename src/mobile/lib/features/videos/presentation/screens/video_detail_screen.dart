@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import '../../../../../shared/theme/app_colors.dart';
 import '../bloc/video_detail_bloc.dart';
 import '../widgets/lesson_list_item.dart';
 import '../../domain/entities/video.dart';
+import '../../domain/repositories/videos_repository.dart';
 
 /// 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' → Vietnamese label + accent
 /// color — mirrors web's LEVEL_MAP in VideoDetailView.vue.
@@ -132,21 +132,48 @@ class _VideoDetailView extends StatelessWidget {
             ),
             child: CustomScrollView(
               slivers: [
-                SliverAppBar(
-                  expandedHeight: 220,
-                  pinned: true,
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: detail.thumbnailUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: detail.thumbnailUrl!,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(color: AppColors.surfaceAlt),
+                // No hero-image banner — matches web (VideoDetailView.vue
+                // dropped its cover-image banner too), a simple back-link
+                // instead of the SliverAppBar this screen had before.
+                SliverSafeArea(
+                  bottom: false,
+                  sliver: SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                      child: InkWell(
+                        onTap: () => context.pop(),
+                        borderRadius: BorderRadius.circular(6),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.chevron_left,
+                                color: AppColors.primaryGold,
+                                size: 22,
+                              ),
+                              Text(
+                                'Khóa học',
+                                style: TextStyle(
+                                  color: AppColors.primaryGold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -250,16 +277,22 @@ class _VideoDetailView extends StatelessWidget {
                           child: canAccess
                               ? ElevatedButton.icon(
                                   icon: const Icon(Icons.play_arrow),
+                                  // Matches web: label is driven by
+                                  // completedLessons, NOT by a
+                                  // last-watched-lesson field — the course
+                                  // detail response never carries one (see
+                                  // _startOrContinue below).
                                   label: Text(
-                                    detail.lastWatchedLessonSlug != null
+                                    progress != null &&
+                                            progress.completedLessons > 0
                                         ? 'Tiếp tục học'
                                         : 'Bắt đầu học',
                                   ),
                                   onPressed: detail.lessons.isEmpty
                                       ? null
-                                      : () => context.push(
-                                          '/videos/${detail.slug}/lessons/'
-                                          '${detail.lastWatchedLessonSlug ?? detail.lessons.first.slug}',
+                                      : () => _startOrContinue(
+                                          context,
+                                          detail,
                                         ),
                                 )
                               : ElevatedButton.icon(
@@ -292,9 +325,8 @@ class _VideoDetailView extends StatelessWidget {
                         ...detail.lessons.map(
                           (lesson) => LessonListItem(
                             lesson: lesson,
-                            onTap: () => context.push(
-                              '/videos/${detail.slug}/lessons/${lesson.slug}',
-                            ),
+                            onTap: () =>
+                                _openLesson(context, detail.slug, lesson.slug),
                             onLocked: () => _showPurchase(context, detail),
                           ),
                         ),
@@ -309,6 +341,53 @@ class _VideoDetailView extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Mirrors web's startOrContinue(): fetches the last-watched lesson's
+  /// order lazily, right when the CTA is tapped — NOT preloaded with the
+  /// course detail, matching how web only calls getLastLesson() on click.
+  /// Falls back to the first lesson on any failure or when the order
+  /// doesn't match anything in `lessons` (stale data, edge case).
+  Future<void> _startOrContinue(
+    BuildContext context,
+    VideoDetail detail,
+  ) async {
+    // Direct repository call, not routed through VideoDetailBloc — this is
+    // a one-off lookup with no effect on VideoDetailState, so mediating it
+    // through an event/state round-trip would add ceremony for nothing.
+    final result = await getIt<VideosRepository>().getLastLessonOrder(
+      detail.slug,
+    );
+    final order = result.fold((_) => null, (o) => o);
+    final lesson = detail.lessons
+        .cast<LessonMeta?>()
+        .firstWhere((l) => l?.order == order, orElse: () => null);
+    if (!context.mounted) return;
+    await _openLesson(
+      context,
+      detail.slug,
+      (lesson ?? detail.lessons.first).slug,
+    );
+  }
+
+  /// Refetches on return from the player — Flutter's Navigator (unlike Vue
+  /// Router on web, which remounts a view on every navigation to its path)
+  /// keeps this screen's existing widget/bloc when popping back to it, so
+  /// without this the CTA and lesson list would keep showing pre-playback
+  /// state (no "Tiếp tục học", no completed checkmark) until the user backs
+  /// all the way out and re-enters. forceRefresh bypasses the cache, which
+  /// setLastLesson/saveLessonProgress already invalidated server-side.
+  Future<void> _openLesson(
+    BuildContext context,
+    String courseSlug,
+    String lessonSlug,
+  ) async {
+    await context.push('/videos/$courseSlug/lessons/$lessonSlug');
+    if (context.mounted) {
+      context.read<VideoDetailBloc>().add(
+        LoadVideoDetail(courseSlug, forceRefresh: true),
+      );
+    }
   }
 
   void _showPurchase(BuildContext context, VideoDetail detail) {

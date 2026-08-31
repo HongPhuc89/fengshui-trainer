@@ -172,6 +172,19 @@ class VideosRepositoryImpl implements VideosRepository {
   }
 
   @override
+  Future<Either<Failure, int?>> getLastLessonOrder(String courseSlug) async {
+    try {
+      final order = await _remote.getLastLessonOrder(courseSlug);
+      return Right(order);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e, st) {
+      debugPrint('[repo] unexpected failure: $e\n$st');
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
   Future<Either<Failure, LessonContent>> getLesson(
     String courseSlug,
     String lessonSlug,
@@ -181,6 +194,26 @@ class VideosRepositoryImpl implements VideosRepository {
       return Right(data);
     } on ServerException catch (e) {
       if (e.statusCode == 403) return const Left(ForbiddenFailure());
+      return Left(ServerFailure(e.message));
+    } catch (e, st) {
+      debugPrint('[repo] unexpected failure: $e\n$st');
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> setLastLesson(
+    String courseSlug,
+    String lessonSlug,
+  ) async {
+    try {
+      await _remote.setLastLesson(courseSlug, lessonSlug);
+      // Invalidate the cached course detail so the next visit reflects the
+      // new last-watched lesson immediately, instead of sitting behind
+      // CacheTtl.list until it naturally expires.
+      await _cache.delete(CacheKeys.videoDetail(courseSlug));
+      return const Right(null);
+    } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e, st) {
       debugPrint('[repo] unexpected failure: $e\n$st');
