@@ -106,26 +106,22 @@ class _BookReaderScreenState extends State<BookReaderScreen>
                     // Layer 1: PDF Viewer
                     Positioned.fill(
                       child: GestureDetector(
+                        // Page turning is now scroll/pinch, handled by
+                        // PdfViewPinch's own InteractiveViewer — this
+                        // GestureDetector only toggles the top/bottom bars.
+                        // Tap and pan/scale are separate gesture recognizers
+                        // in Flutter's gesture arena, so they don't conflict.
                         onTap: _toggleControls,
-                        onHorizontalDragEnd: (details) {
-                          if (state is BookReaderLoaded) {
-                            if (details.primaryVelocity! < -300) {
-                              // Swipe left → next page
-                              if (state.currentPage < state.totalPages) {
-                                _bloc.add(ChangePage(state.currentPage + 1));
-                              }
-                            } else if (details.primaryVelocity! > 300) {
-                              // Swipe right → prev page
-                              if (state.currentPage > 1) {
-                                _bloc.add(ChangePage(state.currentPage - 1));
-                              }
-                            }
-                          }
-                        },
                         child:
                             state is BookReaderLoaded &&
                                 _bloc.pdfController != null
-                            ? PdfView(controller: _bloc.pdfController!)
+                            ? PdfViewPinch(
+                                controller: _bloc.pdfController!,
+                                onPageChanged: (page) =>
+                                    _bloc.add(PageScrolled(page)),
+                                minScale: 1.0,
+                                maxScale: 4.0,
+                              )
                             : state is BookReaderLoading
                             ? const Center(
                                 child: CircularProgressIndicator(
@@ -196,8 +192,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
                         bottom: 0,
                         width: MediaQuery.of(context).size.width * 0.75,
                         child: TocPanel(
-                          chapters:
-                              const [], // Will be populated from BookDetail
+                          chapters: state.bookDetail?.chapters ?? const [],
                           currentOrder: state.chapter.order,
                           bookSlug: widget.slug,
                         ),
@@ -229,6 +224,10 @@ class _BookReaderScreenState extends State<BookReaderScreen>
                         child: ReaderBottomBar(
                           currentPage: state.currentPage,
                           totalPages: state.totalPages,
+                          nextChapterOrder: state.nextChapterOrder,
+                          prevChapterOrder: state.prevChapterOrder,
+                          prevChapterLastPage: state.prevChapterLastPage,
+                          bookSlug: widget.slug,
                           bloc: _bloc,
                         ),
                       ),

@@ -18,13 +18,19 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
   final BooksRepository _repository;
   final PdfDecryptionService _pdfDecryption;
 
-  PdfController? pdfController;
+  PdfControllerPinch? pdfController;
   Timer? _progressTimer;
+
+  // Fetched once per reader session (first LoadChapter) and reused across
+  // chapter changes — same book, no need to re-fetch every time the user
+  // crosses a chapter boundary. See _onLoadChapter.
+  BookDetail? _bookDetail;
 
   BookReaderBloc(this._repository, this._pdfDecryption)
     : super(BookReaderInitial()) {
     on<LoadChapter>(_onLoadChapter);
     on<ChangePage>(_onChangePage);
+    on<PageScrolled>(_onPageScrolled);
     on<ToggleToc>(_onToggleToc);
     on<AppBackgrounded>(_onAppBackgrounded);
     on<AppForegrounded>(_onAppForegrounded);
@@ -36,10 +42,26 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
   ) async {
     emit(BookReaderLoading());
 
+    // Both requests kick off immediately (Dart runs sync code up to the
+    // first `await` inside each call before returning its Future), so this
+    // runs concurrently with getChapter below rather than after it.
+    final bookDetailFuture =
+        _bookDetail == null ? _repository.getBookDetail(event.bookSlug) : null;
+
     final result = await _repository.getChapter(
       event.bookSlug,
       event.chapterOrder,
     );
+
+    if (bookDetailFuture != null) {
+      final bookDetailResult = await bookDetailFuture;
+      // Supplementary data only (TOC + cross-chapter nav) — a failure here
+      // must not block reading the chapter PDF itself, so we swallow it and
+      // just leave _bookDetail null (TOC/next-chapter button degrade, PDF
+      // still renders normally).
+      bookDetailResult.fold((_) {}, (detail) => _bookDetail = detail);
+    }
+
     await result.fold(
       (failure) async => emit(BookReaderError(failure.message)),
       (chapter) async {
@@ -65,7 +87,7 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
           );
 
           pdfController?.dispose();
-          pdfController = PdfController(
+          pdfController = PdfControllerPinch(
             document: PdfDocument.openData(pdfBytes),
             initialPage: startPage,
           );
@@ -73,6 +95,7 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
           emit(
             BookReaderLoaded(
               bookSlug: event.bookSlug,
+              bookDetail: _bookDetail,
               chapter: chapter,
               currentPage: startPage,
               totalPages: chapter.pageCount,
@@ -87,18 +110,36 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
     );
   }
 
+  /// Explicit navigation (slider drag, prev/next-page arrow) — actively
+  /// moves the viewer to the target page.
   void _onChangePage(ChangePage event, Emitter<BookReaderState> emit) {
     final s = state;
     if (s is! BookReaderLoaded) return;
+    if (event.page == s.currentPage) return;
 
-    _progressTimer?.cancel();
-    _progressTimer = Timer(const Duration(seconds: 1), () {
-      _repository.saveChapterProgress(s.bookSlug, s.chapter.order, event.page);
-      _repository.saveReadingProgress(s.bookSlug, s.chapter.order, event.page);
-    });
-
+    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page);
     pdfController?.jumpToPage(event.page);
     emit(s.copyWith(currentPage: event.page));
+  }
+
+  /// Passive report from the viewer's own onPageChanged as the user
+  /// scrolls — must NOT call jumpToPage(), the user is already there and
+  /// forcing another jump would fight their in-flight scroll gesture.
+  void _onPageScrolled(PageScrolled event, Emitter<BookReaderState> emit) {
+    final s = state;
+    if (s is! BookReaderLoaded) return;
+    if (event.page == s.currentPage) return;
+
+    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page);
+    emit(s.copyWith(currentPage: event.page));
+  }
+
+  void _scheduleProgressSave(String bookSlug, int chapterOrder, int page) {
+    _progressTimer?.cancel();
+    _progressTimer = Timer(const Duration(seconds: 1), () {
+      _repository.saveChapterProgress(bookSlug, chapterOrder, page);
+      _repository.saveReadingProgress(bookSlug, chapterOrder, page);
+    });
   }
 
   void _onToggleToc(ToggleToc event, Emitter<BookReaderState> emit) {

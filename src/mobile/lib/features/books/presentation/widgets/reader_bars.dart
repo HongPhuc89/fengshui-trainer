@@ -80,17 +80,33 @@ class ReaderTopBar extends StatelessWidget {
 class ReaderBottomBar extends StatelessWidget {
   final int currentPage;
   final int totalPages;
+
+  /// Order of the chapter across the boundary, null when there is none —
+  /// nearest by `order`, not `currentOrder ± 1` (see BookReaderLoaded).
+  final int? nextChapterOrder;
+  final int? prevChapterOrder;
+
+  /// Target page when jumping into the previous chapter (its last page).
+  final int prevChapterLastPage;
+  final String bookSlug;
   final BookReaderBloc bloc;
 
   const ReaderBottomBar({
     super.key,
     required this.currentPage,
     required this.totalPages,
+    this.nextChapterOrder,
+    this.prevChapterOrder,
+    this.prevChapterLastPage = 1,
+    required this.bookSlug,
     required this.bloc,
   });
 
   @override
   Widget build(BuildContext context) {
+    final atLastPage = currentPage >= totalPages;
+    final atFirstPage = currentPage <= 1;
+
     return SafeArea(
       child: Container(
         decoration: const BoxDecoration(
@@ -103,6 +119,46 @@ class ReaderBottomBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Cross-chapter navigation only appears at the chapter's edge —
+            // scrolling never crosses a chapter boundary on its own (each
+            // chapter is decrypted separately), this is the explicit action
+            // that loads the next/previous one.
+            if (atLastPage && nextChapterOrder != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => bloc.add(
+                      LoadChapter(
+                        bookSlug: bookSlug,
+                        chapterOrder: nextChapterOrder!,
+                        startPage: 1,
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_downward, size: 18),
+                    label: const Text('Chương tiếp theo'),
+                  ),
+                ),
+              ),
+            if (atFirstPage && prevChapterOrder != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => bloc.add(
+                      LoadChapter(
+                        bookSlug: bookSlug,
+                        chapterOrder: prevChapterOrder!,
+                        startPage: prevChapterLastPage,
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_upward, size: 18),
+                    label: const Text('Chương trước'),
+                  ),
+                ),
+              ),
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 2,
