@@ -22,7 +22,7 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
   Timer? _progressTimer;
 
   BookReaderBloc(this._repository, this._pdfDecryption)
-      : super(BookReaderInitial()) {
+    : super(BookReaderInitial()) {
     on<LoadChapter>(_onLoadChapter);
     on<ChangePage>(_onChangePage);
     on<ToggleToc>(_onToggleToc);
@@ -31,33 +31,37 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
   }
 
   Future<void> _onLoadChapter(
-      LoadChapter event, Emitter<BookReaderState> emit) async {
+    LoadChapter event,
+    Emitter<BookReaderState> emit,
+  ) async {
     emit(BookReaderLoading());
 
-    final result =
-        await _repository.getChapter(event.bookSlug, event.chapterOrder);
+    final result = await _repository.getChapter(
+      event.bookSlug,
+      event.chapterOrder,
+    );
     await result.fold(
       (failure) async => emit(BookReaderError(failure.message)),
       (chapter) async {
         try {
           int startPage = event.startPage ?? 1;
           if (event.startPage == null) {
-            final progResult =
-                await _repository.getReadingProgress(event.bookSlug);
-            progResult.fold(
-              (_) => null,
-              (prog) {
-                if (prog != null && prog.chapterOrder == chapter.order) {
-                  startPage = prog.currentPage;
-                }
-              },
+            final progResult = await _repository.getReadingProgress(
+              event.bookSlug,
             );
+            progResult.fold((_) => null, (prog) {
+              if (prog != null && prog.chapterOrder == chapter.order) {
+                startPage = prog.currentPage;
+              }
+            });
           }
 
           final keyBytes = base64Decode(chapter.decryptKeyBase64);
+          final ivBytes = base64Decode(chapter.ivBase64);
           final pdfBytes = await _pdfDecryption.decrypt(
             encryptedCdnUrl: chapter.encryptedFileUrl,
             keyBytes: keyBytes,
+            ivBytes: ivBytes,
           );
 
           pdfController?.dispose();
@@ -66,14 +70,16 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
             initialPage: startPage,
           );
 
-          emit(BookReaderLoaded(
-            bookSlug: event.bookSlug,
-            chapter: chapter,
-            currentPage: startPage,
-            totalPages: chapter.pageCount,
-            tocVisible: false,
-            isBlurred: false,
-          ));
+          emit(
+            BookReaderLoaded(
+              bookSlug: event.bookSlug,
+              chapter: chapter,
+              currentPage: startPage,
+              totalPages: chapter.pageCount,
+              tocVisible: false,
+              isBlurred: false,
+            ),
+          );
         } catch (e) {
           emit(BookReaderError('Không thể tải PDF: ${e.toString()}'));
         }
@@ -103,13 +109,17 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
   }
 
   void _onAppBackgrounded(
-      AppBackgrounded event, Emitter<BookReaderState> emit) {
+    AppBackgrounded event,
+    Emitter<BookReaderState> emit,
+  ) {
     final s = state;
     if (s is BookReaderLoaded) emit(s.copyWith(isBlurred: true));
   }
 
   void _onAppForegrounded(
-      AppForegrounded event, Emitter<BookReaderState> emit) {
+    AppForegrounded event,
+    Emitter<BookReaderState> emit,
+  ) {
     final s = state;
     if (s is BookReaderLoaded) emit(s.copyWith(isBlurred: false));
   }

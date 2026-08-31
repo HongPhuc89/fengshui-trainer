@@ -16,8 +16,7 @@ class BookDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          getIt<BookDetailBloc>()..add(LoadBookDetail(slug)),
+      create: (_) => getIt<BookDetailBloc>()..add(LoadBookDetail(slug)),
       child: _BookDetailView(slug: slug),
     );
   }
@@ -39,7 +38,7 @@ class _BookDetailView extends StatelessWidget {
             ),
           );
         }
-        if (state is BookDetailLoaded && state.detail.hasPurchased) {
+        if (state is BookDetailPurchaseSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Mua sách thành công!'),
@@ -52,8 +51,8 @@ class _BookDetailView extends StatelessWidget {
         if (state is BookDetailLoading) {
           return const Scaffold(
             body: Center(
-                child: CircularProgressIndicator(
-                    color: AppColors.primaryGold)),
+              child: CircularProgressIndicator(color: AppColors.primaryGold),
+            ),
           );
         }
 
@@ -64,17 +63,21 @@ class _BookDetailView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: AppColors.error, size: 48),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
-                  Text(state.message,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary)),
+                  Text(
+                    state.message,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => context
-                        .read<BookDetailBloc>()
-                        .add(LoadBookDetail(slug)),
+                    onPressed: () => context.read<BookDetailBloc>().add(
+                      LoadBookDetail(slug),
+                    ),
                     child: const Text('Thử lại'),
                   ),
                 ],
@@ -86,116 +89,131 @@ class _BookDetailView extends StatelessWidget {
         final detail = state is BookDetailLoaded
             ? state.detail
             : state is BookDetailPurchasing
-                ? state.detail
-                : state is BookDetailPurchaseError
-                    ? state.detail
-                    : null;
+            ? state.detail
+            : state is BookDetailPurchaseError
+            ? state.detail
+            : state is BookDetailPurchaseSuccess
+            ? state.detail
+            : null;
 
         if (detail == null) return const Scaffold();
 
         return Scaffold(
-          body: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 280,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: detail.coverImageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: detail.coverImageUrl!,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(color: AppColors.surfaceAlt),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(detail.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium),
-                      const SizedBox(height: 4),
-                      Text(detail.author,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14)),
-                      const SizedBox(height: 8),
-                      if (detail.category != null)
-                        Chip(
-                          label: Text(detail.category!.title,
-                              style:
-                                  const TextStyle(fontSize: 12)),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      const SizedBox(height: 12),
-
-                      // Price / access indicator
-                      _PriceSection(detail: detail),
-                      const SizedBox(height: 16),
-
-                      // Continue reading button
-                      if (detail.hasPurchased &&
-                          detail.lastReadChapterOrder != null)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.play_arrow),
-                            label: Text(
-                                'Tiếp tục đọc — Ch.${detail.lastReadChapterOrder}'),
-                            onPressed: () => context.push(
-                                '/books/${detail.slug}/read?chapter=${detail.lastReadChapterOrder}'),
-                          ),
-                        ),
-                      if (detail.hasPurchased &&
-                          detail.lastReadChapterOrder == null)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text('Bắt đầu đọc'),
-                            onPressed: () => context.push(
-                                '/books/${detail.slug}/read?chapter=1'),
-                          ),
-                        ),
-
-                      const SizedBox(height: 16),
-
-                      // Description
-                      if (detail.description != null &&
-                          detail.description!.isNotEmpty)
-                        _ExpandableDescription(
-                            text: detail.description!),
-
-                      const SizedBox(height: 16),
-
-                      // Chapters
-                      const Text(
-                        'Danh sách chương',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...detail.chapters.map((ch) => _ChapterListItem(
-                            chapter: ch,
-                            slug: detail.slug,
-                            onLocked: () =>
-                                _showPurchase(context, detail),
-                          )),
-                      const SizedBox(height: 32),
-                    ],
+          body: RefreshIndicator(
+            color: AppColors.primaryGold,
+            onRefresh: () async => context.read<BookDetailBloc>().add(
+              LoadBookDetail(slug, forceRefresh: true),
+            ),
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 280,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: detail.coverImageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: detail.coverImageUrl!,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(color: AppColors.surfaceAlt),
                   ),
                 ),
-              ),
-            ],
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          detail.title,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          detail.author,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (detail.category != null)
+                          Chip(
+                            label: Text(
+                              detail.category!.title,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            padding: EdgeInsets.zero,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        const SizedBox(height: 12),
+
+                        // Price / access indicator
+                        _PriceSection(detail: detail),
+                        const SizedBox(height: 16),
+
+                        // Continue reading button
+                        if (detail.hasPurchased &&
+                            detail.lastReadChapterOrder != null)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.play_arrow),
+                              label: Text(
+                                'Tiếp tục đọc — Ch.${detail.lastReadChapterOrder}',
+                              ),
+                              onPressed: () => context.push(
+                                '/books/${detail.slug}/read?chapter=${detail.lastReadChapterOrder}',
+                              ),
+                            ),
+                          ),
+                        if (detail.hasPurchased &&
+                            detail.lastReadChapterOrder == null)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('Bắt đầu đọc'),
+                              onPressed: () => context.push(
+                                '/books/${detail.slug}/read?chapter=1',
+                              ),
+                            ),
+                          ),
+
+                        const SizedBox(height: 16),
+
+                        // Description
+                        if (detail.description != null &&
+                            detail.description!.isNotEmpty)
+                          _ExpandableDescription(text: detail.description!),
+
+                        const SizedBox(height: 16),
+
+                        // Chapters
+                        const Text(
+                          'Danh sách chương',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...detail.chapters.map(
+                          (ch) => _ChapterListItem(
+                            chapter: ch,
+                            slug: detail.slug,
+                            onLocked: () => _showPurchase(context, detail),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -241,19 +259,27 @@ class _PriceSection extends StatelessWidget {
       );
     }
     if (detail.priceLt == 0) {
-      return const Text('Miễn phí',
-          style: TextStyle(color: AppColors.success, fontSize: 14));
+      return const Text(
+        'Miễn phí',
+        style: TextStyle(color: AppColors.success, fontSize: 14),
+      );
     }
     return Row(
       children: [
-        const Icon(Icons.diamond_outlined,
-            color: AppColors.primaryGold, size: 16),
+        const Icon(
+          Icons.diamond_outlined,
+          color: AppColors.primaryGold,
+          size: 16,
+        ),
         const SizedBox(width: 4),
-        Text('${detail.priceLt} LT',
-            style: const TextStyle(
-                color: AppColors.primaryGold,
-                fontSize: 14,
-                fontWeight: FontWeight.w600)),
+        Text(
+          '${detail.priceLt} LT',
+          style: const TextStyle(
+            color: AppColors.primaryGold,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -273,40 +299,36 @@ class _ChapterListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: AppColors.surfaceAlt,
         child: Text(
           '${chapter.order}',
-          style: const TextStyle(
-              color: AppColors.primaryGold, fontSize: 13),
+          style: const TextStyle(color: AppColors.primaryGold, fontSize: 13),
         ),
       ),
       title: Text(
         chapter.title,
-        style: const TextStyle(
-            color: AppColors.textPrimary, fontSize: 14),
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
       ),
       subtitle: Text(
         '${chapter.pageCount} trang',
-        style: const TextStyle(
-            color: AppColors.textSecondary, fontSize: 12),
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (chapter.isDemo)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: AppColors.demoBadge.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text('Demo',
-                  style:
-                      TextStyle(fontSize: 10, color: AppColors.demoBadge)),
+              child: const Text(
+                'Demo',
+                style: TextStyle(fontSize: 10, color: AppColors.demoBadge),
+              ),
             ),
           const SizedBox(width: 4),
           if (!chapter.canAccess)
@@ -331,12 +353,10 @@ class _ExpandableDescription extends StatefulWidget {
   const _ExpandableDescription({required this.text});
 
   @override
-  State<_ExpandableDescription> createState() =>
-      _ExpandableDescriptionState();
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
 }
 
-class _ExpandableDescriptionState
-    extends State<_ExpandableDescription> {
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
   bool _expanded = false;
 
   @override
@@ -347,10 +367,12 @@ class _ExpandableDescriptionState
         Text(
           widget.text,
           maxLines: _expanded ? null : 4,
-          overflow:
-              _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
           style: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            height: 1.5,
+          ),
         ),
         GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
@@ -359,7 +381,9 @@ class _ExpandableDescriptionState
             child: Text(
               _expanded ? 'Thu gọn' : 'Xem thêm',
               style: const TextStyle(
-                  color: AppColors.primaryGold, fontSize: 13),
+                color: AppColors.primaryGold,
+                fontSize: 13,
+              ),
             ),
           ),
         ),

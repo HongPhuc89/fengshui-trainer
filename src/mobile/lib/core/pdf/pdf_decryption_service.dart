@@ -10,9 +10,16 @@ class PdfDecryptionService {
   ///
   /// [encryptedCdnUrl] — presigned Supabase URL of the encrypted PDF
   /// [keyBytes] — raw 32-byte key from /decrypt-key/ API endpoint
+  /// [ivBytes] — raw 12-byte nonce from the same /decrypt-key/ response.
+  ///   The server derives (key, iv) together from chapter id + encryption
+  ///   version and never writes the iv into the file it uploads — the file
+  ///   is exactly ciphertext+tag, nothing prepended. An iv extracted from
+  ///   the file's own first 12 bytes would just be the start of the real
+  ///   ciphertext, guaranteeing a GCM tag mismatch on every chapter.
   Future<Uint8List> decrypt({
     required String encryptedCdnUrl,
     required Uint8List keyBytes,
+    required Uint8List ivBytes,
   }) async {
     // 1. Fetch encrypted PDF bytes from CDN (no auth header needed — presigned URL)
     final dio = Dio();
@@ -20,16 +27,12 @@ class PdfDecryptionService {
       encryptedCdnUrl,
       options: Options(responseType: ResponseType.bytes),
     );
-    final encrypted = Uint8List.fromList(response.data!);
+    // The whole body is ciphertext+tag (AESGCM.encrypt()'s own output,
+    // uploaded as-is server-side) — nothing to strip off the front.
+    final ciphertext = Uint8List.fromList(response.data!);
+    final iv = ivBytes;
 
-    // 2. Extract IV (first 12 bytes per AES-256-GCM spec)
-    if (encrypted.length < 12) {
-      throw Exception('Invalid encrypted PDF: too short');
-    }
-    final iv = encrypted.sublist(0, 12);
-    final ciphertext = encrypted.sublist(12);
-
-    // 3. Decrypt with pointycastle AES-256-GCM
+    // 2. Decrypt with pointycastle AES-256-GCM
     final cipher = GCMBlockCipher(AESEngine())
       ..init(
         false, // decrypt
@@ -42,8 +45,13 @@ class PdfDecryptionService {
       );
 
     final decrypted = Uint8List(cipher.getOutputSize(ciphertext.length));
-    final len =
-        cipher.processBytes(ciphertext, 0, ciphertext.length, decrypted, 0);
+    final len = cipher.processBytes(
+      ciphertext,
+      0,
+      ciphertext.length,
+      decrypted,
+      0,
+    );
     cipher.doFinal(decrypted, len);
 
     return decrypted;

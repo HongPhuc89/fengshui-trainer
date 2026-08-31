@@ -8,9 +8,10 @@ abstract class BookDetailEvent extends Equatable {
 
 class LoadBookDetail extends BookDetailEvent {
   final String slug;
-  const LoadBookDetail(this.slug);
+  final bool forceRefresh;
+  const LoadBookDetail(this.slug, {this.forceRefresh = false});
   @override
-  List<Object?> get props => [slug];
+  List<Object?> get props => [slug, forceRefresh];
 }
 
 class PurchaseBook extends BookDetailEvent {

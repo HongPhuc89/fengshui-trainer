@@ -9,9 +9,25 @@ class BookCategorySerializer(serializers.ModelSerializer):
 
 
 class BookChapterListSerializer(serializers.ModelSerializer):
+    # Both computed from context the parent book serializer builds once per
+    # request (BookDetailView.get_serializer_context) — not per chapter, to
+    # avoid one purchase/progress query per chapter in a book. Mirrors
+    # VideoLessonListSerializer (feature: video can_access fix).
+    can_access = serializers.SerializerMethodField()
+    is_completed = serializers.SerializerMethodField()
+
+    def get_can_access(self, obj):
+        # Mirrors views._can_access_chapter(): demo chapters are always
+        # readable, everything else needs VIP or a book purchase.
+        return obj.is_demo or bool(self.context.get('can_access_paid_chapters'))
+
+    def get_is_completed(self, obj):
+        return obj.id in self.context.get('completed_chapter_ids', frozenset())
+
     class Meta:
         model = BookChapter
-        fields = ('public_id', 'title', 'slug', 'order', 'is_demo', 'page_count')
+        fields = ('public_id', 'title', 'slug', 'order', 'is_demo', 'page_count',
+                  'can_access', 'is_completed')
 
 
 class BookListSerializer(serializers.ModelSerializer):

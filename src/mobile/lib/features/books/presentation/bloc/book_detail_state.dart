@@ -38,3 +38,14 @@ class BookDetailPurchaseError extends BookDetailState {
   @override
   List<Object?> get props => [detail, message];
 }
+
+/// Emitted exactly once, right after a purchase actually completes — the
+/// "Mua sách thành công!" toast is tied to this, not to BookDetailLoaded with
+/// hasPurchased=true, which is also true every time a book already owned is
+/// simply opened or reloaded.
+class BookDetailPurchaseSuccess extends BookDetailState {
+  final BookDetail detail;
+  const BookDetailPurchaseSuccess(this.detail);
+  @override
+  List<Object?> get props => [detail];
+}

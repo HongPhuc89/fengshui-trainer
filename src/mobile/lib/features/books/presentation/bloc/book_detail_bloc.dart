@@ -18,9 +18,14 @@ class BookDetailBloc extends Bloc<BookDetailEvent, BookDetailState> {
   }
 
   Future<void> _onLoad(
-      LoadBookDetail event, Emitter<BookDetailState> emit) async {
+    LoadBookDetail event,
+    Emitter<BookDetailState> emit,
+  ) async {
     emit(BookDetailLoading());
-    final result = await _repository.getBookDetail(event.slug);
+    final result = await _repository.getBookDetail(
+      event.slug,
+      forceRefresh: event.forceRefresh,
+    );
     result.fold(
       (failure) => emit(BookDetailError(failure.message)),
       (detail) => emit(BookDetailLoaded(detail)),
@@ -28,17 +33,31 @@ class BookDetailBloc extends Bloc<BookDetailEvent, BookDetailState> {
   }
 
   Future<void> _onPurchase(
-      PurchaseBook event, Emitter<BookDetailState> emit) async {
+    PurchaseBook event,
+    Emitter<BookDetailState> emit,
+  ) async {
     final current = state;
     if (current is! BookDetailLoaded) return;
 
     emit(BookDetailPurchasing(current.detail));
     final result = await _repository.purchaseBook(event.slug);
-    result.fold(
-      (failure) => emit(BookDetailPurchaseError(current.detail, failure.message)),
-      (_) {
-        // Reload detail after purchase to update hasPurchased flag
-        add(LoadBookDetail(event.slug));
+    await result.fold(
+      (failure) async =>
+          emit(BookDetailPurchaseError(current.detail, failure.message)),
+      (_) async {
+        // Fetched directly (not via add(LoadBookDetail(...))) so this handler
+        // can emit a dedicated "just purchased" state instead of the plain
+        // BookDetailLoaded a later reload would produce — that state is
+        // indistinguishable from "opened a book already owned" and was
+        // firing the success toast on every load, not just a real purchase.
+        final detailResult = await _repository.getBookDetail(
+          event.slug,
+          forceRefresh: true,
+        );
+        detailResult.fold(
+          (failure) => emit(BookDetailError(failure.message)),
+          (detail) => emit(BookDetailPurchaseSuccess(detail)),
+        );
       },
     );
   }

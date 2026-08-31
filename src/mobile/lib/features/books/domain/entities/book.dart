@@ -113,6 +113,12 @@ class BookChapterContent extends Equatable {
   final String encryptedFileUrl;
   final String decryptKeyBase64;
 
+  /// The server derives (key, iv) together from chapter id + encryption
+  /// version and never writes the iv into the encrypted file itself (see
+  /// books/services/pdf_encryption.py) — it only ever travels over the wire
+  /// here, alongside the key.
+  final String ivBase64;
+
   const BookChapterContent({
     required this.order,
     required this.title,
@@ -120,6 +126,7 @@ class BookChapterContent extends Equatable {
     required this.hasTrainingSet,
     required this.encryptedFileUrl,
     required this.decryptKeyBase64,
+    required this.ivBase64,
   });
 
   @override

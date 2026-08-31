@@ -34,7 +34,9 @@ class BookModel extends Book {
   factory BookModel.fromJson(Map<String, dynamic> json) {
     BookCategory? cat;
     if (json['category'] is Map) {
-      cat = BookCategoryModel.fromJson(json['category'] as Map<String, dynamic>);
+      cat = BookCategoryModel.fromJson(
+        json['category'] as Map<String, dynamic>,
+      );
     }
     return BookModel(
       slug: json['slug'] as String,
@@ -95,7 +97,9 @@ class BookDetailModel extends BookDetail {
   factory BookDetailModel.fromJson(Map<String, dynamic> json) {
     BookCategory? cat;
     if (json['category'] is Map) {
-      cat = BookCategoryModel.fromJson(json['category'] as Map<String, dynamic>);
+      cat = BookCategoryModel.fromJson(
+        json['category'] as Map<String, dynamic>,
+      );
     }
 
     final chaptersRaw = json['chapters'] as List<dynamic>? ?? [];
@@ -134,6 +138,7 @@ class BookChapterContentModel extends BookChapterContent {
     required super.hasTrainingSet,
     required super.encryptedFileUrl,
     required super.decryptKeyBase64,
+    required super.ivBase64,
   });
 
   factory BookChapterContentModel.fromJson(
@@ -145,9 +150,16 @@ class BookChapterContentModel extends BookChapterContent {
       title: chapterJson['title'] as String,
       pageCount: chapterJson['page_count'] as int? ?? 0,
       hasTrainingSet: chapterJson['has_training_set'] as bool? ?? false,
-      encryptedFileUrl: chapterJson['encrypted_file_url'] as String? ??
-          chapterJson['file_url'] as String? ?? '',
-      decryptKeyBase64: keyJson['key'] as String,
+      // BookChapterContentSerializer's own 'file_url' is the PLAIN, never-
+      // encrypted file_path — reading it here would hand an unencrypted PDF
+      // to PdfDecryptionService.decrypt(), which unconditionally attempts
+      // AES-256-GCM decryption on whatever URL it's given. encrypted_cdn_url
+      // is the one actually meant for that.
+      encryptedFileUrl: chapterJson['encrypted_cdn_url'] as String? ?? '',
+      // The decrypt-key endpoint's field is key_b64, not key.
+      decryptKeyBase64: keyJson['key_b64'] as String,
+      // Never in the encrypted file itself — only ever on this response.
+      ivBase64: keyJson['iv_b64'] as String,
     );
   }
 }
@@ -161,7 +173,9 @@ class ReadingProgressModel extends ReadingProgress {
   });
 
   factory ReadingProgressModel.fromJson(
-      String bookSlug, Map<String, dynamic> json) {
+    String bookSlug,
+    Map<String, dynamic> json,
+  ) {
     return ReadingProgressModel(
       bookSlug: bookSlug,
       chapterOrder: json['chapter_order'] as int? ?? 1,
@@ -181,7 +195,9 @@ class RecentlyReadBookModel extends RecentlyReadBook {
   }) : super(book: book);
 
   factory RecentlyReadBookModel.fromJson(Map<String, dynamic> json) {
-    final book = BookModel.fromJson(json['book'] as Map<String, dynamic>? ?? json);
+    final book = BookModel.fromJson(
+      json['book'] as Map<String, dynamic>? ?? json,
+    );
     return RecentlyReadBookModel(
       book: book,
       chapterOrder: json['chapter_order'] as int? ?? 1,

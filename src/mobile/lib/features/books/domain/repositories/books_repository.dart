@@ -11,13 +11,29 @@ abstract class BooksRepository {
     String? sort,
   });
   Future<Either<Failure, List<RecentlyReadBook>>> getRecentlyRead();
-  Future<Either<Failure, BookDetail>> getBookDetail(String slug);
+
+  /// forceRefresh skips the cached copy and re-fetches from the server —
+  /// needed right after a purchase, since otherwise the stale pre-purchase
+  /// cache entry (hasPurchased=false, chapters locked) would still be
+  /// returned for up to CacheTtl.list.
+  Future<Either<Failure, BookDetail>> getBookDetail(
+    String slug, {
+    bool forceRefresh = false,
+  });
   Future<Either<Failure, BookChapterContent>> getChapter(
-      String slug, int order);
+    String slug,
+    int order,
+  );
   Future<Either<Failure, ReadingProgress?>> getReadingProgress(String slug);
   Future<Either<Failure, void>> saveReadingProgress(
-      String slug, int chapterOrder, int page);
+    String slug,
+    int chapterOrder,
+    int page,
+  );
   Future<Either<Failure, void>> saveChapterProgress(
-      String slug, int chapterOrder, int page);
+    String slug,
+    int chapterOrder,
+    int page,
+  );
   Future<Either<Failure, void>> purchaseBook(String slug);
 }
