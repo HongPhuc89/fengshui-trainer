@@ -74,6 +74,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       autoPlay: true,
       looping: false,
       allowFullScreen: true,
+      // Without this, Chewie falls back to videoPlayerController.value's
+      // default aspectRatio (1.0, i.e. square) for the moment between
+      // Chewie showing up and the network video's real metadata arriving —
+      // visible every time _initVideo runs again from switching lessons.
+      aspectRatio: 16 / 9,
       materialProgressColors: ChewieProgressColors(
         playedColor: AppColors.primaryGold,
         handleColor: AppColors.primaryGold,
@@ -110,7 +115,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             appBar: AppBar(
               title: state is VideoPlayerLoaded
                   ? Text(
-                      state.lesson.title,
+                      '${state.lesson.order}. ${state.lesson.title}',
                       style: const TextStyle(fontSize: 15),
                     )
                   : const Text('Đang tải...'),
