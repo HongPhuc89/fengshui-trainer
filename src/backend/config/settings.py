@@ -276,9 +276,6 @@ PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = env.int("PASSWORD_RESET_TOKEN_EXPIRY_MINUT
 
 # Mobile device activation keys (feature-34). A handset change is staff-gated:
 # there is deliberately no self-service path.
-# How many builds per platform keep their binary. Older rows stay for history;
-# only the file is dropped (feature-36 §5.2).
-APP_RELEASE_KEEP_FILES = env.int("APP_RELEASE_KEEP_FILES", default=3)
 DEVICE_PAIRING_TTL_DAYS = env.int("DEVICE_PAIRING_TTL_DAYS", default=7)
 DEVICE_PAIRING_MAX_ATTEMPTS = env.int("DEVICE_PAIRING_MAX_ATTEMPTS", default=5)
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="admin@huyenhoc.pro")

@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:huyenhoc/features/update/data/update_store.dart';
-import 'package:huyenhoc/features/update/domain/update_models.dart';
 
 void main() {
   late Directory dir;
@@ -51,20 +50,5 @@ void main() {
     await store.markChecked(now: now);
     expect(store.shouldCheck(now: now.add(const Duration(hours: 5))), isFalse);
     expect(store.shouldCheck(now: now.add(const Duration(hours: 7))), isTrue);
-  });
-
-  test('verdict round-trips, and a missing one reads as null', () async {
-    expect(store.readVerdict(), isNull);
-
-    await store.writeVerdict(const AppVersionInfo(
-      versionCode: 12,
-      versionName: '1.2.0',
-      minSupportedVersionCode: 8,
-      downloadUrl: 'https://example.test/app.apk',
-    ));
-
-    final verdict = store.readVerdict()!;
-    expect(verdict.latestVersionCode, 12);
-    expect(verdict.minSupportedVersionCode, 8);
   });
 }

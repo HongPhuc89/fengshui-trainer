@@ -52,6 +52,6 @@ Thumbs.db
 logs/
 *.log
 inventory/
-data/
+/data/
 gunicorn.ctl
 *.cache

@@ -1,5 +1,4 @@
-// The update dialog itself, in both its dismissible and blocking form
-// (feature-36 §7.6).
+// The update nudge dialog — always dismissible (feature-37 §3.4, §6.4).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,10 +7,9 @@ import '../domain/update_models.dart';
 import 'update_cubit.dart';
 
 class UpdateView extends StatelessWidget {
-  const UpdateView({super.key, required this.info, required this.blocking});
+  const UpdateView({super.key, required this.info});
 
   final AppVersionInfo info;
-  final bool blocking;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +20,7 @@ class UpdateView extends StatelessWidget {
             state.phase == DownloadPhase.verifying;
 
         return AlertDialog(
-          title: Text(blocking ? 'Cần cập nhật ứng dụng' : 'Đã có bản mới'),
+          title: const Text('Đã có bản mới'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,13 +28,6 @@ class UpdateView extends StatelessWidget {
               if (info.versionName.isNotEmpty)
                 Text('Phiên bản ${info.versionName}',
                     style: Theme.of(context).textTheme.titleSmall),
-              if (blocking) ...[
-                const SizedBox(height: 8),
-                const Text(
-                  'Phiên bản đang dùng không còn được hỗ trợ. '
-                  'Vui lòng cập nhật để tiếp tục sử dụng.',
-                ),
-              ],
               if (info.releaseNotes.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(info.releaseNotes),
@@ -72,33 +63,22 @@ class UpdateView extends StatelessWidget {
   ) {
     if (busy) return const [];
 
-    // A stale block came from the stored verdict, so there is no download link
-    // to offer — only a retry (feature-36 §7.5).
-    final isStale = blocking && info.downloadUrl.isEmpty;
-
     return [
-      if (!blocking)
-        TextButton(
-          onPressed: () {
-            cubit.skip(info.versionCode);
-            Navigator.of(context).pop();
-          },
-          child: const Text('Bỏ qua'),
-        ),
+      TextButton(
+        onPressed: () {
+          cubit.skip(info.versionCode);
+          Navigator.of(context).pop();
+        },
+        child: const Text('Bỏ qua'),
+      ),
       if (state.needsInstallPermission)
         TextButton(
           onPressed: cubit.openInstallSettings,
           child: const Text('Mở cài đặt'),
         ),
       FilledButton(
-        onPressed: () {
-          if (isStale) {
-            cubit.check();
-          } else {
-            cubit.startUpdate(info);
-          }
-        },
-        child: Text(isStale ? 'Thử lại' : 'Cập nhật'),
+        onPressed: () => cubit.startUpdate(info),
+        child: const Text('Cập nhật'),
       ),
     ];
   }

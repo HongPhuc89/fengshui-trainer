@@ -30,7 +30,6 @@ class FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMi
 AppVersionInfo infoWith(String digest) => AppVersionInfo(
       versionCode: 2,
       versionName: '1.0.1',
-      minSupportedVersionCode: 0,
       downloadUrl: 'http://server.test/huyenhoc-2.apk',
       sha256: digest,
     );
@@ -142,5 +141,28 @@ void main() {
 
     verify(() => repository.refreshDownloadUrl()).called(1);
     verify(() => installer.install(apkFile().path)).called(1);
+  });
+
+  group('check()', () {
+    test('a newer release nudges (feature-37 §6.2)', () async {
+      when(() => repository.fetch()).thenAnswer((_) async => infoWith(digest));
+
+      await cubit.check();
+
+      expect(cubit.state.decision, isA<NudgeUpdate>());
+    });
+
+    test('T37-15: a failed check keeps the previous decision, not a crash', () async {
+      when(() => repository.fetch()).thenAnswer((_) async => infoWith(digest));
+      await cubit.check();
+      expect(cubit.state.decision, isA<NudgeUpdate>());
+
+      when(() => repository.fetch()).thenThrow(Exception('network down'));
+      await cubit.check();
+
+      // No forced/blocking tier left to preserve (feature-37 §3.4) — a failed
+      // check simply leaves the last successful decision in place.
+      expect(cubit.state.decision, isA<NudgeUpdate>());
+    });
   });
 }

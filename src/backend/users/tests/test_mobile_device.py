@@ -644,15 +644,14 @@ class MobileLoginIgnoresAppVersionTests(MobileSlotTestCase):
 
     def test_t36_9_stale_client_still_gets_a_session(self):
         """
-        T36-9: enforcement lives in the app-open check, not here.
-
-        Pinned as a test because the natural instinct is to gate the one call
-        that always reaches the server; §6.3 explains why it does not.
+        T36-9: login never looks at AppRelease at all. Feature-37 dropped even
+        the app-open enforcement (min_supported_version_code no longer
+        exists) — there is no floor anywhere any more, but this pins the
+        boundary that login specifically was never the place for it.
         """
         from core.models import AppRelease
-        AppRelease.objects.create(
-            platform='ANDROID', version_code=12, version_name='1.2.0',
-            min_supported_version_code=12, is_published=True,
+        AppRelease.objects.filter(platform=AppRelease.PLATFORM_ANDROID).update(
+            version_code=12, version_name='1.2.0',
         )
 
         response = self.login('device-a', HW_A, code=self.issue().pairing_code,
@@ -661,7 +660,7 @@ class MobileLoginIgnoresAppVersionTests(MobileSlotTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_t36_10_login_records_the_version_it_was_told(self):
-        """T36-10: version_spread() is only as good as what login stores."""
+        """T36-10: app_version is still recorded at login, independent of AppRelease."""
         self.login('device-a', HW_A, code=self.issue().pairing_code,
                    app_version='1.0.0+7')
 

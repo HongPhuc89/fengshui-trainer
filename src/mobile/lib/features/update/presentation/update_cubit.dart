@@ -1,5 +1,5 @@
 // Orchestrates the version check, the download and the hand-off to the
-// installer (feature-36 §7).
+// installer (feature-37 §6).
 
 import 'dart:io';
 
@@ -8,7 +8,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/update/installer.dart';
 import '../data/update_repository.dart';
@@ -64,35 +63,34 @@ class UpdateCubit extends Cubit<UpdateState> {
   static const _decider = UpdateDecider();
 
   /// Never awaited by main(): a slow network must not hold the app on a blank
-  /// screen (feature-36 §7.5).
+  /// screen (feature-36 §7.5, unchanged).
+  ///
+  /// iOS goes through TestFlight entirely outside this app — there is nothing
+  /// published for it to check, so this never even calls the API on iOS
+  /// (feature-37 §3.5).
   Future<void> check({bool force = true}) async {
+    if (Platform.isIOS) return;
     if (!force && !_store.shouldCheck()) return;
 
     final current = await _repository.currentVersionCode();
     try {
-      final info = await _repository.fetch(current);
+      final info = await _repository.fetch();
       await _store.markChecked();
       if (info == null) {
         emit(state.copyWith(decision: const NoUpdate()));
         return;
       }
-      await _store.writeVerdict(info);
       emit(state.copyWith(
-        decision: _decider.fromServer(
+        decision: _decider.decide(
           info: info,
           clientVersionCode: current,
           isSkipped: _store.isSkipped(info.versionCode),
         ),
       ));
     } catch (_) {
-      // Falls back to what the server last said. Only a successful response may
-      // loosen a verdict, so losing the network cannot unlock a blocked build.
-      emit(state.copyWith(
-        decision: _decider.fromStoredVerdict(
-          verdict: _store.readVerdict(),
-          clientVersionCode: current,
-        ),
-      ));
+      // No forced/blocking tier left to preserve (feature-37 §3.4) — a failed
+      // check simply keeps whatever the last successful one decided, and
+      // tries again on the next check (app open / 6h resume).
     }
   }
 
@@ -102,14 +100,7 @@ class UpdateCubit extends Cubit<UpdateState> {
     emit(state.copyWith(decision: const NoUpdate()));
   }
 
-  /// iOS hands the whole job to the OS; Android downloads and verifies first.
-  Future<void> startUpdate(AppVersionInfo info) async {
-    if (Platform.isIOS) {
-      await launchUrl(Uri.parse(info.downloadUrl), mode: LaunchMode.externalApplication);
-      return;
-    }
-    await _downloadAndInstall(info);
-  }
+  Future<void> startUpdate(AppVersionInfo info) => _downloadAndInstall(info);
 
   Future<void> _downloadAndInstall(AppVersionInfo info) async {
     // Asked before downloading, not after: 160MB is a lot to spend on a build
@@ -168,7 +159,7 @@ class UpdateCubit extends Cubit<UpdateState> {
   }
 
   /// The signed URL may simply have expired mid-flight; a fresh one costs one
-  /// request and avoids blaming the user's network (feature-36 §7.2).
+  /// request and avoids blaming the user's network (feature-36 §7.2, unchanged).
   Future<void> _fetch(AppVersionInfo info, String path) async {
     try {
       await _repository.download(info.downloadUrl, path, onProgress: _emitProgress);
@@ -185,7 +176,7 @@ class UpdateCubit extends Cubit<UpdateState> {
 
   /// Streamed so a 160MB build never lands in memory in one piece. Catches a
   /// truncated or swapped file — not a compromised server, since the hash comes
-  /// from the same place (feature-36 §7.2).
+  /// from the same place (feature-36 §7.2, unchanged).
   Future<bool> _matchesDigest(File file, String expected) async {
     final digest = await sha256.bind(file.openRead()).first;
     return digest.toString() == expected;

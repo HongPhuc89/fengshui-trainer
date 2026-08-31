@@ -275,6 +275,26 @@
 
 > **Design doc**: `md/design/feature-36-app-version-update.md` (v4)
 > ⚠️ **Vận hành**: APK phải ký đúng keystore hiện tại (D1/D3). Mỗi lần build IPA phải export lại profile với UDID hiện hành (O1). Không bao giờ dùng lại một `version_code` đã publish.
+> **Thay thế bởi feature-37** — iOS chuyển sang TestFlight, Android đơn giản hoá còn 1 bản duy nhất.
+
+---
+
+### Feature 37: Đơn giản hoá cập nhật app — chỉ APK, 1 bản duy nhất ✅ COMPLETE
+**Priority**: High | **Status**: ✅ Implemented (2026-08-31)
+
+- [x] **37.1** `AppRelease` trở thành singleton (Android only, `platform` unique) — migration 0002 viết lại tại chỗ + seed 1 row
+- [x] **37.2** `version_code`/`version_name` tự đọc từ APK bằng `pyaxmlparser` trong `AppReleaseForm.clean_file()` — validate trước khi lưu, không nhập tay
+- [x] **37.3** Upload APK mới thành công → xoá file cũ trong `save_model()` (kể cả trên Supabase, tái dùng `LocalFirstSupabaseStorage.delete()`)
+- [x] **37.4** `GET /api/app/version/` rút gọn — không còn query param, không còn `min_supported_version_code`/`update_status`
+- [x] **37.5** Bỏ hẳn iOS OTA (`ios/manifest.plist`, `itms-services://`) — TestFlight thay thế toàn bộ
+- [x] **37.6** Bỏ hẳn mức "chặn cứng" — chỉ còn 1 modal nhắc, luôn đóng được
+- [x] **37.7** Xoá `release_pruning`, `prune_app_releases`, `version_spread`, `app_version.py` — không còn tác dụng
+- [x] **37.8** Mobile: `UpdateCubit.check()` bỏ qua trên iOS; `UpdateDecider` gộp về 1 hàm so sánh; bỏ `LastVerdict`/`BlockUpdate`
+- [x] **37.9** Giữ nguyên 100% luồng tải + verify sha256 + tự mở trình cài đặt Android (`AndroidInstaller`, `FileProvider`)
+- [x] **37.10** Test — 12 backend mới (76/76 toàn suite core+users) + 16 Flutter unit
+
+> **Design doc**: `md/design/feature-37-simplify-apk-update.md` (v2)
+> **Vận hành**: migration `0002_apprelease` được viết lại tại chỗ (không giữ lịch sử schema cũ) — chỉ an toàn vì dự án chưa lên production, mọi DB đã áp dụng migration cũ phải `migrate core 0001` trước khi pull code mới (§3.7).
 
 ---
 

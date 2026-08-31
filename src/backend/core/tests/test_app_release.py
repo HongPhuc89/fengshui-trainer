@@ -1,6 +1,9 @@
-"""App release and version endpoints (feature-36 §9)."""
+"""AppRelease singleton, admin upload flow, and version endpoint (feature-37)."""
+
+from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.urls import reverse
@@ -8,196 +11,155 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core.models import AppRelease
-from core.services.app_version import parse_version_code
-from users.models import MobileDevice, User
+from users.models import User
 
 PASSWORD = 'str0ng-pass-word'
 
 
-def make_release(platform='ANDROID', version_code=12, min_supported=8,
-                 published=True, name='1.2.0'):
-    suffix = 'apk' if platform == 'ANDROID' else 'ipa'
-    return AppRelease.objects.create(
-        platform=platform,
-        version_code=version_code,
-        version_name=name,
-        min_supported_version_code=min_supported,
-        file=SimpleUploadedFile(f'huyenhoc-{version_code}.{suffix}', b'PK\x03\x04payload'),
-        is_published=published,
-    )
+def fake_apk(version_code=13, version_name='1.3.0'):
+    """A stand-in for pyaxmlparser.APK — a real APK binary is not worth
+    fixturing just to exercise the two attributes read_version_from_apk uses."""
+    apk = MagicMock()
+    apk.version_code = version_code
+    apk.version_name = version_name
+    return apk
+
+
+def make_release(version_code=12, name='1.2.0'):
+    """
+    The one AppRelease row is seeded by migration 0002 (feature-37 §4) — tests
+    update it in place. Creating a second row would trip the unique
+    constraint on `platform` exactly like it should in production.
+    """
+    release = AppRelease.objects.get(platform=AppRelease.PLATFORM_ANDROID)
+    release.version_code = version_code
+    release.version_name = name
+    release.sha256 = 'deadbeef'
+    release.file_size = 42
+    release.file = SimpleUploadedFile(f'huyenhoc-{version_code}.apk', b'PK\x03\x04payload')
+    release.save()
+    return release
 
 
 class AppVersionEndpointTests(APITestCase):
-    """GET /api/app/version/ (feature-36 §6.1)."""
+    """GET /api/app/version/ (feature-37 §5.2)."""
 
     def setUp(self):
         self.url = reverse('app_version')
 
-    def get(self, **params):
-        return self.client.get(self.url, {'platform': 'android', **params})
+    def test_t37_8_seeded_row_without_a_file_is_204(self):
+        """T37-8: the migration-seeded row has no file yet — behaves like nothing published."""
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_204_NO_CONTENT)
 
-    def test_t36_1_no_release_published(self):
-        """T36-1: an empty table must not disturb anyone."""
-        self.assertEqual(self.get().status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_t36_2_client_below_the_floor_is_blocked(self):
+    def test_t37_9_published_release_fields(self):
         make_release()
-        self.assertEqual(self.get(version_code=7).data['update_status'], 'BLOCKED')
+        data = self.client.get(self.url).data
 
-    def test_t36_3_client_between_floor_and_latest_is_nudged(self):
-        make_release()
-        self.assertEqual(self.get(version_code=9).data['update_status'], 'AVAILABLE')
-
-    def test_t36_4_client_on_the_latest_is_up_to_date(self):
-        make_release()
-        self.assertEqual(self.get(version_code=12).data['update_status'], 'UP_TO_DATE')
-
-    def test_t36_5_without_version_code_the_numbers_are_still_returned(self):
-        """T36-5: the client can decide for itself if it did not send its version."""
-        make_release()
-        data = self.get().data
-
-        self.assertIsNone(data['update_status'])
         self.assertEqual(data['version_code'], 12)
-        self.assertEqual(data['min_supported_version_code'], 8)
+        self.assertEqual(data['version_name'], '1.2.0')
+        self.assertTrue(data['download_url'])
+        self.assertEqual(data['sha256'], 'deadbeef')
+        self.assertEqual(data['file_size'], 42)
+        for dropped in ('platform', 'min_supported_version_code', 'update_status'):
+            self.assertNotIn(dropped, data)
 
-    def test_t36_6_only_the_highest_published_release_is_served(self):
-        make_release(version_code=11, name='1.1.0')
-        make_release(version_code=12, name='1.2.0')
-        make_release(version_code=13, name='1.3.0', published=False)
-
-        self.assertEqual(self.get().data['version_code'], 12)
-
-    def test_t36_12_endpoint_needs_no_auth(self):
-        """T36-12: a blocked app has no token, so auth would be a deadlock."""
+    def test_t37_10_endpoint_needs_no_auth(self):
+        """T37-10: a client checking for updates before login has no token to send."""
         make_release()
-        self.assertEqual(self.get(version_code=9).status_code, status.HTTP_200_OK)
-
-    def test_t36_18_bad_platform_is_a_400(self):
-        for value in ('', 'windows'):
-            with self.subTest(platform=value):
-                response = self.client.get(self.url, {'platform': value})
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_t36_19_unpublishing_falls_back_to_the_previous_release(self):
-        """T36-19: the only lever that helps clients who have not updated yet."""
-        make_release(version_code=11, name='1.1.0')
-        latest = make_release(version_code=12, name='1.2.0')
-
-        AppRelease.objects.filter(pk=latest.pk).update(is_published=False)
-
-        self.assertEqual(self.get().data['version_code'], 11)
-
-    def test_t36_16_ios_hands_the_install_to_the_os(self):
-        make_release(platform='IOS', name='1.2.0')
-        data = self.client.get(self.url, {'platform': 'ios', 'version_code': 9}).data
-
-        self.assertTrue(data['download_url'].startswith('itms-services://'))
-        self.assertIn('/api/app/ios/manifest.plist', data['download_url'])
-        self.assertIsNone(data['sha256'])
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_200_OK)
 
 
-class IosManifestTests(APITestCase):
-    """GET /api/app/ios/manifest.plist (feature-36 §6.2)."""
+class AppReleaseSingletonTests(APITestCase):
+    """DB-level guarantee that only one row can ever exist (feature-37 §3.1)."""
 
-    def test_t36_15_manifest_is_xml_with_the_right_bundle_id(self):
-        """T36-15: a wrong bundle id installs a second app instead of updating."""
-        make_release(platform='IOS', name='1.2.0')
-
-        response = self.client.get(reverse('app_ios_manifest'))
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response['Content-Type'], 'text/xml')
-        body = response.content.decode()
-        self.assertIn('<string>pro.huyenhoc.app</string>', body)
-        self.assertIn('<string>1.2.0</string>', body)
-        self.assertIn('software-package', body)
-
-    def test_manifest_404s_when_nothing_is_published(self):
-        self.assertEqual(self.client.get(reverse('app_ios_manifest')).status_code,
-                         status.HTTP_404_NOT_FOUND)
-
-
-class AppReleaseModelTests(APITestCase):
-    """Schema and form guards (feature-36 §4.2, §5.1)."""
-
-    def test_t36_7_floor_above_ceiling_is_refused_by_the_database(self):
-        """T36-7: the costliest failure mode, so it is blocked at the schema."""
+    def test_t37_7_second_row_refused_by_the_database(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
-            AppRelease.objects.create(
-                platform='ANDROID', version_code=10, version_name='1.0.0',
-                min_supported_version_code=11,
-            )
+            AppRelease.objects.create(platform=AppRelease.PLATFORM_ANDROID)
 
-    def test_t36_8_duplicate_version_code_per_platform(self):
-        make_release(version_code=12)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            make_release(version_code=12, name='1.2.1')
+    def test_current_returns_the_seeded_row(self):
+        self.assertIsNotNone(AppRelease.current())
+        self.assertEqual(AppRelease.current().platform, AppRelease.PLATFORM_ANDROID)
 
-    def test_same_version_code_on_the_other_platform_is_fine(self):
-        make_release(platform='ANDROID', version_code=12)
-        make_release(platform='IOS', version_code=12)
-        self.assertEqual(AppRelease.objects.count(), 2)
 
-    def test_t36_14_publishing_below_the_current_release_is_refused(self):
-        """T36-14: Android would refuse to install it anyway."""
-        make_release(version_code=12)
-        older = make_release(version_code=11, name='1.1.0', published=False)
+class ReadVersionFromApkTests(APITestCase):
+    """AppRelease.read_version_from_apk — parse + validate before any write (feature-37 §3.2)."""
 
-        older.is_published = True
-        with self.assertRaises(ValidationError) as ctx:
-            older.full_clean()
-        self.assertIn('version_code', ctx.exception.error_dict)
+    def setUp(self):
+        self.release = AppRelease.objects.get(platform=AppRelease.PLATFORM_ANDROID)
 
-    def test_clean_rejects_a_file_with_the_wrong_extension(self):
-        release = AppRelease(
-            platform='ANDROID', version_code=12, version_name='1.2.0',
-            file=SimpleUploadedFile('build.ipa', b'PK'),
+    def test_t37_1_valid_apk_returns_detected_fields(self):
+        payload = b'fake apk bytes'
+        with patch('core.models.APK', return_value=fake_apk(13, '1.3.0')):
+            version_code, version_name, sha256, size = self.release.read_version_from_apk(
+                SimpleUploadedFile('huyenhoc.apk', payload))
+
+        self.assertEqual((version_code, version_name), (13, '1.3.0'))
+        self.assertEqual(size, len(payload))
+        self.assertTrue(sha256)
+
+    def test_t37_2_non_increasing_version_code_is_refused(self):
+        self.release.version_code = 12
+        with patch('core.models.APK', return_value=fake_apk(12, '1.2.0')):
+            with self.assertRaises(ValidationError):
+                self.release.read_version_from_apk(SimpleUploadedFile('huyenhoc.apk', b'x'))
+
+    def test_t37_3_unparseable_file_is_refused(self):
+        with patch('core.models.APK', side_effect=Exception('bad zip')):
+            with self.assertRaises(ValidationError):
+                self.release.read_version_from_apk(SimpleUploadedFile('not-an-apk.txt', b'nope'))
+
+    def test_apk_missing_version_info_is_refused(self):
+        with patch('core.models.APK', return_value=fake_apk(None, None)):
+            with self.assertRaises(ValidationError):
+                self.release.read_version_from_apk(SimpleUploadedFile('huyenhoc.apk', b'x'))
+
+
+class AppReleaseAdminUploadTests(APITestCase):
+    """
+    Exercises the real admin change view: form validation via clean_file(),
+    auto-detected version fields, and deleting the old file only once the new
+    one has actually been saved (feature-37 §3.3).
+    """
+
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username='admin@example.com', email='admin@example.com', password=PASSWORD,
         )
-        with self.assertRaises(ValidationError) as ctx:
-            release.full_clean()
-        self.assertIn('file', ctx.exception.error_dict)
+        self.client.force_login(self.admin_user)
+        self.release = make_release(version_code=10, name='1.0.0')
+        self.url = reverse('admin:core_apprelease_change', args=[self.release.pk])
 
-    def test_current_for_ignores_drafts_and_other_platforms(self):
-        make_release(platform='ANDROID', version_code=12)
-        make_release(platform='IOS', version_code=20)
+    def _post(self, file):
+        return self.client.post(self.url, {
+            'platform': AppRelease.PLATFORM_ANDROID,
+            'file': file,
+            'release_notes': '',
+            '_continue': '',
+        })
 
-        self.assertEqual(AppRelease.current_for('ANDROID').version_code, 12)
+    def test_t37_4_uploading_a_newer_apk_replaces_and_deletes_the_old_file(self):
+        old_name = self.release.file.name
 
+        with patch('core.models.APK', return_value=fake_apk(11, '1.1.0')):
+            self._post(SimpleUploadedFile('huyenhoc-11.apk', b'new payload'))
 
-class ParseVersionCodeTests(APITestCase):
-    """T36-17: one parser for both shapes the clients send."""
+        self.release.refresh_from_db()
+        self.assertEqual(self.release.version_code, 11)
+        self.assertEqual(self.release.version_name, '1.1.0')
+        self.assertNotEqual(self.release.file.name, old_name)
+        self.assertFalse(default_storage.exists(old_name))
 
-    def test_accepts_both_forms_and_refuses_the_rest(self):
-        cases = [('1.0.0+7', 7), ('7', 7), (7, 7), ('', None),
-                 ('abc', None), (None, None), ('1.0.0+', None), ('-3', None)]
-        for raw, expected in cases:
-            with self.subTest(raw=raw):
-                self.assertEqual(parse_version_code(raw), expected)
+    def test_t37_5_invalid_apk_keeps_the_previous_file_untouched(self):
+        old_name = self.release.file.name
 
+        with patch('core.models.APK', side_effect=Exception('bad zip')):
+            self._post(SimpleUploadedFile('broken.apk', b'garbage'))
 
-class VersionSpreadTests(APITestCase):
-    """T36-20: the numbers an admin needs before raising the floor."""
+        self.release.refresh_from_db()
+        self.assertEqual(self.release.version_code, 10)
+        self.assertEqual(self.release.file.name, old_name)
+        self.assertTrue(default_storage.exists(old_name))
 
-    def test_counts_only_live_handsets_of_that_platform(self):
-        from core.services.version_spread import version_spread
-
-        user = User.objects.create_user(
-            username='u@example.com', email='u@example.com',
-            password=PASSWORD, is_active=True,
-        )
-        common = dict(user=user, expires_at='2030-01-01T00:00:00Z')
-        MobileDevice.objects.create(client_code='C1', pairing_code='TT-1', status='ACTIVE',
-                                    device_type='ANDROID', app_version='1.0.0+1', **common)
-        MobileDevice.objects.create(client_code='C2', pairing_code='TT-2', status='ACTIVE',
-                                    device_type='ANDROID', app_version='1.0.0+1', **common)
-        MobileDevice.objects.create(client_code='C3', pairing_code='TT-3', status='ACTIVE',
-                                    device_type='ANDROID', app_version='1.1.0+4', **common)
-        MobileDevice.objects.create(client_code='C4', pairing_code='TT-4', status='REVOKED',
-                                    device_type='ANDROID', app_version='1.0.0+1', **common)
-        MobileDevice.objects.create(client_code='C5', pairing_code='TT-5', status='ACTIVE',
-                                    device_type='IOS', app_version='1.0.0+1', **common)
-
-        rows = {r['app_version']: r['handsets'] for r in version_spread('ANDROID')}
-
-        self.assertEqual(rows, {'1.0.0+1': 2, '1.1.0+4': 1})
+    def test_t37_6_add_view_is_hidden_once_the_singleton_exists(self):
+        response = self.client.get(reverse('admin:core_apprelease_add'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
