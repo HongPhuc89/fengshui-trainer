@@ -12,9 +12,13 @@ class VideoDetailLoading extends VideoDetailState {}
 
 class VideoDetailLoaded extends VideoDetailState {
   final VideoDetail detail;
-  const VideoDetailLoaded(this.detail);
+
+  /// Nullable: a transient failure fetching it must not block showing the
+  /// course itself — only the progress bar degrades (see VideoDetailBloc).
+  final CourseProgress? progress;
+  const VideoDetailLoaded(this.detail, {this.progress});
   @override
-  List<Object?> get props => [detail];
+  List<Object?> get props => [detail, progress];
 }
 
 class VideoDetailError extends VideoDetailState {
@@ -26,15 +30,17 @@ class VideoDetailError extends VideoDetailState {
 
 class VideoDetailPurchasing extends VideoDetailState {
   final VideoDetail detail;
-  const VideoDetailPurchasing(this.detail);
+  final CourseProgress? progress;
+  const VideoDetailPurchasing(this.detail, {this.progress});
   @override
-  List<Object?> get props => [detail];
+  List<Object?> get props => [detail, progress];
 }
 
 class VideoDetailPurchaseError extends VideoDetailState {
   final VideoDetail detail;
   final String message;
-  const VideoDetailPurchaseError(this.detail, this.message);
+  final CourseProgress? progress;
+  const VideoDetailPurchaseError(this.detail, this.message, {this.progress});
   @override
-  List<Object?> get props => [detail, message];
+  List<Object?> get props => [detail, message, progress];
 }

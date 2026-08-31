@@ -157,6 +157,21 @@ class VideosRepositoryImpl implements VideosRepository {
   }
 
   @override
+  Future<Either<Failure, CourseProgress>> getCourseProgress(
+    String slug,
+  ) async {
+    try {
+      final data = await _remote.getCourseProgress(slug);
+      return Right(data);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e, st) {
+      debugPrint('[repo] unexpected failure: $e\n$st');
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
   Future<Either<Failure, LessonContent>> getLesson(
     String courseSlug,
     String lessonSlug,
@@ -256,5 +271,9 @@ class VideosRepositoryImpl implements VideosRepository {
         )
         .toList(),
     'last_watched_lesson': v.lastWatchedLessonSlug,
+    'instructor': v.instructor,
+    'level': v.level,
+    'total_lessons': v.totalLessons,
+    'total_duration_seconds': v.totalDurationSeconds,
   };
 }

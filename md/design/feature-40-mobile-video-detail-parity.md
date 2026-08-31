@@ -2,8 +2,10 @@
 
 ## Document Information
 - **Feature**: Mobile Video course detail screen (Flutter, `src/mobile/`) đang thiếu 2 thứ mà bản web (`VideoDetailView.vue`) đã có: (1) ảnh thumbnail trong danh sách bài học (`lesson_list_item.dart` hiện chỉ có số thứ tự trong vòng tròn), (2) khối thông tin header (giảng viên, badge trình độ, số bài + tổng thời lượng, progress bar %, mô tả có nút "Xem thêm"). Bổ sung cả hai, bám sát pattern web.
-- **Status**: Draft — chờ PO review
+- **Status**: **Approved — Stage 3 (implementing)**
 - **Created**: 2026-09-01
+- **Updated**: 2026-09-01
+  - v2: Xử lý PO review v1 (Approve with minor fixes) — thêm snippet `_onPurchase` mang `progress` theo (§4.4), ghi chú rollback/rollout (§5), ghi chú permission endpoint progress (§4.3). PO xác nhận đồng ý cả 2 quyết định ở §5 (giữ hero-image; bỏ `_PriceSection` thường trực).
 - **Related**: `feature-3-videos.md` (thiết kế module Video gốc), `feature-20-mobile-app.md` (kiến trúc Flutter tổng, F2 "Bám theo UI/UX web")
 
 ---
@@ -116,6 +118,7 @@ Future<CourseProgressModel> getCourseProgress(String slug) async {
   return CourseProgressModel.fromJson(res.data);
 }
 ```
+`CourseProgressView` yêu cầu `IsAuthenticated` (đã verify qua code) — không rủi ro vì app đòi login toàn bộ và `fold()` ở §4.4 đã xử lý lỗi graceful (token hết hạn/anonymous → `progress = null`, chỉ progress bar không hiện, không crash).
 
 ### 4.4 Bloc — fetch song song, lỗi progress không chặn nội dung chính
 
@@ -136,6 +139,20 @@ Future<void> _onLoad(LoadVideoDetail event, Emitter<VideoDetailState> emit) asyn
 ```
 `progress` thêm làm field nullable vào cả 3 state có mang `detail` (`VideoDetailLoaded`, `VideoDetailPurchasing`, `VideoDetailPurchaseError`) — tái dùng qua chuỗi sự kiện mua/lỗi mua giống cách `LoadChapter` giữ `_bookDetail` ở feature-39 (bloc field, không refetch mỗi lần).
 
+`_onPurchase` cũng phải mang `progress` hiện tại theo, không chỉ `_onLoad` — nếu bỏ sót, progress bar sẽ biến mất rồi hiện lại (flicker) trong lúc mua khoá:
+```dart
+Future<void> _onPurchase(PurchaseVideo event, Emitter<VideoDetailState> emit) async {
+  final current = state;
+  if (current is! VideoDetailLoaded) return;
+  emit(VideoDetailPurchasing(current.detail, progress: current.progress)); // giữ progress, không reset về null
+  final result = await _repository.purchaseVideo(event.slug);
+  result.fold(
+    (failure) => emit(VideoDetailPurchaseError(current.detail, failure.message, progress: current.progress)),
+    (_) => add(LoadVideoDetail(event.slug)), // reload đầy đủ, tự fetch lại progress mới
+  );
+}
+```
+
 ### 4.5 UI header (`video_detail_screen.dart`)
 
 Bố cục mới theo đúng `VideoDetailView.vue` §template, **giữ nguyên `SliverAppBar` hero-image hiện có** (xem quyết định ở §5), thêm khối info bên dưới:
@@ -154,6 +171,7 @@ Bố cục mới theo đúng `VideoDetailView.vue` §template, **giữ nguyên `
 - **Giữ order-number + thêm thumbnail** (không thay số bằng icon lock/play như web) — giữ affordance sẵn có, ít rủi ro hơn đổi hẳn cách hiển thị trạng thái. Nêu để PO xác nhận không muốn đổi luôn theo web.
 - **Không cache riêng course-progress**: gọi lại mỗi lần vào trang (giống web — không thấy web cache progress). Nhất quán, đơn giản.
 - **Test**: thêm test cho `VideoDetailModel.fromJson` (4 field mới) và bloc test cho nhánh progress lỗi không chặn `VideoDetailLoaded` — module `videos` cũng chưa có tiền lệ bloc test (giống tình trạng `books` ở feature-39), có thể defer nếu PO không yêu cầu.
+- **Rollout & rollback**: thuần thay đổi client (mobile app), không có backend/DB đi kèm nên không có feature flag/kill-switch server — rollback là phát hành bản kế tiếp, chịu độ trễ duyệt app store (giống feature-39).
 
 ## 6. Bước tiếp theo
 

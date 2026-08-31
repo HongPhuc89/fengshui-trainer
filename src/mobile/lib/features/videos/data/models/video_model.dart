@@ -99,6 +99,10 @@ class VideoDetailModel extends VideoDetail {
     super.description,
     required super.lessons,
     super.lastWatchedLessonSlug,
+    super.instructor,
+    super.level,
+    super.totalLessons,
+    super.totalDurationSeconds,
   });
 
   factory VideoDetailModel.fromJson(Map<String, dynamic> json) {
@@ -133,6 +137,26 @@ class VideoDetailModel extends VideoDetail {
       description: json['description'] as String?,
       lessons: lessons,
       lastWatchedLessonSlug: lastSlug,
+      instructor: json['instructor'] as String?,
+      level: json['level'] as String?,
+      totalLessons: json['total_lessons'] as int? ?? 0,
+      totalDurationSeconds: json['total_duration_seconds'] as int? ?? 0,
+    );
+  }
+}
+
+class CourseProgressModel extends CourseProgress {
+  const CourseProgressModel({
+    required super.progressPercent,
+    required super.completedLessons,
+    required super.totalLessons,
+  });
+
+  factory CourseProgressModel.fromJson(Map<String, dynamic> json) {
+    return CourseProgressModel(
+      progressPercent: json['progress_percent'] as int? ?? 0,
+      completedLessons: json['completed_lessons'] as int? ?? 0,
+      totalLessons: json['total_lessons'] as int? ?? 0,
     );
   }
 }

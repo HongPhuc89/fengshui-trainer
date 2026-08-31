@@ -18,6 +18,10 @@ abstract class VideosRepository {
     String slug, {
     bool forceRefresh = false,
   });
+
+  /// Not cached — same as web, which re-fetches on every visit rather than
+  /// TTL-caching a value that changes as soon as the user finishes a lesson.
+  Future<Either<Failure, CourseProgress>> getCourseProgress(String slug);
   Future<Either<Failure, LessonContent>> getLesson(
     String courseSlug,
     String lessonSlug,

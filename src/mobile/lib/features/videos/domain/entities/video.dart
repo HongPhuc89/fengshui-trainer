@@ -92,6 +92,13 @@ class VideoDetail extends Equatable {
   final String? description;
   final List<LessonMeta> lessons;
   final String? lastWatchedLessonSlug;
+  final String? instructor;
+
+  /// 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' — raw backend value, mapped to
+  /// a Vietnamese label + color at the UI layer (mirrors web's LEVEL_MAP).
+  final String? level;
+  final int totalLessons;
+  final int totalDurationSeconds;
 
   const VideoDetail({
     required this.slug,
@@ -105,10 +112,31 @@ class VideoDetail extends Equatable {
     this.description,
     required this.lessons,
     this.lastWatchedLessonSlug,
+    this.instructor,
+    this.level,
+    this.totalLessons = 0,
+    this.totalDurationSeconds = 0,
   });
 
   @override
   List<Object?> get props => [slug, title];
+}
+
+/// Overall course completion — mirrors the server's CourseProgressSerializer
+/// (GET /api/videos/{slug}/progress/), fetched separately from VideoDetail.
+class CourseProgress extends Equatable {
+  final int progressPercent;
+  final int completedLessons;
+  final int totalLessons;
+
+  const CourseProgress({
+    required this.progressPercent,
+    required this.completedLessons,
+    required this.totalLessons,
+  });
+
+  @override
+  List<Object?> get props => [progressPercent, completedLessons, totalLessons];
 }
 
 class LessonContent extends Equatable {

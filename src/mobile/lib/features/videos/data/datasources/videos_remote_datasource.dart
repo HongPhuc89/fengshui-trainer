@@ -10,6 +10,7 @@ abstract class VideosRemoteDataSource {
   Future<List<VideoModel>> getVideos({String? category, String? search});
   Future<List<RecentlyWatchedVideoModel>> getRecentlyWatched();
   Future<VideoDetailModel> getVideoDetail(String slug);
+  Future<CourseProgressModel> getCourseProgress(String slug);
   Future<LessonContentModel> getLesson(
       String courseSlug, String lessonSlug);
   Future<void> saveLessonProgress(
@@ -85,6 +86,18 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
       final resp =
           await _apiClient.get(ApiEndpoints.videoDetail(slug));
       return VideoDetailModel.fromJson(
+          resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw parseDioError(e);
+    }
+  }
+
+  @override
+  Future<CourseProgressModel> getCourseProgress(String slug) async {
+    try {
+      final resp =
+          await _apiClient.get(ApiEndpoints.courseProgress(slug));
+      return CourseProgressModel.fromJson(
           resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw parseDioError(e);

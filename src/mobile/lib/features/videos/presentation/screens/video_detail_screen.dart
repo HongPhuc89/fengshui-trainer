@@ -9,6 +9,25 @@ import '../bloc/video_detail_bloc.dart';
 import '../widgets/lesson_list_item.dart';
 import '../../domain/entities/video.dart';
 
+/// 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' → Vietnamese label + accent
+/// color — mirrors web's LEVEL_MAP in VideoDetailView.vue.
+const Map<String, ({String label, Color color})> _kLevelMap = {
+  'BEGINNER': (label: 'Cơ bản', color: Color(0xFF66BB6A)),
+  'INTERMEDIATE': (label: 'Trung cấp', color: Color(0xFFFFA726)),
+  'ADVANCED': (label: 'Nâng cao', color: Color(0xFFEF5350)),
+};
+
+({String label, Color color}) _levelInfo(String level) =>
+    _kLevelMap[level] ?? (label: level, color: AppColors.textSecondary);
+
+/// Matches web's formatDuration() in VideoDetailView.vue.
+String _formatDuration(int seconds) {
+  if (seconds <= 0) return '';
+  final h = seconds ~/ 3600;
+  final m = (seconds % 3600) ~/ 60;
+  return h > 0 ? '${h}g ${m}p' : '$m phút';
+}
+
 class VideoDetailScreen extends StatelessWidget {
   final String slug;
   const VideoDetailScreen({super.key, required this.slug});
@@ -82,8 +101,28 @@ class _VideoDetailView extends StatelessWidget {
             : state is VideoDetailPurchaseError
             ? state.detail
             : null;
+        final progress = state is VideoDetailLoaded
+            ? state.progress
+            : state is VideoDetailPurchasing
+            ? state.progress
+            : state is VideoDetailPurchaseError
+            ? state.progress
+            : null;
 
         if (detail == null) return const Scaffold();
+
+        // Whole-course access (free/VIP/purchased) — matches web's
+        // `canAccess` computed, but derived from server-computed per-lesson
+        // `can_access` (VideoLessonListSerializer) instead of re-deriving
+        // VIP/purchase logic client-side: `hasPurchased` alone doesn't
+        // account for VIP (UserVideoPurchase lookup only), and VideoDetail
+        // has no `is_free`/VIP-of-current-user field to check directly.
+        // Design doc (§4.5) didn't pin down the exact formula — this is the
+        // implementation choice, using data already correct on the wire.
+        final canAccess =
+            detail.hasPurchased ||
+            (detail.lessons.isNotEmpty &&
+                detail.lessons.every((l) => l.canAccess));
 
         return Scaffold(
           body: RefreshIndicator(
@@ -115,63 +154,132 @@ class _VideoDetailView extends StatelessWidget {
                           detail.title,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
-                        if (detail.category != null)
-                          Chip(
-                            label: Text(
-                              detail.category!.title,
-                              style: const TextStyle(fontSize: 12),
+                        const SizedBox(height: 4),
+                        if (detail.instructor != null &&
+                            detail.instructor!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF7C4DFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  detail.instructor!,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
-                        _PriceSection(detail: detail),
+                        // Tags: level badge, lesson count, total duration.
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (detail.level != null &&
+                                detail.level!.isNotEmpty)
+                              _LevelBadge(level: detail.level!),
+                            if (detail.totalLessons > 0)
+                              _InfoTag(
+                                icon: Icons.smart_display_outlined,
+                                label: '${detail.totalLessons} bài học',
+                              ),
+                            if (detail.totalDurationSeconds > 0)
+                              _InfoTag(
+                                icon: Icons.access_time,
+                                label: _formatDuration(
+                                  detail.totalDurationSeconds,
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        // Progress bar — only once the user has completed
+                        // at least one lesson, matches web.
+                        if (progress != null && progress.completedLessons > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: LinearProgressIndicator(
+                                      value: progress.progressPercent / 100,
+                                      minHeight: 6,
+                                      backgroundColor: Colors.white10,
+                                      valueColor:
+                                          const AlwaysStoppedAnimation(
+                                        AppColors.primaryGold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${progress.completedLessons}/${progress.totalLessons} bài · ${progress.progressPercent}%',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                         const SizedBox(height: 16),
 
-                        // Continue watching
-                        if (detail.hasPurchased &&
-                            detail.lastWatchedLessonSlug != null)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Tiếp tục xem'),
-                              onPressed: () => context.push(
-                                '/videos/${detail.slug}/lessons/${detail.lastWatchedLessonSlug}',
-                              ),
-                            ),
-                          ),
-                        if (detail.hasPurchased &&
-                            detail.lastWatchedLessonSlug == null &&
-                            detail.lessons.isNotEmpty)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Bắt đầu xem'),
-                              onPressed: () => context.push(
-                                '/videos/${detail.slug}/lessons/${detail.lessons.first.slug}',
-                              ),
-                            ),
-                          ),
+                        // CTA — single button: continue/start when
+                        // accessible, else buy. Matches web (no separate
+                        // always-visible price box once purchased).
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: canAccess
+                              ? ElevatedButton.icon(
+                                  icon: const Icon(Icons.play_arrow),
+                                  label: Text(
+                                    detail.lastWatchedLessonSlug != null
+                                        ? 'Tiếp tục học'
+                                        : 'Bắt đầu học',
+                                  ),
+                                  onPressed: detail.lessons.isEmpty
+                                      ? null
+                                      : () => context.push(
+                                          '/videos/${detail.slug}/lessons/'
+                                          '${detail.lastWatchedLessonSlug ?? detail.lessons.first.slug}',
+                                        ),
+                                )
+                              : ElevatedButton.icon(
+                                  icon: const Icon(Icons.lock_open, size: 18),
+                                  label: Text(
+                                    'Mở khoá với ${detail.priceLt} LT',
+                                  ),
+                                  onPressed: state is VideoDetailPurchasing
+                                      ? null
+                                      : () => _showPurchase(context, detail),
+                                ),
+                        ),
 
                         const SizedBox(height: 16),
 
                         if (detail.description != null &&
-                            detail.description!.isNotEmpty) ...[
-                          Text(
-                            detail.description!,
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                            detail.description!.isNotEmpty)
+                          _DescriptionSection(text: detail.description!),
 
+                        const SizedBox(height: 16),
                         const Text(
                           'Danh sách bài học',
                           style: TextStyle(
@@ -258,48 +366,116 @@ class _VideoDetailView extends StatelessWidget {
   }
 }
 
-class _PriceSection extends StatelessWidget {
-  final VideoDetail detail;
-  const _PriceSection({required this.detail});
+class _LevelBadge extends StatelessWidget {
+  final String level;
+  const _LevelBadge({required this.level});
 
   @override
   Widget build(BuildContext context) {
-    if (detail.isVipOnly) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.primaryGold.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
+    final info = _levelInfo(level);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: info.color.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        info.label,
+        style: TextStyle(
+          color: info.color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.diamond, color: AppColors.primaryGold, size: 16),
-            SizedBox(width: 6),
-            Text('VIP', style: TextStyle(color: AppColors.primaryGold)),
-          ],
-        ),
-      );
-    }
-    if (detail.priceLt == 0) {
-      return const Text('Miễn phí', style: TextStyle(color: AppColors.success));
-    }
-    return Row(
-      children: [
-        const Icon(
-          Icons.diamond_outlined,
-          color: AppColors.primaryGold,
-          size: 16,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '${detail.priceLt} LT',
-          style: const TextStyle(
-            color: AppColors.primaryGold,
-            fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+}
+
+class _InfoTag extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoTag({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Description clamped to 3 lines with a "Xem thêm"/"Thu gọn" toggle —
+/// matches web's .vd__desc-wrap. Local state only, no need to lift this to
+/// the bloc.
+class _DescriptionSection extends StatefulWidget {
+  final String text;
+  const _DescriptionSection({required this.text});
+
+  @override
+  State<_DescriptionSection> createState() => _DescriptionSectionState();
+}
+
+class _DescriptionSectionState extends State<_DescriptionSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.text,
+            maxLines: _expanded ? null : 3,
+            overflow: _expanded ? null : TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 28),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              alignment: Alignment.centerLeft,
+            ),
+            onPressed: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Thu gọn' : 'Xem thêm',
+              style: const TextStyle(
+                color: AppColors.primaryGold,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
