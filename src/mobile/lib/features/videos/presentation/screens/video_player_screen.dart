@@ -258,7 +258,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         );
       }
       return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        // `LessonListItem`'s own contentPadding is horizontal:0 — correct
+        // for video_detail_screen.dart, which already wraps its lesson list
+        // in a 16px page Padding, but this tab content has no outer padding
+        // of its own, so the horizontal margin has to be added here instead
+        // (adding it to the shared widget would double up on the other screen).
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         itemCount: state.sortedLessons.length,
         itemBuilder: (_, i) {
           final l = state.sortedLessons[i];
@@ -312,13 +317,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       return const SizedBox.shrink();
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: Colors.white12)),
       ),
       child: SafeArea(
         top: false,
+        // `minimum` guarantees clearance even when the OS under-reports the
+        // bottom inset — same gesture-nav quirk fixed in the PDF reader's
+        // bottom bar (feature-39): plain SafeArea measured 0 there, leaving
+        // these buttons flush against the gesture strip.
+        minimum: const EdgeInsets.only(bottom: 12),
         child: Row(
           children: [
             Expanded(

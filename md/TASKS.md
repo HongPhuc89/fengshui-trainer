@@ -312,6 +312,24 @@
 
 ---
 
+### Feature 39: Mobile PDF Reader — cuộn liên tục, giữ load theo chapter ✅ COMPLETE
+**Priority**: Medium | **Status**: ✅ Implemented (2026-09-01)
+
+- [x] **39.1** `PdfView`/`PdfController` (paged, vuốt ngang) → `PdfViewPinch`/`PdfControllerPinch` (cuộn dọc liên tục + pinch-zoom) — cùng package `pdfx` đã dùng, không thêm dependency
+- [x] **39.2** Load PDF theo chapter (decrypt lazy per-chapter) giữ nguyên 100% — không đổi API/DRM
+- [x] **39.3** Nút "Chương tiếp theo"/"Chương trước" ở đúng ranh giới chapter — tìm chapter kế/trước theo `order` gần nhất (không giả định `order` liên tục 1..N)
+- [x] **39.4** Vá bug có sẵn: TOC mobile luôn rỗng (`chapters: const []` hard-code) — nay lấy từ `getBookDetail()` thật
+- [x] **39.5** Vá bug phát hiện khi implement: `PdfViewPinch` không có `didUpdateWidget`, đổi `controller` mà không đổi `key` khiến Flutter tái dùng State cũ → hiện nhầm nội dung chương trước. Fix: `key: ValueKey(_bloc.pdfController)`
+- [x] **39.6** Tách event `ChangePage` (điều hướng chủ động — slider/mũi tên, gọi `jumpToPage`) vs `PageScrolled` (viewer tự báo khi cuộn tay — không gọi `jumpToPage`, tránh giằng gesture)
+- [x] **39.7** UI polish theo phản hồi tay: top bar (nút TOC) nền đặc hơn thay vì mờ dần cả thanh; bottom bar (page indicator + mũi tên) thêm `SafeArea(minimum:...)` + padding, tránh dán sát vùng gesture-nav hệ điều hành
+
+> **Design doc**: `md/design/feature-39-mobile-pdf-scroll-reader.md`
+> **Đã test trên thiết bị Android thật** (build debug, backend local docker): cuộn, pinch-zoom, watermark, TOC, chuyển chương lần đầu (nội dung đúng) — xác nhận qua ảnh chụp màn hình trực tiếp trên máy.
+> **Còn treo, chưa tự xác nhận lại**: trang đích chính xác sau khi chuyển chương (kỳ vọng về trang 1, code review đúng logic nhưng chưa re-test sạch do lỗi tọa độ ADB khi test tay); chưa có bloc test (module `books` mobile hiện chưa có tiền lệ test nào).
+> **Superseded**: quyết định C3 trong `feature-20-mobile-app.md` ("Swipe = chuyển trang trong cùng chapter") — đã đánh dấu trong doc đó.
+
+---
+
 ### Admin Panel — Django Jazzmin ✅
 **Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
 - [x] Books, Videos, Exams admin đầy đủ
