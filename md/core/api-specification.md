@@ -890,7 +890,7 @@ keeps using `/auth/login/` unchanged.
   "device_id": "string",
   "platform_os": "ios|android",
   "hardware_hash": "sha256 hex, optional",
-  "pairing_code": "TT-4KM9-X7QP-2N5R, only on the first login of a handset",
+  "pairing_code": "TT-4KM-9X7, only on the first login of a handset (feature-38)",
   "device_name": "optional", "device_model": "optional",
   "os_version": "optional", "app_version": "optional"
 }

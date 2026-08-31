@@ -4,11 +4,13 @@ import 'package:flutter/services.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 /// Formats a pairing code as the user types: uppercase, alphabet-only, and
-/// grouped in fours so it reads the same way it was dictated over the phone.
+/// grouped in threes so it reads the same way it was dictated over the phone
+/// (feature-38 — shortened from 12 chars/groups of four).
 class PairingCodeFormatter extends TextInputFormatter {
   static const _alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   static const _prefix = 'TT';
-  static const _bodyLength = 12;
+  static const _bodyLength = 6;
+  static const _groupSize = 3;
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue _, TextEditingValue next) {
@@ -34,8 +36,8 @@ class PairingCodeFormatter extends TextInputFormatter {
     raw = raw.length > _bodyLength ? raw.substring(0, _bodyLength) : raw;
 
     final groups = <String>[];
-    for (var i = 0; i < raw.length; i += 4) {
-      groups.add(raw.substring(i, i + 4 > raw.length ? raw.length : i + 4));
+    for (var i = 0; i < raw.length; i += _groupSize) {
+      groups.add(raw.substring(i, i + _groupSize > raw.length ? raw.length : i + _groupSize));
     }
     final text = groups.join('-');
     return TextEditingValue(
@@ -95,7 +97,7 @@ class PairingCodeField extends StatelessWidget {
             style: const TextStyle(
                 fontFamily: 'monospace', fontSize: 18, letterSpacing: 2),
             decoration: InputDecoration(
-              hintText: 'XXXX-XXXX-XXXX',
+              hintText: 'XXX-XXX',
               prefixText: 'TT-',
               labelText: 'Mã ghép cặp',
               errorText: errorText,

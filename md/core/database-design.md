@@ -110,7 +110,7 @@ CREATE TABLE users_mobiledevice (
     client_code VARCHAR(16) UNIQUE NOT NULL,     -- MC-7F3A2B91
     -- One-time secret the user types to claim the slot. Stored in plaintext on
     -- purpose: staff read it out over Zalo/phone (no automated email).
-    pairing_code VARCHAR(20) UNIQUE NOT NULL,    -- TT-4KM9-X7QP-2N5R
+    pairing_code VARCHAR(20) UNIQUE NOT NULL,    -- TT-4KM-9X7 (feature-38)
 
     device_id VARCHAR(255),                      -- NULL until claimed
     hardware_hash VARCHAR(64),                   -- SHA-256(ANDROID_ID | IDFV)

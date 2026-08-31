@@ -18,6 +18,9 @@ ANDROID_ID_DENYLIST = {
 # code is spelled out over the phone.
 PAIRING_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 PAIRING_PREFIX = 'TT'
-PAIRING_BODY_LENGTH = 12
+# 6 chars (~30 bit) is plenty: the real gate is that a wrong password never
+# even reaches this check, plus 5 attempts and a 7-day expiry on top
+# (feature-38 §3.2) — not the code's own length.
+PAIRING_BODY_LENGTH = 6
 
 CLIENT_CODE_PREFIX = 'MC'

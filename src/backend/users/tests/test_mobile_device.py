@@ -205,8 +205,39 @@ class SlotIssueTests(MobileSlotTestCase):
 
     def test_t21_code_normalisation_tolerates_lookalike_glyphs(self):
         """T21: a code read out over the phone still matches if I/O/L are misheard."""
-        self.assertEqual(normalize_code('tt-4km9 x7qp-2n5r'), normalize_code('TT4KM9X7QP2N5R'))
+        self.assertEqual(normalize_code('tt-4km 9x7'), normalize_code('TT4KM9X7'))
         self.assertEqual(normalize_code('TT-O1IL'), normalize_code('TT-0111'))
+
+    def test_generated_code_is_six_characters_grouped_3_3(self):
+        """Feature-38: shortened from 12 to 6 chars, grouped TT-XXX-XXX."""
+        from users.services.mobile_slot import _generate_unique_pairing_code
+
+        for _ in range(50):
+            code = _generate_unique_pairing_code()
+            self.assertRegex(code, r'^TT-[0-9A-Z]{3}-[0-9A-Z]{3}$')
+            for excluded in 'ILOU':
+                self.assertNotIn(excluded, code)
+
+    def test_pre_existing_twelve_character_code_still_verifies(self):
+        """
+        Feature-38 §3.3: normalize_code() compares by value, not length, so a
+        code minted before this change stays redeemable — no migration needed.
+        """
+        from users.services.mobile_slot import verify_pairing_code
+
+        user = User.objects.create_user(
+            username='legacy@example.com', email='legacy@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        MobileDevice.objects.create(
+            user=user, client_code='C-LEGACY', pairing_code='TT-4KM9-X7QP-2N5R',
+            status='UNCLAIMED', device_type='ANDROID',
+            expires_at=timezone.now() + timedelta(days=1),
+        )
+
+        slot = verify_pairing_code(user, 'tt-4km9-x7qp-2n5r')
+
+        self.assertEqual(slot.pairing_code, 'TT-4KM9-X7QP-2N5R')
 
 
 @no_throttling

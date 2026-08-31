@@ -298,6 +298,20 @@
 
 ---
 
+### Feature 38: Rút ngắn `pairing_code` từ 12 xuống 6 ký tự ✅ COMPLETE
+**Priority**: Medium | **Status**: ✅ Implemented (2026-08-31)
+
+- [x] **38.1** `PAIRING_BODY_LENGTH` 12 → 6, chia nhóm 3-3 (`TT-XXX-XXX`) thay vì 4-4-4 — không đổi schema, không migration
+- [x] **38.2** `pairing_code_display()` (admin mask) cập nhật theo nhóm mới
+- [x] **38.3** Mobile: `PairingCodeFormatter` (`pairing_code_field.dart`) chia nhóm 3, hint text `XXX-XXX`
+- [x] **38.4** Mã 12 ký tự đã phát trước khi deploy vẫn verify được bình thường (`normalize_code()` so theo giá trị, không theo độ dài) — có test riêng khẳng định
+- [x] **38.5** Test — 2 test backend mới (78/78 toàn suite core+users) + 7 Flutter formatter test
+
+> **Design doc**: `md/design/feature-38-shorten-pairing-code.md` (v2)
+> **Lý do**: rào chắn thật là auth-gate (phải đăng nhập đúng trước) + 5 lần thử sai + hết hạn 7 ngày, không phải độ dài mã — 6 ký tự (~30 bit) vẫn dư an toàn hàng tỷ lần so với ngưỡng cần.
+
+---
+
 ### Admin Panel — Django Jazzmin ✅
 **Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
 - [x] Books, Videos, Exams admin đầy đủ

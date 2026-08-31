@@ -265,7 +265,10 @@ class MobileDeviceAdmin(IssueSlotMixin, admin.ModelAdmin):
         if (obj.status == 'UNCLAIMED' and request
                 and request.user.has_perm('users.view_activation_key_secret')):
             return format_html('<code style="user-select:all">{}</code>', obj.pairing_code)
-        return f'{obj.pairing_code[:7]}-****-****'
+        # First group shown, second masked (feature-38 §4.1). A pre-existing
+        # 12-char code still outstanding right after deploy slices oddly here
+        # (mid-group) — cosmetic only, and gone once that slot expires.
+        return f'{obj.pairing_code[:6]}-***'
 
     def get_urls(self):
         custom = [

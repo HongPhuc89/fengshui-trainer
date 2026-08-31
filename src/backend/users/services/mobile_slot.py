@@ -31,7 +31,9 @@ class SlotError(Exception):
 
 def _generate_unique_pairing_code() -> str:
     """
-    Draw a Crockford Base32 body until it is unused, then format it in groups of four.
+    Draw a Crockford Base32 body until it is unused, then format it in two
+    groups of three (feature-38 §4.1) — enough to still read the same way it
+    was dictated over the phone without the length of the old 4-4-4 scheme.
 
     Bodies starting with the prefix are rejected. Both sides strip a leading "TT"
     when normalising, so a body of "TTAB..." would normalise differently
@@ -42,7 +44,7 @@ def _generate_unique_pairing_code() -> str:
         body = ''.join(secrets.choice(PAIRING_ALPHABET) for _ in range(PAIRING_BODY_LENGTH))
         if body.startswith(PAIRING_PREFIX):
             continue
-        code = f'{PAIRING_PREFIX}-{body[0:4]}-{body[4:8]}-{body[8:12]}'
+        code = f'{PAIRING_PREFIX}-{body[0:3]}-{body[3:6]}'
         if not MobileDevice.objects.filter(pairing_code=code).exists():
             return code
     raise IntegrityError('Unable to allocate a unique pairing code.')
