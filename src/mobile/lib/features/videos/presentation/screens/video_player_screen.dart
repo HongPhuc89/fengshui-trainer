@@ -9,6 +9,7 @@ import '../../../../../core/auth/auth_cubit.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../bloc/video_player_bloc.dart';
+import '../widgets/lesson_list_item.dart';
 import '../widgets/video_watermark_overlay.dart';
 import '../../domain/entities/video.dart';
 
@@ -38,10 +39,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     ScreenGuard.preventCapture();
     ScreenGuard.protectDataLeakage();
     _bloc = getIt<VideoPlayerBloc>()
-      ..add(LoadLesson(
-        courseSlug: widget.courseSlug,
-        lessonSlug: widget.lessonSlug,
-      ));
+      ..add(
+        LoadLesson(
+          courseSlug: widget.courseSlug,
+          lessonSlug: widget.lessonSlug,
+        ),
+      );
   }
 
   @override
@@ -106,8 +109,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           return Scaffold(
             appBar: AppBar(
               title: state is VideoPlayerLoaded
-                  ? Text(state.lesson.title,
-                      style: const TextStyle(fontSize: 15))
+                  ? Text(
+                      state.lesson.title,
+                      style: const TextStyle(fontSize: 15),
+                    )
                   : const Text('Đang tải...'),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -128,38 +133,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               child: state is VideoPlayerLoading
                                   ? const Center(
                                       child: CircularProgressIndicator(
-                                          color: AppColors.primaryGold),
+                                        color: AppColors.primaryGold,
+                                      ),
                                     )
                                   : state is VideoPlayerError
-                                      ? Center(
-                                          child: Text(
-                                            (state as VideoPlayerError)
-                                                .message,
-                                            style: const TextStyle(
-                                                color: Colors.white70),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
+                                  ? Center(
+                                      child: Text(
+                                        (state as VideoPlayerError).message,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
                             ),
                     ),
                     // Floating watermark overlay
-                    if (user != null)
-                      VideoWatermarkOverlay(
-                          text: user.email),
+                    if (user != null) VideoWatermarkOverlay(text: user.email),
                   ],
                 ),
 
                 // Tab bar
-                if (state is VideoPlayerLoaded)
-                  _buildTabBar(state.lesson),
+                if (state is VideoPlayerLoaded) _buildTabBar(state.lesson),
 
                 // Tab content
                 Expanded(
                   child: state is VideoPlayerLoaded
-                      ? _buildTabContent(context, state.lesson)
+                      ? _buildTabContent(context, state)
                       : const SizedBox.shrink(),
                 ),
+
+                // Prev/next — always visible once loaded, independent of
+                // which tab is active (matches the web player).
+                if (state is VideoPlayerLoaded) _buildLessonNav(context, state),
               ],
             ),
           );
@@ -184,8 +191,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           return GestureDetector(
             onTap: () => setState(() => _selectedTab = i),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
@@ -203,9 +209,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ? AppColors.primaryGold
                       : AppColors.textSecondary,
                   fontSize: 14,
-                  fontWeight: isSelected
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
@@ -215,37 +219,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  Widget _buildTabContent(
-      BuildContext context, LessonContent lesson) {
+  Widget _buildTabContent(BuildContext context, VideoPlayerLoaded state) {
+    final lesson = state.lesson;
     if (_selectedTab == 0) {
-      // Lesson info tab
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(lesson.title,
+      // Lesson list — every lesson in the course, current one highlighted
+      // and auto-tappable to switch (mirrors the web player's sidebar).
+      if (state.sortedLessons.isEmpty) {
+        // Course fetch failed (or came back empty) — degrade to just the
+        // current lesson's own info rather than an empty tab.
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                lesson.title,
                 style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text(
-              '${lesson.durationSeconds ~/ 60} phút',
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13),
-            ),
-            if (lesson.hasTrainingSet) ...[
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.school_outlined),
-                label: const Text('Luyện tập bài này'),
-                onPressed: () => context.push(
-                    '/training/lesson/${lesson.slug}'),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${lesson.durationSeconds ~/ 60} phút',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ],
-          ],
-        ),
+          ),
+        );
+      }
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: state.sortedLessons.length,
+        itemBuilder: (_, i) {
+          final l = state.sortedLessons[i];
+          return LessonListItem(
+            lesson: l,
+            isActive: l.slug == lesson.slug,
+            onTap: () => _goToLesson(context, state.courseSlug, l),
+            onLocked: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Cần nâng cấp VIP hoặc mua khoá học để xem bài này.',
+                ),
+              ),
+            ),
+          );
+        },
       );
     }
 
@@ -254,15 +278,73 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.school_outlined,
-              color: AppColors.primaryGold, size: 48),
+          const Icon(
+            Icons.school_outlined,
+            color: AppColors.primaryGold,
+            size: 48,
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () =>
-                context.push('/training/lesson/${lesson.slug}'),
+            onPressed: () => context.push('/training/lesson/${lesson.slug}'),
             child: const Text('Bắt đầu luyện tập'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Replace, not push: switching lessons from the list/prev-next bar is a
+  /// lateral move within the same player, not a drill-down. Pushing would
+  /// stack one route per lesson tapped, and back would step through all of
+  /// them instead of leaving the player.
+  void _goToLesson(BuildContext context, String courseSlug, LessonMeta lesson) {
+    if (lesson.slug == widget.lessonSlug) return;
+    context.pushReplacement('/videos/$courseSlug/lessons/${lesson.slug}');
+  }
+
+  Widget _buildLessonNav(BuildContext context, VideoPlayerLoaded state) {
+    if (state.prevLesson == null && state.nextLesson == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: Colors.white12)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: state.prevLesson != null
+                    ? () => _goToLesson(
+                        context,
+                        state.courseSlug,
+                        state.prevLesson!,
+                      )
+                    : null,
+                icon: const Icon(Icons.chevron_left, size: 18),
+                label: const Text('Bài trước'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: state.nextLesson != null
+                    ? () => _goToLesson(
+                        context,
+                        state.courseSlug,
+                        state.nextLesson!,
+                      )
+                    : null,
+                icon: const Icon(Icons.chevron_right, size: 18),
+                label: const Text('Bài tiếp'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

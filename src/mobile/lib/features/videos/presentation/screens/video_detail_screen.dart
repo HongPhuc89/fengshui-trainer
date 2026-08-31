@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../bloc/video_detail_bloc.dart';
+import '../widgets/lesson_list_item.dart';
 import '../../domain/entities/video.dart';
 
 class VideoDetailScreen extends StatelessWidget {
@@ -181,10 +182,11 @@ class _VideoDetailView extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         ...detail.lessons.map(
-                          (lesson) => _LessonListItem(
+                          (lesson) => LessonListItem(
                             lesson: lesson,
-                            courseSlug: detail.slug,
-                            hasPurchased: detail.hasPurchased,
+                            onTap: () => context.push(
+                              '/videos/${detail.slug}/lessons/${lesson.slug}',
+                            ),
                             onLocked: () => _showPurchase(context, detail),
                           ),
                         ),
@@ -298,57 +300,6 @@ class _PriceSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _LessonListItem extends StatelessWidget {
-  final LessonMeta lesson;
-  final String courseSlug;
-  final bool hasPurchased;
-  final VoidCallback onLocked;
-
-  const _LessonListItem({
-    required this.lesson,
-    required this.courseSlug,
-    required this.hasPurchased,
-    required this.onLocked,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
-      leading: CircleAvatar(
-        backgroundColor: AppColors.surfaceAlt,
-        child: Text(
-          '${lesson.order}',
-          style: const TextStyle(color: AppColors.primaryGold, fontSize: 13),
-        ),
-      ),
-      title: Text(
-        lesson.title,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-      ),
-      subtitle: Text(
-        lesson.durationLabel,
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-      ),
-      trailing: lesson.canAccess
-          ? (lesson.isCompleted
-                ? const Icon(Icons.check_circle, color: AppColors.success)
-                : const Icon(
-                    Icons.play_circle_outline,
-                    color: AppColors.primaryGold,
-                  ))
-          : const Icon(Icons.lock_outline, color: AppColors.lockGray),
-      onTap: () {
-        if (lesson.canAccess) {
-          context.push('/videos/$courseSlug/lessons/${lesson.slug}');
-        } else {
-          onLocked();
-        }
-      },
     );
   }
 }

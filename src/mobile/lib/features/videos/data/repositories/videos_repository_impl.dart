@@ -251,6 +251,7 @@ class VideosRepositoryImpl implements VideosRepository {
             'can_access': l.canAccess,
             'is_completed': l.isCompleted,
             'has_training_set': l.hasTrainingSet,
+            'small_thumbnail': l.thumbnailUrl,
           },
         )
         .toList(),

@@ -35,7 +35,8 @@ class VideoModel extends Video {
     VideoCategory? cat;
     if (json['category'] is Map) {
       cat = VideoCategoryModel.fromJson(
-          json['category'] as Map<String, dynamic>);
+        json['category'] as Map<String, dynamic>,
+      );
     }
     return VideoModel(
       slug: json['slug'] as String,
@@ -51,8 +52,7 @@ class VideoModel extends Video {
       isNewRelease: json['is_new_release'] as bool? ?? false,
       lessonCount: json['total_lessons'] as int? ?? 0,
       description: json['description'] as String?,
-      progressPercent:
-          (json['progress_percent'] as num?)?.toDouble(),
+      progressPercent: (json['progress_percent'] as num?)?.toDouble(),
     );
   }
 }
@@ -66,6 +66,7 @@ class LessonMetaModel extends LessonMeta {
     required super.canAccess,
     required super.isCompleted,
     required super.hasTrainingSet,
+    super.thumbnailUrl,
   });
 
   factory LessonMetaModel.fromJson(Map<String, dynamic> json) {
@@ -77,6 +78,10 @@ class LessonMetaModel extends LessonMeta {
       canAccess: json['can_access'] as bool? ?? false,
       isCompleted: json['is_completed'] as bool? ?? false,
       hasTrainingSet: json['has_training_set'] as bool? ?? false,
+      // small_thumbnail is the resized CDN copy; fall back to the raw
+      // upload when it hasn't been generated yet (mirrors the web client).
+      thumbnailUrl:
+          json['small_thumbnail'] as String? ?? json['thumbnail'] as String?,
     );
   }
 }
@@ -100,13 +105,13 @@ class VideoDetailModel extends VideoDetail {
     VideoCategory? cat;
     if (json['category'] is Map) {
       cat = VideoCategoryModel.fromJson(
-          json['category'] as Map<String, dynamic>);
+        json['category'] as Map<String, dynamic>,
+      );
     }
 
     final lessonsRaw = json['lessons'] as List<dynamic>? ?? [];
     final lessons = lessonsRaw
-        .map((l) =>
-            LessonMetaModel.fromJson(l as Map<String, dynamic>))
+        .map((l) => LessonMetaModel.fromJson(l as Map<String, dynamic>))
         .toList();
 
     String? lastSlug;
@@ -168,10 +173,10 @@ class RecentlyWatchedVideoModel extends RecentlyWatchedVideo {
     super.lessonTitle,
   }) : super(video: video);
 
-  factory RecentlyWatchedVideoModel.fromJson(
-      Map<String, dynamic> json) {
+  factory RecentlyWatchedVideoModel.fromJson(Map<String, dynamic> json) {
     final video = VideoModel.fromJson(
-        json['video'] as Map<String, dynamic>? ?? json);
+      json['video'] as Map<String, dynamic>? ?? json,
+    );
     return RecentlyWatchedVideoModel(
       video: video,
       lessonSlug: json['lesson_slug'] as String?,

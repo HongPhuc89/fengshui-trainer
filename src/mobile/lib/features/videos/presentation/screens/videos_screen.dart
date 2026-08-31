@@ -148,7 +148,13 @@ class _VideosViewState extends State<_VideosView> {
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.75,
+                            // VideoCard is a fixed 16:9 thumbnail plus a
+                            // 2-line title below it — a cell this shape,
+                            // not the old 0.75 (portrait), is what that
+                            // content actually needs. 0.75 left ~60dp of
+                            // dead space under every card, which is what
+                            // read as the grid being split into two halves.
+                            childAspectRatio: 1.1,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),

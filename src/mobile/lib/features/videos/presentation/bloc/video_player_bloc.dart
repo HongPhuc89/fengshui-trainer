@@ -11,8 +11,7 @@ part 'video_player_event.dart';
 part 'video_player_state.dart';
 
 @injectable
-class VideoPlayerBloc
-    extends Bloc<VideoPlayerEvent, VideoPlayerState> {
+class VideoPlayerBloc extends Bloc<VideoPlayerEvent, VideoPlayerState> {
   final VideosRepository _repository;
   Timer? _progressTimer;
 
@@ -23,36 +22,64 @@ class VideoPlayerBloc
   }
 
   Future<void> _onLoadLesson(
-      LoadLesson event, Emitter<VideoPlayerState> emit) async {
+    LoadLesson event,
+    Emitter<VideoPlayerState> emit,
+  ) async {
     emit(VideoPlayerLoading());
-    final result = await _repository.getLesson(
-        event.courseSlug, event.lessonSlug);
-    result.fold(
+
+    // Fired together, not awaited in sequence, so the course fetch (for the
+    // lesson list / prev-next bar) does not add its own round trip on top of
+    // the video's — mirrors the web player's Promise.allSettled for the same
+    // two calls.
+    final lessonFuture = _repository.getLesson(
+      event.courseSlug,
+      event.lessonSlug,
+    );
+    final detailFuture = _repository.getVideoDetail(event.courseSlug);
+    final lessonResult = await lessonFuture;
+    final detailResult = await detailFuture;
+
+    lessonResult.fold(
       (failure) => emit(VideoPlayerError(failure.message)),
-      (lesson) => emit(VideoPlayerLoaded(
-        courseSlug: event.courseSlug,
-        lesson: lesson,
-      )),
+      (lesson) => emit(
+        VideoPlayerLoaded(
+          courseSlug: event.courseSlug,
+          lesson: lesson,
+          // A failed course fetch must not block playback of a lesson that
+          // loaded fine — it only costs the sidebar list.
+          lessons: detailResult.fold((_) => const [], (d) => d.lessons),
+        ),
+      ),
     );
   }
 
   Future<void> _onSaveProgress(
-      SaveProgress event, Emitter<VideoPlayerState> emit) async {
+    SaveProgress event,
+    Emitter<VideoPlayerState> emit,
+  ) async {
     final s = state;
     if (s is! VideoPlayerLoaded) return;
     _progressTimer?.cancel();
     _progressTimer = Timer(const Duration(seconds: 2), () {
       _repository.saveLessonProgress(
-          s.courseSlug, s.lesson.slug, event.seconds);
+        s.courseSlug,
+        s.lesson.slug,
+        event.seconds,
+      );
     });
   }
 
   Future<void> _onLessonCompleted(
-      LessonCompleted event, Emitter<VideoPlayerState> emit) async {
+    LessonCompleted event,
+    Emitter<VideoPlayerState> emit,
+  ) async {
     final s = state;
     if (s is! VideoPlayerLoaded) return;
     await _repository.saveLessonProgress(
-        s.courseSlug, s.lesson.slug, s.lesson.durationSeconds);
+      s.courseSlug,
+      s.lesson.slug,
+      s.lesson.durationSeconds,
+    );
   }
 
   @override

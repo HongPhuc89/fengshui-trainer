@@ -57,6 +57,7 @@ class LessonMeta extends Equatable {
   final bool canAccess;
   final bool isCompleted;
   final bool hasTrainingSet;
+  final String? thumbnailUrl;
 
   const LessonMeta({
     required this.slug,
@@ -66,6 +67,7 @@ class LessonMeta extends Equatable {
     required this.canAccess,
     required this.isCompleted,
     required this.hasTrainingSet,
+    this.thumbnailUrl,
   });
 
   String get durationLabel {
