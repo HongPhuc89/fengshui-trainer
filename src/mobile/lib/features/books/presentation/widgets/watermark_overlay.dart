@@ -8,6 +8,9 @@ class WatermarkOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Mirrors the web reader's own v-if="watermarkText" (useWatermark.js) —
+    // an empty identity string would just paint a grid of nothing.
+    if (text.trim().isEmpty) return const SizedBox.shrink();
     return IgnorePointer(
       child: SizedBox.expand(
         child: CustomPaint(painter: _WatermarkPainter(text: text)),
@@ -26,8 +29,13 @@ class _WatermarkPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: Colors.grey.withOpacity(0.12),
+          // 0.12 (the value this used to be) reads as "not there" against
+          // anything but a plain light page — the web reader's own
+          // watermark (useWatermark.js) is 0.6, dark, and bold; matched here
+          // for the same reason web's is: it has to survive a screenshot.
+          color: Colors.black.withOpacity(0.6),
           fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
       ),
       textDirection: TextDirection.ltr,

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:injectable/injectable.dart';
 
 import '../cache/cache_service.dart';
+import '../di/injection.dart';
+import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/domain/entities/user.dart';
 
 part 'auth_state.dart';
@@ -16,7 +19,7 @@ class AuthCubit extends Cubit<AuthState> {
   Timer? _refreshTimer;
 
   AuthCubit(this._secureStorage, this._cacheService)
-      : super(AuthUnauthenticated());
+    : super(AuthUnauthenticated());
 
   String? get accessToken {
     final s = state;
@@ -30,18 +33,12 @@ class AuthCubit extends Cubit<AuthState> {
     return s is AuthAuthenticated ? s.user : null;
   }
 
-  Future<void> setTokens(
-    String access,
-    String refresh,
-    UserEntity user,
-  ) async {
+  Future<void> setTokens(String access, String refresh, UserEntity user) async {
     await _secureStorage.write(key: 'access', value: access);
     await _secureStorage.write(key: 'refresh', value: refresh);
-    emit(AuthAuthenticated(
-      accessToken: access,
-      refreshToken: refresh,
-      user: user,
-    ));
+    emit(
+      AuthAuthenticated(accessToken: access, refreshToken: refresh, user: user),
+    );
     _startAutoRefresh();
   }
 
@@ -49,15 +46,35 @@ class AuthCubit extends Cubit<AuthState> {
     final access = await _secureStorage.read(key: 'access');
     final refresh = await _secureStorage.read(key: 'refresh');
     if (access != null && refresh != null) {
-      // Token exists — mark as potentially authenticated.
-      // The API client will refresh on 401 if needed.
-      // User profile will be fetched by the app on first API call.
-      emit(AuthAuthenticated(
-        accessToken: access,
-        refreshToken: refresh,
-        user: null,
-      ));
+      // Token exists — mark as potentially authenticated right away so the
+      // rest of the app isn't blocked on the network. The API client will
+      // refresh on 401 if needed.
+      emit(
+        AuthAuthenticated(
+          accessToken: access,
+          refreshToken: refresh,
+          user: null,
+        ),
+      );
       _startAutoRefresh();
+      unawaited(_fetchProfile());
+    }
+  }
+
+  /// Fills in `user` (name/phone/email — e.g. for the book/video reader
+  /// watermark) after a cold start. Resolved lazily via `getIt` rather than
+  /// constructor injection: AuthRemoteDataSource depends on ApiClient, which
+  /// itself depends on AuthCubit, so taking it as a constructor dependency
+  /// here would be circular.
+  Future<void> _fetchProfile() async {
+    try {
+      final user = await getIt<AuthRemoteDataSource>().getMe();
+      updateUser(user);
+    } catch (e) {
+      // Best-effort — a real auth failure (expired/invalid token) is caught
+      // by the 401 interceptor separately; this just leaves `user` null for
+      // this session, same as before this fetch existed.
+      debugPrint('AuthCubit._fetchProfile failed: $e');
     }
   }
 
@@ -77,11 +94,13 @@ class AuthCubit extends Cubit<AuthState> {
     final s = state;
     if (s is AuthAuthenticated) {
       await _secureStorage.write(key: 'refresh', value: newRefresh);
-      emit(AuthAuthenticated(
-        accessToken: s.accessToken,
-        refreshToken: newRefresh,
-        user: s.user,
-      ));
+      emit(
+        AuthAuthenticated(
+          accessToken: s.accessToken,
+          refreshToken: newRefresh,
+          user: s.user,
+        ),
+      );
     }
   }
 
@@ -89,22 +108,26 @@ class AuthCubit extends Cubit<AuthState> {
     final s = state;
     if (s is AuthAuthenticated) {
       await _secureStorage.write(key: 'access', value: newAccess);
-      emit(AuthAuthenticated(
-        accessToken: newAccess,
-        refreshToken: s.refreshToken,
-        user: s.user,
-      ));
+      emit(
+        AuthAuthenticated(
+          accessToken: newAccess,
+          refreshToken: s.refreshToken,
+          user: s.user,
+        ),
+      );
     }
   }
 
   void updateUser(UserEntity user) {
     final s = state;
     if (s is AuthAuthenticated) {
-      emit(AuthAuthenticated(
-        accessToken: s.accessToken,
-        refreshToken: s.refreshToken,
-        user: user,
-      ));
+      emit(
+        AuthAuthenticated(
+          accessToken: s.accessToken,
+          refreshToken: s.refreshToken,
+          user: user,
+        ),
+      );
     }
   }
 
