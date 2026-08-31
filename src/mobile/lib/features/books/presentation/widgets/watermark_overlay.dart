@@ -13,7 +13,13 @@ class WatermarkOverlay extends StatelessWidget {
     if (text.trim().isEmpty) return const SizedBox.shrink();
     return IgnorePointer(
       child: SizedBox.expand(
-        child: CustomPaint(painter: _WatermarkPainter(text: text)),
+        // Web's .reader__watermark applies opacity: 0.18 on top of the SVG
+        // text's own fill: rgba(0,0,0,0.6) — the actual visible strength is
+        // the product of the two, ~0.11, not the 0.6 alone.
+        child: Opacity(
+          opacity: 0.18,
+          child: CustomPaint(painter: _WatermarkPainter(text: text)),
+        ),
       ),
     );
   }
@@ -28,12 +34,11 @@ class _WatermarkPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(
-          // 0.12 (the value this used to be) reads as "not there" against
-          // anything but a plain light page — the web reader's own
-          // watermark (useWatermark.js) is 0.6, dark, and bold; matched here
-          // for the same reason web's is: it has to survive a screenshot.
-          color: Colors.black.withOpacity(0.6),
+        style: const TextStyle(
+          // Text fill alpha matches the SVG's own fill: rgba(0,0,0,0.6) in
+          // useWatermark.js — the outer Opacity(0.18) above is what actually
+          // makes it faint, same as web's .reader__watermark CSS.
+          color: Color.fromRGBO(0, 0, 0, 0.6),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
