@@ -18,9 +18,14 @@ class VideoDetailBloc extends Bloc<VideoDetailEvent, VideoDetailState> {
   }
 
   Future<void> _onLoad(
-      LoadVideoDetail event, Emitter<VideoDetailState> emit) async {
+    LoadVideoDetail event,
+    Emitter<VideoDetailState> emit,
+  ) async {
     emit(VideoDetailLoading());
-    final result = await _repository.getVideoDetail(event.slug);
+    final result = await _repository.getVideoDetail(
+      event.slug,
+      forceRefresh: event.forceRefresh,
+    );
     result.fold(
       (failure) => emit(VideoDetailError(failure.message)),
       (detail) => emit(VideoDetailLoaded(detail)),
@@ -28,15 +33,17 @@ class VideoDetailBloc extends Bloc<VideoDetailEvent, VideoDetailState> {
   }
 
   Future<void> _onPurchase(
-      PurchaseVideo event, Emitter<VideoDetailState> emit) async {
+    PurchaseVideo event,
+    Emitter<VideoDetailState> emit,
+  ) async {
     final current = state;
     if (current is! VideoDetailLoaded) return;
 
     emit(VideoDetailPurchasing(current.detail));
     final result = await _repository.purchaseVideo(event.slug);
     result.fold(
-      (failure) => emit(
-          VideoDetailPurchaseError(current.detail, failure.message)),
+      (failure) =>
+          emit(VideoDetailPurchaseError(current.detail, failure.message)),
       (_) => add(LoadVideoDetail(event.slug)),
     );
   }

@@ -1,7 +1,18 @@
 from django.conf import settings
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
+
+# "New" is a rolling window off published_date, not an admin-set flag — no
+# state to forget to unset once a course ages out.
+NEW_RELEASE_WINDOW_DAYS = 30
+
+
+def _is_new_release(published_date):
+    if not published_date:
+        return False
+    return (timezone.now().date() - published_date).days <= NEW_RELEASE_WINDOW_DAYS
 
 
 class VideoCategorySerializer(serializers.ModelSerializer):
@@ -11,9 +22,24 @@ class VideoCategorySerializer(serializers.ModelSerializer):
 
 
 class VideoLessonListSerializer(serializers.ModelSerializer):
+    # Both computed from context the parent course serializer builds once per
+    # request (VideoCourseDetailView.get_serializer_context) — not per lesson,
+    # to avoid one purchase/progress query per lesson in a course.
+    can_access = serializers.SerializerMethodField()
+    is_completed = serializers.SerializerMethodField()
+
+    def get_can_access(self, obj):
+        # Mirrors views._can_access_lesson(): free lessons are always playable,
+        # everything else needs VIP or a course purchase.
+        return obj.is_free or bool(self.context.get('can_access_paid_lessons'))
+
+    def get_is_completed(self, obj):
+        return obj.id in self.context.get('completed_lesson_ids', frozenset())
+
     class Meta:
         model = VideoLesson
-        fields = ('public_id', 'title', 'slug', 'order', 'duration_seconds', 'thumbnail', 'small_thumbnail', 'is_free')
+        fields = ('public_id', 'title', 'slug', 'order', 'duration_seconds', 'thumbnail',
+                  'small_thumbnail', 'is_free', 'can_access', 'is_completed')
 
 
 class VideoCourseListSerializer(serializers.ModelSerializer):
@@ -21,6 +47,7 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
     total_duration_seconds = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
     price_lt = serializers.SerializerMethodField()
+    is_new_release = serializers.SerializerMethodField()
 
     def get_total_duration_seconds(self, obj):
         result = obj.lessons.aggregate(total=Sum('duration_seconds'))['total']
@@ -28,6 +55,9 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
 
     def get_price_lt(self, obj):
         return 0 if obj.is_free else obj.price_lt
+
+    def get_is_new_release(self, obj):
+        return _is_new_release(obj.published_date)
 
     def get_cover_image(self, obj):
         if obj.cover_image:
@@ -44,8 +74,8 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
         model = VideoCourse
         fields = (
             'public_id', 'title', 'slug', 'category', 'instructor', 'cover_image',
-            'description', 'is_free', 'price_lt', 'total_duration_seconds', 'total_lessons',
-            'level', 'published_date',
+            'description', 'is_free', 'is_new_release', 'price_lt', 'total_duration_seconds',
+            'total_lessons', 'level', 'published_date',
         )
 
 
@@ -55,12 +85,16 @@ class VideoCourseDetailSerializer(serializers.ModelSerializer):
     final_exam_id = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
     price_lt = serializers.SerializerMethodField()
+    is_new_release = serializers.SerializerMethodField()
 
     def get_final_exam_id(self, obj):
         return str(obj.final_exam_id) if obj.final_exam_id else None
 
     def get_price_lt(self, obj):
         return 0 if obj.is_free else obj.price_lt
+
+    def get_is_new_release(self, obj):
+        return _is_new_release(obj.published_date)
 
     def get_cover_image(self, obj):
         if obj.cover_image:
@@ -77,7 +111,7 @@ class VideoCourseDetailSerializer(serializers.ModelSerializer):
         model = VideoCourse
         fields = (
             'public_id', 'title', 'slug', 'category', 'instructor', 'cover_image',
-            'description', 'trailer_url', 'is_free', 'price_lt',
+            'description', 'trailer_url', 'is_free', 'is_new_release', 'price_lt',
             'total_duration_seconds', 'total_lessons', 'level', 'published_date',
             'lessons', 'final_exam_id',
         )

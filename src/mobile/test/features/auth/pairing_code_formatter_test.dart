@@ -5,7 +5,10 @@ import 'package:huyenhoc/features/auth/presentation/widgets/pairing_code_field.d
 /// M6 / feature-38: the field has to accept a code the way a person types it
 /// after hearing it read out — lowercase, ungrouped, with the glyphs the
 /// alphabet excludes. Shortened from 12 chars (groups of four) to 6 (groups
-/// of three).
+/// of three). A code minted before feature-38 deploys is still redeemable
+/// server-side (normalize_code compares by value, not length), but the app
+/// does not need to accept typing one in — see feature-38 §3.3: refreshing
+/// the slot (feature-35) always mints a fresh 6-char code.
 void main() {
   late TextInputFormatter formatter;
 

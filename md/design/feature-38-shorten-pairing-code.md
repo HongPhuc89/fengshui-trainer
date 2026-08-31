@@ -59,6 +59,8 @@ User quyết định rút xuống **6 ký tự** (lý do: quy mô user hiện t�
 
 **App cũ nhận mã mới trong lúc rollout — vô hại.** App mobile chưa cập nhật vẫn dùng `PairingCodeFormatter` nhóm-4 cũ; gõ một mã 6 ký tự vào đó sẽ hiển thị gạch nhóm sai (`4KM7-X2` thay vì `4KM-7X2`), nhưng giá trị gửi lên server không đổi vì cả hai phía đều strip dấu `-` trước khi so/gửi (`normalize_code()` phía server, `.replaceAll('-', ...)`-tương đương phía client). Chỉ là hiển thị lệch tạm thời cho tới khi app cập nhật, không phải lỗi chức năng (PO review v1, Suggestion).
 
+**Chiều ngược lại — app mới với mã cũ 12 ký tự — không tự nhiên hoạt động qua UI, và không cần cố làm cho nó hoạt động.** `PairingCodeFormatter` sau feature-38 giới hạn gõ ở 6 ký tự (§4.2), nên một mã `UNCLAIMED` 12 ký tự còn tồn đọng từ trước deploy **không gõ đủ được** vào app mới, dù backend vẫn chấp nhận nếu gửi đúng giá trị. Đây không phải lỗ hổng cần vá bằng cách nới giới hạn gõ: `refresh_slot()` (feature-35) luôn gọi lại `_generate_unique_pairing_code()` mỗi lần làm mới, nên chỉ cần admin bấm "Làm mới thiết bị" cho slot đó là ra ngay mã 6 ký tự mới — rẻ hơn nhiều so với giữ vĩnh viễn khả năng gõ mã dài trong app cho một tình huống tự hết hạn sau tối đa 7 ngày. Xem thêm ghi chú tại §4.2.
+
 ---
 
 ## 4. Đề xuất giải pháp
@@ -104,6 +106,7 @@ class PairingCodeFormatter extends TextInputFormatter {
   static const _alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   static const _prefix = 'TT';
   static const _bodyLength = 6;   // was 12
+  static const _groupSize = 3;    // was 4
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue _, TextEditingValue next) {
@@ -115,14 +118,16 @@ class PairingCodeFormatter extends TextInputFormatter {
     raw = raw.length > _bodyLength ? raw.substring(0, _bodyLength) : raw;
 
     final groups = <String>[];
-    for (var i = 0; i < raw.length; i += 3) {          // was += 4
-      groups.add(raw.substring(i, i + 3 > raw.length ? raw.length : i + 3));
+    for (var i = 0; i < raw.length; i += _groupSize) {
+      groups.add(raw.substring(i, i + _groupSize > raw.length ? raw.length : i + _groupSize));
     }
     final text = groups.join('-');
     return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }
 ```
+
+> **Phát hiện lúc test tay, rồi tự sửa lại khi cân nhắc kỹ hơn**: `_bodyLength = 6` giới hạn luôn cả số ký tự được gõ, nên gõ một mã 12 ký tự cũ (ví dụ mã đã cấp cho tài khoản demo trước khi feature-38 deploy) sẽ bị cắt còn 6 ký tự ngay khi gõ — **không gửi lên server được đủ**, dù backend vẫn chấp nhận mã đó bình thường nếu gửi đúng. Ý đầu tiên là nới `_bodyLength` lên 12 để app vẫn gõ được mã cũ, nhưng **không cần** — `refresh_slot()` (feature-35, `services/mobile_slot.py:314`) đã luôn gọi lại `_generate_unique_pairing_code()` mỗi lần làm mới slot, nên **bất kỳ slot nào được refresh sau khi feature-38 deploy sẽ tự ra mã 6 ký tự mới**, không phụ thuộc gì vào mã cũ. Với slot `UNCLAIMED` cũ còn tồn đọng: đường xử lý đúng là admin bấm "Làm mới thiết bị" để cấp mã mới (đằng nào cũng hết hạn sau tối đa 7 ngày, `DEVICE_PAIRING_TTL_DAYS`), không phải giữ app tương thích ngược để gõ lại mã dài. Giữ `_bodyLength = 6` như thiết kế ban đầu — không thêm nợ code cho một tình huống đã có sẵn công cụ vận hành xử lý.
 
 `hintText: 'XXX-XXX'` thay cho `'XXXX-XXXX-XXXX'`. `prefixText: 'TT-'` giữ nguyên.
 

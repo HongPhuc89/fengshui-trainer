@@ -10,10 +10,22 @@ abstract class VideosRepository {
     String? search,
   });
   Future<Either<Failure, List<RecentlyWatchedVideo>>> getRecentlyWatched();
-  Future<Either<Failure, VideoDetail>> getVideoDetail(String slug);
+
+  /// forceRefresh skips the cached copy and re-fetches from the server —
+  /// used by pull-to-refresh, since a stale lesson list otherwise sits behind
+  /// the cache TTL with no way for the user to clear it themselves.
+  Future<Either<Failure, VideoDetail>> getVideoDetail(
+    String slug, {
+    bool forceRefresh = false,
+  });
   Future<Either<Failure, LessonContent>> getLesson(
-      String courseSlug, String lessonSlug);
+    String courseSlug,
+    String lessonSlug,
+  );
   Future<Either<Failure, void>> saveLessonProgress(
-      String courseSlug, String lessonSlug, int seconds);
+    String courseSlug,
+    String lessonSlug,
+    int seconds,
+  );
   Future<Either<Failure, void>> purchaseVideo(String slug);
 }

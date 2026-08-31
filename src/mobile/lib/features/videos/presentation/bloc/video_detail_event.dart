@@ -8,9 +8,10 @@ abstract class VideoDetailEvent extends Equatable {
 
 class LoadVideoDetail extends VideoDetailEvent {
   final String slug;
-  const LoadVideoDetail(this.slug);
+  final bool forceRefresh;
+  const LoadVideoDetail(this.slug, {this.forceRefresh = false});
   @override
-  List<Object?> get props => [slug];
+  List<Object?> get props => [slug, forceRefresh];
 }
 
 class PurchaseVideo extends VideoDetailEvent {
