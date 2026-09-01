@@ -9,6 +9,11 @@ class AppConfig {
   /// turns that into a loud failure at startup instead.
   static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  /// Sentry DSN, supplied the same way as [apiBaseUrl]. Deliberately allowed
+  /// to be empty: local dev builds leave it blank so crashes on a developer's
+  /// machine don't get reported as if they came from a real environment.
+  static const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
   /// Call once at startup, before anything builds a client.
   static void assertConfigured() {
     if (apiBaseUrl.isEmpty) {

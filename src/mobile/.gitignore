@@ -48,3 +48,5 @@ env.*.json
 /android/app/profile
 /android/app/release
 env.local.json
+
+sentry.properties

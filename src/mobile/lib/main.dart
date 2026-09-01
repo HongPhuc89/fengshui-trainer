@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/security/screen_guard.dart';
 
 import 'core/utils/constants.dart';
@@ -19,6 +20,20 @@ import 'l10n/l10n.dart';
 import 'shared/theme/app_theme.dart';
 
 void main() async {
+  await SentryFlutter.init(
+    (options) {
+      // Empty DSN disables the SDK without erroring — local dev builds leave
+      // SENTRY_DSN unset so crashes on a developer's machine are never
+      // reported as if they came from a real environment.
+      options.dsn = AppConfig.sentryDsn;
+      options.sendDefaultPii = true;
+      options.tracesSampleRate = 1.0;
+    },
+    appRunner: _runApp,
+  );
+}
+
+Future<void> _runApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // DateFormat with an explicit locale throws unless its symbols are loaded;

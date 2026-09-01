@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-clean mobile-analyze db-restore
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-clean mobile-analyze db-restore
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -119,6 +119,9 @@ mobile-build-apk: ## Build debug APK using env.dev.json
 
 mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobile-build-apk-release ENV=env.prod.json)
 	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-build-apk-prod: ## Build release APK for production (uses src/mobile/env.prod.json)
+	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=env.prod.json
 
 mobile-clean: ## Clean Flutter build cache
 	cd $(MOBILE) && flutter clean && flutter pub get
