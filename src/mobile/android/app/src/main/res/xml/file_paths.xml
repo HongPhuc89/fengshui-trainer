@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Matches path_provider's getTemporaryDirectory(), which is cacheDir on
+         Android: the only place this app writes the APK it downloads. -->
+    <cache-path name="apk" path="." />
+</paths>

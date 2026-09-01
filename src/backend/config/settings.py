@@ -217,6 +217,7 @@ REST_FRAMEWORK = {
         "register": "5/hour",    # Max 5 registration attempts per IP per hour
         "login": "30/hour",      # Max 30 login attempts per IP per hour (accommodates mobile token refresh)
         "otp_request": "20/hour",  # IP-level guard for OTP request/verify endpoints
+        "mobile_login": "30/hour",  # Mobile login and first-time pairing
     },
 }
 
@@ -245,6 +246,10 @@ VIDEO_STORAGE_BACKEND = env('VIDEO_STORAGE_BACKEND', default='local')
 BUNNY_LIBRARY_ID = env('BUNNY_LIBRARY_ID', default='')
 BUNNY_API_KEY = env('BUNNY_API_KEY', default='')
 BUNNY_CDN_HOSTNAME = env('BUNNY_CDN_HOSTNAME', default='iframe.mediadelivery.net')
+# The Bunny pull zone rejects requests without an allowed Referer. A browser
+# sends one automatically from the embed iframe; a native mobile player has to
+# be told, so the API hands it out alongside the stream URL.
+BUNNY_STREAM_REFERER = env('BUNNY_STREAM_REFERER', default='https://huyenhoc.pro/')
 
 # Bunny Storage Zone — for encrypted .bin chapter files (Feature 26)
 # Create a Storage Zone + Pull Zone at: https://dash.bunny.net/storage
@@ -268,6 +273,12 @@ OTP_EXPIRY_MINUTES = env.int("OTP_EXPIRY_MINUTES", default=5)
 OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)
 OTP_DAILY_LIMIT = env.int("OTP_DAILY_LIMIT", default=5)
 PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = env.int("PASSWORD_RESET_TOKEN_EXPIRY_MINUTES", default=15)
+
+# Mobile device activation keys (feature-34). A handset change is staff-gated:
+# there is deliberately no self-service path.
+DEVICE_PAIRING_TTL_DAYS = env.int("DEVICE_PAIRING_TTL_DAYS", default=7)
+DEVICE_PAIRING_MAX_ATTEMPTS = env.int("DEVICE_PAIRING_MAX_ATTEMPTS", default=5)
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="admin@huyenhoc.pro")
 
 # SimpleJWT Configuration
 SIMPLE_JWT = {
@@ -315,7 +326,8 @@ JAZZMIN_SETTINGS = {
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
         "users.User": "fas fa-user-graduate",
-        "users.UserDevice": "fas fa-mobile-alt",
+        "users.UserDevice": "fas fa-desktop",
+        "users.MobileDevice": "fas fa-mobile-alt",
         "users.AdminAuditLog": "fas fa-clipboard-list",
         "books.BookCategory": "fas fa-tags",
         "books.Book": "fas fa-book",

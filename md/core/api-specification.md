@@ -872,3 +872,114 @@ All list endpoints support pagination:
 ```
 GET /api/books/?search=kỳ môn&ordering=-published_date
 ```
+
+---
+
+## Mobile Auth (feature-34)
+
+Mobile has its own login. A handset may only be used after staff allocate a
+**device slot** for the account and the user redeems its pairing code once. Web
+keeps using `/auth/login/` unchanged.
+
+### POST `/auth/mobile/login/`
+
+```json
+{
+  "email": "string",
+  "password": "string",
+  "device_id": "string",
+  "platform_os": "ios|android",
+  "hardware_hash": "sha256 hex, optional",
+  "pairing_code": "TT-4KM-9X7, only on the first login of a handset (feature-38)",
+  "device_name": "optional", "device_model": "optional",
+  "os_version": "optional", "app_version": "optional"
+}
+```
+
+`hardware_hash` is SHA-256 of `Settings.Secure.ANDROID_ID` (Android) or
+`identifierForVendor` (iOS). It lets a reinstalled app keep its slot instead of
+needing a new code. Treated as a hint that *relaxes* the device check; it never
+grants access on its own.
+
+**Response 200:**
+
+```json
+{
+  "user": { "...": "UserSerializer" },
+  "access": "jwt", "refresh": "jwt",
+  "client_code": "MC-7F3A2B91",
+  "rebound": false,
+  "claimed": false
+}
+```
+
+`claimed: true` on the login that redeemed the code. `rebound: true` when the
+client id was lost (app reinstall) but the hardware anchor matched.
+
+**Response 400 — handset not paired:**
+
+```json
+{
+  "code": "PAIRING_CODE_REQUIRED",
+  "detail": "Thiết bị này chưa được ghép cặp. Vui lòng nhập mã do quản trị viên cấp.",
+  "has_unclaimed_slot": true,
+  "support_email": "admin@huyenhoc.pro"
+}
+```
+
+`has_unclaimed_slot` tells the client whether to show the code field or point the
+user at support. It reveals only whether a slot is waiting — not whether a code
+was ever issued.
+
+**Response 400 — bad code:** `{"code": "PAIRING_FAILED", "detail": "Mã không đúng. Bạn còn 3 lần thử."}`
+Five wrong attempts burn the slot; staff must allocate a new one.
+
+---
+
+### POST `/auth/refresh/`
+
+```json
+{ "access": "jwt", "refresh": "jwt" }
+```
+
+`refresh` is returned because `ROTATE_REFRESH_TOKENS` is on: the token sent in
+the request is blacklisted, so the client must store the new one or the next
+refresh fails.
+
+Access tokens carry `device_id` and `platform` (`MOBILE` or `WEB`) claims. The
+platform claim tells the authentication layer which device table to validate
+against; both claims survive rotation.
+
+---
+
+### POST `/auth/register/`
+
+`device_id`, `device_type` and `device_name` are no longer read. They were
+validated and then discarded, and the `device_type` choices rejected the value
+the mobile app sends. Clients may still send them; they are ignored.
+
+---
+
+### GET `/users/me/device-status/`
+
+```json
+{
+  "is_device_locked": false,
+  "bound_device": { "device_id": "...", "device_type": "IOS", "device_name": "...", "last_active": "..." },
+  "mobile_device": {
+    "client_code": "MC-7F3A2B91", "device_name": "iPhone 15 Pro", "device_type": "IOS",
+    "device_model": "iPhone16,1", "app_version": "1.4.2+31", "os_version": "iOS 17.4",
+    "bound_at": "...", "last_active": "..."
+  },
+  "last_device_reset": "2026-01-01T00:00:00Z",
+  "next_reset_available_at": null,
+  "can_reset_now": false,
+  "web_devices_count": 3,
+  "web_devices_quota": 5
+}
+```
+
+`can_reset_now` is permanently `false` and `next_reset_available_at` permanently
+`null`: the 365-day self-reset was removed with the slot policy. The fields
+remain so older clients keep parsing the payload. `/users/me/device-reset/` never
+existed on the server and has been removed from the app.

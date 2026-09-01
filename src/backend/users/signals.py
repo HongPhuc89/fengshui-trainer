@@ -2,7 +2,7 @@ import logging
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from .models import User, AdminAuditLog, UserDevice
+from .models import User, AdminAuditLog, MobileDevice, UserDevice
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +56,9 @@ def log_user_changes(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=UserDevice)
+@receiver(post_save, sender=MobileDevice)
 def on_device_created(sender, instance, created, **kwargs):
-    """Trigger async geo fetch when a new device is registered."""
+    """Trigger async geo fetch when a device of either kind is registered."""
     if created and instance.last_ip:
         from users.tasks import trigger_geo_fetch
-        trigger_geo_fetch(instance.pk)
+        trigger_geo_fetch(sender._meta.label, instance.pk)

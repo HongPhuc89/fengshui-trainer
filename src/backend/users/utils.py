@@ -15,7 +15,11 @@ def get_client_ip(request) -> str | None:
 
 def normalize_device_key(device_id: str) -> str:
     """
-    Reduce a client device_id to the part that stably identifies the device.
+    Reduce a WEB device_id to the part that stably identifies the browser.
+
+    Web-only by design. Mobile client ids are opaque UUIDs matched verbatim in
+    users.services.mobile_device; truncating one at the second underscore would
+    collapse every mobile client onto the same key.
 
     Web clients send "web_<fingerprint>_<uuid8>", where the trailing segment is
     derived from a localStorage UUID and gets regenerated whenever the browser

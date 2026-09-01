@@ -21,14 +21,19 @@ class PurchaseBookView(views.APIView):
     serializer_class = PurchaseBookSerializer
 
     def post(self, request):
+        # The mobile client sends book_slug (it never learns a book's
+        # public_id — the detail screen only carries the slug throughout its
+        # whole call chain). book_id stays accepted for any other caller.
         book_id = request.data.get('book_id')
-        if not book_id:
+        book_slug = request.data.get('book_slug')
+        if not book_id and not book_slug:
             return Response(
-                {'detail': 'book_id is required.'},
+                {'detail': 'book_id or book_slug is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            book = Book.objects.get(public_id=book_id)
+            book = (Book.objects.get(public_id=book_id) if book_id
+                    else Book.objects.get(slug=book_slug))
         except Book.DoesNotExist:
             return Response(
                 {'detail': 'Book not found.'},
@@ -91,14 +96,18 @@ class PurchaseVideoView(views.APIView):
     serializer_class = PurchaseVideoSerializer
 
     def post(self, request):
+        # Same as PurchaseBookView: the mobile client sends video_slug, never
+        # a public_id, throughout its whole call chain.
         video_id = request.data.get('video_id')
-        if not video_id:
+        video_slug = request.data.get('video_slug')
+        if not video_id and not video_slug:
             return Response(
-                {'detail': 'video_id is required.'},
+                {'detail': 'video_id or video_slug is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            video = VideoCourse.objects.get(public_id=video_id)
+            video = (VideoCourse.objects.get(public_id=video_id) if video_id
+                     else VideoCourse.objects.get(slug=video_slug))
         except VideoCourse.DoesNotExist:
             return Response(
                 {'detail': 'Video not found.'},

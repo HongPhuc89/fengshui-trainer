@@ -34,7 +34,7 @@ Clone toàn bộ ứng dụng web Vue.js sang Flutter mobile (iOS + Android). T�
 | B2 | Có refresh token, auto-refresh để hạn chế login lại |
 | C1 | Option A: client-side AES-256-GCM decrypt |
 | C2 | Screenshot prevention bắt buộc (FLAG_SECURE + iOS) |
-| C3 | Swipe = chuyển trang trong cùng chapter |
+| C3 | ~~Swipe = chuyển trang trong cùng chapter~~ — **superseded bởi feature-39** (2026-09-01): cuộn dọc liên tục (`PdfViewPinch`) thay cho vuốt lật-từng-trang; chuyển chapter vẫn là hành động rời (nút cố định ở ranh giới/TOC), không đổi |
 | D1 | Dark mode only |
 | D2 | Top/bottom bar tự động ẩn sau vài giây |
 | D3 | Spinner đơn giản khi load PDF |

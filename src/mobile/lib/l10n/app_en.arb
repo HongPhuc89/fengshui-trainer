@@ -1,0 +1,68 @@
+{
+  "@@locale": "en",
+
+  "appName": "HUYỀN HỌC",
+  "@appName": { "description": "App brand name" },
+
+  "appSubtitle": "ANCIENT WISDOM ARCHIVES",
+  "@appSubtitle": { "description": "Login screen subtitle below logo" },
+
+  "appHeaderSubtitle": "HUYENHOC CULTIVATION SYSTEM",
+  "@appHeaderSubtitle": { "description": "App bar secondary subtitle" },
+
+  "loginHeading": "Access the Archives",
+  "loginEmailLabel": "Email Address",
+  "loginEmailPlaceholder": "Enter your email address",
+  "loginPasswordLabel": "Password",
+  "loginPasswordPlaceholder": "Enter your secure key",
+  "loginForgotPassword": "Forgot Password?",
+  "loginSubmit": "Enter Library",
+  "loginNoAccount": "New Scholar?",
+  "loginRegisterLink": "Register for Access",
+  "loginEmailRequired": "Please enter your email",
+  "loginEmailInvalid": "Invalid email format",
+  "loginPasswordRequired": "Please enter your password",
+  "loginPolicyTitle": "Security Policy",
+  "loginPolicyBody": "For security, each login will automatically sign out other active sessions. Up to 3 devices are supported per account.",
+
+  "registerTitle": "Register",
+  "registerSubtitle": "SCHOLAR REGISTRATION",
+  "registerEmailLabel": "Email Address",
+  "registerPasswordLabel": "Password",
+  "registerPasswordMin": "Password must be at least 8 characters",
+  "registerConfirmLabel": "Confirm Password",
+  "registerPasswordMismatch": "Passwords do not match",
+  "registerTermsLabel": "I agree to the Terms of Service and Privacy Policy",
+  "registerTermsRequired": "Please accept the terms of service",
+  "registerSubmit": "Create Account",
+  "registerAlreadyAccount": "Already a scholar?",
+  "registerLoginLink": "Log In",
+  "registerError": "Registration failed. Please try again.",
+
+  "deviceLockTitle": "Device Locked",
+  "deviceLockHeading": "Account linked to another device",
+  "deviceLockBoundDeviceLabel": "Currently linked device",
+  "deviceLockNextAvailableLabel": "Can switch device after",
+  "deviceLockRequestReset": "Switch to This Device",
+  "deviceLockResetSuccess": "Device unlinked. Please log in again.",
+  "deviceLockBack": "Back to Login",
+
+  "navHome": "Home",
+  "navBooks": "Library",
+  "navStore": "Donate",
+  "navVideos": "Videos",
+  "navProfile": "Profile",
+
+  "homeGreetingMorning": "Good morning",
+  "homeGreetingAfternoon": "Good afternoon",
+  "homeGreetingEvening": "Good evening",
+  "homeSectionReading": "Continue Reading",
+  "homeSectionWatching": "Continue Watching",
+  "homeSectionNewBooks": "New Books",
+  "homeSectionNewVideos": "New Videos",
+  "homeSeeAll": "View All",
+
+  "commonLoading": "Loading...",
+  "commonError": "An error occurred. Please try again.",
+  "commonRetry": "Retry"
+}

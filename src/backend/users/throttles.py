@@ -14,3 +14,9 @@ class LoginRateThrottle(AnonRateThrottle):
 class OtpRequestRateThrottle(AnonRateThrottle):
     """IP-level throttle for OTP request and verify endpoints — last line of defence."""
     scope = 'otp_request'
+
+
+class MobileLoginRateThrottle(AnonRateThrottle):
+    """Throttle for the mobile login endpoint — mirrors the web login budget."""
+    scope = 'mobile_login'
+

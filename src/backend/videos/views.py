@@ -150,6 +150,27 @@ class VideoCourseDetailView(generics.RetrieveAPIView):
             return VideoCourseDetailWithPurchaseSerializer
         return VideoCourseDetailSerializer
 
+    def get_serializer_context(self):
+        """
+        Computed once per request, not once per lesson: VideoLessonListSerializer
+        reads can_access_paid_lessons/completed_lesson_ids straight from here
+        instead of querying UserVideoPurchase/UserLessonProgress per lesson.
+        """
+        context = super().get_serializer_context()
+        user = self.request.user
+        if user.is_authenticated:
+            slug = self.kwargs.get(self.lookup_url_kwarg)
+            context['can_access_paid_lessons'] = (
+                user.user_type == 'VIP'
+                or UserVideoPurchase.objects.filter(user=user, video__slug=slug).exists()
+            )
+            context['completed_lesson_ids'] = set(
+                UserLessonProgress.objects.filter(
+                    user=user, lesson__course__slug=slug, completed=True,
+                ).values_list('lesson_id', flat=True)
+            )
+        return context
+
 
 class VideoLessonDetailView(views.APIView):
     """GET /api/videos/{slug}/lessons/{lesson_slug}/ - Lesson detail with video URL."""

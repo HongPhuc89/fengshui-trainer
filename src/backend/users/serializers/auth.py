@@ -2,25 +2,33 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from django.db.models import Q
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+from django.utils import timezone
+from ..constants import PLATFORM_WEB
 from ..models import User, UserDevice
+from ..services.auth import issue_tokens_for_device
+from ..services.tokens import blacklist_tokens_for_devices
 from ..utils import get_client_ip, normalize_device_key, parse_device_name
 
 MAX_DEVICES = 5
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """Register with email (identifier), password, and device info. Other fields via profile update."""
+    """
+    Register with email and password. Other fields go through profile update.
+
+    Device fields used to be declared here but were popped and discarded in
+    create() — no UserDevice was ever built from them, since binding happens at
+    first login after an admin activates the account. Keeping them declared broke
+    mobile registration: the app sends device_type "ios", which is not in
+    UserDevice.DEVICE_TYPE_CHOICES. Clients may still send the fields; DRF
+    ignores keys that are not declared.
+    """
     email = serializers.EmailField(required=True, write_only=True, allow_blank=False)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    device_id = serializers.CharField(write_only=True, required=True, max_length=255)
-    device_type = serializers.ChoiceField(write_only=True, required=True, choices=UserDevice.DEVICE_TYPE_CHOICES)
-    device_name = serializers.CharField(write_only=True, required=False, max_length=255, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'device_id', 'device_type', 'device_name')
+        fields = ('email', 'password')
 
     def validate_email(self, value):
         value = (value or "").strip()
@@ -32,11 +40,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Discard device fields — UserDevice is NOT created during registration.
-        # It will be created on first successful login after admin activates the account.
-        validated_data.pop('device_id', None)
-        validated_data.pop('device_type', None)
-        validated_data.pop('device_name', None)
         email = validated_data['email']
         password = validated_data['password']
 
@@ -94,7 +97,7 @@ class CustomLoginSerializer(serializers.Serializer):
         device = user.devices.filter(key_match).first()
 
         # Check device limit before creating a new record
-        if device is None and user.devices.count() >= MAX_DEVICES:
+        if device is None and user.devices.filter(status='ACTIVE').count() >= MAX_DEVICES:
             raise serializers.ValidationError({"detail": f"Tài khoản đã đăng ký tối đa {MAX_DEVICES} thiết bị."})
 
         if device is None:
@@ -120,24 +123,29 @@ class CustomLoginSerializer(serializers.Serializer):
             device.status = 'ACTIVE'
             device.save()
 
-        # Blacklist all outstanding tokens → logout all other active sessions
-        for token in OutstandingToken.objects.filter(user=user):
-            BlacklistedToken.objects.get_or_create(token=token)
-
-        # Mark all other devices as REVOKED so DeviceJWTAuthentication rejects their
-        # tokens. Excluded by key so the row we just matched is never revoked, even
-        # when its stored device_id differs from the one sent by this request.
-        user.devices.exclude(key_match).update(status='REVOKED')
+        # Mark all other WEB devices as REVOKED so DeviceJWTAuthentication rejects
+        # their tokens. Excluded by key so the row we just matched is never revoked,
+        # even when its stored device_id differs from the one sent by this request.
+        # Mobile handsets live in a different table and are untouched.
+        stale = list(
+            user.devices.exclude(key_match).exclude(status='REVOKED')
+            .values_list('device_id', flat=True)
+        )
+        if stale:
+            user.devices.filter(device_id__in=stale).update(
+                status='REVOKED', revoked_at=timezone.now(),
+            )
+            # Scoped, not blanket: blacklisting every outstanding token of the user
+            # used to sign them out of the mobile app as well.
+            blacklist_tokens_for_devices(user, stale)
 
         # Update last_login timestamp (django.contrib.auth.login() is not called in JWT flow)
         update_last_login(None, user)
 
-        # Issue new token with device_id claim embedded. Must be the stored value —
-        # DeviceJWTAuthentication looks the device up by exact device_id.
-        refresh = RefreshToken.for_user(user)
-        refresh['device_id'] = device.device_id
+        # Token carries the stored device_id (DeviceJWTAuthentication looks the
+        # device up by exact value) plus the platform claim that tells it which
+        # table to look in.
         return {
             'user': user,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            **issue_tokens_for_device(user, device, PLATFORM_WEB),
         }

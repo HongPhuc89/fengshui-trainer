@@ -93,6 +93,59 @@ CREATE TABLE users_userdevice (
 );
 
 CREATE INDEX idx_userdevice_uuid ON users_userdevice(uuid);
+```
+
+> **Web only since feature-34.** Mobile handsets live in `users_mobiledevice`
+> below, so `user.devices` in the ORM means "web devices" and nothing else.
+> `is_primary_bound` is a dead column, dropped in the follow-up cleanup commit.
+
+#### `users_mobiledevice`
+```sql
+CREATE TABLE users_mobiledevice (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    user_id BIGINT REFERENCES users_user(id) ON DELETE CASCADE,
+
+    -- Permanent public id of the slot, shown to support and in the app.
+    client_code VARCHAR(16) UNIQUE NOT NULL,     -- MC-7F3A2B91
+    -- One-time secret the user types to claim the slot. Stored in plaintext on
+    -- purpose: staff read it out over Zalo/phone (no automated email).
+    pairing_code VARCHAR(20) UNIQUE NOT NULL,    -- TT-4KM-9X7 (feature-38)
+
+    device_id VARCHAR(255),                      -- NULL until claimed
+    hardware_hash VARCHAR(64),                   -- SHA-256(ANDROID_ID | IDFV)
+    device_type VARCHAR(10),                     -- IOS | ANDROID
+    device_name VARCHAR(255), device_model VARCHAR(128),
+    os_version VARCHAR(64), app_version VARCHAR(32),
+
+    status VARCHAR(10) NOT NULL,                 -- UNCLAIMED|ACTIVE|REVOKED|EXPIRED
+    revoked_reason VARCHAR(20),                  -- ADMIN_UNBIND | MOBILE_DISABLED
+    issued_by_id BIGINT REFERENCES users_user(id) ON DELETE SET NULL,
+    issued_reason VARCHAR(255),
+    expires_at TIMESTAMP NOT NULL,               -- deadline to claim
+    claimed_at TIMESTAMP, claim_ip INET, claim_attempts INTEGER NOT NULL DEFAULT 0,
+
+    last_ip INET, bound_at TIMESTAMP, revoked_at TIMESTAMP, last_active TIMESTAMP,
+    geo_city VARCHAR(100), geo_region VARCHAR(100),
+    geo_country_code CHAR(2), geo_fetched_at TIMESTAMP,
+    created_at TIMESTAMP, updated_at TIMESTAMP
+);
+
+-- Scoped to the occupying statuses, not just "not null". A revoked slot keeps
+-- the handset's identifiers, so the same phone taking a fresh slot would
+-- otherwise collide with its own history.
+CREATE UNIQUE INDEX uniq_mobile_device_id_per_user ON users_mobiledevice(user_id, device_id)
+    WHERE device_id IS NOT NULL AND status IN ('UNCLAIMED', 'ACTIVE');
+CREATE UNIQUE INDEX uniq_mobile_hardware_per_user ON users_mobiledevice(user_id, hardware_hash)
+    WHERE hardware_hash IS NOT NULL AND status IN ('UNCLAIMED', 'ACTIVE');
+
+CREATE INDEX idx_mobiledevice_user_status ON users_mobiledevice(user_id, status);
+CREATE INDEX idx_mobiledevice_expiry ON users_mobiledevice(status, expires_at);
+```
+
+> The quota is `users_user.mobile_max_devices` counted over the same two
+> occupying statuses. No index can express "at most N rows", so it is enforced
+> with a `SELECT ... FOR UPDATE` on the user row when staff allocate a slot.
 
 #### `admin_auditlog`
 ```sql

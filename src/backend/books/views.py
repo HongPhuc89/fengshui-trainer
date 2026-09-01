@@ -149,6 +149,35 @@ class BookDetailView(generics.RetrieveAPIView):
             return BookDetailWithPurchaseSerializer
         return BookDetailSerializer
 
+    def get_serializer_context(self):
+        """
+        Computed once per request, not once per chapter: BookChapterListSerializer
+        reads can_access_paid_chapters/completed_chapter_ids straight from here
+        instead of querying UserBookPurchase/UserChapterProgress per chapter.
+
+        Unlike videos, _can_access_chapter() has a book.is_free shortcut that
+        applies even to an anonymous reader — so this is computed unconditionally,
+        not only inside an `if user.is_authenticated` block.
+        """
+        context = super().get_serializer_context()
+        slug = self.kwargs.get(self.lookup_url_kwarg)
+        user = self.request.user
+
+        is_free = Book.objects.filter(slug=slug, is_free=True).exists()
+        owns_or_vip = user.is_authenticated and (
+            user.user_type == 'VIP'
+            or UserBookPurchase.objects.filter(user=user, book__slug=slug).exists()
+        )
+        context['can_access_paid_chapters'] = is_free or owns_or_vip
+
+        if user.is_authenticated:
+            context['completed_chapter_ids'] = set(
+                UserChapterProgress.objects.filter(
+                    user=user, chapter__book__slug=slug, completed=True,
+                ).values_list('chapter_id', flat=True)
+            )
+        return context
+
 
 class BookChapterDetailView(views.APIView):
     """GET /api/books/{slug}/chapters/{order}/ - Chapter content (URL or 403)."""

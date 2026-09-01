@@ -19,3 +19,4 @@ requests
 boto3
 cryptography
 django-jsoneditor
+pyaxmlparser>=0.3.30

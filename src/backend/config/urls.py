@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/admin/stats/', include('users.urls_admin_stats')),
     path('api/landing/', include('landing.urls')),
+    path('api/app/', include('core.urls_app')),
 ]
 
 if settings.DEBUG:

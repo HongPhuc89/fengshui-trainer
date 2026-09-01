@@ -52,6 +52,28 @@ class LocalFirstSupabaseStorage(FileSystemStorage):
                 logger.warning("Supabase URL failed for %s: %s, using local", name, exc)
         return super().url(name)
 
+    def delete(self, name):
+        """
+        Remove the local copy AND the object in Supabase.
+
+        FileSystemStorage.delete() only knows about the local file, so without
+        this every deletion left the uploaded object behind — the bucket keeps
+        paying for bytes nothing can reach any more. Supabase failures are
+        logged, not raised: the caller has already decided the file is gone, and
+        an orphan there is better than a half-deleted record here.
+        """
+        if name and self._is_configured():
+            try:
+                self._s3_client().delete_object(
+                    Bucket=settings.SUPABASE_STORAGE_BUCKET, Key=name,
+                )
+            except Exception as exc:
+                logger.warning("Supabase delete failed for %s: %s", name, exc)
+
+        cache.delete(f"supabase_sync:{name}")
+        cache.delete(f"supabase_url:{name}")
+        super().delete(name)
+
     # ── private helpers ───────────────────────────────────────────────────
 
     def _is_configured(self):

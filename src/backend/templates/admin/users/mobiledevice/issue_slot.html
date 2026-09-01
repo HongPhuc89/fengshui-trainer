@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Cấp slot thiết bị mới{% endblock %}
+
+{% block content %}
+<div class="module" style="max-width:560px;padding:20px">
+  <h1>📱 Cấp slot thiết bị mới</h1>
+
+  <div style="background:#e7f3ff;border:1px solid #0d6efd;border-radius:4px;padding:12px;margin-bottom:16px;font-size:13px">
+    Hệ thống tự sinh <strong>mã ghép cặp</strong> cho slot này. Mã hiện ra sau khi cấp —
+    copy và gửi cho user qua Zalo/điện thoại, không gửi email tự động.
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <ul class="errorlist">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    {% for field in form %}
+      <div style="margin-bottom:14px">
+        <label for="{{ field.id_for_label }}" style="display:block;font-weight:600;margin-bottom:4px">
+          {{ field.label }}{% if field.field.required %} <span style="color:#dc3545">*</span>{% endif %}
+        </label>
+        {{ field }}
+        {% if field.help_text %}
+          <p style="color:#666;font-size:12px;margin:4px 0 0">{{ field.help_text }}</p>
+        {% endif %}
+        {% if field.errors %}
+          <ul class="errorlist">
+            {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {# Suggestions for "Lý do cấp": presets plus reasons already used here. #}
+    <datalist id="{{ reason_list_id }}">
+      {% for reason in reason_suggestions %}<option value="{{ reason }}"></option>{% endfor %}
+    </datalist>
+
+    <div style="margin-top:20px">
+      <input type="submit" value="Cấp slot" class="default">
+      <a href="{% url 'admin:users_mobiledevice_changelist' %}"
+         class="button"
+         style="background:#6c757d;color:#fff;padding:8px 14px;border-radius:4px;text-decoration:none;margin-left:8px">
+        Huỷ
+      </a>
+    </div>
+  </form>
+</div>
+
+{{ form.media }}
+{% endblock %}

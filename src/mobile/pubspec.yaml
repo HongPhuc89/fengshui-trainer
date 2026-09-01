@@ -1,12 +1,13 @@
 name: huyenhoc
 description: "Huyền Học — Fengshui Learning Platform"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.10.7
 
 dependencies:
+  sentry_flutter: ^9.28.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -47,10 +48,20 @@ dependencies:
   image_cropper: ^11.0.0
   image_picker: ^1.1.2
 
+  # In-app update (feature-36)
+  path_provider: ^2.1.4
+  url_launcher: ^6.3.0
+
   # Device
   device_info_plus: ^10.1.2
   screen_protector: ^1.5.1
   uuid: ^4.4.0
+  # device_info_plus does NOT expose Settings.Secure.ANDROID_ID; its
+  # AndroidDeviceInfo.id is Build.ID, which is identical on every phone running
+  # the same ROM and must never be used as a device identifier.
+  android_id: ^0.4.0
+  package_info_plus: ^8.0.2
+  crypto: ^3.0.3
 
   # Utils
   intl: ^0.20.2
@@ -58,6 +69,8 @@ dependencies:
   dartz: ^0.10.1
 
 dev_dependencies:
+  sentry_dart_plugin: ^3.4.0
+  flutter_launcher_icons: ^0.14.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -71,3 +84,23 @@ flutter:
   generate: true
   assets:
     - assets/images/
+
+# Launcher icons generated from the same mark the web app uses
+# (src/frontend/public/favicon.svg), so both surfaces read as one product.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  # flutter_launcher_icons wraps the foreground in <inset android:inset="16%">, so the
+  # drawable covers 68% of the 108dp adaptive canvas and it — not this PNG — supplies the
+  # mask safe zone. The artwork therefore fills app_icon_foreground.png edge to edge and
+  # lands on the 72dp mask edge, over the white ground the web mark uses.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
+
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: true
+  project: fengshui-trainer-mobile
+  org: scottfu89

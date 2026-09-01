@@ -11,6 +11,7 @@ Chuẩn coding khi implement từ detail design. Áp dụng cho mọi thay đổ
 - **Docker:** `docker/docker-compose.yml`, service `web` cho Django. Mọi lệnh Django chạy qua:
   `docker-compose -f docker/docker-compose.yml exec web python manage.py <command>`.
 - Code và comment bằng tiếng Anh
+- Comment tóm tắt và ngắn gọn, không nên comment quá 5 dòng
 
 ---
 
