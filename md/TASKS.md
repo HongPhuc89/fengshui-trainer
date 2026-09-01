@@ -330,6 +330,41 @@
 
 ---
 
+### Feature 40: Mobile Video Detail — thumbnail bài học + header khoá học giống web ✅ COMPLETE
+**Priority**: Medium | **Status**: ✅ Implemented (2026-09-02)
+
+- [x] **40.1** Thumbnail 72×42 trong `lesson_list_item.dart` (dữ liệu đã sẵn end-to-end, chỉ thiếu render) — dùng `CachedNetworkImage` đúng pattern `video_card.dart`
+- [x] **40.2** Header khoá học: giảng viên, badge trình độ (màu theo cấp), tag số bài học + tổng thời lượng, progress bar %, mô tả "Xem thêm"/"Thu gọn" — parse thêm 4 field backend đã có sẵn (`instructor`, `level`, `total_lessons`, `total_duration_seconds`) vào `VideoDetail`/`VideoDetailModel`
+- [x] **40.3** Thêm `getCourseProgress()` gọi `GET /api/videos/{slug}/progress/` (endpoint có sẵn, chưa ai dùng) — fetch song song với detail, lỗi không chặn nội dung chính
+- [x] **40.4** Bỏ `_PriceSection` hiển thị giá thường trực (kể cả khi đã mua) — gộp về 1 CTA duy nhất theo `canAccess`
+- [x] **40.5** Bỏ hero-image `SliverAppBar`, thay bằng back-link "‹ Khóa học" — theo yêu cầu trực tiếp của user, khớp 100% web (web cũng đã bỏ banner này)
+- [x] **40.6** Vá bug phát hiện khi test: `PdfViewPinch`-style bug tương tự không xảy ra ở đây, nhưng phát hiện bug khác — backend **chưa từng trả** `last_watched_lesson` trong response course-detail (field chết từ trước, mobile đọc nhầm), và mobile **chưa từng gọi** `POST .../progress/last-lesson/` để đánh dấu bài đang xem. Fix: `VideoPlayerBloc` gọi `setLastLesson()` fire-and-forget khi load bài; label CTA đổi sang dùng `progress.completedLessons > 0` (đúng, giống web) thay vì field chết; đích đến CTA gọi `getLastLessonOrder()` lazy lúc bấm (giống web `startOrContinue()`)
+- [x] **40.7** Refetch `LoadVideoDetail(forceRefresh: true)` khi quay lại từ player — Flutter Navigator giữ nguyên bloc/state khi pop, không tự remount như Vue Router (khác biệt kiến trúc điều hướng thật, không phải bug)
+
+> **Design doc**: `md/design/feature-40-mobile-video-detail-parity.md`
+> **Đã test trên thiết bị Android thật + verify qua DB** (`UserCourseProgress.last_lesson`): mở bài 1 → quay lại → CTA vào đúng bài 1; mở bài 3 → quay lại → CTA vào đúng bài 3 (loại trừ trùng hợp fallback). Badge trình độ + tag số bài/thời lượng + thumbnail đã xác nhận đúng trên máy thật.
+> **Còn treo**: label "Tiếp tục học" (cần hoàn thành ≥1 bài thật để test, chưa mô phỏng được qua ADB); dòng giảng viên trên khoá có data (chưa chụp được ảnh trực tiếp do lỗi tọa độ ADB, nhưng cùng pattern code đã xác nhận đúng ở phần tag).
+> **Lưu ý rollout**: cache `videoDetail` cũ (trước khi có field mới) sẽ thiếu header đúng cho tới khi TTL hết hạn hoặc user pull-to-refresh — không phải bug, cần lưu ý khi test bản nâng cấp.
+
+---
+
+### Feature 41: Mobile Book Detail — badge/CTA/tiến độ đọc giống web ✅ COMPLETE
+**Priority**: Medium | **Status**: ✅ Implemented (2026-09-02)
+
+- [x] **41.1** Vá bug parse field không tồn tại: `isVipOnly` đọc `json['is_vip_only']` — backend không có field này, VIP là thuộc tính **user** (`user_type`) chứ không phải sách. Xoá `isVipOnly` khỏi `BookDetail` (chỉ phạm vi Detail — `Book` dùng cho `book_card.dart`/danh sách giữ nguyên, bug đó vẫn còn, ghi nhận follow-up ngoài phạm vi), lấy VIP qua `AuthCubit` (bloc inject thêm `AuthCubit`, cần chạy lại `build_runner` để regenerate DI config)
+- [x] **41.2** Thêm `isFree`, `smallCoverUrl` vào `BookDetail`/`BookDetailModel` (field backend có sẵn, chưa parse)
+- [x] **41.3** Badge row: Miễn phí/VIP/Đã mua (ưu tiên 1 trong 3) + Mới + category — trước đó chỉ có category chip
+- [x] **41.4** CTA gộp về 1 nút không điều kiện theo `hasPurchased` riêng (trước đó free/VIP-chưa-mua không có nút nào) — theo đúng `isUnlocked = isFree || isVip || hasPurchased`
+- [x] **41.5** Thêm `getReadingProgress()` vào `BookDetailBloc`, chỉ fetch khi sách đã unlock (giống web) — trước đó `book_detail_bloc.dart` chưa từng gọi, nhánh "Tiếp tục đọc" cũ dựa vào field chết (`reading_progress` không tồn tại trong response thật)
+- [x] **41.6** Badge "Trang X" + highlight viền vàng cho chương đang đọc dở trong `_ChapterListItem`, header đổi "Danh sách chương" → "Nội dung · N chương"
+- [x] **41.7** Refetch khi quay lại từ reader — áp cả 2 call-site (nút CTA + tap từng chương), theo đúng pattern feature-40
+
+> **Design doc**: `md/design/feature-41-mobile-book-detail-parity.md`
+> **Build sạch** (`flutter analyze` 0 lỗi, `flutter build apk` thành công) — chưa kịp test lại trên thiết bị thật (mất kết nối ADB giữa chừng, user chuyển sang tự chạy `flutter run`).
+> **Quyết định đáng chú ý**: endpoint `GET /books/{slug}/progress/` luôn trả mặc định `{chapter_order:1, current_page:1}` khi chưa có tiến độ (không trả null/404) — không thể dùng "có giá trị hay không" để suy ra "đã đọc chưa" (cùng bẫy đã gặp ở feature-40 với last-lesson). Công thức dùng: `currentPage > 1 || có chương completed` — PO đã duyệt, chấp nhận edge case hiếm (đọc đúng hết trang 1 rồi thoát vẫn hiện "Đọc ngay").
+
+---
+
 ### Admin Panel — Django Jazzmin ✅
 **Thay thế Feature 18 (Vue.js admin riêng)**: Admin chạy trên Django + Jazzmin theme.
 - [x] Books, Videos, Exams admin đầy đủ

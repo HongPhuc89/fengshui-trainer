@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/auth/auth_cubit.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../bloc/book_detail_bloc.dart';
@@ -95,8 +96,40 @@ class _BookDetailView extends StatelessWidget {
             : state is BookDetailPurchaseSuccess
             ? state.detail
             : null;
+        final progress = state is BookDetailLoaded
+            ? state.progress
+            : state is BookDetailPurchasing
+            ? state.progress
+            : state is BookDetailPurchaseError
+            ? state.progress
+            : state is BookDetailPurchaseSuccess
+            ? state.progress
+            : null;
 
         if (detail == null) return const Scaffold();
+
+        // VIP is the logged-in user's property, not the book's — mirrors
+        // web's authStore.user?.user_type === 'VIP'. No BookDetail.isVipOnly
+        // to read here on purpose (see book.dart's doc comment).
+        final authState = context.watch<AuthCubit>().state;
+        final isVip =
+            authState is AuthAuthenticated && (authState.user?.isVip ?? false);
+        final isUnlocked = detail.isFree || isVip || detail.hasPurchased;
+
+        // The progress endpoint always returns a value (defaults to
+        // chapter 1/page 1 when the user has never read anything — it
+        // never signals "no progress" with null/404), so `progress != null`
+        // alone can't distinguish "never started" from "started, still on
+        // page 1". Treating "past page 1" or "finished ≥1 chapter" as
+        // having started matches the intent without a dedicated backend
+        // flag; the one edge case this misses (finished exactly page 1 then
+        // left) is rare enough to accept (design doc §4).
+        final hasStarted =
+            progress != null &&
+            (progress.currentPage > 1 ||
+                detail.chapters.any((c) => c.isCompleted));
+
+        final coverUrl = detail.smallCoverUrl ?? detail.coverImageUrl;
 
         return Scaffold(
           body: RefreshIndicator(
@@ -110,9 +143,9 @@ class _BookDetailView extends StatelessWidget {
                   expandedHeight: 280,
                   pinned: true,
                   flexibleSpace: FlexibleSpaceBar(
-                    background: detail.coverImageUrl != null
+                    background: coverUrl != null
                         ? CachedNetworkImage(
-                            imageUrl: detail.coverImageUrl!,
+                            imageUrl: coverUrl,
                             fit: BoxFit.cover,
                           )
                         : Container(color: AppColors.surfaceAlt),
@@ -136,50 +169,76 @@ class _BookDetailView extends StatelessWidget {
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        if (detail.category != null)
-                          Chip(
-                            label: Text(
-                              detail.category!.title,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            padding: EdgeInsets.zero,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
-                        // Price / access indicator
-                        _PriceSection(detail: detail),
+                        // Badges: access-state (Miễn phí/VIP/Đã mua — pick
+                        // one) + Mới + category, matching web's priority
+                        // order.
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (detail.isFree)
+                              const _Badge(
+                                label: 'Miễn phí',
+                                color: AppColors.success,
+                              )
+                            else if (isVip)
+                              const _Badge(
+                                label: 'VIP',
+                                color: AppColors.primaryGold,
+                                filled: true,
+                              )
+                            else if (detail.hasPurchased)
+                              const _Badge(
+                                label: 'Đã mua',
+                                color: AppColors.success,
+                              ),
+                            if (detail.isNewRelease)
+                              const _Badge(
+                                label: 'Mới',
+                                color: AppColors.primaryGold,
+                              ),
+                            if (detail.category != null)
+                              _Badge(
+                                label: detail.category!.title,
+                                color: AppColors.textSecondary,
+                              ),
+                          ],
+                        ),
+
                         const SizedBox(height: 16),
 
-                        // Continue reading button
-                        if (detail.hasPurchased &&
-                            detail.lastReadChapterOrder != null)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.play_arrow),
-                              label: Text(
-                                'Tiếp tục đọc — Ch.${detail.lastReadChapterOrder}',
-                              ),
-                              onPressed: () => context.push(
-                                '/books/${detail.slug}/read?chapter=${detail.lastReadChapterOrder}',
-                              ),
-                            ),
-                          ),
-                        if (detail.hasPurchased &&
-                            detail.lastReadChapterOrder == null)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Bắt đầu đọc'),
-                              onPressed: () => context.push(
-                                '/books/${detail.slug}/read?chapter=1',
-                              ),
-                            ),
-                          ),
+                        // CTA — single button, unconditional on unlock
+                        // state (not gated on hasPurchased alone like
+                        // before, which left free/VIP-only readers with no
+                        // button at all).
+                        SizedBox(
+                          width: double.infinity,
+                          child: isUnlocked
+                              ? ElevatedButton.icon(
+                                  icon: const Icon(Icons.menu_book_outlined),
+                                  label: Text(
+                                    hasStarted ? 'Đọc tiếp' : 'Đọc ngay',
+                                  ),
+                                  onPressed: detail.chapters.isEmpty
+                                      ? null
+                                      : () => _openChapter(
+                                          context,
+                                          detail,
+                                          progress?.chapterOrder ?? 1,
+                                        ),
+                                )
+                              : ElevatedButton.icon(
+                                  icon: const Icon(Icons.lock_open, size: 18),
+                                  label: Text(
+                                    'Mở khoá với ${detail.priceLt} LT',
+                                  ),
+                                  onPressed: state is BookDetailPurchasing
+                                      ? null
+                                      : () => _showPurchase(context, detail),
+                                ),
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -191,9 +250,9 @@ class _BookDetailView extends StatelessWidget {
                         const SizedBox(height: 16),
 
                         // Chapters
-                        const Text(
-                          'Danh sách chương',
-                          style: TextStyle(
+                        Text(
+                          'Nội dung · ${detail.chapters.length} chương',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
@@ -203,7 +262,11 @@ class _BookDetailView extends StatelessWidget {
                         ...detail.chapters.map(
                           (ch) => _ChapterListItem(
                             chapter: ch,
-                            slug: detail.slug,
+                            currentPage: progress?.chapterOrder == ch.order
+                                ? progress?.currentPage
+                                : null,
+                            onTap: () =>
+                                _openChapter(context, detail, ch.order),
                             onLocked: () => _showPurchase(context, detail),
                           ),
                         ),
@@ -220,6 +283,26 @@ class _BookDetailView extends StatelessWidget {
     );
   }
 
+  /// Refetches on return from the reader — Flutter's Navigator (unlike Vue
+  /// Router on web, which remounts a view on every navigation to its path)
+  /// keeps this screen's existing widget/bloc when popping back to it, so
+  /// without this the CTA label, current-chapter badge and completed
+  /// checkmarks would keep showing pre-reading state until the user backs
+  /// all the way out and re-enters. Both call sites that push the reader
+  /// (the CTA button and each chapter row's onTap) go through this.
+  Future<void> _openChapter(
+    BuildContext context,
+    BookDetail detail,
+    int chapterOrder,
+  ) async {
+    await context.push('/books/${detail.slug}/read?chapter=$chapterOrder');
+    if (context.mounted) {
+      context.read<BookDetailBloc>().add(
+        LoadBookDetail(detail.slug, forceRefresh: true),
+      );
+    }
+  }
+
   void _showPurchase(BuildContext context, BookDetail detail) {
     // Balance not available here — store feature provides actual balance
     PurchaseBottomSheet.show(
@@ -234,116 +317,159 @@ class _BookDetailView extends StatelessWidget {
   }
 }
 
-class _PriceSection extends StatelessWidget {
-  final BookDetail detail;
-  const _PriceSection({required this.detail});
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool filled;
+  const _Badge({required this.label, required this.color, this.filled = false});
 
   @override
   Widget build(BuildContext context) {
-    if (detail.isVipOnly) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.primaryGold.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.primaryGold.withOpacity(0.4)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: filled ? color.withOpacity(0.15) : Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(4),
+        border: filled ? Border.all(color: color.withOpacity(0.4)) : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.diamond, color: AppColors.primaryGold, size: 16),
-            SizedBox(width: 6),
-            Text('VIP', style: TextStyle(color: AppColors.primaryGold)),
-          ],
-        ),
-      );
-    }
-    if (detail.priceLt == 0) {
-      return const Text(
-        'Miễn phí',
-        style: TextStyle(color: AppColors.success, fontSize: 14),
-      );
-    }
-    return Row(
-      children: [
-        const Icon(
-          Icons.diamond_outlined,
-          color: AppColors.primaryGold,
-          size: 16,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '${detail.priceLt} LT',
-          style: const TextStyle(
-            color: AppColors.primaryGold,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
 class _ChapterListItem extends StatelessWidget {
   final BookChapterMeta chapter;
-  final String slug;
+
+  /// Non-null only when this chapter is where the reader last left off
+  /// (progress.chapterOrder == chapter.order) — drives the "Trang X" badge
+  /// and the highlighted row, matching web's `.book-detail__chapter-row
+  /// --reading`.
+  final int? currentPage;
+  final VoidCallback onTap;
   final VoidCallback onLocked;
 
   const _ChapterListItem({
     required this.chapter,
-    required this.slug,
+    required this.currentPage,
+    required this.onTap,
     required this.onLocked,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-      leading: CircleAvatar(
-        backgroundColor: AppColors.surfaceAlt,
-        child: Text(
-          '${chapter.order}',
-          style: const TextStyle(color: AppColors.primaryGold, fontSize: 13),
+    // Matches web's isCurrentChapter(): unlocked, matches progress, and not
+    // already finished — a chapter marked completed shouldn't also read as
+    // "currently reading".
+    final isCurrent =
+        currentPage != null && chapter.canAccess && !chapter.isCompleted;
+
+    return Container(
+      decoration: isCurrent
+          ? BoxDecoration(
+              color: AppColors.primaryGold.withOpacity(0.08),
+              border: const Border(
+                left: BorderSide(color: AppColors.primaryGold, width: 2),
+              ),
+            )
+          : null,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 4,
         ),
-      ),
-      title: Text(
-        chapter.title,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-      ),
-      subtitle: Text(
-        '${chapter.pageCount} trang',
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (chapter.isDemo)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.demoBadge.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Demo',
-                style: TextStyle(fontSize: 10, color: AppColors.demoBadge),
-              ),
+        leading: CircleAvatar(
+          backgroundColor: AppColors.surfaceAlt,
+          child: Text(
+            '${chapter.order}',
+            style: TextStyle(
+              color: isCurrent
+                  ? AppColors.primaryGold
+                  : AppColors.primaryGold.withOpacity(0.7),
+              fontSize: 13,
             ),
-          const SizedBox(width: 4),
-          if (!chapter.canAccess)
-            const Icon(Icons.lock_outline, color: AppColors.lockGray)
-          else if (chapter.isCompleted)
-            const Icon(Icons.check_circle, color: AppColors.success),
-        ],
+          ),
+        ),
+        title: Text(
+          chapter.title,
+          style: TextStyle(
+            color: isCurrent ? AppColors.primaryGold : AppColors.textPrimary,
+            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+        subtitle: isCurrent
+            ? null
+            : Text(
+                '${chapter.pageCount} trang',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (chapter.isDemo)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.demoBadge.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Demo',
+                  style: TextStyle(fontSize: 10, color: AppColors.demoBadge),
+                ),
+              ),
+            const SizedBox(width: 4),
+            if (isCurrent)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGold.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.menu_book,
+                      size: 12,
+                      color: AppColors.primaryGold,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Trang $currentPage',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primaryGold,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!chapter.canAccess)
+              const Icon(Icons.lock_outline, color: AppColors.lockGray)
+            else if (chapter.isCompleted)
+              const Icon(Icons.check_circle, color: AppColors.success),
+          ],
+        ),
+        onTap: chapter.canAccess ? onTap : onLocked,
       ),
-      onTap: () {
-        if (chapter.canAccess) {
-          context.push('/books/$slug/read?chapter=${chapter.order}');
-        } else {
-          onLocked();
-        }
-      },
     );
   }
 }

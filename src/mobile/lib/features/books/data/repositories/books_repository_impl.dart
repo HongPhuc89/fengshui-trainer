@@ -279,6 +279,7 @@ class BooksRepositoryImpl implements BooksRepository {
     'title': b.title,
     'author': b.author,
     'cover_image': b.coverImageUrl,
+    'small_cover': b.smallCoverUrl,
     'category': b.category != null
         ? {
             'public_id': b.category!.publicId,
@@ -287,9 +288,9 @@ class BooksRepositoryImpl implements BooksRepository {
           }
         : null,
     'price_lt': b.priceLt,
-    'is_vip_only': b.isVipOnly,
     'has_purchased': b.hasPurchased,
     'is_new_release': b.isNewRelease,
+    'is_free': b.isFree,
     'description': b.description,
     'chapters': b.chapters
         .map(

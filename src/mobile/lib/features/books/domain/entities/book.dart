@@ -77,11 +77,23 @@ class BookDetail extends Equatable {
   final String title;
   final String author;
   final String? coverImageUrl;
+
+  /// CDN-optimized WebP copy — prefer this over [coverImageUrl] when
+  /// present, same priority as web (`small_cover` → `cover_image`).
+  final String? smallCoverUrl;
   final BookCategory? category;
   final int priceLt;
-  final bool isVipOnly;
   final bool hasPurchased;
   final bool isNewRelease;
+
+  /// Whether the book itself is free for everyone — distinct from VIP
+  /// access, which is a property of the *user* (`UserEntity.isVip`), not
+  /// the book. There is deliberately no `isVipOnly` field here: the
+  /// backend never sends one (`BookDetailSerializer` has no such field —
+  /// VIP-gating is done purely via the logged-in user's `user_type`), and
+  /// a prior version of this field always parsed to `false` from a JSON
+  /// key that doesn't exist.
+  final bool isFree;
   final String? description;
   final List<BookChapterMeta> chapters;
   final int? lastReadChapterOrder;
@@ -91,11 +103,12 @@ class BookDetail extends Equatable {
     required this.title,
     required this.author,
     this.coverImageUrl,
+    this.smallCoverUrl,
     this.category,
     required this.priceLt,
-    required this.isVipOnly,
     required this.hasPurchased,
     required this.isNewRelease,
+    this.isFree = false,
     this.description,
     required this.chapters,
     this.lastReadChapterOrder,

@@ -188,9 +188,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i761.AuthCubit>(),
       ),
     );
-    gh.factory<_i288.BookDetailBloc>(
-      () => _i288.BookDetailBloc(gh<_i831.BooksRepository>()),
-    );
     gh.factory<_i815.BooksBloc>(
       () => _i815.BooksBloc(gh<_i831.BooksRepository>()),
     );
@@ -208,6 +205,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i669.TrainingBloc>(
       () => _i669.TrainingBloc(gh<_i580.TrainingRepository>()),
+    );
+    gh.factory<_i288.BookDetailBloc>(
+      () => _i288.BookDetailBloc(
+        gh<_i831.BooksRepository>(),
+        gh<_i761.AuthCubit>(),
+      ),
     );
     gh.factory<_i469.ProfileBloc>(
       () => _i469.ProfileBloc(

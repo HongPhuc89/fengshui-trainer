@@ -12,9 +12,16 @@ class BookDetailLoading extends BookDetailState {}
 
 class BookDetailLoaded extends BookDetailState {
   final BookDetail detail;
-  const BookDetailLoaded(this.detail);
+
+  /// Nullable: a transient failure fetching it must not block showing the
+  /// book itself — only the "current chapter" badge/highlight degrades.
+  /// Also stays null when the book isn't unlocked yet (see
+  /// BookDetailBloc._onLoad) since it's meaningless to ask "where did the
+  /// user leave off" for a book they can't read.
+  final ReadingProgress? progress;
+  const BookDetailLoaded(this.detail, {this.progress});
   @override
-  List<Object?> get props => [detail];
+  List<Object?> get props => [detail, progress];
 }
 
 class BookDetailError extends BookDetailState {
@@ -26,17 +33,19 @@ class BookDetailError extends BookDetailState {
 
 class BookDetailPurchasing extends BookDetailState {
   final BookDetail detail;
-  const BookDetailPurchasing(this.detail);
+  final ReadingProgress? progress;
+  const BookDetailPurchasing(this.detail, {this.progress});
   @override
-  List<Object?> get props => [detail];
+  List<Object?> get props => [detail, progress];
 }
 
 class BookDetailPurchaseError extends BookDetailState {
   final BookDetail detail;
   final String message;
-  const BookDetailPurchaseError(this.detail, this.message);
+  final ReadingProgress? progress;
+  const BookDetailPurchaseError(this.detail, this.message, {this.progress});
   @override
-  List<Object?> get props => [detail, message];
+  List<Object?> get props => [detail, message, progress];
 }
 
 /// Emitted exactly once, right after a purchase actually completes — the
@@ -45,7 +54,8 @@ class BookDetailPurchaseError extends BookDetailState {
 /// simply opened or reloaded.
 class BookDetailPurchaseSuccess extends BookDetailState {
   final BookDetail detail;
-  const BookDetailPurchaseSuccess(this.detail);
+  final ReadingProgress? progress;
+  const BookDetailPurchaseSuccess(this.detail, {this.progress});
   @override
-  List<Object?> get props => [detail];
+  List<Object?> get props => [detail, progress];
 }
