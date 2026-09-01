@@ -137,7 +137,12 @@ class _BookDetailView extends StatelessWidget {
             onRefresh: () async => context.read<BookDetailBloc>().add(
               LoadBookDetail(slug, forceRefresh: true),
             ),
+            // Without this, pull-to-refresh silently does nothing whenever
+            // the chapter list is short enough to fit on screen (no
+            // overscroll possible without it) — exactly the case for most
+            // books here (a handful of chapters).
             child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 // No hero-image banner — matches web, a simple back-link
                 // instead of the full-width cover this screen had before

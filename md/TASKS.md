@@ -38,6 +38,7 @@
 | 31 | [feature-31-book-cover-image-optimization.md](design/feature-31-book-cover-image-optimization.md) | Book Cover Image Optimization — Thêm `small_cover` CharField (WebP, Bunny CDN) giữ nguyên `cover_image` gốc trên Supabase | 📝 |
 | 32 | [feature-32-change-password.md](design/feature-32-change-password.md) | Change Password — Đổi mật khẩu từ màn hình Profile (IsAuthenticated, verify current_password, Django validate_password) | 📝 |
 | 33 | [feature-33-device-geo-location.md](design/feature-33-device-geo-location.md) | Device IP Geolocation — Lưu city/region/country vào UserDevice từ last_ip qua ipinfo.io; async trigger khi tạo device + management command backfill | 📝 |
+| 34 | [feature-34-mobile-device-app-consolidated.md](design/feature-34-mobile-device-app-consolidated.md) | **Consolidated** (thay thế feature-34…41 gốc) — Mobile Device & Pairing (bảng riêng, khoá 1 máy/user, admin issue/refresh slot, pairing_code 6 ký tự), App Version & Update (Android-only, singleton), Mobile UI Parity (PDF reader cuộn liên tục, Video/Book Detail giống web) | ✅ |
 
 ---
 
@@ -237,6 +238,12 @@
 
 ---
 
+### Feature 34–41: Mobile Device, App Update & Mobile UI Parity ✅ COMPLETE
+
+> **Design doc (consolidated)**: [feature-34-mobile-device-app-consolidated.md](design/feature-34-mobile-device-app-consolidated.md) — gộp 8 design doc gốc (feature-34…41, đã xoá) thành một tài liệu duy nhất, verify lại với code hiện tại. Các mục con dưới đây giữ lại làm nhật ký implement chi tiết theo từng feature.
+
+---
+
 ### Feature 35: Admin quản lý thiết bị mobile ✅ COMPLETE
 **Priority**: High | **Status**: ✅ Implemented (2026-08-30)
 
@@ -252,7 +259,6 @@
 - [x] **35.6** Nút "Làm mới thiết bị" trên change form kèm pop-up xác nhận, POST-only, ẩn với slot đã chết
 - [x] **35.7** Test T35-1…T35-21 — 55/55 test backend xanh
 
-> **Design doc**: `md/design/feature-35-admin-refresh-device.md` (v4)
 > **Không có migration** — chỉ đổi giá trị trong cột đã có của `users_mobiledevice`
 
 ---
@@ -273,7 +279,6 @@
 - [x] **36.10** Sửa `LocalFirstSupabaseStorage.delete()` — trước đó xoá file chỉ xoá bản local, object trên Supabase còn mãi (ảnh hưởng mọi `FileField`)
 - [x] **36.11** Test — 29 backend (86/86 toàn suite) + 15 Flutter unit
 
-> **Design doc**: `md/design/feature-36-app-version-update.md` (v4)
 > ⚠️ **Vận hành**: APK phải ký đúng keystore hiện tại (D1/D3). Mỗi lần build IPA phải export lại profile với UDID hiện hành (O1). Không bao giờ dùng lại một `version_code` đã publish.
 > **Thay thế bởi feature-37** — iOS chuyển sang TestFlight, Android đơn giản hoá còn 1 bản duy nhất.
 
@@ -293,7 +298,6 @@
 - [x] **37.9** Giữ nguyên 100% luồng tải + verify sha256 + tự mở trình cài đặt Android (`AndroidInstaller`, `FileProvider`)
 - [x] **37.10** Test — 12 backend mới (76/76 toàn suite core+users) + 16 Flutter unit
 
-> **Design doc**: `md/design/feature-37-simplify-apk-update.md` (v2)
 > **Vận hành**: migration `0002_apprelease` được viết lại tại chỗ (không giữ lịch sử schema cũ) — chỉ an toàn vì dự án chưa lên production, mọi DB đã áp dụng migration cũ phải `migrate core 0001` trước khi pull code mới (§3.7).
 
 ---
@@ -307,7 +311,6 @@
 - [x] **38.4** Mã 12 ký tự đã phát trước khi deploy vẫn verify được bình thường (`normalize_code()` so theo giá trị, không theo độ dài) — có test riêng khẳng định
 - [x] **38.5** Test — 2 test backend mới (78/78 toàn suite core+users) + 7 Flutter formatter test
 
-> **Design doc**: `md/design/feature-38-shorten-pairing-code.md` (v2)
 > **Lý do**: rào chắn thật là auth-gate (phải đăng nhập đúng trước) + 5 lần thử sai + hết hạn 7 ngày, không phải độ dài mã — 6 ký tự (~30 bit) vẫn dư an toàn hàng tỷ lần so với ngưỡng cần.
 
 ---
@@ -323,7 +326,6 @@
 - [x] **39.6** Tách event `ChangePage` (điều hướng chủ động — slider/mũi tên, gọi `jumpToPage`) vs `PageScrolled` (viewer tự báo khi cuộn tay — không gọi `jumpToPage`, tránh giằng gesture)
 - [x] **39.7** UI polish theo phản hồi tay: top bar (nút TOC) nền đặc hơn thay vì mờ dần cả thanh; bottom bar (page indicator + mũi tên) thêm `SafeArea(minimum:...)` + padding, tránh dán sát vùng gesture-nav hệ điều hành
 
-> **Design doc**: `md/design/feature-39-mobile-pdf-scroll-reader.md`
 > **Đã test trên thiết bị Android thật** (build debug, backend local docker): cuộn, pinch-zoom, watermark, TOC, chuyển chương lần đầu (nội dung đúng) — xác nhận qua ảnh chụp màn hình trực tiếp trên máy.
 > **Còn treo, chưa tự xác nhận lại**: trang đích chính xác sau khi chuyển chương (kỳ vọng về trang 1, code review đúng logic nhưng chưa re-test sạch do lỗi tọa độ ADB khi test tay); chưa có bloc test (module `books` mobile hiện chưa có tiền lệ test nào).
 > **Superseded**: quyết định C3 trong `feature-20-mobile-app.md` ("Swipe = chuyển trang trong cùng chapter") — đã đánh dấu trong doc đó.
@@ -341,7 +343,6 @@
 - [x] **40.6** Vá bug phát hiện khi test: `PdfViewPinch`-style bug tương tự không xảy ra ở đây, nhưng phát hiện bug khác — backend **chưa từng trả** `last_watched_lesson` trong response course-detail (field chết từ trước, mobile đọc nhầm), và mobile **chưa từng gọi** `POST .../progress/last-lesson/` để đánh dấu bài đang xem. Fix: `VideoPlayerBloc` gọi `setLastLesson()` fire-and-forget khi load bài; label CTA đổi sang dùng `progress.completedLessons > 0` (đúng, giống web) thay vì field chết; đích đến CTA gọi `getLastLessonOrder()` lazy lúc bấm (giống web `startOrContinue()`)
 - [x] **40.7** Refetch `LoadVideoDetail(forceRefresh: true)` khi quay lại từ player — Flutter Navigator giữ nguyên bloc/state khi pop, không tự remount như Vue Router (khác biệt kiến trúc điều hướng thật, không phải bug)
 
-> **Design doc**: `md/design/feature-40-mobile-video-detail-parity.md`
 > **Đã test trên thiết bị Android thật + verify qua DB** (`UserCourseProgress.last_lesson`): mở bài 1 → quay lại → CTA vào đúng bài 1; mở bài 3 → quay lại → CTA vào đúng bài 3 (loại trừ trùng hợp fallback). Badge trình độ + tag số bài/thời lượng + thumbnail đã xác nhận đúng trên máy thật.
 > **Còn treo**: label "Tiếp tục học" (cần hoàn thành ≥1 bài thật để test, chưa mô phỏng được qua ADB); dòng giảng viên trên khoá có data (chưa chụp được ảnh trực tiếp do lỗi tọa độ ADB, nhưng cùng pattern code đã xác nhận đúng ở phần tag).
 > **Lưu ý rollout**: cache `videoDetail` cũ (trước khi có field mới) sẽ thiếu header đúng cho tới khi TTL hết hạn hoặc user pull-to-refresh — không phải bug, cần lưu ý khi test bản nâng cấp.
@@ -359,14 +360,15 @@
 - [x] **41.6** Badge "Trang X" + highlight viền vàng cho chương đang đọc dở trong `_ChapterListItem`, header đổi "Danh sách chương" → "Nội dung · N chương"
 - [x] **41.7** Refetch khi quay lại từ reader — áp cả 2 call-site (nút CTA + tap từng chương), theo đúng pattern feature-40
 
-> **Design doc**: `md/design/feature-41-mobile-book-detail-parity.md`
 > **Build sạch** (`flutter analyze` 0 lỗi, `flutter build apk` thành công) — chưa kịp test lại trên thiết bị thật (mất kết nối ADB giữa chừng, user chuyển sang tự chạy `flutter run`).
 > **Quyết định đáng chú ý**: endpoint `GET /books/{slug}/progress/` luôn trả mặc định `{chapter_order:1, current_page:1}` khi chưa có tiến độ (không trả null/404) — không thể dùng "có giá trị hay không" để suy ra "đã đọc chưa" (cùng bẫy đã gặp ở feature-40 với last-lesson). Công thức dùng: `currentPage > 1 || có chương completed` — PO đã duyệt, chấp nhận edge case hiếm (đọc đúng hết trang 1 rồi thoát vẫn hiện "Đọc ngay").
 - [x] **41.8** Bỏ hero-image `SliverAppBar` full-viền → back-link "‹ Danh sách sách" + thumbnail nhỏ (80×110, bo góc) đặt cạnh title/author/badge — theo yêu cầu trực tiếp user sau khi so ảnh web thật (đảo quyết định v1, giống cách feature-40 đã làm với Video Detail)
 - [x] **41.9** Vá bug phát hiện khi test trên máy thật: `saveChapterProgress()` (mobile) **chưa từng gửi cờ `completed`** lên backend (`BookChapterProgressUpdateView` mặc định `False` nếu thiếu) — nên chương đọc xong không bao giờ hiện dấu ✓, dù `is_completed` đã parse đúng từ lâu. Fix: `book_reader_bloc.dart` tính `completed = currentPage >= totalPages` và gửi ở mọi lần lưu (không chỉ khi true, để cuộn lùi lại đúng un-mark) — xuyên suốt `saveChapterProgress` ở datasource/repository. **Lưu ý**: chỉ áp dụng cho lần lưu mới, không backfill dữ liệu `completed=False` đã lưu sai từ trước.
 - [x] **41.10** Chapter list: mỗi chương tách thành card riêng (bo góc, cách nhau 8px) thay vì list liền mạch — theo ảnh tham chiếu web
+- [x] **41.11** Dấu ✓ chương hoàn thành: màu đúng `--accent-gold` (không phải xanh lá như thử ban đầu), và bỏ nền tròn — chỉ dấu tick trơn, khớp đúng `CheckIcon.vue` thật bên web (stroke polyline, không có circle background)
+- [x] **41.12** Vá bug có sẵn (ảnh hưởng cả Video Detail feature-40): `CustomScrollView` thiếu `physics: AlwaysScrollableScrollPhysics()` → pull-to-refresh không hoạt động khi nội dung ngắn hơn màn hình (không đủ để tạo overscroll) — đúng tình huống phổ biến (sách/khoá ít chương). Sửa cả 2 file.
 
-> **Đã test trên thiết bị Android thật**: layout thumbnail nhỏ + badge + CTA + highlight chương đang đọc + card riêng biệt — khớp 100% ảnh tham chiếu web.
+> **Đã test trên thiết bị Android thật** (kể cả set/revert tạm `UserChapterProgress.completed=True` qua Django shell để xác nhận màu/style dấu tick, không để lại thay đổi dữ liệu): layout thumbnail nhỏ + badge + CTA + highlight chương đang đọc + card riêng biệt + dấu tick đúng màu/style — khớp 100% ảnh tham chiếu web.
 
 ---
 

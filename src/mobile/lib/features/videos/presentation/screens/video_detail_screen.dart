@@ -130,7 +130,11 @@ class _VideoDetailView extends StatelessWidget {
             onRefresh: () async => context.read<VideoDetailBloc>().add(
               LoadVideoDetail(slug, forceRefresh: true),
             ),
+            // Without this, pull-to-refresh silently does nothing whenever
+            // the lesson list is short enough to fit on screen (no
+            // overscroll possible without it).
             child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 // No hero-image banner — matches web (VideoDetailView.vue
                 // dropped its cover-image banner too), a simple back-link
