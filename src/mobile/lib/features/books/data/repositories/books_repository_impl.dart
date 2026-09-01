@@ -223,10 +223,16 @@ class BooksRepositoryImpl implements BooksRepository {
   Future<Either<Failure, void>> saveChapterProgress(
     String slug,
     int chapterOrder,
-    int page,
-  ) async {
+    int page, {
+    bool completed = false,
+  }) async {
     try {
-      await _remote.saveChapterProgress(slug, chapterOrder, page);
+      await _remote.saveChapterProgress(
+        slug,
+        chapterOrder,
+        page,
+        completed: completed,
+      );
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

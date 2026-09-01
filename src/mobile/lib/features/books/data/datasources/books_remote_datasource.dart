@@ -19,7 +19,7 @@ abstract class BooksRemoteDataSource {
   Future<void> saveReadingProgress(
       String slug, int chapterOrder, int page);
   Future<void> saveChapterProgress(
-      String slug, int chapterOrder, int page);
+      String slug, int chapterOrder, int page, {bool completed});
   Future<void> purchaseBook(String slug);
 }
 
@@ -138,11 +138,17 @@ class BooksRemoteDataSourceImpl implements BooksRemoteDataSource {
 
   @override
   Future<void> saveChapterProgress(
-      String slug, int chapterOrder, int page) async {
+      String slug, int chapterOrder, int page, {bool completed = false}) async {
     try {
       await _apiClient.post(
           ApiEndpoints.chapterProgress(slug, chapterOrder),
-          data: {'current_page': page});
+          // 'completed' defaults to False server-side
+          // (BookChapterProgressUpdateView) when omitted — must be sent
+          // explicitly on every save, not just the one that crosses the
+          // last page, or a page edited backwards afterwards would never
+          // un-set a stale `completed=True` either. Caller always computes
+          // it from currentPage >= chapterPageCount (see book_reader_bloc).
+          data: {'current_page': page, 'completed': completed});
     } on DioException catch (e) {
       throw parseDioError(e);
     }

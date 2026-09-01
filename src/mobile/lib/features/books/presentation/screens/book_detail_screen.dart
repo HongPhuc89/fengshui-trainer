@@ -139,71 +139,130 @@ class _BookDetailView extends StatelessWidget {
             ),
             child: CustomScrollView(
               slivers: [
-                SliverAppBar(
-                  expandedHeight: 280,
-                  pinned: true,
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: coverUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: coverUrl,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(color: AppColors.surfaceAlt),
+                // No hero-image banner — matches web, a simple back-link
+                // instead of the full-width cover this screen had before
+                // (same change already made for Video Detail, feature-40).
+                SliverSafeArea(
+                  bottom: false,
+                  sliver: SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                      child: InkWell(
+                        onTap: () => context.pop(),
+                        borderRadius: BorderRadius.circular(6),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.chevron_left,
+                                color: AppColors.primaryGold,
+                                size: 22,
+                              ),
+                              Text(
+                                'Danh sách sách',
+                                style: TextStyle(
+                                  color: AppColors.primaryGold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          detail.title,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          detail.author,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Badges: access-state (Miễn phí/VIP/Đã mua — pick
-                        // one) + Mới + category, matching web's priority
-                        // order.
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        // Small thumbnail beside title/author — NOT a
+                        // full-bleed cover (see §3.6 in the design doc).
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (detail.isFree)
-                              const _Badge(
-                                label: 'Miễn phí',
-                                color: AppColors.success,
-                              )
-                            else if (isVip)
-                              const _Badge(
-                                label: 'VIP',
-                                color: AppColors.primaryGold,
-                                filled: true,
-                              )
-                            else if (detail.hasPurchased)
-                              const _Badge(
-                                label: 'Đã mua',
-                                color: AppColors.success,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 80,
+                                height: 110,
+                                child: coverUrl != null
+                                    ? CachedNetworkImage(
+                                        imageUrl: coverUrl,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        color: AppColors.surfaceAlt,
+                                      ),
                               ),
-                            if (detail.isNewRelease)
-                              const _Badge(
-                                label: 'Mới',
-                                color: AppColors.primaryGold,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  // Badges: access-state (Miễn phí/VIP/Đã
+                                  // mua — pick one) + Mới + category,
+                                  // matching web's priority order.
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (detail.isFree)
+                                        const _Badge(
+                                          label: 'Miễn phí',
+                                          color: AppColors.success,
+                                        )
+                                      else if (isVip)
+                                        const _Badge(
+                                          label: 'VIP',
+                                          color: AppColors.primaryGold,
+                                          filled: true,
+                                        )
+                                      else if (detail.hasPurchased)
+                                        const _Badge(
+                                          label: 'Đã mua',
+                                          color: AppColors.success,
+                                        ),
+                                      if (detail.isNewRelease)
+                                        const _Badge(
+                                          label: 'Mới',
+                                          color: AppColors.primaryGold,
+                                        ),
+                                      if (detail.category != null)
+                                        _Badge(
+                                          label: detail.category!.title,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    detail.title,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.headlineSmall,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    detail.author,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            if (detail.category != null)
-                              _Badge(
-                                label: detail.category!.title,
-                                color: AppColors.textSecondary,
-                              ),
+                            ),
                           ],
                         ),
 

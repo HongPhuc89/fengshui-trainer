@@ -117,7 +117,7 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
     if (s is! BookReaderLoaded) return;
     if (event.page == s.currentPage) return;
 
-    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page);
+    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page, s.totalPages);
     pdfController?.jumpToPage(event.page);
     emit(s.copyWith(currentPage: event.page));
   }
@@ -130,14 +130,29 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
     if (s is! BookReaderLoaded) return;
     if (event.page == s.currentPage) return;
 
-    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page);
+    _scheduleProgressSave(s.bookSlug, s.chapter.order, event.page, s.totalPages);
     emit(s.copyWith(currentPage: event.page));
   }
 
-  void _scheduleProgressSave(String bookSlug, int chapterOrder, int page) {
+  void _scheduleProgressSave(
+    String bookSlug,
+    int chapterOrder,
+    int page,
+    int totalPages,
+  ) {
     _progressTimer?.cancel();
     _progressTimer = Timer(const Duration(seconds: 1), () {
-      _repository.saveChapterProgress(bookSlug, chapterOrder, page);
+      // Sent unconditionally (not just when true) so scrolling backwards
+      // off the last page correctly un-marks a chapter as completed too —
+      // matches web's BookReaderView.vue (`completed: currentPage.value >=
+      // chapterPageCount.value`, same computation every save).
+      final completed = page >= totalPages;
+      _repository.saveChapterProgress(
+        bookSlug,
+        chapterOrder,
+        page,
+        completed: completed,
+      );
       _repository.saveReadingProgress(bookSlug, chapterOrder, page);
     });
   }

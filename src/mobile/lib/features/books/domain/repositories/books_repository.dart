@@ -33,7 +33,8 @@ abstract class BooksRepository {
   Future<Either<Failure, void>> saveChapterProgress(
     String slug,
     int chapterOrder,
-    int page,
-  );
+    int page, {
+    bool completed = false,
+  });
   Future<Either<Failure, void>> purchaseBook(String slug);
 }

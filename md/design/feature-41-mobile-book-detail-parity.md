@@ -117,15 +117,14 @@ final isCurrent = progress != null &&
 - Giữ nguyên: lock icon khi `!canAccess`, checkmark khi `isCompleted`.
 - Header đổi `"Danh sách chương"` → `"Nội dung · ${chapters.length} chương"`.
 
-### 3.6 Cover — ưu tiên `small_cover`
+### 3.6 Cover — bỏ hero-image full-viền, dùng thumbnail nhỏ cạnh tiêu đề (đảo quyết định 2026-09-02, theo yêu cầu trực tiếp user/PO)
 
-```dart
-// entity thêm field
-final String? smallCoverUrl;
-// screen
-final coverUrl = detail.smallCoverUrl ?? detail.coverImageUrl;
-```
-Không bắt buộc fallback "chữ cái đầu" như web (khác biệt nhỏ, không quan trọng UX) — nêu ở §4 để PO xác nhận có cần làm y hệt không hay giữ nguyên placeholder màu hiện tại của mobile.
+Ban đầu giữ `SliverAppBar` hero-image, chỉ đổi nguồn ảnh sang `small_cover`. User gửi ảnh tham chiếu web thực tế: layout web KHÔNG có hero-image full-width — dùng thumbnail nhỏ (~80×110, bo góc) đặt **cạnh** khối title/author/badge, giống hệt cách feature-40 đã đổi cho Video Detail. Áp lại đúng pattern đó:
+
+- Bỏ hẳn `SliverAppBar`/`FlexibleSpaceBar`, thay bằng back-link đơn giản "‹ Danh sách sách" (giống `_openLesson`'s back-link "‹ Khóa học" bên Video).
+- Row: `[thumbnail nhỏ bo góc]` + `[Column: badge row → title → author]` — badge đặt TRÊN title (khác thứ tự cũ để dưới), khớp ảnh tham chiếu.
+- `smallCoverUrl ?? coverImageUrl` giữ nguyên logic ưu tiên đã quyết định.
+- Không cần fallback "chữ cái đầu" — giữ quyết định cũ (Nice-to-have, bỏ qua).
 
 ### 3.7 Refetch khi quay lại từ Reader
 
