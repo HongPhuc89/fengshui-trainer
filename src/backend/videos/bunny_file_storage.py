@@ -94,6 +94,32 @@ def upload_image_to_bunny(
     return cdn_url
 
 
+def upload_bytes_to_bunny(
+    data: bytes, storage_key: str, content_type: str, timeout: int = 120,
+) -> None:
+    """Upload raw bytes to a fixed Bunny Storage key, overwriting in place.
+
+    The lower-level primitive behind upload_pdf_to_bunny/upload_image_to_bunny
+    (which additionally decide *what* key to use); use this directly when the
+    caller already knows its key, e.g. a singleton row that always writes to
+    the same path.
+
+    Raises:
+        requests.HTTPError: If Bunny returns a non-2xx status code.
+    """
+    zone = settings.BUNNY_STORAGE_ZONE
+    api_key = settings.BUNNY_STORAGE_API_KEY
+    url = f'{_storage_api_base()}/{zone}/{storage_key}'
+
+    resp = http.put(
+        url,
+        data=data,
+        headers={'AccessKey': api_key, 'Content-Type': content_type},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+
+
 def upload_pdf_to_bunny(file_obj, lesson_pk: int, lesson_uuid: str, existing_key: str = '') -> str:
     """Upload a PDF file to Bunny Storage and return the storage key.
 
@@ -118,20 +144,7 @@ def upload_pdf_to_bunny(file_obj, lesson_pk: int, lesson_uuid: str, existing_key
         short_random = uuid.uuid4().hex[:4]
         storage_key = f'infographics/{lesson_pk}_{lesson_uuid}_{short_random}.pdf'
 
-    zone = settings.BUNNY_STORAGE_ZONE
-    api_key = settings.BUNNY_STORAGE_API_KEY
-    url = f'{_storage_api_base()}/{zone}/{storage_key}'
-
-    resp = http.put(
-        url,
-        data=file_obj.read(),
-        headers={
-            'AccessKey': api_key,
-            'Content-Type': 'application/pdf',
-        },
-        timeout=120,
-    )
-    resp.raise_for_status()
+    upload_bytes_to_bunny(file_obj.read(), storage_key, 'application/pdf')
     return storage_key
 
 

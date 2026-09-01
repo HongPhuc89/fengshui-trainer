@@ -26,7 +26,7 @@ class AppVersionView(APIView):
 
     def get(self, request):
         release = AppRelease.current()
-        if release is None or not release.file:
+        if release is None or not release.bunny_key:
             # Nothing published yet — the client treats this as up to date.
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(AppReleaseSerializer(release, context={'request': request}).data)
+        return Response(AppReleaseSerializer(release).data)

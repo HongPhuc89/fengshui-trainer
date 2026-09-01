@@ -1,5 +1,6 @@
 import hashlib
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from pyaxmlparser import APK
@@ -38,7 +39,14 @@ class AppRelease(BaseModel):
     version_code = models.PositiveIntegerField(default=0, editable=False)
     version_name = models.CharField(max_length=32, default='0.0.0', editable=False)
 
-    file = models.FileField(upload_to='releases/', null=True, blank=True)
+    # Served from Bunny CDN, not Django storage (Supabase) — the APK is a
+    # 60MB+ download onto a mobile connection, where Bunny's edge network is
+    # materially faster than Supabase's. Fixed key per environment (not
+    # per-version, unlike the PDF infographics in
+    # videos/bunny_file_storage.py): AppRelease is a singleton, so there is
+    # only ever one file to point at, and the env segment keeps a dev/staging
+    # upload from overwriting the production APK on the same Bunny zone.
+    bunny_key = models.CharField(max_length=255, blank=True, editable=False)
     file_size = models.BigIntegerField(default=0, editable=False)
     sha256 = models.CharField(max_length=64, blank=True, editable=False)
 
@@ -55,6 +63,25 @@ class AppRelease(BaseModel):
     def current(cls):
         """The one row, or None before it has ever been seeded/migrated."""
         return cls.objects.first()
+
+    @staticmethod
+    def apk_storage_key():
+        """
+        Bunny Storage key for the current environment's APK.
+
+        Keyed by APP_ENV, not hardcoded to one path: production, staging and
+        a developer's local Django all point at the same Bunny zone (shared
+        credentials, see settings.BUNNY_STORAGE_*), so without this a local
+        test upload would silently overwrite the real production APK.
+        """
+        return f'releases/{settings.APP_ENV}/huyenhoc.apk'
+
+    @property
+    def download_url(self):
+        """Public Bunny CDN URL, or None if no APK has been published yet."""
+        if not self.bunny_key:
+            return None
+        return f'https://{settings.BUNNY_STORAGE_CDN_HOSTNAME}/{self.bunny_key}'
 
     def read_version_from_apk(self, uploaded_file):
         """

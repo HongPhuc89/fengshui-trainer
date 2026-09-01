@@ -2,6 +2,8 @@ from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 
+from videos.bunny_file_storage import purge_cdn_url, upload_bytes_to_bunny
+
 from .models import AppRelease, DatabaseBackupProxy
 from .tasks import backup_database
 
@@ -29,9 +31,14 @@ class DatabaseBackupAdmin(admin.ModelAdmin):
 
 
 class AppReleaseForm(forms.ModelForm):
+    # Declared explicitly, not a model field: the APK bytes go to Bunny
+    # (see save_model), not a Django FileField/storage backend, so there is
+    # nothing on AppRelease for ModelForm to map this to automatically.
+    file = forms.FileField(required=False)
+
     class Meta:
         model = AppRelease
-        fields = ['platform', 'file', 'release_notes']
+        fields = ['platform', 'release_notes']
 
     def clean_file(self):
         """
@@ -40,8 +47,8 @@ class AppReleaseForm(forms.ModelForm):
         values are stashed on the form, not written to self.instance directly
         here — save_model() applies them once the whole form is valid.
         """
-        file = self.cleaned_data['file']
-        if 'file' in self.changed_data:
+        file = self.cleaned_data.get('file')
+        if file:
             self._detected = self.instance.read_version_from_apk(file)
         return file
 
@@ -65,23 +72,28 @@ class AppReleaseAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         detected = getattr(form, '_detected', None)
-        old_file = None
+        uploaded_file = form.cleaned_data.get('file')
+
         if detected:
             obj.version_code, obj.version_name, obj.sha256, obj.file_size = detected
-            old_file = AppRelease.objects.get(pk=obj.pk).file or None
+            storage_key = AppRelease.apk_storage_key()
+
+            # Upload BEFORE saving the row: if Bunny is unreachable, the DB
+            # must not end up pointing at a key that was never written.
+            uploaded_file.seek(0)
+            upload_bytes_to_bunny(
+                uploaded_file.read(), storage_key, 'application/vnd.android.package-archive',
+            )
+            obj.bunny_key = storage_key
+            # Overwriting the same key in place (feature-37's one-release
+            # model) means the CDN edge would otherwise keep serving the old
+            # cached bytes under the new version_code the client just saw.
+            purge_cdn_url(obj.download_url)
 
         super().save_model(request, obj, form, change)
-
-        # Only delete the previous binary AFTER the save above succeeded —
-        # "xoá file cũ nếu upload thành công" (feature-37 §3.3). FieldFile.delete()
-        # goes through LocalFirstSupabaseStorage, so this also removes the
-        # object on Supabase (feature-36 §5.2), not just the local copy.
-        if old_file and old_file.name != obj.file.name:
-            old_file.delete(save=False)
 
         if detected:
             self.message_user(
                 request,
-                f'Đã publish version {obj.version_name} ({obj.version_code}). '
-                f'File bản trước đã bị xoá.',
+                f'Đã publish version {obj.version_name} ({obj.version_code}) lên Bunny CDN.',
             )

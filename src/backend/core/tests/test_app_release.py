@@ -1,9 +1,9 @@
-"""AppRelease singleton, admin upload flow, and version endpoint (feature-37)."""
+"""AppRelease singleton, admin upload flow, and version endpoint (feature-37,
+storage moved to Bunny CDN in the follow-up)."""
 
 from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ValidationError
-from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.urls import reverse
@@ -36,7 +36,7 @@ def make_release(version_code=12, name='1.2.0'):
     release.version_name = name
     release.sha256 = 'deadbeef'
     release.file_size = 42
-    release.file = SimpleUploadedFile(f'huyenhoc-{version_code}.apk', b'PK\x03\x04payload')
+    release.bunny_key = AppRelease.apk_storage_key()
     release.save()
     return release
 
@@ -48,7 +48,7 @@ class AppVersionEndpointTests(APITestCase):
         self.url = reverse('app_version')
 
     def test_t37_8_seeded_row_without_a_file_is_204(self):
-        """T37-8: the migration-seeded row has no file yet — behaves like nothing published."""
+        """T37-8: the migration-seeded row has no bunny_key yet — behaves like nothing published."""
         self.assertEqual(self.client.get(self.url).status_code, status.HTTP_204_NO_CONTENT)
 
     def test_t37_9_published_release_fields(self):
@@ -117,8 +117,8 @@ class ReadVersionFromApkTests(APITestCase):
 class AppReleaseAdminUploadTests(APITestCase):
     """
     Exercises the real admin change view: form validation via clean_file(),
-    auto-detected version fields, and deleting the old file only once the new
-    one has actually been saved (feature-37 §3.3).
+    auto-detected version fields, and the upload going to Bunny only once
+    the whole form (including read_version_from_apk) has validated.
     """
 
     def setUp(self):
@@ -137,28 +137,32 @@ class AppReleaseAdminUploadTests(APITestCase):
             '_continue': '',
         })
 
-    def test_t37_4_uploading_a_newer_apk_replaces_and_deletes_the_old_file(self):
-        old_name = self.release.file.name
-
+    @patch('core.admin.purge_cdn_url')
+    @patch('core.admin.upload_bytes_to_bunny')
+    def test_t37_4_uploading_a_newer_apk_publishes_to_bunny(self, mock_upload, mock_purge):
         with patch('core.models.APK', return_value=fake_apk(11, '1.1.0')):
             self._post(SimpleUploadedFile('huyenhoc-11.apk', b'new payload'))
 
         self.release.refresh_from_db()
         self.assertEqual(self.release.version_code, 11)
         self.assertEqual(self.release.version_name, '1.1.0')
-        self.assertNotEqual(self.release.file.name, old_name)
-        self.assertFalse(default_storage.exists(old_name))
+        self.assertEqual(self.release.bunny_key, AppRelease.apk_storage_key())
+        mock_upload.assert_called_once_with(
+            b'new payload', AppRelease.apk_storage_key(),
+            'application/vnd.android.package-archive',
+        )
+        mock_purge.assert_called_once()
 
-    def test_t37_5_invalid_apk_keeps_the_previous_file_untouched(self):
-        old_name = self.release.file.name
-
+    @patch('core.admin.purge_cdn_url')
+    @patch('core.admin.upload_bytes_to_bunny')
+    def test_t37_5_invalid_apk_never_reaches_bunny(self, mock_upload, mock_purge):
         with patch('core.models.APK', side_effect=Exception('bad zip')):
             self._post(SimpleUploadedFile('broken.apk', b'garbage'))
 
         self.release.refresh_from_db()
         self.assertEqual(self.release.version_code, 10)
-        self.assertEqual(self.release.file.name, old_name)
-        self.assertTrue(default_storage.exists(old_name))
+        mock_upload.assert_not_called()
+        mock_purge.assert_not_called()
 
     def test_t37_6_add_view_is_hidden_once_the_singleton_exists(self):
         response = self.client.get(reverse('admin:core_apprelease_add'))
