@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -101,6 +102,16 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
               totalPages: chapter.pageCount,
               tocVisible: false,
               isBlurred: false,
+            ),
+          );
+        } on DioException {
+          // Network-layer failure fetching the encrypted file from the CDN
+          // (DNS, connect, timeout) — distinct from a decrypt/format error,
+          // which points at a real content problem, not the network.
+          emit(
+            const BookReaderError(
+              'Không thể tải PDF. Vui lòng kiểm tra kết nối mạng, '
+              'thử đổi sang mạng khác (WiFi/4G) hoặc bật VPN rồi thử lại.',
             ),
           );
         } catch (e) {

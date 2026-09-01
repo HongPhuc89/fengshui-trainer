@@ -32,6 +32,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   int _selectedTab = 0;
+  LessonContent? _currentLesson;
+
+  // Set when VideoPlayerController.initialize() throws. Chewie's own
+  // _initialize() calls the same method without a try/catch and without
+  // awaiting it from a caller that can catch it, so an unreachable CDN
+  // (blocked DNS, dropped connection) would otherwise surface only as an
+  // unhandled PlatformException in PlatformDispatcher.onError — no on-screen
+  // feedback, no retry. Initializing here first intercepts that failure.
+  String? _playerError;
 
   @override
   void initState() {
@@ -56,21 +65,49 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.dispose();
   }
 
-  void _initVideo(LessonContent lesson) {
-    _videoController?.dispose();
+  Future<void> _initVideo(LessonContent lesson) async {
+    _currentLesson = lesson;
     _chewieController?.dispose();
+    _videoController?.dispose();
+    _chewieController = null;
+    _videoController = null;
+    setState(() => _playerError = null);
 
     // Prefer the HLS playlist: videoUrl is a Bunny iframe embed *page*, which
     // ExoPlayer/AVPlayer cannot decode. The headers carry the Referer the pull
     // zone requires — without it Bunny answers 403.
     final source = lesson.hlsUrl ?? lesson.videoUrl;
-    _videoController = VideoPlayerController.networkUrl(
+    final controller = VideoPlayerController.networkUrl(
       Uri.parse(source),
       httpHeaders: lesson.hlsHeaders,
     );
 
+    try {
+      // Initialize explicitly, outside Chewie: ChewieController's own
+      // _initialize() awaits this same call from its constructor with no
+      // try/catch and no caller able to await it, so a network failure here
+      // (blocked/unreachable CDN) would otherwise become an unhandled
+      // PlatformException instead of on-screen feedback.
+      await controller.initialize();
+    } catch (e) {
+      controller.dispose();
+      if (!mounted || _currentLesson != lesson) return;
+      setState(() {
+        _playerError =
+            'Không thể tải video. Vui lòng kiểm tra kết nối mạng, '
+            'thử đổi sang mạng khác (WiFi/4G) hoặc bật VPN rồi thử lại.';
+      });
+      return;
+    }
+    if (!mounted || _currentLesson != lesson) {
+      controller.dispose();
+      return;
+    }
+
+    _videoController = controller;
     _chewieController = ChewieController(
-      videoPlayerController: _videoController!,
+      videoPlayerController: controller,
+      autoInitialize: true,
       autoPlay: true,
       looping: false,
       allowFullScreen: true,
@@ -88,8 +125,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
 
     // Save progress every 5 seconds
-    _videoController!.addListener(() {
-      final pos = _videoController!.value.position;
+    controller.addListener(() {
+      final pos = controller.value.position;
       if (pos.inSeconds % 5 == 0 && pos.inSeconds > 0) {
         _bloc.add(SaveProgress(pos.inSeconds));
       }
@@ -135,7 +172,44 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ? Chewie(controller: _chewieController!)
                           : Container(
                               color: Colors.black,
-                              child: state is VideoPlayerLoading
+                              child: _playerError != null
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.error_outline,
+                                              color: AppColors.error,
+                                              size: 40,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              _playerError!,
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                final lesson = _currentLesson;
+                                                if (lesson != null) {
+                                                  _initVideo(lesson);
+                                                }
+                                              },
+                                              child: const Text('Thử lại'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : state is VideoPlayerLoading
                                   ? const Center(
                                       child: CircularProgressIndicator(
                                         color: AppColors.primaryGold,
