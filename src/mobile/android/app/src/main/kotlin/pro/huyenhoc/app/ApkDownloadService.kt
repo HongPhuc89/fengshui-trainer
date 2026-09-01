@@ -3,8 +3,10 @@ package pro.huyenhoc.app
 import android.app.Service
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.ServiceCompat
 import java.io.File
 import java.net.HttpURLConnection
@@ -60,7 +62,9 @@ class ApkDownloadService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d("ApkDownloadService", "onCreate: entered at ${System.currentTimeMillis()}")
         notifications = DownloadNotifications(this)
+        Log.d("ApkDownloadService", "onCreate: done at ${System.currentTimeMillis()}")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -83,7 +87,20 @@ class ApkDownloadService : Service() {
             return START_NOT_STICKY
         }
 
-        startForeground(DownloadNotifications.NOTIFICATION_ID, notifications.progress(0))
+        // The 2-arg startForeground() leaves the type to be inferred from the
+        // manifest alone, which Android 14+ (targetSdk 36 here) does not treat
+        // as equivalent — ServiceCompat.startForeground() with the type passed
+        // explicitly is what actually registers it, without which the system
+        // logs "does not have any types" and kills the service on a short
+        // timeout regardless of the manifest's android:foregroundServiceType.
+        Log.d("ApkDownloadService", "onStartCommand: entered at ${System.currentTimeMillis()}")
+        ServiceCompat.startForeground(
+            this,
+            DownloadNotifications.NOTIFICATION_ID,
+            notifications.progress(0),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
+        Log.d("ApkDownloadService", "onStartCommand: startForeground returned at ${System.currentTimeMillis()}")
         writeState(STATE_DOWNLOADING, path = null, versionCode = versionCode)
 
         downloadThread = Thread {
@@ -134,6 +151,7 @@ class ApkDownloadService : Service() {
 
             onCompleted(outputFile.absolutePath, versionCode)
         } catch (e: Exception) {
+            Log.e("ApkDownloadService", "Download failed for $url", e)
             outputFile.delete()
             onFailed(e.message ?: "download failed")
         }
