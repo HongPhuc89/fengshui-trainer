@@ -1,16 +1,14 @@
 // Orchestrates the version check, the download and the hand-off to the
-// installer (feature-37 §6). The download itself runs in an Android
-// Foreground Service (ApkDownloadService) rather than the Dart isolate, so it
-// survives the app leaving the foreground or being killed (feature-35 §3).
+// installer (feature-37 §6).
 
-import 'dart:async';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:path_provider/path_provider.dart';
 
-import '../../../core/update/apk_downloader.dart';
 import '../../../core/update/installer.dart';
 import '../data/update_repository.dart';
 import '../data/update_store.dart';
@@ -56,16 +54,13 @@ class UpdateState extends Equatable {
 
 @singleton
 class UpdateCubit extends Cubit<UpdateState> {
-  UpdateCubit(this._repository, this._store, this._installer, this._downloader)
+  UpdateCubit(this._repository, this._store, this._installer)
       : super(const UpdateState());
 
   final UpdateRepository _repository;
   final UpdateStore _store;
   final AndroidInstaller _installer;
-  final ApkDownloader _downloader;
   static const _decider = UpdateDecider();
-
-  StreamSubscription<DownloadEvent>? _downloadSubscription;
 
   /// Never awaited by main(): a slow network must not hold the app on a blank
   /// screen (feature-36 §7.5, unchanged).
@@ -107,7 +102,7 @@ class UpdateCubit extends Cubit<UpdateState> {
 
   /// Read-only refresh of needsInstallPermission — called when the dialog
   /// opens and again on every app resume, since the user may have just come
-  /// back from the system settings screen (feature-35 §5.5).
+  /// back from the system settings screen.
   Future<void> checkInstallPermission() async {
     final canInstall = await _installer.canInstall();
     emit(state.copyWith(needsInstallPermission: !canInstall));
@@ -127,27 +122,6 @@ class UpdateCubit extends Cubit<UpdateState> {
       return;
     }
 
-    // A resumable download already sitting on disk from a previous attempt —
-    // ApkDownloadService checks this itself too, but asking first here saves
-    // starting the Service (and re-requesting the notification permission)
-    // for nothing when the file is already there and verified.
-    final resumedStatus = await _downloader.getDownloadStatus();
-    if (resumedStatus.isCompleted &&
-        resumedStatus.versionCode == info.versionCode &&
-        resumedStatus.path != null &&
-        await File(resumedStatus.path!).exists()) {
-      emit(state.copyWith(phase: DownloadPhase.ready, progress: 1, clearError: true));
-      await _installer.install(resumedStatus.path!);
-      return;
-    }
-
-    // Contextual, one-shot ask — right before the download starts, not
-    // earlier (feature-35 §5.3). A decline still lets the download run; it
-    // just means no system notification (Service still runs as Foreground).
-    if (!await _installer.hasNotificationPermission()) {
-      await _installer.requestNotificationPermission();
-    }
-
     emit(state.copyWith(
       phase: DownloadPhase.downloading,
       progress: 0,
@@ -155,15 +129,35 @@ class UpdateCubit extends Cubit<UpdateState> {
       clearError: true,
     ));
 
-    await _downloadSubscription?.cancel();
-    _downloadSubscription = _downloader.events().listen(_onDownloadEvent);
-
     try {
-      await _downloader.startDownload(
-        url: info.downloadUrl,
-        sha256: info.sha256,
-        versionCode: info.versionCode,
-      );
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/huyenhoc-${info.versionCode}.apk');
+      final expected = info.sha256 ?? '';
+
+      // A retry — after the permission prompt, or after the user backed out of
+      // the system installer — must not pay for the download a second time. The
+      // digest is what makes reuse safe: a half-written file never matches.
+      final reusable = expected.isNotEmpty &&
+          await file.exists() &&
+          await _matchesDigest(file, expected);
+
+      if (!reusable) {
+        await _fetch(info, file.path);
+        if (expected.isNotEmpty) {
+          emit(state.copyWith(phase: DownloadPhase.verifying));
+          if (!await _matchesDigest(file, expected)) {
+            await file.delete();
+            emit(state.copyWith(
+              phase: DownloadPhase.failed,
+              error: 'File tải về không toàn vẹn. Vui lòng thử lại.',
+            ));
+            return;
+          }
+        }
+      }
+
+      emit(state.copyWith(phase: DownloadPhase.ready, progress: 1));
+      await _installer.install(file.path);
     } catch (_) {
       emit(state.copyWith(
         phase: DownloadPhase.failed,
@@ -172,46 +166,29 @@ class UpdateCubit extends Cubit<UpdateState> {
     }
   }
 
-  void _onDownloadEvent(DownloadEvent event) {
-    switch (event) {
-      case DownloadProgress(:final percent):
-        emit(state.copyWith(progress: percent / 100));
-      case DownloadCompleted(:final path):
-        emit(state.copyWith(phase: DownloadPhase.ready, progress: 1));
-        unawaited(_installer.install(path));
-      case DownloadFailed():
-        // Includes a signed URL expiring mid-transfer: unlike the old
-        // Dio-in-Dart download, ApkDownloadService gets one URL at start and
-        // cannot ask the API for a fresh one itself. Accepted trade-off for
-        // v1 — tapping "Cập nhật" again re-fetches a fresh URL from scratch
-        // (feature-35, PO-approved).
-        emit(state.copyWith(
-          phase: DownloadPhase.failed,
-          error: 'Tải bản cập nhật thất bại. Kiểm tra kết nối rồi thử lại.',
-        ));
+  /// The signed URL may simply have expired mid-flight; a fresh one costs one
+  /// request and avoids blaming the user's network (feature-36 §7.2, unchanged).
+  Future<void> _fetch(AppVersionInfo info, String path) async {
+    try {
+      await _repository.download(info.downloadUrl, path, onProgress: _emitProgress);
+    } catch (_) {
+      final fresh = await _repository.refreshDownloadUrl() ?? info.downloadUrl;
+      await _repository.download(fresh, path, onProgress: _emitProgress);
     }
   }
 
-  /// Called once at startup (feature-35 §3.4) — recovers from the case where
-  /// ApkDownloadService finished (or is still running) while the app was
-  /// killed, so the Dart-side state does not default to `idle` and make the
-  /// user download the same build again.
-  Future<void> restoreDownloadState() async {
-    final status = await _downloader.getDownloadStatus();
-    if (status.isCompleted && status.path != null && await File(status.path!).exists()) {
-      emit(state.copyWith(phase: DownloadPhase.ready, progress: 1));
-    } else if (status.isDownloading) {
-      emit(state.copyWith(phase: DownloadPhase.downloading));
-      await _downloadSubscription?.cancel();
-      _downloadSubscription = _downloader.events().listen(_onDownloadEvent);
-    }
+  void _emitProgress(int received, int total) {
+    if (total <= 0) return;
+    emit(state.copyWith(progress: received / total));
+  }
+
+  /// Streamed so a 160MB build never lands in memory in one piece. Catches a
+  /// truncated or swapped file — not a compromised server, since the hash comes
+  /// from the same place (feature-36 §7.2, unchanged).
+  Future<bool> _matchesDigest(File file, String expected) async {
+    final digest = await sha256.bind(file.openRead()).first;
+    return digest.toString() == expected;
   }
 
   Future<void> openInstallSettings() => _installer.openInstallSettings();
-
-  @override
-  Future<void> close() {
-    _downloadSubscription?.cancel();
-    return super.close();
-  }
 }

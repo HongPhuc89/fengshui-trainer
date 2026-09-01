@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -33,4 +34,21 @@ class UpdateRepository {
     }
     return AppVersionInfo.fromJson(response.data!);
   }
+
+  /// Fresh signed URL for a retry: the previous one may simply have expired,
+  /// and retrying a dead URL fails forever while blaming the user's network
+  /// (feature-36 §7.2, unchanged).
+  Future<String?> refreshDownloadUrl() async {
+    final info = await fetch();
+    return info?.downloadUrl;
+  }
+
+  Future<void> download(
+    String url,
+    String savePath, {
+    void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) =>
+      Dio().download(url, savePath,
+          onReceiveProgress: onProgress, cancelToken: cancelToken);
 }

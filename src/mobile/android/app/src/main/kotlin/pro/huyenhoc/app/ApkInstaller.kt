@@ -5,10 +5,8 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
 
-// Shared between MainActivity (app still running, called over a MethodChannel)
-// and InstallApkReceiver (app already killed, called from onReceive) so both
-// paths open the system installer through the exact same FileProvider logic
-// (feature-35 §5.4).
+// The FileProvider logic for handing a downloaded APK to the system
+// installer, kept separate from MainActivity for clarity.
 object ApkInstaller {
 
     /// Returns whether the installer was launched: false when the file is

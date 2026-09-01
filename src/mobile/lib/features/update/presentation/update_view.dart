@@ -75,6 +75,16 @@ class _UpdateViewState extends State<UpdateView> with WidgetsBindingObserver {
                 Text(state.phase == DownloadPhase.verifying
                     ? 'Đang kiểm tra file...'
                     : 'Đang tải ${(state.progress * 100).toStringAsFixed(0)}%'),
+                const SizedBox(height: 8),
+                // The download runs in the Dart isolate — closing or
+                // backgrounding the app cancels it, unlike a native download.
+                Text(
+                  'Vui lòng không đóng ứng dụng cho đến khi tải xong.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
               ],
               if (state.error != null) ...[
                 const SizedBox(height: 12),

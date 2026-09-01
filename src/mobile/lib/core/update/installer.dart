@@ -27,14 +27,4 @@ class AndroidInstaller {
   /// self-distributed app — the user still confirms.
   Future<void> install(String apkPath) =>
       _channel.invokeMethod<void>('installApk', {'path': apkPath});
-
-  /// Always true below Android 13, where there is no such runtime permission
-  /// (feature-35 §2.4).
-  Future<bool> hasNotificationPermission() async =>
-      await _channel.invokeMethod<bool>('hasNotificationPermission') ?? false;
-
-  /// Resolves to whether the permission was granted. A no-op success(true)
-  /// below Android 13.
-  Future<bool> requestNotificationPermission() async =>
-      await _channel.invokeMethod<bool>('requestNotificationPermission') ?? false;
 }
