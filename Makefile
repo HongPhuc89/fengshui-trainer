@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-clean mobile-analyze db-restore
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-run-uat mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-build-apk-uat mobile-clean mobile-analyze db-restore
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -114,6 +114,9 @@ mobile-install: ## Install Flutter dependencies
 mobile-dev: ## Run Flutter app (dev env — uses src/mobile/env.dev.json)
 	cd $(MOBILE) && flutter run --dart-define-from-file=$(MOBILE_ENV)
 
+mobile-run-uat: ## Run Flutter app in debug mode against production API (env.uat.json) — screenshots/screen recording NOT blocked (debug build)
+	cd $(MOBILE) && flutter run --dart-define-from-file=env.uat.json
+
 mobile-build-apk: ## Build debug APK using env.dev.json
 	cd $(MOBILE) && flutter build apk --debug --dart-define-from-file=$(MOBILE_ENV)
 
@@ -122,6 +125,9 @@ mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobi
 
 mobile-build-apk-prod: ## Build release APK for production (uses src/mobile/env.prod.json)
 	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=env.prod.json
+
+mobile-build-apk-uat: ## Build debug APK against production API (env.uat.json) — for manual QA where screenshots must work
+	cd $(MOBILE) && flutter build apk --debug --dart-define-from-file=env.uat.json
 
 mobile-clean: ## Clean Flutter build cache
 	cd $(MOBILE) && flutter clean && flutter pub get
