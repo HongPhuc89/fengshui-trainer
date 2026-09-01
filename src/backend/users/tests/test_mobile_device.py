@@ -699,6 +699,69 @@ class MobileLoginIgnoresAppVersionTests(MobileSlotTestCase):
 
 
 @no_throttling
+class MobileDeviceMetadataViewTests(MobileSlotTestCase):
+    """
+    PATCH /users/me/mobile-device/ — lets an app update without a fresh
+    login report its new app_version, since restoreSession() never re-hits
+    /auth/mobile/login/ (the only other place this field is refreshed).
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse('user_mobile_device_metadata')
+
+    def authenticate(self):
+        tokens = self.pair().data
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+
+    def test_updates_app_version_on_the_active_slot(self):
+        self.authenticate()
+
+        response = self.client.patch(self.url, {'app_version': '1.0.2+3'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.user.mobile_devices.get().app_version, '1.0.2+3')
+
+    def test_blank_fields_are_left_untouched(self):
+        self.authenticate()
+        self.user.mobile_devices.update(app_version='1.0.1+2')
+
+        response = self.client.patch(self.url, {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.user.mobile_devices.get().app_version, '1.0.1+2')
+
+    def test_requires_auth(self):
+        response = self.client.patch(self.url, {'app_version': '1.0.2+3'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_404_when_user_has_no_active_mobile_device(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.patch(self.url, {'app_version': '1.0.2+3'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cannot_touch_another_users_slot(self):
+        other = User.objects.create_user(
+            username='other@example.com', email='other@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.client.post(self.login_url, {
+            'email': other.email, 'password': PASSWORD,
+            'device_id': 'device-other', 'hardware_hash': HW_B,
+            'platform_os': 'ios', 'device_name': 'iPhone',
+            'pairing_code': issue_slot(other, staff=None).pairing_code,
+        }, format='json')
+
+        self.authenticate()  # self.user's token, not other's
+        self.client.patch(self.url, {'app_version': '9.9.9+99'}, format='json')
+
+        self.assertIsNone(other.mobile_devices.get().app_version)
+
+
+@no_throttling
 class IssuedReasonSuggestionTests(MobileSlotTestCase):
     """Suggestions on the admin add form (feature-35 §6.3)."""
 

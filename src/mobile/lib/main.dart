@@ -6,7 +6,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'core/api/api_client.dart';
+import 'core/api/api_endpoints.dart';
+import 'core/device/device_service.dart';
 import 'core/security/screen_guard.dart';
 
 import 'core/utils/constants.dart';
@@ -53,6 +57,15 @@ Future<void> _runApp() async {
   // Restore persisted auth session
   await getIt<AuthCubit>().restoreSession();
 
+  // Deliberately not awaited, same reasoning as UpdateCubit.check() below:
+  // a slow/failed request here must not delay startup, and this only keeps
+  // the backend's MobileDevice.app_version fresh for an admin looking at the
+  // device list — restoreSession() never re-hits /auth/mobile/login/ (the
+  // only place that field is normally refreshed), so a user who updates the
+  // app without logging out would otherwise show a stale version until their
+  // token happens to expire.
+  unawaited(_reportAppVersionIfChanged());
+
   // Prevent screenshots on both platforms
   await ScreenGuard.preventCapture();
 
@@ -67,6 +80,31 @@ Future<void> _runApp() async {
   ]);
 
   runApp(const FengShuiApp());
+}
+
+/// Reports the running app_version to the backend if it differs from what
+/// was last reported — see the call site in [_runApp] for why this exists.
+/// No-op for a logged-out user: PATCH .../mobile-device/ requires auth and
+/// there is no MobileDevice row to update yet.
+Future<void> _reportAppVersionIfChanged() async {
+  if (!getIt<AuthCubit>().isAuthenticated) return;
+
+  final deviceService = getIt<DeviceService>();
+  final packageInfo = await PackageInfo.fromPlatform();
+  final currentVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+
+  if (await deviceService.lastReportedAppVersion() == currentVersion) return;
+
+  try {
+    await getIt<ApiClient>().patch(
+      ApiEndpoints.mobileDeviceMetadata,
+      data: {'app_version': currentVersion},
+    );
+    await deviceService.markAppVersionReported(currentVersion);
+  } catch (_) {
+    // Best-effort: a failed report just means the next app launch retries,
+    // same as it would have before this ever existed.
+  }
 }
 
 class FengShuiApp extends StatefulWidget {

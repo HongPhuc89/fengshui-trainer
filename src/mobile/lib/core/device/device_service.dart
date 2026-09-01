@@ -44,6 +44,7 @@ class DeviceMeta {
 class DeviceService {
   static const _deviceIdKey = 'device_stable_id';
   static const _pairedKey = 'handset_paired';
+  static const _reportedAppVersionKey = 'reported_app_version';
 
   /// Keep the identifier device-local. An iCloud-synced Keychain entry would
   /// hand the same client id to a second phone, which the server then has to
@@ -104,6 +105,19 @@ class DeviceService {
   Future<void> markPaired() async {
     await _secureStorage.write(
         key: _pairedKey, value: '1', iOptions: _iosOptions, aOptions: _androidOptions);
+  }
+
+  /// The app_version last successfully reported to the backend, or null if
+  /// never reported (or the app was reinstalled — secure storage cleared).
+  Future<String?> lastReportedAppVersion() async {
+    return _secureStorage.read(
+        key: _reportedAppVersionKey, iOptions: _iosOptions, aOptions: _androidOptions);
+  }
+
+  Future<void> markAppVersionReported(String version) async {
+    await _secureStorage.write(
+        key: _reportedAppVersionKey, value: version,
+        iOptions: _iosOptions, aOptions: _androidOptions);
   }
 
   /// Hardware anchor that outlives an app reinstall, so a user who reinstalls is

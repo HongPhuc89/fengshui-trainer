@@ -18,6 +18,7 @@ class ApiEndpoints {
   static const me = '/users/me/';
   static const avatar = '/users/me/avatar/';
   static const deviceStatus = '/users/me/device-status/';
+  static const mobileDeviceMetadata = '/users/me/mobile-device/';
   static const changePassword = '/users/me/change-password/';
 
   // Wallet

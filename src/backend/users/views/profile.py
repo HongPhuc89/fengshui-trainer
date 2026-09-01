@@ -175,3 +175,37 @@ class DeviceStatusView(views.APIView):
             'web_devices_count': user.devices.filter(status='ACTIVE').count(),
             'web_devices_quota': MAX_DEVICES,
         })
+
+
+class MobileDeviceMetadataView(views.APIView):
+    """
+    PATCH /api/users/me/mobile-device/ - Refresh this handset's reported
+    app_version/os_version without requiring a fresh login.
+
+    apply_handset_metadata() (users/services/mobile_slot.py) already keeps
+    this current on every /auth/mobile/login/ call, but a session restored
+    from a still-valid access token never calls that endpoint again — so a
+    user who updates the app without logging out would have a stale
+    app_version on their MobileDevice row until their token happens to
+    expire. This lets the app report the change as soon as it starts.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def patch(self, request):
+        mobile = request.user.mobile_devices.filter(status='ACTIVE').first()
+        if mobile is None:
+            return Response({'detail': 'Không có thiết bị mobile nào đang hoạt động.'}, status=404)
+
+        app_version = request.data.get('app_version')
+        os_version = request.data.get('os_version')
+        fields = []
+        if app_version:
+            mobile.app_version = app_version
+            fields.append('app_version')
+        if os_version:
+            mobile.os_version = os_version
+            fields.append('os_version')
+        if fields:
+            mobile.save(update_fields=fields)
+
+        return Response({'app_version': mobile.app_version, 'os_version': mobile.os_version})
