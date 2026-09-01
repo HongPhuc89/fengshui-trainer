@@ -373,27 +373,21 @@
 
 ---
 
-### Feature 35: Background APK Download ✅ COMPLETE (test tay một phần)
-**Priority**: Medium | **Status**: ✅ Implemented + partially verified on real device (2026-09-01)
+### Feature 35: Background APK Download ❌ REVERTED — quay về luồng Dio cũ
+**Priority**: Medium | **Status**: ❌ Foreground Service rollback (2026-09-01) — xem design doc §10 cho chi tiết đầy đủ
 
-- [x] **35.1** `ApkDownloadService.kt` (Foreground Service, `foregroundServiceType="dataSync"`) — tải APK bằng `HttpURLConnection` thuần, ghi `getExternalFilesDir()`, verify sha256, ghi trạng thái vào `SharedPreferences` riêng (`apk_download_state`)
-- [x] **35.2** `DownloadNotifications.kt` — notification 3 trạng thái (đang tải % / tải xong bấm để cài / thất bại)
-- [x] **35.3** `ApkInstaller.kt` — tách logic `FileProvider`/`Intent.ACTION_VIEW` khỏi `MainActivity`, dùng chung cho `MainActivity` và `InstallApkReceiver`
-- [x] **35.4** `InstallApkReceiver.kt` (`BroadcastReceiver`) — mở system installer khi bấm notification "Tải xong" dù app đã bị kill, không cần Flutter engine sống
-- [x] **35.5** `ApkDownloaderPlugin.kt` — MethodChannel `pro.huyenhoc.app/downloader` (`startDownload`, `getDownloadStatus`) + EventChannel `.../events` (progress/completed/failed)
-- [x] **35.6** `MainActivity.kt` — thêm `hasNotificationPermission()`/`requestNotificationPermission()` (`ActivityCompat.requestPermissions()`, không thêm package `permission_handler`) trên channel `pro.huyenhoc.app/installer` có sẵn
-- [x] **35.7** `AndroidManifest.xml` — 3 permission mới (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`) + khai `<service>` + `<receiver exported="false">`
-- [x] **35.8** `apk_downloader.dart` (Dart wrapper MethodChannel+EventChannel) + `installer.dart` thêm 2 method notification permission
-- [x] **35.9** `update_cubit.dart` — `_downloadAndInstall()` gọi `ApkDownloader` thay vì Dio; `restoreDownloadState()` phục hồi state lúc app khởi động lại (gọi từ `main.dart`); `checkInstallPermission()` mới
-- [x] **35.10** `update_view.dart` — chuyển `StatefulWidget` + `WidgetsBindingObserver`, ẩn nút "Cập nhật" (chỉ còn "Mở cài đặt") khi chưa có quyền cài APK, check lại quyền mỗi lần app resume
-- [x] **35.11** Xoá `UpdateRepository.download()` + `refreshDownloadUrl()` (không còn caller — retry-with-fresh-URL không áp dụng khi Service tự tải, xem đánh đổi đã duyệt ở design doc §5.3)
-- [x] **35.12** Viết lại `update_cubit_test.dart` cho kiến trúc event-driven mới — 18 test case (tổng 21/21 `test/features/update/` xanh)
-- [x] **35.13** Vá bug phát hiện khi test tay trên thiết bị thật: `file_paths.xml` chỉ khai `cache-path` (đường dẫn cũ `getTemporaryDirectory()`) — `ApkDownloadService` ghi file vào `getExternalFilesDir()`, một root path khác chưa được `FileProvider` khai, nên `installApk()` crash với `IllegalArgumentException: Failed to find configured root`. Fix: đổi sang `<external-files-path name="apk" path="." />`, xoá `cache-path` không còn dùng
+- [x] **35.1–35.13** (Foreground Service) Implement xong, unit test xanh, verify thành công trên Android 12 thật lúc đầu — nhưng khi mở rộng test sang emulator Android 15/16 và thêm 1 thiết bị Android 13 thật (Samsung SM-N985F), phát hiện Foreground Service (`dataSync`) bị hệ điều hành tự dừng ("Stop FGS timeout") sau 6–13 giây, tái hiện trên 3/4 môi trường test. Đã loại trừ 5 giả thuyết khác nhau (timing code, `startForeground()` overload, `data_sync_fgs_timeout_duration` config, compat flag `FGS_INTRODUCE_TIME_LIMITS`, emulator-only quirk) — không tìm ra nguyên nhân gốc trong thời gian hợp lý. **Toàn bộ code Foreground Service đã bị xoá**: `ApkDownloadService.kt`, `ApkDownloaderPlugin.kt`, `DownloadNotifications.kt`, `InstallApkReceiver.kt`, `apk_downloader.dart`, 3 permission (`FOREGROUND_SERVICE*`, `POST_NOTIFICATIONS`), khai `<service>`/`<receiver>`.
+- [x] **35.14** Khôi phục luồng Dio cũ (trước feature-35): `UpdateRepository.download()`/`refreshDownloadUrl()`, `UpdateCubit._downloadAndInstall()` tải trong Dart isolate + verify sha256 + cài qua `AndroidInstaller`. `MainActivity.kt` về lại chỉ có `installApk`/`canRequestInstall`/`openInstallSettings`. `file_paths.xml` về `cache-path` (khớp `getTemporaryDirectory()`).
+- [x] **35.15** Giữ lại cải thiện UX độc lập (không phụ thuộc Foreground Service, đã verify hoạt động đúng): `checkInstallPermission()` + `UpdateView` chuyển `StatefulWidget`/`WidgetsBindingObserver` — ẩn nút "Cập nhật" khi chưa có quyền cài APK, tự cập nhật khi app resume từ Settings. `ApkInstaller.kt` (tách `FileProvider` khỏi `MainActivity`) giữ nguyên, vẫn hữu ích.
+- [x] **35.16** Thêm cảnh báo mới trong `UpdateView` khi đang tải: *"Vui lòng không đóng ứng dụng cho đến khi tải xong."* — giảm nhẹ nhược điểm đã biết của luồng Dio (bị huỷ khi thoát app) bằng cách nhắc user thay vì giải quyết bằng native code rủi ro cao.
+- [x] **35.17** Viết lại `update_cubit_test.dart` về Dio-based test (giống bản gốc trước feature-35) + giữ 2 test case mới cho `checkInstallPermission()` — 18/18 test `test/features/update/` xanh, 37/37 toàn bộ `flutter test`.
+- [x] **35.18** [Ngoài phạm vi feature-35, fix phụ đồng ý bởi user] `AppRelease.apk_storage_key()` (feature-37) đổi từ key cố định sang key theo `version_code` (`releases/{APP_ENV}/huyenhoc-{version_code}.apk`) — phát hiện khi verify: CDN Bunny phục vụ file cũ dù purge + upload đều báo thành công, do key cố định bị ghi đè liên tục trong lúc test. Mỗi version giờ có URL riêng, không cần purge. `AppReleaseAdmin.save_model()` xoá file version cũ trên Bunny sau khi publish thành công. Cập nhật `test_app_release.py` (`test_t37_4`, `test_t37_5`) theo hành vi mới.
+- [x] **35.19** [Fix phụ] `core/migrations/0003_remove_apprelease_file_apprelease_bunny_key.py` có 1 dòng bị lỗi encoding (`migrations.â1` thay vì `migrations.RemoveField`, lỗi từ trước, không phải phiên này) — chặn hoàn toàn `python manage.py test` chạy được. Đã sửa.
 
-> **Design doc**: [feature-35-background-apk-download.md](design/feature-35-background-apk-download.md)
-> **Đánh đổi đã chấp nhận**: hành vi cũ "signed URL hết hạn giữa chừng tự refresh + retry" (feature-36 §7.2) không còn — `ApkDownloadService` nhận 1 URL cố định lúc bắt đầu, không tự gọi API xin URL mới. Rủi ro thấp trong thực tế (Bunny CDN tải nhanh); user bấm "Cập nhật" lại là lấy URL mới từ đầu.
-> **Đã test trên thiết bị Android thật** (A102SO, Android 12, 2026-09-01): T35-1, T35-3, T35-9, T35-12 PASS — tải chạy nền qua Foreground Service, notification thật hiện đúng (`channel=apk_download`), tải xong tự mở system installer, cài đặt thành công thật (verify `dumpsys package` lên đúng `versionCode` mới publish qua `AppRelease`/Bunny CDN thật).
-> **Còn treo — chưa tự xác nhận**: T35-2 (cần máy Android 13+ để có prompt `POST_NOTIFICATIONS` từ chối được), T35-4, T35-6, T35-7, T35-8 (cần mô phỏng kill app/mất mạng/double-tap), T35-10/T35-11 (cần thu hồi quyền cài APK trên máy test, hiện đã cấp sẵn từ trước).
+> **Design doc**: [feature-35-background-apk-download.md](design/feature-35-background-apk-download.md) §10 "Quyết định rollback" — chi tiết đầy đủ các giả thuyết đã loại trừ và bài học cho lần thử lại trong tương lai (nếu có).
+> **Đã verify end-to-end trên thiết bị Android 13 thật** (Samsung SM-N985F, 2026-09-01): tải qua Dio → progress bar + cảnh báo mới hiển thị đúng → verify sha256 khớp → system installer mở → cài đặt thành công thật (`dumpsys package` xác nhận `versionCode`/`versionName` đúng bản mới).
+> **Test suite**: `flutter test` 37/37 xanh, `flutter analyze` sạch, backend `python manage.py test core users` 83/83 xanh.
+> **Kết luận**: nhược điểm gốc của luồng Dio (tải bị huỷ nếu user thoát app) vẫn còn — chấp nhận như đánh đổi đã biết, giảm nhẹ bằng cảnh báo UI thay vì Foreground Service rủi ro cao trên diện rộng thiết bị.
 
 ---
 
@@ -708,7 +702,7 @@
 | Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
 | Feature 17. Admin Activity Dashboard | 📝 Design done, chưa implement |
 | Feature 34. Mobile Device, App Update & Mobile UI Parity | ✅ (gộp sub-feature 34a–34g, trước đây đánh số 35–41 độc lập) |
-| Feature 35. Background APK Download | ✅ Code done, test tay một phần (T35-1/3/9/12 PASS trên Android 12 thật) |
+| Feature 35. Background APK Download | ❌ Reverted — Foreground Service không ổn định trên diện rộng thiết bị, quay về luồng Dio cũ + cảnh báo UI |
 
 ---
 

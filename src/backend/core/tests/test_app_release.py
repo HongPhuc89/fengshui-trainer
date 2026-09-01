@@ -36,7 +36,7 @@ def make_release(version_code=12, name='1.2.0'):
     release.version_name = name
     release.sha256 = 'deadbeef'
     release.file_size = 42
-    release.bunny_key = AppRelease.apk_storage_key()
+    release.bunny_key = AppRelease.apk_storage_key(version_code)
     release.save()
     return release
 
@@ -137,32 +137,35 @@ class AppReleaseAdminUploadTests(APITestCase):
             '_continue': '',
         })
 
-    @patch('core.admin.purge_cdn_url')
+    @patch('core.admin.delete_pdf_from_bunny')
     @patch('core.admin.upload_bytes_to_bunny')
-    def test_t37_4_uploading_a_newer_apk_publishes_to_bunny(self, mock_upload, mock_purge):
+    def test_t37_4_uploading_a_newer_apk_publishes_to_bunny(self, mock_upload, mock_delete):
+        old_key = self.release.bunny_key
         with patch('core.models.APK', return_value=fake_apk(11, '1.1.0')):
             self._post(SimpleUploadedFile('huyenhoc-11.apk', b'new payload'))
 
         self.release.refresh_from_db()
         self.assertEqual(self.release.version_code, 11)
         self.assertEqual(self.release.version_name, '1.1.0')
-        self.assertEqual(self.release.bunny_key, AppRelease.apk_storage_key())
+        self.assertEqual(self.release.bunny_key, AppRelease.apk_storage_key(11))
         mock_upload.assert_called_once_with(
-            b'new payload', AppRelease.apk_storage_key(),
+            b'new payload', AppRelease.apk_storage_key(11),
             'application/vnd.android.package-archive',
         )
-        mock_purge.assert_called_once()
+        # A per-version key never collides with the previous one, so the old
+        # file is deleted outright rather than overwritten-and-purged.
+        mock_delete.assert_called_once_with(old_key)
 
-    @patch('core.admin.purge_cdn_url')
+    @patch('core.admin.delete_pdf_from_bunny')
     @patch('core.admin.upload_bytes_to_bunny')
-    def test_t37_5_invalid_apk_never_reaches_bunny(self, mock_upload, mock_purge):
+    def test_t37_5_invalid_apk_never_reaches_bunny(self, mock_upload, mock_delete):
         with patch('core.models.APK', side_effect=Exception('bad zip')):
             self._post(SimpleUploadedFile('broken.apk', b'garbage'))
 
         self.release.refresh_from_db()
         self.assertEqual(self.release.version_code, 10)
         mock_upload.assert_not_called()
-        mock_purge.assert_not_called()
+        mock_delete.assert_not_called()
 
     def test_t37_6_add_view_is_hidden_once_the_singleton_exists(self):
         response = self.client.get(reverse('admin:core_apprelease_add'))

@@ -2,7 +2,7 @@
 
 ## Document Information
 - **Feature**: Chuyển luồng tải APK cập nhật (feature-36/37) từ tải trong process app (Dio, bị Android kill khi app vào background/bị đóng) sang Android Foreground Service — tải tiếp tục khi user rời app, có notification tiến độ.
-- **Status**: ✅ Implemented + partially verified on real device (2026-09-01) — code + unit test xanh (21/21 `test/features/update/`), `flutter analyze` sạch. Test tay trên Android 12 thật: T35-1, T35-3, T35-9, T35-12 PASS — tải chạy nền, notification thật hiện đúng, tải xong tự mở system installer, cài đặt thành công (verify qua `dumpsys package` lên đúng `versionCode=6`). **Bug tìm thấy và đã fix trong lúc test**: `file_paths.xml` chưa cập nhật cho `FileProvider` — xem §6 mục mới "Bug tìm thấy khi test tay". Còn lại T35-2, T35-4, T35-6, T35-7, T35-8, T35-10, T35-11 chưa test (cần máy Android 13+ cho T35-2, và các thao tác kill app/tắt mạng/thu hồi quyền chưa thực hiện)
+- **Status**: ❌ REVERTED (2026-09-01) — Foreground Service (`dataSync`) bị hệ điều hành tự dừng ("Stop FGS timeout") sau 6–13 giây kể từ `startForeground()`, tái hiện trên **3 thiết bị/emulator khác nhau**: Android 12 thật (crash cài do bug FileProvider, đã fix, nhưng sau đó lộ ra vấn đề timeout này ở lần test kỹ hơn), Android 15 emulator, Android 16 emulator — và quan trọng nhất, **Android 13 thật** (Samsung SM-N985F), loại trừ hoàn toàn giả thuyết "chỉ là quirk môi trường test/emulator". Đã thử: đo timing chính xác (`startForeground()` luôn hoàn thành <10ms, không phải do gọi trễ), set `data_sync_fgs_timeout_duration` tường minh về 6h, tắt hẳn compat flag `FGS_INTRODUCE_TIME_LIMITS` — timeout vẫn xảy ra. Không tìm ra nguyên nhân gốc trong thời gian hợp lý; quyết định **rollback toàn bộ Foreground Service**, quay về luồng `Dio()` tải trong Dart isolate (như trước feature-35), chỉ giữ lại cải thiện UX độc lập (`checkInstallPermission()` + `WidgetsBindingObserver`) và thêm cảnh báo "không đóng ứng dụng khi đang tải" để giảm nhẹ vấn đề gốc. Xem §9 "Quyết định rollback" để biết chi tiết đầy đủ.
 - **Created**: 2026-09-01
 - **Related**: `feature-36-app-version-update.md`, `feature-37-simplify-apk-update.md` (đã gộp vào `feature-34-mobile-device-app-consolidated.md` §3), và thay đổi vừa làm cùng đợt: APK release chuyển sang Bunny CDN (`core/models.py` `AppRelease.bunny_key`, `core/admin.py` `upload_bytes_to_bunny`) để tăng tốc độ tải — feature này giải quyết vấn đề **khác**: tải bị huỷ giữa chừng khi thoát app, không phải tốc độ.
 
@@ -243,7 +243,7 @@ PlatformException(error, Failed to find configured root that contains
 
 ---
 
-## 9. Bước tiếp theo (sau khi PO duyệt)
+## 9. Bước tiếp theo (kế hoạch gốc, sau khi PO duyệt — xem §10 cho kết quả thật)
 
 1. `AndroidManifest.xml` — thêm permission + khai `<service>` + khai `<receiver>` cho `InstallApkReceiver` (§5.4)
 2. `ApkDownloadService.kt` + `DownloadNotifications.kt`
@@ -254,3 +254,61 @@ PlatformException(error, Failed to find configured root that contains
 7. Sửa `update_view.dart` — `WidgetsBindingObserver` gọi lại `checkInstallPermission()` khi `AppLifecycleState.resumed`, ẩn nút "Cập nhật" khi `needsInstallPermission == true` (§5.5)
 8. Xoá `UpdateRepository.download()` (không còn ai gọi)
 9. Test T35-1 → T35-12 trên thiết bị thật (Foreground Service không test được đầy đủ qua unit test — cần test tay theo bảng §7)
+
+---
+
+## 10. Quyết định rollback (2026-09-01) — Foreground Service bị loại bỏ
+
+### 10.1 Những gì đã implement và verify đúng thiết kế
+
+Toàn bộ §9 đã code xong và unit test xanh (21/21). Test tay trên **Android 12 thật** (điện thoại vật lý đầu tiên) cho kết quả tốt ban đầu:
+
+- Tải chạy nền qua Foreground Service, notification thật hiện đúng, tải xong tự mở system installer, **cài đặt thành công thật** (verify `dumpsys package` lên đúng `versionCode` mới).
+- Một bug tìm thấy và fix ngay: `file_paths.xml` chưa khai `external-files-path` cho `getExternalFilesDir()` — `FileProvider` crash khi cài. Fix xong, verify lại cài thành công.
+- T35-10, T35-11 (ẩn/hiện nút "Cập nhật" theo quyền cài đặt) hoạt động đúng thiết kế trên cả 2 emulator dùng để test tiếp theo.
+
+### 10.2 Bug thật phát hiện khi mở rộng test sang emulator và thiết bị Android 13
+
+Test tiếp T35-2 (từ chối `POST_NOTIFICATIONS`, cần Android 13+) trên **emulator Android 16 (API 36)**: download bắt đầu đúng, nhưng Android tự dừng Foreground Service sau khoảng 6–7 giây kể từ lúc bấm "Cập nhật", với log hệ thống:
+
+```
+ActivityManager: Stop FGS timeout: ServiceRecord{... pro.huyenhoc.app/.ApkDownloadService ...}
+ForegroundServiceTypeLoggerModule: FGS stop call for: <uid> has no types!
+```
+
+**Các giả thuyết đã kiểm chứng và loại trừ, theo thứ tự**:
+
+1. **`startForeground()` gọi trễ** — đo timing chính xác bằng `System.currentTimeMillis()` ở cả `onCreate()` và trước/sau `startForeground()`: luôn hoàn thành trong **dưới 10ms** kể từ khi `onStartCommand()` bắt đầu. Không phải nguyên nhân.
+2. **Overload `startForeground()` 2 tham số không truyền `foregroundServiceType` tường minh** — đổi sang `ServiceCompat.startForeground(this, id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)`. Timeout vẫn xảy ra, cùng khoảng thời gian.
+3. **`data_sync_fgs_timeout_duration` bị rút ngắn trên emulator để test nhanh** (một pattern có thật của Android testing framework) — set tường minh về `21600000` (6h) qua `adb shell device_config put`. Timeout vẫn xảy ra sau ~10s, không phải 6h.
+4. **Compat flag `FGS_INTRODUCE_TIME_LIMITS` tự bật do targetSdk 36** — tắt hẳn qua `adb shell am compat disable FGS_INTRODUCE_TIME_LIMITS pro.huyenhoc.app`. Timeout vẫn xảy ra.
+5. **Chỉ là quirk của emulator/Android 16 preview** — tạo AVD mới Android 15 (API 35, bản chính thức, không phải preview): **cùng lỗi, timeout ~12s**.
+6. **Chỉ là quirk của toàn bộ môi trường emulator, không xảy ra trên thiết bị thật** — test trên **Samsung SM-N985F, Android 13 thật** (không phải cùng máy Android 12 đã test thành công trước đó): **cùng lỗi tái hiện**, download bị dừng giữa chừng, báo "Tải bản cập nhật thất bại".
+
+Tái hiện được trên 3/4 môi trường test (2 emulator + 1 thiết bị Android 13 thật), không tái hiện chỉ trên chiếc Android 12 thật ban đầu — không đủ để kết luận nguyên nhân gốc trong thời gian hợp lý. Không loại trừ được khả năng đây là hành vi thật của `dataSync` Foreground Service trên một lớp thiết bị/Android version rộng mà tài liệu chính thức của Google (giới hạn 6 giờ/24h) không mô tả đúng — có thể có một ngưỡng ngắn hạn khác (theo process state, theo OEM, hoặc theo cách Foreground Service được start từ ngữ cảnh cụ thể của app này) chưa được xác định.
+
+### 10.3 Quyết định
+
+**Rollback toàn bộ cơ chế Foreground Service.** Rủi ro production quá cao để release: user bấm "Cập nhật" trên phần lớn thiết bị thử nghiệm sẽ thấy tải thất bại sau vài giây, tệ hơn hẳn hành vi cũ (Dio trong Dart isolate, dù có nhược điểm bị hủy khi thoát app, nhưng **luôn hoàn thành nếu user ở lại trong app**).
+
+**Đã xóa hoàn toàn**: `ApkDownloadService.kt`, `ApkDownloaderPlugin.kt`, `DownloadNotifications.kt`, `InstallApkReceiver.kt`, 3 permission (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`), khai báo `<service>`/`<receiver>` trong manifest, `apk_downloader.dart`. Khôi phục `file_paths.xml` về `cache-path` (khớp `getTemporaryDirectory()`).
+
+**Đã khôi phục nguyên trạng**: `UpdateRepository.download()`/`refreshDownloadUrl()` (Dio), `UpdateCubit._downloadAndInstall()` luồng cũ (tải trong Dart isolate, verify sha256, cài qua `AndroidInstaller`), `MainActivity.kt` (chỉ còn `installApk`/`canRequestInstall`/`openInstallSettings`, không có notification permission methods).
+
+**Đã giữ lại** (cải thiện độc lập, không phụ thuộc Foreground Service, đã verify hoạt động đúng trên cả 2 loại môi trường): `checkInstallPermission()` + `UpdateView` chuyển `StatefulWidget`/`WidgetsBindingObserver` — ẩn nút "Cập nhật" khi chưa có quyền cài APK, tự cập nhật lại khi app resume từ Settings. `ApkInstaller.kt` (tách logic `FileProvider` khỏi `MainActivity`, dùng lại được, không có rủi ro gì).
+
+**Đã thêm mới theo yêu cầu**: dòng cảnh báo trong `UpdateView` khi đang tải — *"Vui lòng không đóng ứng dụng cho đến khi tải xong."* — nhắc trực tiếp user về nhược điểm đã biết của cơ chế Dio, thay vì cố gắng giải quyết nó bằng native code rủi ro cao.
+
+### 10.4 Thay đổi phụ phát hiện trong lúc test (ngoài phạm vi Foreground Service)
+
+Khi verify lại luồng Dio trên thiết bị thật, phát hiện `AppRelease.apk_storage_key()` (feature-37, code cũ) dùng **key cố định** (`releases/{APP_ENV}/huyenhoc.apk`) cho mọi version — khi publish nhiều lần liên tiếp trong lúc test, CDN Bunny phục vụ **file cũ dù đã purge cache thành công** (`purge_cdn_url()` trả `True`, upload trả `201`, nhưng file thực tế trên CDN vẫn là bản trước đó nhiều phút sau). Việc này khiến app tải về đúng file nhưng sha256 không khớp DB, báo "File tải về không toàn vẹn" sai — không phải bug của feature-35, nhưng chặn hẳn việc verify.
+
+**Fix (đồng ý bởi user, không cần design doc riêng vì đơn giản)**: `apk_storage_key()` nhận thêm `version_code`, trả về path riêng theo version (`releases/{APP_ENV}/huyenhoc-{version_code}.apk`) — mỗi version một URL riêng biệt, không bao giờ bị CDN cache đè lẫn nhau, không cần purge nữa. `AppReleaseAdmin.save_model()` xóa file version cũ trên Bunny (`delete_pdf_from_bunny(old_bunny_key)`) sau khi lưu version mới thành công, tránh rác tích lũy vĩnh viễn trên Storage. Cập nhật 2 test trong `test_app_release.py` (`test_t37_4`, `test_t37_5`) theo hành vi mới — 12/12 test `core` pass.
+
+**Tiện thể fix**: `core/migrations/0003_remove_apprelease_file_apprelease_bunny_key.py` có 1 dòng `migrations.â1(...)` bị lỗi encoding (từ trước, không phải do phiên làm việc này), chặn hoàn toàn `python manage.py test` chạy được — sửa lại đúng thành `migrations.RemoveField(...)`.
+
+### 10.5 Bài học / khuyến nghị nếu quay lại hướng Foreground Service trong tương lai
+
+- Không tin tưởng test trên 1 thiết bị/emulator duy nhất cho hành vi lifecycle Foreground Service — bắt buộc test trên ≥3 môi trường (bao gồm ít nhất 1 thiết bị thật targetSdk cao) trước khi coi là ổn định.
+- Cân nhắc `foregroundServiceType="specialUse"` thay vì `dataSync` nếu thử lại — dự phòng đã ghi trong §2.3 nhưng chưa test.
+- Đo lường timeout thật bằng `Service.onTimeout(int, int)` (API mới của Android 15) thay vì suy luận qua log `ActivityManager`, để biết chính xác lý do hệ thống đưa ra khi dừng Service.

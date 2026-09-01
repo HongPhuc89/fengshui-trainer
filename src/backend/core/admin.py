@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 
-from videos.bunny_file_storage import purge_cdn_url, upload_bytes_to_bunny
+from videos.bunny_file_storage import delete_pdf_from_bunny, upload_bytes_to_bunny
 
 from .models import AppRelease, DatabaseBackupProxy
 from .tasks import backup_database
@@ -75,8 +75,9 @@ class AppReleaseAdmin(admin.ModelAdmin):
         uploaded_file = form.cleaned_data.get('file')
 
         if detected:
-            obj.version_code, obj.version_name, obj.sha256, obj.file_size = detected
-            storage_key = AppRelease.apk_storage_key()
+            version_code = detected[0]
+            old_bunny_key = obj.bunny_key
+            storage_key = AppRelease.apk_storage_key(version_code)
 
             # Upload BEFORE saving the row: if Bunny is unreachable, the DB
             # must not end up pointing at a key that was never written.
@@ -84,13 +85,17 @@ class AppReleaseAdmin(admin.ModelAdmin):
             upload_bytes_to_bunny(
                 uploaded_file.read(), storage_key, 'application/vnd.android.package-archive',
             )
+            obj.version_code, obj.version_name, obj.sha256, obj.file_size = detected
             obj.bunny_key = storage_key
-            # Overwriting the same key in place (feature-37's one-release
-            # model) means the CDN edge would otherwise keep serving the old
-            # cached bytes under the new version_code the client just saw.
-            purge_cdn_url(obj.download_url)
 
         super().save_model(request, obj, form, change)
+
+        if detected and old_bunny_key and old_bunny_key != storage_key:
+            # Keyed by version_code now (not a fixed filename), so the
+            # previous version's file is never overwritten in place and never
+            # needs a CDN purge — but it does need deleting, or every publish
+            # leaves an orphaned APK on Bunny Storage forever.
+            delete_pdf_from_bunny(old_bunny_key)
 
         if detected:
             self.message_user(

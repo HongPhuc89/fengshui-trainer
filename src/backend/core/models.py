@@ -65,16 +65,22 @@ class AppRelease(BaseModel):
         return cls.objects.first()
 
     @staticmethod
-    def apk_storage_key():
+    def apk_storage_key(version_code):
         """
-        Bunny Storage key for the current environment's APK.
+        Bunny Storage key for one specific version's APK.
 
         Keyed by APP_ENV, not hardcoded to one path: production, staging and
         a developer's local Django all point at the same Bunny zone (shared
         credentials, see settings.BUNNY_STORAGE_*), so without this a local
         test upload would silently overwrite the real production APK.
+
+        Also keyed by version_code, not a fixed filename: overwriting the same
+        key in place raced against Bunny's CDN edge cache — a purge could
+        return success while a stale edge still served the old bytes under a
+        URL whose version_code the client had already matched. A per-version
+        path never collides, so there is nothing to purge or race.
         """
-        return f'releases/{settings.APP_ENV}/huyenhoc.apk'
+        return f'releases/{settings.APP_ENV}/huyenhoc-{version_code}.apk'
 
     @property
     def download_url(self):

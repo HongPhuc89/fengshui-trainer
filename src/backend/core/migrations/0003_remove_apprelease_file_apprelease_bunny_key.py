@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.â1(
+        migrations.RemoveField(
             model_name='apprelease',
             name='file',
         ),
