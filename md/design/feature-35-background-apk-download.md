@@ -2,7 +2,7 @@
 
 ## Document Information
 - **Feature**: Chuyển luồng tải APK cập nhật (feature-36/37) từ tải trong process app (Dio, bị Android kill khi app vào background/bị đóng) sang Android Foreground Service — tải tiếp tục khi user rời app, có notification tiến độ.
-- **Status**: ✅ Implemented (2026-09-01) — code + unit test xanh (21/21 `test/features/update/`), `flutter analyze` sạch, `flutter build apk --debug` build được. Còn lại: test tay T35-1 → T35-12 trên thiết bị thật (§7) — Foreground Service không kiểm tra đầy đủ qua unit test được
+- **Status**: ✅ Implemented + partially verified on real device (2026-09-01) — code + unit test xanh (21/21 `test/features/update/`), `flutter analyze` sạch. Test tay trên Android 12 thật: T35-1, T35-3, T35-9, T35-12 PASS — tải chạy nền, notification thật hiện đúng, tải xong tự mở system installer, cài đặt thành công (verify qua `dumpsys package` lên đúng `versionCode=6`). **Bug tìm thấy và đã fix trong lúc test**: `file_paths.xml` chưa cập nhật cho `FileProvider` — xem §6 mục mới "Bug tìm thấy khi test tay". Còn lại T35-2, T35-4, T35-6, T35-7, T35-8, T35-10, T35-11 chưa test (cần máy Android 13+ cho T35-2, và các thao tác kill app/tắt mạng/thu hồi quyền chưa thực hiện)
 - **Created**: 2026-09-01
 - **Related**: `feature-36-app-version-update.md`, `feature-37-simplify-apk-update.md` (đã gộp vào `feature-34-mobile-device-app-consolidated.md` §3), và thay đổi vừa làm cùng đợt: APK release chuyển sang Bunny CDN (`core/models.py` `AppRelease.bunny_key`, `core/admin.py` `upload_bytes_to_bunny`) để tăng tốc độ tải — feature này giải quyết vấn đề **khác**: tải bị huỷ giữa chừng khi thoát app, không phải tốc độ.
 
@@ -194,24 +194,43 @@ Nếu user từ chối: **vẫn cho tải**, chỉ là không có notification t
 
 **Quyết định gỡ khỏi bảng trên** (chốt trong thiết kế, không để lại như "cân nhắc"): dùng file `SharedPreferences` **riêng** cho trạng thái download, đọc duy nhất qua MethodChannel — không cố chia sẻ trực tiếp với plugin `shared_preferences` phía Dart.
 
+### 6.1 Bug tìm thấy khi test tay (2026-09-01) — đã fix
+
+Test tay lần đầu trên thiết bị thật (Android 12) crash ngay khi Service báo `completed` và `UpdateCubit` gọi `installer.install(path)`:
+
+```
+PlatformException(error, Failed to find configured root that contains
+/storage/emulated/0/Android/data/pro.huyenhoc.app/files/huyenhoc-6.apk, ...)
+  at androidx.core.content.FileProvider$SimplePathStrategy.getUriForFile
+  at pro.huyenhoc.app.ApkInstaller.install(ApkInstaller.kt:22)
+```
+
+**Nguyên nhân**: `android/app/src/main/res/xml/file_paths.xml` chỉ khai `<cache-path name="apk" path="." />` — đúng cho luồng cũ (`getTemporaryDirectory()`, ánh xạ `cacheDir`), nhưng `ApkDownloadService` (mới, §3.5) ghi file vào `context.getExternalFilesDir(null)`, một root path khác mà `FileProvider` chưa được khai để nhận diện. Bỏ sót khi implement — §3.5 đã mô tả đúng nơi lưu file nhưng không có mục riêng nhắc cập nhật `file_paths.xml` theo.
+
+**Fix**: đổi `file_paths.xml` sang `<external-files-path name="apk" path="." />`, khớp đúng `getExternalFilesDir()`. Không còn ai dùng `cache-path` (luồng cũ đã xoá hoàn toàn khỏi `UpdateCubit`) nên xoá luôn, không giữ cả hai.
+
+**Verify sau fix**: test lại trên cùng thiết bị — tải xong → notification "Tải xong" → tự mở system installer → cài đặt thành công → `dumpsys package pro.huyenhoc.app` xác nhận lên đúng `versionCode` mới.
+
 ---
 
 ## 7. Test plan
 
-| # | Kịch bản | Kỳ vọng |
-|---|---|---|
-| T35-1 | Bấm "Cập nhật", cấp quyền notification, thoát app ngay | Notification tiến độ tiếp tục chạy, tăng % đều |
-| T35-2 | Bấm "Cập nhật", **từ chối** quyền notification | Tải vẫn chạy (verify qua file xuất hiện đúng size cuối), không có notification |
-| T35-3 | Tải xong khi app đang mở | `UpdateCubit` nhận event `completed` qua EventChannel, UI chuyển `DownloadPhase.ready` không cần thoát app |
-| T35-4 | Tải xong khi app đã bị kill, mở lại app | `UpdateCubit` gọi `getDownloadStatus()` lúc khởi tạo, thấy `completed`, nhảy thẳng `DownloadPhase.ready`, không tải lại |
-| T35-5 | Bấm vào notification "Tải xong" khi app đã bị kill | `InstallApkReceiver` mở thẳng system installer qua `ApkInstaller.install()`, không cần mở app trước (§5.4) |
-| T35-6 | Ngắt mạng giữa chừng | Notification chuyển "Tải thất bại", event `failed` nếu app đang mở |
-| T35-7 | sha256 tải về không khớp | Xử lý giống T35-6 (không cài file hỏng) |
-| T35-8 | Bấm "Cập nhật" lần 2 khi Service đang chạy dở (chưa xong lần 1) | Không khởi động Service thứ hai chồng lấn — `startService` với cùng Intent action phải idempotent hoặc Dart chặn double-tap |
-| T35-9 | Android 12 trở xuống (không cần `POST_NOTIFICATIONS`) | Notification hiện bình thường không cần xin quyền |
-| T35-10 | Mở dialog cập nhật lần đầu, **chưa** cấp quyền cài "Install unknown apps" | Dialog chỉ hiện nút "Bỏ qua" + "Mở cài đặt" — **không** hiện nút "Cập nhật" (§5.5) |
-| T35-11 | Từ T35-10, bấm "Mở cài đặt" → cấp quyền → quay lại app | Nút "Cập nhật" xuất hiện lại, `needsInstallPermission` về `false` |
-| T35-12 | Mở dialog cập nhật khi **đã** có sẵn quyền cài apk (cấp từ trước) | Dialog hiện nút "Cập nhật" ngay từ đầu, không hiện "Mở cài đặt" |
+| # | Kịch bản | Kỳ vọng | Kết quả (2026-09-01, Android 12 thật) |
+|---|---|---|---|
+| T35-1 | Bấm "Cập nhật", cấp quyền notification, thoát app ngay | Notification tiến độ tiếp tục chạy, tăng % đều | ✅ PASS — notification `channel=apk_download` xác nhận qua `dumpsys notification`, progress bar trong app tăng đều (12%...) |
+| T35-2 | Bấm "Cập nhật", **từ chối** quyền notification | Tải vẫn chạy (verify qua file xuất hiện đúng size cuối), không có notification | ⏳ Chưa test — máy Android 12 không có runtime permission này để từ chối, cần máy Android 13+ |
+| T35-3 | Tải xong khi app đang mở | `UpdateCubit` nhận event `completed` qua EventChannel, UI chuyển `DownloadPhase.ready` không cần thoát app | ✅ PASS — tự mở system installer ngay khi app đang mở, không cần thao tác thêm |
+| T35-4 | Tải xong khi app đã bị kill, mở lại app | `UpdateCubit` gọi `getDownloadStatus()` lúc khởi tạo, thấy `completed`, nhảy thẳng `DownloadPhase.ready`, không tải lại | ⏳ Chưa test |
+| T35-5 | Bấm vào notification "Tải xong" khi app đã bị kill | `InstallApkReceiver` mở thẳng system installer qua `ApkInstaller.install()`, không cần mở app trước (§5.4) | ⏳ Chưa test riêng (đã xác nhận gián tiếp: `contentIntent` là đúng `PendingIntent.getBroadcast()` trỏ `InstallApkReceiver` qua `dumpsys notification`, nhưng chưa test tay bấm khi app bị kill hẳn) |
+| T35-6 | Ngắt mạng giữa chừng | Notification chuyển "Tải thất bại", event `failed` nếu app đang mở | ⏳ Chưa test |
+| T35-7 | sha256 tải về không khớp | Xử lý giống T35-6 (không cài file hỏng) | ⏳ Chưa test |
+| T35-8 | Bấm "Cập nhật" lần 2 khi Service đang chạy dở (chưa xong lần 1) | Không khởi động Service thứ hai chồng lấn — `startService` với cùng Intent action phải idempotent hoặc Dart chặn double-tap | ⏳ Chưa test |
+| T35-9 | Android 12 trở xuống (không cần `POST_NOTIFICATIONS`) | Notification hiện bình thường không cần xin quyền | ✅ PASS — notification hiện đúng trên Android 12, không có prompt xin quyền |
+| T35-10 | Mở dialog cập nhật lần đầu, **chưa** cấp quyền cài "Install unknown apps" | Dialog chỉ hiện nút "Bỏ qua" + "Mở cài đặt" — **không** hiện nút "Cập nhật" (§5.5) | ⏳ Chưa test — máy test đã có sẵn quyền cài từ trước, cần thu hồi quyền để test lại |
+| T35-11 | Từ T35-10, bấm "Mở cài đặt" → cấp quyền → quay lại app | Nút "Cập nhật" xuất hiện lại, `needsInstallPermission` về `false` | ⏳ Chưa test (phụ thuộc T35-10) |
+| T35-12 | Mở dialog cập nhật khi **đã** có sẵn quyền cài apk (cấp từ trước) | Dialog hiện nút "Cập nhật" ngay từ đầu, không hiện "Mở cài đặt" | ✅ PASS |
+
+> **Bổ sung ngoài test plan gốc**: xác nhận cài đặt thành công thật — `dumpsys package pro.huyenhoc.app` sau khi cài báo đúng `versionCode=6`, `versionName=1.0.4` (bản test build), khớp với `AppRelease` vừa publish qua đúng logic `AppReleaseForm`/`save_model()` (upload thật lên Bunny CDN, `BUNNY_USE_LOCAL_FALLBACK=True`).
 
 ---
 

@@ -373,8 +373,8 @@
 
 ---
 
-### Feature 35: Background APK Download ✅ COMPLETE (chờ test tay)
-**Priority**: Medium | **Status**: ✅ Implemented (2026-09-01)
+### Feature 35: Background APK Download ✅ COMPLETE (test tay một phần)
+**Priority**: Medium | **Status**: ✅ Implemented + partially verified on real device (2026-09-01)
 
 - [x] **35.1** `ApkDownloadService.kt` (Foreground Service, `foregroundServiceType="dataSync"`) — tải APK bằng `HttpURLConnection` thuần, ghi `getExternalFilesDir()`, verify sha256, ghi trạng thái vào `SharedPreferences` riêng (`apk_download_state`)
 - [x] **35.2** `DownloadNotifications.kt` — notification 3 trạng thái (đang tải % / tải xong bấm để cài / thất bại)
@@ -388,10 +388,12 @@
 - [x] **35.10** `update_view.dart` — chuyển `StatefulWidget` + `WidgetsBindingObserver`, ẩn nút "Cập nhật" (chỉ còn "Mở cài đặt") khi chưa có quyền cài APK, check lại quyền mỗi lần app resume
 - [x] **35.11** Xoá `UpdateRepository.download()` + `refreshDownloadUrl()` (không còn caller — retry-with-fresh-URL không áp dụng khi Service tự tải, xem đánh đổi đã duyệt ở design doc §5.3)
 - [x] **35.12** Viết lại `update_cubit_test.dart` cho kiến trúc event-driven mới — 18 test case (tổng 21/21 `test/features/update/` xanh)
+- [x] **35.13** Vá bug phát hiện khi test tay trên thiết bị thật: `file_paths.xml` chỉ khai `cache-path` (đường dẫn cũ `getTemporaryDirectory()`) — `ApkDownloadService` ghi file vào `getExternalFilesDir()`, một root path khác chưa được `FileProvider` khai, nên `installApk()` crash với `IllegalArgumentException: Failed to find configured root`. Fix: đổi sang `<external-files-path name="apk" path="." />`, xoá `cache-path` không còn dùng
 
 > **Design doc**: [feature-35-background-apk-download.md](design/feature-35-background-apk-download.md)
 > **Đánh đổi đã chấp nhận**: hành vi cũ "signed URL hết hạn giữa chừng tự refresh + retry" (feature-36 §7.2) không còn — `ApkDownloadService` nhận 1 URL cố định lúc bắt đầu, không tự gọi API xin URL mới. Rủi ro thấp trong thực tế (Bunny CDN tải nhanh); user bấm "Cập nhật" lại là lấy URL mới từ đầu.
-> **Còn treo — chưa tự xác nhận**: test tay T35-1 → T35-12 trên thiết bị Android thật (§7 design doc) — Foreground Service, notification thật, và hành vi khi app bị kill không kiểm tra được đầy đủ qua unit test.
+> **Đã test trên thiết bị Android thật** (A102SO, Android 12, 2026-09-01): T35-1, T35-3, T35-9, T35-12 PASS — tải chạy nền qua Foreground Service, notification thật hiện đúng (`channel=apk_download`), tải xong tự mở system installer, cài đặt thành công thật (verify `dumpsys package` lên đúng `versionCode` mới publish qua `AppRelease`/Bunny CDN thật).
+> **Còn treo — chưa tự xác nhận**: T35-2 (cần máy Android 13+ để có prompt `POST_NOTIFICATIONS` từ chối được), T35-4, T35-6, T35-7, T35-8 (cần mô phỏng kill app/mất mạng/double-tap), T35-10/T35-11 (cần thu hồi quyền cài APK trên máy test, hiện đã cấp sẵn từ trước).
 
 ---
 
@@ -706,7 +708,7 @@
 | Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
 | Feature 17. Admin Activity Dashboard | 📝 Design done, chưa implement |
 | Feature 34. Mobile Device, App Update & Mobile UI Parity | ✅ (gộp sub-feature 34a–34g, trước đây đánh số 35–41 độc lập) |
-| Feature 35. Background APK Download | ✅ Code done, chờ test tay trên thiết bị thật |
+| Feature 35. Background APK Download | ✅ Code done, test tay một phần (T35-1/3/9/12 PASS trên Android 12 thật) |
 
 ---
 

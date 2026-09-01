@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Matches path_provider's getTemporaryDirectory(), which is cacheDir on
-         Android: the only place this app writes the APK it downloads. -->
-    <cache-path name="apk" path="." />
+    <!-- ApkDownloadService writes the update APK to getExternalFilesDir(null)
+         (feature-35 §3.5) — a Kotlin-only Service has no access to
+         path_provider's getTemporaryDirectory(), which needed the cache-path
+         entry this replaced. -->
+    <external-files-path name="apk" path="." />
 </paths>
