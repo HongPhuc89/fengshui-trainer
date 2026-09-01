@@ -362,6 +362,11 @@
 > **Design doc**: `md/design/feature-41-mobile-book-detail-parity.md`
 > **Build sạch** (`flutter analyze` 0 lỗi, `flutter build apk` thành công) — chưa kịp test lại trên thiết bị thật (mất kết nối ADB giữa chừng, user chuyển sang tự chạy `flutter run`).
 > **Quyết định đáng chú ý**: endpoint `GET /books/{slug}/progress/` luôn trả mặc định `{chapter_order:1, current_page:1}` khi chưa có tiến độ (không trả null/404) — không thể dùng "có giá trị hay không" để suy ra "đã đọc chưa" (cùng bẫy đã gặp ở feature-40 với last-lesson). Công thức dùng: `currentPage > 1 || có chương completed` — PO đã duyệt, chấp nhận edge case hiếm (đọc đúng hết trang 1 rồi thoát vẫn hiện "Đọc ngay").
+- [x] **41.8** Bỏ hero-image `SliverAppBar` full-viền → back-link "‹ Danh sách sách" + thumbnail nhỏ (80×110, bo góc) đặt cạnh title/author/badge — theo yêu cầu trực tiếp user sau khi so ảnh web thật (đảo quyết định v1, giống cách feature-40 đã làm với Video Detail)
+- [x] **41.9** Vá bug phát hiện khi test trên máy thật: `saveChapterProgress()` (mobile) **chưa từng gửi cờ `completed`** lên backend (`BookChapterProgressUpdateView` mặc định `False` nếu thiếu) — nên chương đọc xong không bao giờ hiện dấu ✓, dù `is_completed` đã parse đúng từ lâu. Fix: `book_reader_bloc.dart` tính `completed = currentPage >= totalPages` và gửi ở mọi lần lưu (không chỉ khi true, để cuộn lùi lại đúng un-mark) — xuyên suốt `saveChapterProgress` ở datasource/repository. **Lưu ý**: chỉ áp dụng cho lần lưu mới, không backfill dữ liệu `completed=False` đã lưu sai từ trước.
+- [x] **41.10** Chapter list: mỗi chương tách thành card riêng (bo góc, cách nhau 8px) thay vì list liền mạch — theo ảnh tham chiếu web
+
+> **Đã test trên thiết bị Android thật**: layout thumbnail nhỏ + badge + CTA + highlight chương đang đọc + card riêng biệt — khớp 100% ảnh tham chiếu web.
 
 ---
 

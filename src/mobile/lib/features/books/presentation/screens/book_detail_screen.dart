@@ -429,21 +429,29 @@ class _ChapterListItem extends StatelessWidget {
     final isCurrent =
         currentPage != null && chapter.canAccess && !chapter.isCompleted;
 
+    // Each chapter its own separated card, not a flush continuous list —
+    // matches the reference: rounded corners + a gap between rows.
     return Container(
-      decoration: isCurrent
-          ? BoxDecoration(
-              color: AppColors.primaryGold.withOpacity(0.08),
-              border: const Border(
-                left: BorderSide(color: AppColors.primaryGold, width: 2),
-              ),
-            )
-          : null,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 4,
-        ),
-        leading: CircleAvatar(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isCurrent
+            ? AppColors.primaryGold.withOpacity(0.1)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: isCurrent
+            ? const Border(
+                left: BorderSide(color: AppColors.primaryGold, width: 3),
+              )
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 4,
+          ),
+          leading: CircleAvatar(
           backgroundColor: AppColors.surfaceAlt,
           child: Text(
             '${chapter.order}',
@@ -524,10 +532,14 @@ class _ChapterListItem extends StatelessWidget {
             else if (!chapter.canAccess)
               const Icon(Icons.lock_outline, color: AppColors.lockGray)
             else if (chapter.isCompleted)
-              const Icon(Icons.check_circle, color: AppColors.success),
+              // Plain check, no circle background — matches web's actual
+              // CheckIcon.vue (a bare stroke polyline, colored
+              // --accent-gold via .book-detail__chapter-check).
+              const Icon(Icons.check, color: AppColors.primaryGold, size: 18),
           ],
         ),
-        onTap: chapter.canAccess ? onTap : onLocked,
+          onTap: chapter.canAccess ? onTap : onLocked,
+        ),
       ),
     );
   }

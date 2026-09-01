@@ -126,6 +126,10 @@ Ban đầu giữ `SliverAppBar` hero-image, chỉ đổi nguồn ảnh sang `sma
 - `smallCoverUrl ?? coverImageUrl` giữ nguyên logic ưu tiên đã quyết định.
 - Không cần fallback "chữ cái đầu" — giữ quyết định cũ (Nice-to-have, bỏ qua).
 
+### 3.8 Chapter list — mỗi chương 1 card riêng biệt (bổ sung 2026-09-02, theo yêu cầu user/PO)
+
+`_ChapterListItem` đổi từ hàng liền mạch (list phẳng) sang card riêng: `margin-bottom: 8`, bo góc 10, nền `AppColors.surface` (chương thường) / tint vàng nhạt (chương đang đọc, giữ viền trái vàng 3px). `ClipRRect` bọc `ListTile` để ripple/tap không tràn ra ngoài bo góc.
+
 ### 3.7 Refetch khi quay lại từ Reader
 
 Áp dụng đúng pattern `_openLesson` ở feature-40 (§ "Refetches on return"): mọi điều hướng từ Book Detail sang `BookReaderScreen` (nút CTA + tap chương) phải `await context.push(...)` rồi `LoadBookDetail(slug, forceRefresh: true)` khi quay lại — nếu không, đọc xong quay lại vẫn thấy state cũ (Flutter Navigator giữ nguyên bloc khi pop, không tự remount như Vue Router).
