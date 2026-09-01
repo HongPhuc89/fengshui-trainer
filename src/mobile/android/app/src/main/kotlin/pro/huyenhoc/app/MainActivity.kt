@@ -1,18 +1,26 @@
 package pro.huyenhoc.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.core.content.FileProvider
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
 
 class MainActivity : FlutterActivity() {
 
     private val channelName = "pro.huyenhoc.app/installer"
+    private val notificationPermissionRequestCode = 9001
+
+    // Held only between requestNotificationPermission() and
+    // onRequestPermissionsResult() — there is at most one prompt in flight,
+    // matching the contextual, one-shot ask in update_cubit.dart (feature-35 §5.3).
+    private var pendingNotificationPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -33,9 +41,13 @@ class MainActivity : FlutterActivity() {
                             installApk(path, result)
                         }
                     }
+                    "hasNotificationPermission" -> result.success(hasNotificationPermission())
+                    "requestNotificationPermission" -> requestNotificationPermission(result)
                     else -> result.notImplemented()
                 }
             }
+
+        ApkDownloaderPlugin.register(this, flutterEngine.dartExecutor.binaryMessenger)
     }
 
     // Below Android 8 the permission is granted at install time, so there is
@@ -58,21 +70,47 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun installApk(path: String, result: MethodChannel.Result) {
-        val file = File(path)
-        if (!file.exists()) {
+        if (ApkInstaller.install(this, path)) {
+            result.success(null)
+        } else {
             result.error("NO_FILE", "APK not found at $path", null)
-            return
+        }
+    }
+
+    // Below Android 13 there is no such runtime permission — notifications
+    // just show (feature-35 §2.4).
+    private fun hasNotificationPermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            true
         }
 
-        // A file:// URI throws FileUriExposedException from Android 7 on, so the
-        // installer gets a content:// URI from our FileProvider instead.
-        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    private fun requestNotificationPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            result.success(true)
+            return
         }
-        startActivity(intent)
-        result.success(null)
+        pendingNotificationPermissionResult = result
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            notificationPermissionRequestCode,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != notificationPermissionRequestCode) return
+
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        pendingNotificationPermissionResult?.success(granted)
+        pendingNotificationPermissionResult = null
     }
 }

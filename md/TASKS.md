@@ -2,8 +2,8 @@
 
 ## Document Information
 - **Project**: Thiên Thư - Feng Shui Learning Platform
-- **Version**: 1.7
-- **Last Updated**: 2026-03-13
+- **Version**: 1.8
+- **Last Updated**: 2026-09-01
 - **Status**: Phase 1 Backend ✅ Complete | Phase 2 Web MVP 🚧 In Progress | Admin Panel (Django Jazzmin) ✅ Done
 
 ---
@@ -39,6 +39,7 @@
 | 32 | [feature-32-change-password.md](design/feature-32-change-password.md) | Change Password — Đổi mật khẩu từ màn hình Profile (IsAuthenticated, verify current_password, Django validate_password) | 📝 |
 | 33 | [feature-33-device-geo-location.md](design/feature-33-device-geo-location.md) | Device IP Geolocation — Lưu city/region/country vào UserDevice từ last_ip qua ipinfo.io; async trigger khi tạo device + management command backfill | 📝 |
 | 34 | [feature-34-mobile-device-app-consolidated.md](design/feature-34-mobile-device-app-consolidated.md) | **Consolidated** (thay thế feature-34…41 gốc) — Mobile Device & Pairing (bảng riêng, khoá 1 máy/user, admin issue/refresh slot, pairing_code 6 ký tự), App Version & Update (Android-only, singleton), Mobile UI Parity (PDF reader cuộn liên tục, Video/Book Detail giống web) | ✅ |
+| 35 | [feature-35-background-apk-download.md](design/feature-35-background-apk-download.md) | Background APK Download — Tải APK cập nhật chạy nền bằng Android Foreground Service | 📝 |
 
 ---
 
@@ -238,93 +239,93 @@
 
 ---
 
-### Feature 34–41: Mobile Device, App Update & Mobile UI Parity ✅ COMPLETE
+### Feature 34: Mobile Device, App Update & Mobile UI Parity ✅ COMPLETE
 
-> **Design doc (consolidated)**: [feature-34-mobile-device-app-consolidated.md](design/feature-34-mobile-device-app-consolidated.md) — gộp 8 design doc gốc (feature-34…41, đã xoá) thành một tài liệu duy nhất, verify lại với code hiện tại. Các mục con dưới đây giữ lại làm nhật ký implement chi tiết theo từng feature.
+> **Design doc (consolidated)**: [feature-34-mobile-device-app-consolidated.md](design/feature-34-mobile-device-app-consolidated.md) — gộp 8 design doc gốc (feature-34…41 numbering cũ, đã xoá) thành một tài liệu duy nhất, verify lại với code hiện tại. Các mục con dưới đây giữ lại làm nhật ký implement chi tiết theo từng sub-feature (numbering `34.x` gốc — trước đây đánh số 35–41 độc lập, nay gộp lại làm sub-section của Feature 34 để giải phóng dải số 35+ cho các feature mới).
 
 ---
 
-### Feature 35: Admin quản lý thiết bị mobile ✅ COMPLETE
+#### 34a. Admin quản lý thiết bị mobile ✅ COMPLETE
 **Priority**: High | **Status**: ✅ Implemented (2026-08-30)
 
-- [x] **35.1** Nút **Thêm thiết bị** trên `MobileDeviceAdmin` — chọn user, hệ thống tự sinh `client_code` + `pairing_code`
+- [x] **34a.1** Nút **Thêm thiết bị** trên `MobileDeviceAdmin` — chọn user, hệ thống tự sinh `client_code` + `pairing_code`
   - `add_view()` thay form ModelAdmin chuẩn, route qua `issue_slot()` để giữ kiểm tra quota dưới row lock
   - Quota đầy → lỗi trên form, không phải 500
-- [x] **35.2** Action **Làm mới thiết bị** — reset slot về `UNCLAIMED` tại chỗ, giữ `client_code` và lịch sử
+- [x] **34a.2** Action **Làm mới thiết bị** — reset slot về `UNCLAIMED` tại chỗ, giữ `client_code` và lịch sử
   - Sinh mã mới, xoá `device_id`/`hardware_hash`, gia hạn TTL, reset `claim_attempts`
   - Blacklist token máy cũ để app đăng xuất sạch
-- [x] **35.3** `verify_pairing_code()` khớp slot **theo mã** thay vì theo `created_at`
-- [x] **35.4** `claim_slot()` bọc `IntegrityError` thành `SlotError` (400 thay vì 500)
-- [x] **35.5** Sửa bug có sẵn: `issue_tokens_for_device()` ghi `OutstandingToken` trước khi gắn claim `device_id` → `blacklist_tokens_for_devices()` chưa bao giờ khớp (ảnh hưởng cả `revoke_slots` từ feature-34)
-- [x] **35.6** Nút "Làm mới thiết bị" trên change form kèm pop-up xác nhận, POST-only, ẩn với slot đã chết
-- [x] **35.7** Test T35-1…T35-21 — 55/55 test backend xanh
+- [x] **34a.3** `verify_pairing_code()` khớp slot **theo mã** thay vì theo `created_at`
+- [x] **34a.4** `claim_slot()` bọc `IntegrityError` thành `SlotError` (400 thay vì 500)
+- [x] **34a.5** Sửa bug có sẵn: `issue_tokens_for_device()` ghi `OutstandingToken` trước khi gắn claim `device_id` → `blacklist_tokens_for_devices()` chưa bao giờ khớp (ảnh hưởng cả `revoke_slots`)
+- [x] **34a.6** Nút "Làm mới thiết bị" trên change form kèm pop-up xác nhận, POST-only, ẩn với slot đã chết
+- [x] **34a.7** Test T35-1…T35-21 (numbering test gốc, giữ nguyên) — 55/55 test backend xanh
 
 > **Không có migration** — chỉ đổi giá trị trong cột đã có của `users_mobiledevice`
 
 ---
 
-### Feature 36: Quản lý phiên bản app & cập nhật trong app ✅ COMPLETE
+#### 34b. Quản lý phiên bản app & cập nhật trong app ✅ COMPLETE
 **Priority**: High | **Status**: ✅ Implemented (2026-08-30)
 
-- [x] **36.0** 🔴 **Hotfix**: `INTERNET` chỉ có trong manifest debug → APK release chưa từng gọi được API. Thêm vào manifest `main`
-- [x] **36.1** Model `AppRelease` + migration — `version_code` là đơn vị so sánh duy nhất; `CheckConstraint` chặn `min_supported > version_code`
-- [x] **36.2** `GET /api/app/version/` (AllowAny) — trả verdict `BLOCKED` / `AVAILABLE` / `UP_TO_DATE`
-- [x] **36.3** `GET /api/app/ios/manifest.plist` — sinh động, ký lại URL IPA mỗi request
-- [x] **36.4** `AppReleaseAdmin` — sha256 + file_size tự tính, chặn publish lùi version, hiện phân bố phiên bản đang chạy
-- [x] **36.5** Flutter: kiểm tra lúc mở app + resume (throttle 6h), **không** móc vào login
-- [x] **36.6** Verdict dính — kiểm tra thất bại không mở khoá được máy đang bị chặn
-- [x] **36.7** Nút "Bỏ qua" ghi nhớ theo `version_code`, tự dọn bản ghi cũ
-- [x] **36.8** Android: tải bằng dio + verify sha256 theo stream + MethodChannel gọi trình cài đặt; iOS: `itms-services://`
-- [x] **36.9** Giữ file 3 bản mới nhất mỗi nền tảng (xoá file, giữ row) + command `prune_app_releases`
-- [x] **36.10** Sửa `LocalFirstSupabaseStorage.delete()` — trước đó xoá file chỉ xoá bản local, object trên Supabase còn mãi (ảnh hưởng mọi `FileField`)
-- [x] **36.11** Test — 29 backend (86/86 toàn suite) + 15 Flutter unit
+- [x] **34b.0** 🔴 **Hotfix**: `INTERNET` chỉ có trong manifest debug → APK release chưa từng gọi được API. Thêm vào manifest `main`
+- [x] **34b.1** Model `AppRelease` + migration — `version_code` là đơn vị so sánh duy nhất; `CheckConstraint` chặn `min_supported > version_code`
+- [x] **34b.2** `GET /api/app/version/` (AllowAny) — trả verdict `BLOCKED` / `AVAILABLE` / `UP_TO_DATE`
+- [x] **34b.3** `GET /api/app/ios/manifest.plist` — sinh động, ký lại URL IPA mỗi request
+- [x] **34b.4** `AppReleaseAdmin` — sha256 + file_size tự tính, chặn publish lùi version, hiện phân bố phiên bản đang chạy
+- [x] **34b.5** Flutter: kiểm tra lúc mở app + resume (throttle 6h), **không** móc vào login
+- [x] **34b.6** Verdict dính — kiểm tra thất bại không mở khoá được máy đang bị chặn
+- [x] **34b.7** Nút "Bỏ qua" ghi nhớ theo `version_code`, tự dọn bản ghi cũ
+- [x] **34b.8** Android: tải bằng dio + verify sha256 theo stream + MethodChannel gọi trình cài đặt; iOS: `itms-services://`
+- [x] **34b.9** Giữ file 3 bản mới nhất mỗi nền tảng (xoá file, giữ row) + command `prune_app_releases`
+- [x] **34b.10** Sửa `LocalFirstSupabaseStorage.delete()` — trước đó xoá file chỉ xoá bản local, object trên Supabase còn mãi (ảnh hưởng mọi `FileField`)
+- [x] **34b.11** Test — 29 backend (86/86 toàn suite) + 15 Flutter unit
 
 > ⚠️ **Vận hành**: APK phải ký đúng keystore hiện tại (D1/D3). Mỗi lần build IPA phải export lại profile với UDID hiện hành (O1). Không bao giờ dùng lại một `version_code` đã publish.
-> **Thay thế bởi feature-37** — iOS chuyển sang TestFlight, Android đơn giản hoá còn 1 bản duy nhất.
+> **Thay thế bởi 34c** — iOS chuyển sang TestFlight, Android đơn giản hoá còn 1 bản duy nhất.
 
 ---
 
-### Feature 37: Đơn giản hoá cập nhật app — chỉ APK, 1 bản duy nhất ✅ COMPLETE
+#### 34c. Đơn giản hoá cập nhật app — chỉ APK, 1 bản duy nhất ✅ COMPLETE
 **Priority**: High | **Status**: ✅ Implemented (2026-08-31)
 
-- [x] **37.1** `AppRelease` trở thành singleton (Android only, `platform` unique) — migration 0002 viết lại tại chỗ + seed 1 row
-- [x] **37.2** `version_code`/`version_name` tự đọc từ APK bằng `pyaxmlparser` trong `AppReleaseForm.clean_file()` — validate trước khi lưu, không nhập tay
-- [x] **37.3** Upload APK mới thành công → xoá file cũ trong `save_model()` (kể cả trên Supabase, tái dùng `LocalFirstSupabaseStorage.delete()`)
-- [x] **37.4** `GET /api/app/version/` rút gọn — không còn query param, không còn `min_supported_version_code`/`update_status`
-- [x] **37.5** Bỏ hẳn iOS OTA (`ios/manifest.plist`, `itms-services://`) — TestFlight thay thế toàn bộ
-- [x] **37.6** Bỏ hẳn mức "chặn cứng" — chỉ còn 1 modal nhắc, luôn đóng được
-- [x] **37.7** Xoá `release_pruning`, `prune_app_releases`, `version_spread`, `app_version.py` — không còn tác dụng
-- [x] **37.8** Mobile: `UpdateCubit.check()` bỏ qua trên iOS; `UpdateDecider` gộp về 1 hàm so sánh; bỏ `LastVerdict`/`BlockUpdate`
-- [x] **37.9** Giữ nguyên 100% luồng tải + verify sha256 + tự mở trình cài đặt Android (`AndroidInstaller`, `FileProvider`)
-- [x] **37.10** Test — 12 backend mới (76/76 toàn suite core+users) + 16 Flutter unit
+- [x] **34c.1** `AppRelease` trở thành singleton (Android only, `platform` unique) — migration 0002 viết lại tại chỗ + seed 1 row
+- [x] **34c.2** `version_code`/`version_name` tự đọc từ APK bằng `pyaxmlparser` trong `AppReleaseForm.clean_file()` — validate trước khi lưu, không nhập tay
+- [x] **34c.3** Upload APK mới thành công → xoá file cũ trong `save_model()` (kể cả trên Supabase, tái dùng `LocalFirstSupabaseStorage.delete()`)
+- [x] **34c.4** `GET /api/app/version/` rút gọn — không còn query param, không còn `min_supported_version_code`/`update_status`
+- [x] **34c.5** Bỏ hẳn iOS OTA (`ios/manifest.plist`, `itms-services://`) — TestFlight thay thế toàn bộ
+- [x] **34c.6** Bỏ hẳn mức "chặn cứng" — chỉ còn 1 modal nhắc, luôn đóng được
+- [x] **34c.7** Xoá `release_pruning`, `prune_app_releases`, `version_spread`, `app_version.py` — không còn tác dụng
+- [x] **34c.8** Mobile: `UpdateCubit.check()` bỏ qua trên iOS; `UpdateDecider` gộp về 1 hàm so sánh; bỏ `LastVerdict`/`BlockUpdate`
+- [x] **34c.9** Giữ nguyên 100% luồng tải + verify sha256 + tự mở trình cài đặt Android (`AndroidInstaller`, `FileProvider`)
+- [x] **34c.10** Test — 12 backend mới (76/76 toàn suite core+users) + 16 Flutter unit
 
 > **Vận hành**: migration `0002_apprelease` được viết lại tại chỗ (không giữ lịch sử schema cũ) — chỉ an toàn vì dự án chưa lên production, mọi DB đã áp dụng migration cũ phải `migrate core 0001` trước khi pull code mới (§3.7).
 
 ---
 
-### Feature 38: Rút ngắn `pairing_code` từ 12 xuống 6 ký tự ✅ COMPLETE
+#### 34d. Rút ngắn `pairing_code` từ 12 xuống 6 ký tự ✅ COMPLETE
 **Priority**: Medium | **Status**: ✅ Implemented (2026-08-31)
 
-- [x] **38.1** `PAIRING_BODY_LENGTH` 12 → 6, chia nhóm 3-3 (`TT-XXX-XXX`) thay vì 4-4-4 — không đổi schema, không migration
-- [x] **38.2** `pairing_code_display()` (admin mask) cập nhật theo nhóm mới
-- [x] **38.3** Mobile: `PairingCodeFormatter` (`pairing_code_field.dart`) chia nhóm 3, hint text `XXX-XXX`
-- [x] **38.4** Mã 12 ký tự đã phát trước khi deploy vẫn verify được bình thường (`normalize_code()` so theo giá trị, không theo độ dài) — có test riêng khẳng định
-- [x] **38.5** Test — 2 test backend mới (78/78 toàn suite core+users) + 7 Flutter formatter test
+- [x] **34d.1** `PAIRING_BODY_LENGTH` 12 → 6, chia nhóm 3-3 (`TT-XXX-XXX`) thay vì 4-4-4 — không đổi schema, không migration
+- [x] **34d.2** `pairing_code_display()` (admin mask) cập nhật theo nhóm mới
+- [x] **34d.3** Mobile: `PairingCodeFormatter` (`pairing_code_field.dart`) chia nhóm 3, hint text `XXX-XXX`
+- [x] **34d.4** Mã 12 ký tự đã phát trước khi deploy vẫn verify được bình thường (`normalize_code()` so theo giá trị, không theo độ dài) — có test riêng khẳng định
+- [x] **34d.5** Test — 2 test backend mới (78/78 toàn suite core+users) + 7 Flutter formatter test
 
 > **Lý do**: rào chắn thật là auth-gate (phải đăng nhập đúng trước) + 5 lần thử sai + hết hạn 7 ngày, không phải độ dài mã — 6 ký tự (~30 bit) vẫn dư an toàn hàng tỷ lần so với ngưỡng cần.
 
 ---
 
-### Feature 39: Mobile PDF Reader — cuộn liên tục, giữ load theo chapter ✅ COMPLETE
+#### 34e. Mobile PDF Reader — cuộn liên tục, giữ load theo chapter ✅ COMPLETE
 **Priority**: Medium | **Status**: ✅ Implemented (2026-09-01)
 
-- [x] **39.1** `PdfView`/`PdfController` (paged, vuốt ngang) → `PdfViewPinch`/`PdfControllerPinch` (cuộn dọc liên tục + pinch-zoom) — cùng package `pdfx` đã dùng, không thêm dependency
-- [x] **39.2** Load PDF theo chapter (decrypt lazy per-chapter) giữ nguyên 100% — không đổi API/DRM
-- [x] **39.3** Nút "Chương tiếp theo"/"Chương trước" ở đúng ranh giới chapter — tìm chapter kế/trước theo `order` gần nhất (không giả định `order` liên tục 1..N)
-- [x] **39.4** Vá bug có sẵn: TOC mobile luôn rỗng (`chapters: const []` hard-code) — nay lấy từ `getBookDetail()` thật
-- [x] **39.5** Vá bug phát hiện khi implement: `PdfViewPinch` không có `didUpdateWidget`, đổi `controller` mà không đổi `key` khiến Flutter tái dùng State cũ → hiện nhầm nội dung chương trước. Fix: `key: ValueKey(_bloc.pdfController)`
-- [x] **39.6** Tách event `ChangePage` (điều hướng chủ động — slider/mũi tên, gọi `jumpToPage`) vs `PageScrolled` (viewer tự báo khi cuộn tay — không gọi `jumpToPage`, tránh giằng gesture)
-- [x] **39.7** UI polish theo phản hồi tay: top bar (nút TOC) nền đặc hơn thay vì mờ dần cả thanh; bottom bar (page indicator + mũi tên) thêm `SafeArea(minimum:...)` + padding, tránh dán sát vùng gesture-nav hệ điều hành
+- [x] **34e.1** `PdfView`/`PdfController` (paged, vuốt ngang) → `PdfViewPinch`/`PdfControllerPinch` (cuộn dọc liên tục + pinch-zoom) — cùng package `pdfx` đã dùng, không thêm dependency
+- [x] **34e.2** Load PDF theo chapter (decrypt lazy per-chapter) giữ nguyên 100% — không đổi API/DRM
+- [x] **34e.3** Nút "Chương tiếp theo"/"Chương trước" ở đúng ranh giới chapter — tìm chapter kế/trước theo `order` gần nhất (không giả định `order` liên tục 1..N)
+- [x] **34e.4** Vá bug có sẵn: TOC mobile luôn rỗng (`chapters: const []` hard-code) — nay lấy từ `getBookDetail()` thật
+- [x] **34e.5** Vá bug phát hiện khi implement: `PdfViewPinch` không có `didUpdateWidget`, đổi `controller` mà không đổi `key` khiến Flutter tái dùng State cũ → hiện nhầm nội dung chương trước. Fix: `key: ValueKey(_bloc.pdfController)`
+- [x] **34e.6** Tách event `ChangePage` (điều hướng chủ động — slider/mũi tên, gọi `jumpToPage`) vs `PageScrolled` (viewer tự báo khi cuộn tay — không gọi `jumpToPage`, tránh giằng gesture)
+- [x] **34e.7** UI polish theo phản hồi tay: top bar (nút TOC) nền đặc hơn thay vì mờ dần cả thanh; bottom bar (page indicator + mũi tên) thêm `SafeArea(minimum:...)` + padding, tránh dán sát vùng gesture-nav hệ điều hành
 
 > **Đã test trên thiết bị Android thật** (build debug, backend local docker): cuộn, pinch-zoom, watermark, TOC, chuyển chương lần đầu (nội dung đúng) — xác nhận qua ảnh chụp màn hình trực tiếp trên máy.
 > **Còn treo, chưa tự xác nhận lại**: trang đích chính xác sau khi chuyển chương (kỳ vọng về trang 1, code review đúng logic nhưng chưa re-test sạch do lỗi tọa độ ADB khi test tay); chưa có bloc test (module `books` mobile hiện chưa có tiền lệ test nào).
@@ -332,16 +333,16 @@
 
 ---
 
-### Feature 40: Mobile Video Detail — thumbnail bài học + header khoá học giống web ✅ COMPLETE
+#### 34f. Mobile Video Detail — thumbnail bài học + header khoá học giống web ✅ COMPLETE
 **Priority**: Medium | **Status**: ✅ Implemented (2026-09-02)
 
-- [x] **40.1** Thumbnail 72×42 trong `lesson_list_item.dart` (dữ liệu đã sẵn end-to-end, chỉ thiếu render) — dùng `CachedNetworkImage` đúng pattern `video_card.dart`
-- [x] **40.2** Header khoá học: giảng viên, badge trình độ (màu theo cấp), tag số bài học + tổng thời lượng, progress bar %, mô tả "Xem thêm"/"Thu gọn" — parse thêm 4 field backend đã có sẵn (`instructor`, `level`, `total_lessons`, `total_duration_seconds`) vào `VideoDetail`/`VideoDetailModel`
-- [x] **40.3** Thêm `getCourseProgress()` gọi `GET /api/videos/{slug}/progress/` (endpoint có sẵn, chưa ai dùng) — fetch song song với detail, lỗi không chặn nội dung chính
-- [x] **40.4** Bỏ `_PriceSection` hiển thị giá thường trực (kể cả khi đã mua) — gộp về 1 CTA duy nhất theo `canAccess`
-- [x] **40.5** Bỏ hero-image `SliverAppBar`, thay bằng back-link "‹ Khóa học" — theo yêu cầu trực tiếp của user, khớp 100% web (web cũng đã bỏ banner này)
-- [x] **40.6** Vá bug phát hiện khi test: `PdfViewPinch`-style bug tương tự không xảy ra ở đây, nhưng phát hiện bug khác — backend **chưa từng trả** `last_watched_lesson` trong response course-detail (field chết từ trước, mobile đọc nhầm), và mobile **chưa từng gọi** `POST .../progress/last-lesson/` để đánh dấu bài đang xem. Fix: `VideoPlayerBloc` gọi `setLastLesson()` fire-and-forget khi load bài; label CTA đổi sang dùng `progress.completedLessons > 0` (đúng, giống web) thay vì field chết; đích đến CTA gọi `getLastLessonOrder()` lazy lúc bấm (giống web `startOrContinue()`)
-- [x] **40.7** Refetch `LoadVideoDetail(forceRefresh: true)` khi quay lại từ player — Flutter Navigator giữ nguyên bloc/state khi pop, không tự remount như Vue Router (khác biệt kiến trúc điều hướng thật, không phải bug)
+- [x] **34f.1** Thumbnail 72×42 trong `lesson_list_item.dart` (dữ liệu đã sẵn end-to-end, chỉ thiếu render) — dùng `CachedNetworkImage` đúng pattern `video_card.dart`
+- [x] **34f.2** Header khoá học: giảng viên, badge trình độ (màu theo cấp), tag số bài học + tổng thời lượng, progress bar %, mô tả "Xem thêm"/"Thu gọn" — parse thêm 4 field backend đã có sẵn (`instructor`, `level`, `total_lessons`, `total_duration_seconds`) vào `VideoDetail`/`VideoDetailModel`
+- [x] **34f.3** Thêm `getCourseProgress()` gọi `GET /api/videos/{slug}/progress/` (endpoint có sẵn, chưa ai dùng) — fetch song song với detail, lỗi không chặn nội dung chính
+- [x] **34f.4** Bỏ `_PriceSection` hiển thị giá thường trực (kể cả khi đã mua) — gộp về 1 CTA duy nhất theo `canAccess`
+- [x] **34f.5** Bỏ hero-image `SliverAppBar`, thay bằng back-link "‹ Khóa học" — theo yêu cầu trực tiếp của user, khớp 100% web (web cũng đã bỏ banner này)
+- [x] **34f.6** Vá bug phát hiện khi test: `PdfViewPinch`-style bug tương tự không xảy ra ở đây, nhưng phát hiện bug khác — backend **chưa từng trả** `last_watched_lesson` trong response course-detail (field chết từ trước, mobile đọc nhầm), và mobile **chưa từng gọi** `POST .../progress/last-lesson/` để đánh dấu bài đang xem. Fix: `VideoPlayerBloc` gọi `setLastLesson()` fire-and-forget khi load bài; label CTA đổi sang dùng `progress.completedLessons > 0` (đúng, giống web) thay vì field chết; đích đến CTA gọi `getLastLessonOrder()` lazy lúc bấm (giống web `startOrContinue()`)
+- [x] **34f.7** Refetch `LoadVideoDetail(forceRefresh: true)` khi quay lại từ player — Flutter Navigator giữ nguyên bloc/state khi pop, không tự remount như Vue Router (khác biệt kiến trúc điều hướng thật, không phải bug)
 
 > **Đã test trên thiết bị Android thật + verify qua DB** (`UserCourseProgress.last_lesson`): mở bài 1 → quay lại → CTA vào đúng bài 1; mở bài 3 → quay lại → CTA vào đúng bài 3 (loại trừ trùng hợp fallback). Badge trình độ + tag số bài/thời lượng + thumbnail đã xác nhận đúng trên máy thật.
 > **Còn treo**: label "Tiếp tục học" (cần hoàn thành ≥1 bài thật để test, chưa mô phỏng được qua ADB); dòng giảng viên trên khoá có data (chưa chụp được ảnh trực tiếp do lỗi tọa độ ADB, nhưng cùng pattern code đã xác nhận đúng ở phần tag).
@@ -349,26 +350,48 @@
 
 ---
 
-### Feature 41: Mobile Book Detail — badge/CTA/tiến độ đọc giống web ✅ COMPLETE
+#### 34g. Mobile Book Detail — badge/CTA/tiến độ đọc giống web ✅ COMPLETE
 **Priority**: Medium | **Status**: ✅ Implemented (2026-09-02)
 
-- [x] **41.1** Vá bug parse field không tồn tại: `isVipOnly` đọc `json['is_vip_only']` — backend không có field này, VIP là thuộc tính **user** (`user_type`) chứ không phải sách. Xoá `isVipOnly` khỏi `BookDetail` (chỉ phạm vi Detail — `Book` dùng cho `book_card.dart`/danh sách giữ nguyên, bug đó vẫn còn, ghi nhận follow-up ngoài phạm vi), lấy VIP qua `AuthCubit` (bloc inject thêm `AuthCubit`, cần chạy lại `build_runner` để regenerate DI config)
-- [x] **41.2** Thêm `isFree`, `smallCoverUrl` vào `BookDetail`/`BookDetailModel` (field backend có sẵn, chưa parse)
-- [x] **41.3** Badge row: Miễn phí/VIP/Đã mua (ưu tiên 1 trong 3) + Mới + category — trước đó chỉ có category chip
-- [x] **41.4** CTA gộp về 1 nút không điều kiện theo `hasPurchased` riêng (trước đó free/VIP-chưa-mua không có nút nào) — theo đúng `isUnlocked = isFree || isVip || hasPurchased`
-- [x] **41.5** Thêm `getReadingProgress()` vào `BookDetailBloc`, chỉ fetch khi sách đã unlock (giống web) — trước đó `book_detail_bloc.dart` chưa từng gọi, nhánh "Tiếp tục đọc" cũ dựa vào field chết (`reading_progress` không tồn tại trong response thật)
-- [x] **41.6** Badge "Trang X" + highlight viền vàng cho chương đang đọc dở trong `_ChapterListItem`, header đổi "Danh sách chương" → "Nội dung · N chương"
-- [x] **41.7** Refetch khi quay lại từ reader — áp cả 2 call-site (nút CTA + tap từng chương), theo đúng pattern feature-40
+- [x] **34g.1** Vá bug parse field không tồn tại: `isVipOnly` đọc `json['is_vip_only']` — backend không có field này, VIP là thuộc tính **user** (`user_type`) chứ không phải sách. Xoá `isVipOnly` khỏi `BookDetail` (chỉ phạm vi Detail — `Book` dùng cho `book_card.dart`/danh sách giữ nguyên, bug đó vẫn còn, ghi nhận follow-up ngoài phạm vi), lấy VIP qua `AuthCubit` (bloc inject thêm `AuthCubit`, cần chạy lại `build_runner` để regenerate DI config)
+- [x] **34g.2** Thêm `isFree`, `smallCoverUrl` vào `BookDetail`/`BookDetailModel` (field backend có sẵn, chưa parse)
+- [x] **34g.3** Badge row: Miễn phí/VIP/Đã mua (ưu tiên 1 trong 3) + Mới + category — trước đó chỉ có category chip
+- [x] **34g.4** CTA gộp về 1 nút không điều kiện theo `hasPurchased` riêng (trước đó free/VIP-chưa-mua không có nút nào) — theo đúng `isUnlocked = isFree || isVip || hasPurchased`
+- [x] **34g.5** Thêm `getReadingProgress()` vào `BookDetailBloc`, chỉ fetch khi sách đã unlock (giống web) — trước đó `book_detail_bloc.dart` chưa từng gọi, nhánh "Tiếp tục đọc" cũ dựa vào field chết (`reading_progress` không tồn tại trong response thật)
+- [x] **34g.6** Badge "Trang X" + highlight viền vàng cho chương đang đọc dở trong `_ChapterListItem`, header đổi "Danh sách chương" → "Nội dung · N chương"
+- [x] **34g.7** Refetch khi quay lại từ reader — áp cả 2 call-site (nút CTA + tap từng chương), theo đúng pattern 34f
 
 > **Build sạch** (`flutter analyze` 0 lỗi, `flutter build apk` thành công) — chưa kịp test lại trên thiết bị thật (mất kết nối ADB giữa chừng, user chuyển sang tự chạy `flutter run`).
-> **Quyết định đáng chú ý**: endpoint `GET /books/{slug}/progress/` luôn trả mặc định `{chapter_order:1, current_page:1}` khi chưa có tiến độ (không trả null/404) — không thể dùng "có giá trị hay không" để suy ra "đã đọc chưa" (cùng bẫy đã gặp ở feature-40 với last-lesson). Công thức dùng: `currentPage > 1 || có chương completed` — PO đã duyệt, chấp nhận edge case hiếm (đọc đúng hết trang 1 rồi thoát vẫn hiện "Đọc ngay").
-- [x] **41.8** Bỏ hero-image `SliverAppBar` full-viền → back-link "‹ Danh sách sách" + thumbnail nhỏ (80×110, bo góc) đặt cạnh title/author/badge — theo yêu cầu trực tiếp user sau khi so ảnh web thật (đảo quyết định v1, giống cách feature-40 đã làm với Video Detail)
-- [x] **41.9** Vá bug phát hiện khi test trên máy thật: `saveChapterProgress()` (mobile) **chưa từng gửi cờ `completed`** lên backend (`BookChapterProgressUpdateView` mặc định `False` nếu thiếu) — nên chương đọc xong không bao giờ hiện dấu ✓, dù `is_completed` đã parse đúng từ lâu. Fix: `book_reader_bloc.dart` tính `completed = currentPage >= totalPages` và gửi ở mọi lần lưu (không chỉ khi true, để cuộn lùi lại đúng un-mark) — xuyên suốt `saveChapterProgress` ở datasource/repository. **Lưu ý**: chỉ áp dụng cho lần lưu mới, không backfill dữ liệu `completed=False` đã lưu sai từ trước.
-- [x] **41.10** Chapter list: mỗi chương tách thành card riêng (bo góc, cách nhau 8px) thay vì list liền mạch — theo ảnh tham chiếu web
-- [x] **41.11** Dấu ✓ chương hoàn thành: màu đúng `--accent-gold` (không phải xanh lá như thử ban đầu), và bỏ nền tròn — chỉ dấu tick trơn, khớp đúng `CheckIcon.vue` thật bên web (stroke polyline, không có circle background)
-- [x] **41.12** Vá bug có sẵn (ảnh hưởng cả Video Detail feature-40): `CustomScrollView` thiếu `physics: AlwaysScrollableScrollPhysics()` → pull-to-refresh không hoạt động khi nội dung ngắn hơn màn hình (không đủ để tạo overscroll) — đúng tình huống phổ biến (sách/khoá ít chương). Sửa cả 2 file.
+> **Quyết định đáng chú ý**: endpoint `GET /books/{slug}/progress/` luôn trả mặc định `{chapter_order:1, current_page:1}` khi chưa có tiến độ (không trả null/404) — không thể dùng "có giá trị hay không" để suy ra "đã đọc chưa" (cùng bẫy đã gặp ở 34f với last-lesson). Công thức dùng: `currentPage > 1 || có chương completed` — PO đã duyệt, chấp nhận edge case hiếm (đọc đúng hết trang 1 rồi thoát vẫn hiện "Đọc ngay").
+- [x] **34g.8** Bỏ hero-image `SliverAppBar` full-viền → back-link "‹ Danh sách sách" + thumbnail nhỏ (80×110, bo góc) đặt cạnh title/author/badge — theo yêu cầu trực tiếp user sau khi so ảnh web thật (đảo quyết định v1, giống cách 34f đã làm với Video Detail)
+- [x] **34g.9** Vá bug phát hiện khi test trên máy thật: `saveChapterProgress()` (mobile) **chưa từng gửi cờ `completed`** lên backend (`BookChapterProgressUpdateView` mặc định `False` nếu thiếu) — nên chương đọc xong không bao giờ hiện dấu ✓, dù `is_completed` đã parse đúng từ lâu. Fix: `book_reader_bloc.dart` tính `completed = currentPage >= totalPages` và gửi ở mọi lần lưu (không chỉ khi true, để cuộn lùi lại đúng un-mark) — xuyên suốt `saveChapterProgress` ở datasource/repository. **Lưu ý**: chỉ áp dụng cho lần lưu mới, không backfill dữ liệu `completed=False` đã lưu sai từ trước.
+- [x] **34g.10** Chapter list: mỗi chương tách thành card riêng (bo góc, cách nhau 8px) thay vì list liền mạch — theo ảnh tham chiếu web
+- [x] **34g.11** Dấu ✓ chương hoàn thành: màu đúng `--accent-gold` (không phải xanh lá như thử ban đầu), và bỏ nền tròn — chỉ dấu tick trơn, khớp đúng `CheckIcon.vue` thật bên web (stroke polyline, không có circle background)
+- [x] **34g.12** Vá bug có sẵn (ảnh hưởng cả Video Detail 34f): `CustomScrollView` thiếu `physics: AlwaysScrollableScrollPhysics()` → pull-to-refresh không hoạt động khi nội dung ngắn hơn màn hình (không đủ để tạo overscroll) — đúng tình huống phổ biến (sách/khoá ít chương). Sửa cả 2 file.
 
 > **Đã test trên thiết bị Android thật** (kể cả set/revert tạm `UserChapterProgress.completed=True` qua Django shell để xác nhận màu/style dấu tick, không để lại thay đổi dữ liệu): layout thumbnail nhỏ + badge + CTA + highlight chương đang đọc + card riêng biệt + dấu tick đúng màu/style — khớp 100% ảnh tham chiếu web.
+
+---
+
+### Feature 35: Background APK Download ✅ COMPLETE (chờ test tay)
+**Priority**: Medium | **Status**: ✅ Implemented (2026-09-01)
+
+- [x] **35.1** `ApkDownloadService.kt` (Foreground Service, `foregroundServiceType="dataSync"`) — tải APK bằng `HttpURLConnection` thuần, ghi `getExternalFilesDir()`, verify sha256, ghi trạng thái vào `SharedPreferences` riêng (`apk_download_state`)
+- [x] **35.2** `DownloadNotifications.kt` — notification 3 trạng thái (đang tải % / tải xong bấm để cài / thất bại)
+- [x] **35.3** `ApkInstaller.kt` — tách logic `FileProvider`/`Intent.ACTION_VIEW` khỏi `MainActivity`, dùng chung cho `MainActivity` và `InstallApkReceiver`
+- [x] **35.4** `InstallApkReceiver.kt` (`BroadcastReceiver`) — mở system installer khi bấm notification "Tải xong" dù app đã bị kill, không cần Flutter engine sống
+- [x] **35.5** `ApkDownloaderPlugin.kt` — MethodChannel `pro.huyenhoc.app/downloader` (`startDownload`, `getDownloadStatus`) + EventChannel `.../events` (progress/completed/failed)
+- [x] **35.6** `MainActivity.kt` — thêm `hasNotificationPermission()`/`requestNotificationPermission()` (`ActivityCompat.requestPermissions()`, không thêm package `permission_handler`) trên channel `pro.huyenhoc.app/installer` có sẵn
+- [x] **35.7** `AndroidManifest.xml` — 3 permission mới (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`) + khai `<service>` + `<receiver exported="false">`
+- [x] **35.8** `apk_downloader.dart` (Dart wrapper MethodChannel+EventChannel) + `installer.dart` thêm 2 method notification permission
+- [x] **35.9** `update_cubit.dart` — `_downloadAndInstall()` gọi `ApkDownloader` thay vì Dio; `restoreDownloadState()` phục hồi state lúc app khởi động lại (gọi từ `main.dart`); `checkInstallPermission()` mới
+- [x] **35.10** `update_view.dart` — chuyển `StatefulWidget` + `WidgetsBindingObserver`, ẩn nút "Cập nhật" (chỉ còn "Mở cài đặt") khi chưa có quyền cài APK, check lại quyền mỗi lần app resume
+- [x] **35.11** Xoá `UpdateRepository.download()` + `refreshDownloadUrl()` (không còn caller — retry-with-fresh-URL không áp dụng khi Service tự tải, xem đánh đổi đã duyệt ở design doc §5.3)
+- [x] **35.12** Viết lại `update_cubit_test.dart` cho kiến trúc event-driven mới — 18 test case (tổng 21/21 `test/features/update/` xanh)
+
+> **Design doc**: [feature-35-background-apk-download.md](design/feature-35-background-apk-download.md)
+> **Đánh đổi đã chấp nhận**: hành vi cũ "signed URL hết hạn giữa chừng tự refresh + retry" (feature-36 §7.2) không còn — `ApkDownloadService` nhận 1 URL cố định lúc bắt đầu, không tự gọi API xin URL mới. Rủi ro thấp trong thực tế (Bunny CDN tải nhanh); user bấm "Cập nhật" lại là lấy URL mới từ đầu.
+> **Còn treo — chưa tự xác nhận**: test tay T35-1 → T35-12 trên thiết bị Android thật (§7 design doc) — Foreground Service, notification thật, và hành vi khi app bị kill không kiểm tra được đầy đủ qua unit test.
 
 ---
 
@@ -682,7 +705,9 @@
 | Feature 15. Client-Side Caching | ✅ |
 | Feature 16. PDF Reader V1 (UX + DRM) | 📝 Design done, chưa implement |
 | Feature 17. Admin Activity Dashboard | 📝 Design done, chưa implement |
+| Feature 34. Mobile Device, App Update & Mobile UI Parity | ✅ (gộp sub-feature 34a–34g, trước đây đánh số 35–41 độc lập) |
+| Feature 35. Background APK Download | ✅ Code done, chờ test tay trên thiết bị thật |
 
 ---
 
-*Last updated: 2026-03-13 (v1.7 — Feature 17 Admin Activity Dashboard design doc added)*
+*Last updated: 2026-09-01 (v1.8 — Renumber: Feature 35–41 cũ gộp thành sub-section 34a–34g của Feature 34, giải phóng số 35 cho Background APK Download design doc mới)*

@@ -7,6 +7,14 @@
          Restricted on Google Play, which does not apply: we self-distribute. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
+    <!-- ApkDownloadService keeps the update download alive after the app
+         leaves the foreground or gets killed (feature-35 §2.4). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Runtime permission on Android 13+ for the progress notification;
+         requested from Dart right before the download starts (feature-35 §5.3). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Huyền Học Pro"
         android:name="${applicationName}"
@@ -40,6 +48,20 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Downloads the update APK independently of the Flutter engine, so a
+             backgrounded or killed app does not lose progress (feature-35 §3). -->
+        <service
+            android:name=".ApkDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
+
+        <!-- Opens the system installer from the "Download complete" notification
+             when the app has already been killed — a BroadcastReceiver runs
+             without needing the Flutter engine alive (feature-35 §5.4). -->
+        <receiver
+            android:name=".InstallApkReceiver"
+            android:exported="false"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"

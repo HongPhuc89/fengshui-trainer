@@ -73,6 +73,12 @@ Future<void> _runApp() async {
   // screen. The result arrives through UpdateGate when it arrives (§7.5).
   unawaited(getIt<UpdateCubit>().check());
 
+  // Recovers from ApkDownloadService having finished (or still running) while
+  // the app was killed mid-download — must run before the user can tap
+  // "Cập nhật" again, or the Foreground Service is asked to redo a finished
+  // download (feature-35 §3.4).
+  unawaited(getIt<UpdateCubit>().restoreDownloadState());
+
   // Force portrait
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
