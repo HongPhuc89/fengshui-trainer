@@ -2,6 +2,23 @@
 
 A new Flutter project.
 
+## Building a production APK
+
+Before running `flutter build apk`, bump the build number past whatever
+version is currently published on the server, so the APK you build never
+collides with a `version_code` already live (Android refuses installing over
+a lower `version_code`):
+
+```bash
+cd src/mobile
+dart run scripts/bump_version.dart          # keep version name, bump build number only
+dart run scripts/bump_version.dart 1.0.4    # also set a new version name
+flutter build apk --release --dart-define-from-file=env.prod.json
+```
+
+This edits `pubspec.yaml` in place — review the diff and commit it once the
+build is confirmed good. See `scripts/bump_version.dart` for details.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
