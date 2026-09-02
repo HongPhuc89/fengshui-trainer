@@ -54,7 +54,8 @@ Future<void> main(List<String> args) async {
   ].reduce((a, b) => a > b ? a : b);
   final nextVersionCode = floor + 1;
 
-  final nextVersionName = args.isNotEmpty ? args[0] : localVersionName;
+  final nextVersionName =
+      args.isNotEmpty && args[0].isNotEmpty ? args[0] : localVersionName;
 
   final updated = content.replaceFirst(
     versionLine.group(0)!,

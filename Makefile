@@ -107,6 +107,8 @@ frontend-deploy: ## Build and deploy frontend to Firebase Hosting
 MOBILE = src/mobile
 # Default env file — override: make mobile-dev ENV=env.staging.json
 MOBILE_ENV ?= env.dev.json
+# Optional new version name for a prod build — override: make mobile-build-apk-prod VERSION_NAME=1.0.4
+VERSION_NAME ?=
 
 mobile-install: ## Install Flutter dependencies
 	cd $(MOBILE) && flutter pub get
@@ -123,7 +125,8 @@ mobile-build-apk: ## Build debug APK using env.dev.json
 mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobile-build-apk-release ENV=env.prod.json)
 	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=$(MOBILE_ENV)
 
-mobile-build-apk-prod: ## Build release APK for production (uses src/mobile/env.prod.json)
+mobile-build-apk-prod: ## Bump version past server's, then build release APK for production (uses src/mobile/env.prod.json)
+	cd $(MOBILE) && dart run scripts/bump_version.dart $(VERSION_NAME)
 	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=env.prod.json
 
 mobile-build-apk-uat: ## Build debug APK against production API (env.uat.json) — for manual QA where screenshots must work
