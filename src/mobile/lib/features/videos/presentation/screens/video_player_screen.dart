@@ -27,7 +27,8 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen>
+    with WidgetsBindingObserver {
   late final VideoPlayerBloc _bloc;
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
@@ -45,6 +46,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ScreenGuard.preventCapture();
     ScreenGuard.protectDataLeakage();
     _bloc = getIt<VideoPlayerBloc>()
@@ -58,11 +60,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _chewieController?.dispose();
     _videoController?.dispose();
     _bloc.close();
     ScreenGuard.allowDataLeakage();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // ExoPlayer otherwise keeps buffering/decoding the network stream while
+    // the app is backgrounded; a connectivity hiccup in that state threw an
+    // unhandled PlatformException(VideoError, ... Source error) straight to
+    // PlatformDispatcher.onError (Sentry FENGSHUI-TRAINER-MOBILE-1). Pausing
+    // on background avoids feeding the player a source error nobody can see.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _videoController?.pause();
+    }
   }
 
   Future<void> _initVideo(LessonContent lesson) async {
@@ -124,8 +140,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ),
     );
 
-    // Save progress every 5 seconds
+    // Save progress every 5 seconds; also surface playback-time errors.
+    // initialize()'s try/catch above only covers the initial load — once
+    // playback has started, a later native error (e.g. a dropped CDN
+    // connection) instead lands here as controller.value.hasError, and was
+    // previously silently ignored, leaving a frozen player with no feedback
+    // (Sentry FENGSHUI-TRAINER-MOBILE-1).
     controller.addListener(() {
+      if (!mounted || _currentLesson != lesson) return;
+      if (controller.value.hasError) {
+        if (_playerError == null) {
+          setState(() {
+            _playerError =
+                'Video bị gián đoạn. Vui lòng kiểm tra kết nối mạng rồi '
+                'thử lại.';
+          });
+        }
+        return;
+      }
       final pos = controller.value.position;
       if (pos.inSeconds % 5 == 0 && pos.inSeconds > 0) {
         _bloc.add(SaveProgress(pos.inSeconds));
@@ -168,48 +200,55 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   children: [
                     AspectRatio(
                       aspectRatio: 16 / 9,
-                      child: _chewieController != null
+                      // Error takes priority over an already-initialized
+                      // Chewie: a playback-time error (set via the
+                      // controller listener above) can fire after
+                      // _chewieController is no longer null, and must still
+                      // replace the (now broken) player view.
+                      child: _playerError != null
+                          ? Container(
+                              color: Colors.black,
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: AppColors.error,
+                                        size: 40,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        _playerError!,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          final lesson = _currentLesson;
+                                          if (lesson != null) {
+                                            _initVideo(lesson);
+                                          }
+                                        },
+                                        child: const Text('Thử lại'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : _chewieController != null
                           ? Chewie(controller: _chewieController!)
                           : Container(
                               color: Colors.black,
-                              child: _playerError != null
-                                  ? Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.error_outline,
-                                              color: AppColors.error,
-                                              size: 40,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              _playerError!,
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 16),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                final lesson = _currentLesson;
-                                                if (lesson != null) {
-                                                  _initVideo(lesson);
-                                                }
-                                              },
-                                              child: const Text('Thử lại'),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  : state is VideoPlayerLoading
+                              child: state is VideoPlayerLoading
                                   ? const Center(
                                       child: CircularProgressIndicator(
                                         color: AppColors.primaryGold,
