@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import boto3
 from celery import shared_task
 from django.conf import settings
+from django.core.management import call_command
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +97,9 @@ def backup_database(self):
             os.unlink(tmp_path)
 
     return {"filename": filename, "size_kb": round(len(compressed) / 1024, 1)}
+
+
+@shared_task(name="core.flush_expired_tokens")
+def flush_expired_tokens():
+    """Delete expired JWT OutstandingToken rows (and their cascaded BlacklistedToken rows)."""
+    call_command("flushexpiredtokens")

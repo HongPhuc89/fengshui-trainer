@@ -21,6 +21,10 @@ app.conf.beat_schedule = {
         "task": "users.backfill_device_geo",
         "schedule": crontab(hour=17, minute=0),  # 17h UTC (0h ICT) daily
     },
+    "flush-expired-tokens": {
+        "task": "core.flush_expired_tokens",
+        "schedule": crontab(hour=18, minute=0, day_of_week=0),  # weekly, Sun 18h UTC (1h ICT Mon)
+    },
 }
 
 
