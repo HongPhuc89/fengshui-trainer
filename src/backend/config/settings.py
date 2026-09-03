@@ -42,6 +42,26 @@ if APP_ENV in ("production", "staging") and SENTRY_DSN:
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.celery import CeleryIntegration
 
+    # `enable_logs=True` ships every INFO+ record from *any* Python logger in
+    # the process as a Sentry Log — including the Gunicorn/Django access log
+    # line for every single request. Measured over 14 days on this project:
+    # 24,406 total logs, of which 20,435 (83.7%) were the video/book progress
+    # heartbeat (saved every ~5s during playback/reading) and 586 (2.4%) were
+    # the uptime health-check endpoint — neither has per-line debugging value
+    # (a real failure there still surfaces as its own error event). Access
+    # logs for every other endpoint are kept so request-level debugging still
+    # works; only these two high-frequency, low-value paths are dropped.
+    _LOW_VALUE_LOG_PATHS = (
+        "/api/health/",
+        "/api/health-supabase/",
+        "/progress/",
+    )
+
+    def _filter_noisy_logs(log, hint):
+        if any(path in log.get("body", "") for path in _LOW_VALUE_LOG_PATHS):
+            return None
+        return log
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=APP_ENV,
@@ -49,6 +69,7 @@ if APP_ENV in ("production", "staging") and SENTRY_DSN:
         traces_sample_rate=0.1,
         send_default_pii=False,
         enable_logs=True,
+        before_send_log=_filter_noisy_logs,
     )
 
 
