@@ -54,3 +54,13 @@ docker-compose -f docker/docker-compose.yml exec web python manage.py migrate
 docker-compose -f docker/docker-compose.yml exec web python manage.py makemigrations
 docker-compose -f docker/docker-compose.yml exec web python manage.py shell
 ```
+
+## Sentry MCP Project Mapping
+
+When using the Sentry MCP tools, all 3 projects live under organization slug `scottfu89`. Map by the code area involved instead of asking the user:
+
+| Code area      | Sentry project slug        |
+| -------------- | --------------------------- |
+| `src/backend`  | `fengshui-trainer`           |
+| `src/frontend` | `fengshui-trainer-fe`        |
+| `src/mobile`   | `fengshui-trainer-mobile`    |
