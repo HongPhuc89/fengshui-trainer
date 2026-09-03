@@ -1,11 +1,13 @@
 from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
+from rest_framework_simplejwt.token_blacklist.admin import OutstandingTokenAdmin
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 from videos.bunny_file_storage import delete_pdf_from_bunny, upload_bytes_to_bunny
 
 from .models import AppRelease, DatabaseBackupProxy
-from .tasks import backup_database
+from .tasks import backup_database, flush_expired_tokens
 
 
 @admin.register(DatabaseBackupProxy)
@@ -102,3 +104,18 @@ class AppReleaseAdmin(admin.ModelAdmin):
                 request,
                 f'Đã publish version {obj.version_name} ({obj.version_code}) lên Bunny CDN.',
             )
+
+
+admin.site.unregister(OutstandingToken)
+
+
+@admin.register(OutstandingToken)
+class OutstandingTokenAdminWithFlush(OutstandingTokenAdmin):
+    change_list_template = "admin/token_blacklist/outstandingtoken/change_list.html"
+
+    def changelist_view(self, request, extra_context=None):
+        if request.method == "POST" and "trigger_flush" in request.POST:
+            flush_expired_tokens.delay()
+            self.message_user(request, "Đã đưa việc xoá token hết hạn vào queue.", messages.SUCCESS)
+            return redirect(".")
+        return super().changelist_view(request, extra_context)
