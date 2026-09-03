@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../core/observability/sentry_log_service.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../domain/entities/video.dart';
 
@@ -28,7 +29,10 @@ class VideoCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (_, __) =>
                           Container(color: AppColors.surface),
-                      errorWidget: (_, __, ___) => _placeholder(),
+                      errorWidget: (_, url, ___) {
+                        SentryLogService.trackImageLoadError(url);
+                        return _placeholder();
+                      },
                     )
                   : _placeholder(),
 

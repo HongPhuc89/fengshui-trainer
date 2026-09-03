@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../../../core/observability/sentry_log_service.dart';
 import '../../../../core/pdf/pdf_decryption_service.dart';
 import '../../domain/entities/book.dart';
 import '../../domain/repositories/books_repository.dart';
@@ -64,7 +65,14 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
     }
 
     await result.fold(
-      (failure) async => emit(BookReaderError(failure.message)),
+      (failure) async {
+        SentryLogService.trackPdfLoadError(
+          event.bookSlug,
+          event.chapterOrder,
+          failure.message,
+        );
+        emit(BookReaderError(failure.message));
+      },
       (chapter) async {
         try {
           int startPage = event.startPage ?? 1;
@@ -93,6 +101,7 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
             initialPage: startPage,
           );
 
+          SentryLogService.trackPdfLoad(event.bookSlug, chapter.order);
           emit(
             BookReaderLoaded(
               bookSlug: event.bookSlug,
@@ -108,6 +117,11 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
           // Network-layer failure fetching the encrypted file from the CDN
           // (DNS, connect, timeout) — distinct from a decrypt/format error,
           // which points at a real content problem, not the network.
+          SentryLogService.trackPdfLoadError(
+            event.bookSlug,
+            event.chapterOrder,
+            'network error',
+          );
           emit(
             const BookReaderError(
               'Không thể tải PDF. Vui lòng kiểm tra kết nối mạng, '
@@ -115,6 +129,11 @@ class BookReaderBloc extends Bloc<BookReaderEvent, BookReaderState> {
             ),
           );
         } catch (e) {
+          SentryLogService.trackPdfLoadError(
+            event.bookSlug,
+            event.chapterOrder,
+            e.toString(),
+          );
           emit(BookReaderError('Không thể tải PDF: ${e.toString()}'));
         }
       },

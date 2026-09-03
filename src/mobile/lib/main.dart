@@ -32,6 +32,10 @@ void main() async {
       options.dsn = AppConfig.sentryDsn;
       options.sendDefaultPii = true;
       options.tracesSampleRate = 1.0;
+      // Structured Logs (Sentry.logger / Sentry.metrics), used by
+      // SentryLogService — see feature-38 design doc for rationale and the
+      // web parity this mirrors (src/frontend/src/main.js).
+      options.enableLogs = true;
     },
     appRunner: _runApp,
   );

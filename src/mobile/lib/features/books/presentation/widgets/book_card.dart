@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../core/observability/sentry_log_service.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../domain/entities/book.dart';
 
@@ -43,7 +44,10 @@ class BookCard extends StatelessWidget {
                               color: AppColors.textSecondary, size: 40),
                         ),
                       ),
-                      errorWidget: (_, __, ___) => _placeholder(),
+                      errorWidget: (_, url, ___) {
+                        SentryLogService.trackImageLoadError(url);
+                        return _placeholder();
+                      },
                     )
                   : _placeholder(),
 

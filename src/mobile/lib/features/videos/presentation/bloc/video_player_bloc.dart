@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/observability/sentry_log_service.dart';
 import '../../domain/entities/video.dart';
 import '../../domain/repositories/videos_repository.dart';
 
@@ -40,13 +41,21 @@ class VideoPlayerBloc extends Bloc<VideoPlayerEvent, VideoPlayerState> {
     final detailResult = await detailFuture;
 
     lessonResult.fold(
-      (failure) => emit(VideoPlayerError(failure.message)),
+      (failure) {
+        SentryLogService.trackVideoLoadError(
+          event.courseSlug,
+          event.lessonSlug,
+          failure.message,
+        );
+        emit(VideoPlayerError(failure.message));
+      },
       (lesson) {
         // Fire-and-forget, matches web's setLastLesson(...).catch(() => {})
         // in VideoPlayerView.vue — must not block/delay playback, and a
         // failure here only means the course-detail CTA and Home's
         // "continue watching" card stay a step behind, not a real error.
         _repository.setLastLesson(event.courseSlug, event.lessonSlug);
+        SentryLogService.trackVideoLoad(event.courseSlug, event.lessonSlug);
         emit(
           VideoPlayerLoaded(
             courseSlug: event.courseSlug,

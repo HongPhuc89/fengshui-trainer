@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/observability/sentry_log_service.dart';
 import '../../../../core/security/screen_guard.dart';
 import '../../../../../core/auth/auth_cubit.dart';
 import '../../../../../core/di/injection.dart';
@@ -107,6 +108,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       await controller.initialize();
     } catch (e) {
       controller.dispose();
+      SentryLogService.trackVideoLoadError(
+        widget.courseSlug,
+        lesson.slug,
+        e.toString(),
+      );
       if (!mounted || _currentLesson != lesson) return;
       setState(() {
         _playerError =
@@ -150,6 +156,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (!mounted || _currentLesson != lesson) return;
       if (controller.value.hasError) {
         if (_playerError == null) {
+          SentryLogService.trackVideoLoadError(
+            widget.courseSlug,
+            lesson.slug,
+            controller.value.errorDescription ?? 'playback error',
+          );
           setState(() {
             _playerError =
                 'Video bị gián đoạn. Vui lòng kiểm tra kết nối mạng rồi '

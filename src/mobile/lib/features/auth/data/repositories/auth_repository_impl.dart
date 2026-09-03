@@ -6,6 +6,7 @@ import '../../../../core/auth/auth_cubit.dart';
 import '../../../../core/device/device_service.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/observability/sentry_log_service.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
@@ -41,6 +42,7 @@ class AuthRepositoryImpl implements AuthRepository {
       // The handset is bound from here on, so the login form can stop offering
       // the pairing-code field.
       await _deviceService.markPaired();
+      SentryLogService.trackLogin(user.email);
       return Right(user);
     } on PairingRequiredException catch (e) {
       return Left(PairingRequiredFailure(
