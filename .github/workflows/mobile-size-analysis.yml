@@ -30,7 +30,7 @@ jobs:
         run: flutter build apk --release --dart-define-from-file=env.prod.json
 
       - name: Install sentry-cli
-        run: curl -sL https://sentry.io/get-cli/ | bash
+        run: curl -sL https://sentry.io/get-cli/ | CLI_VERSION=2.58.2 bash
 
       - name: Upload size analysis to Sentry
         env:
@@ -38,7 +38,7 @@ jobs:
           SENTRY_ORG: scottfu89
           SENTRY_PROJECT: fengshui-trainer-mobile
         run: |
-          sentry-cli size-analysis upload \
+          sentry-cli build upload build/app/outputs/flutter-apk/app-release.apk \
             --org "$SENTRY_ORG" \
             --project "$SENTRY_PROJECT" \
-            build/app/outputs/flutter-apk/app-release.apk
+            --build-configuration Release
