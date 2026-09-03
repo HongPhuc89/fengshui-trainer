@@ -1,0 +1,43 @@
+name: Mobile Size Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  size-analysis:
+    name: Build APK & Analyze Size
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: src/mobile/pubspec.yaml
+          cache: true
+
+      - name: Create env config
+        run: echo '${{ secrets.MOBILE_ENV_PROD_JSON }}' > env.prod.json
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release --dart-define-from-file=env.prod.json
+
+      - name: Install sentry-cli
+        run: curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Upload size analysis to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: scottfu89
+          SENTRY_PROJECT: fengshui-trainer-mobile
+        run: |
+          sentry-cli size-analysis upload \
+            --org "$SENTRY_ORG" \
+            --project "$SENTRY_PROJECT" \
+            build/app/outputs/flutter-apk/app-release.apk
