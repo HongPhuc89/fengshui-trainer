@@ -125,9 +125,9 @@ mobile-build-apk: ## Build debug APK using env.dev.json
 mobile-build-apk-release: ## Build release APK — requires ENV= (e.g. make mobile-build-apk-release ENV=env.prod.json)
 	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=$(MOBILE_ENV)
 
-mobile-build-apk-prod: ## Bump version past server's, then build release APK for production (uses src/mobile/env.prod.json)
+mobile-build-apk-prod: ## Bump version past server's, then build release APK for production (arm64-v8a only, uses src/mobile/env.prod.json)
 	cd $(MOBILE) && dart run scripts/bump_version.dart $(VERSION_NAME)
-	cd $(MOBILE) && flutter build apk --release --dart-define-from-file=env.prod.json
+	cd $(MOBILE) && flutter build apk --release --target-platform android-arm64 --dart-define-from-file=env.prod.json
 
 mobile-build-apk-uat: ## Build debug APK against production API (env.uat.json) — for manual QA where screenshots must work
 	cd $(MOBILE) && flutter build apk --debug --dart-define-from-file=env.uat.json
