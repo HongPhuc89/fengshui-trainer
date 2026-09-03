@@ -7,9 +7,6 @@ jobs:
   size-analysis:
     name: Build APK & Analyze Size
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/mobile
 
     steps:
       - uses: actions/checkout@v4
@@ -21,13 +18,20 @@ jobs:
           cache: true
 
       - name: Create env config
-        run: echo '${{ secrets.MOBILE_ENV_PROD_JSON }}' > env.prod.json
+        run: echo '${{ secrets.MOBILE_ENV_PROD_JSON }}' > src/mobile/env.prod.json
 
       - name: Install dependencies
-        run: flutter pub get
+        run: make mobile-install
 
-      - name: Build release APK
-        run: flutter build apk --release --dart-define-from-file=env.prod.json
+      - name: Bump version and build release APK
+        run: make mobile-build-apk-prod
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: src/mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
 
       - name: Install sentry-cli
         run: curl -sL https://sentry.io/get-cli/ | CLI_VERSION=2.58.2 bash
@@ -38,7 +42,7 @@ jobs:
           SENTRY_ORG: scottfu89
           SENTRY_PROJECT: fengshui-trainer-mobile
         run: |
-          sentry-cli build upload build/app/outputs/flutter-apk/app-release.apk \
+          sentry-cli build upload src/mobile/build/app/outputs/flutter-apk/app-release.apk \
             --org "$SENTRY_ORG" \
             --project "$SENTRY_PROJECT" \
             --build-configuration Release
