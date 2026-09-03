@@ -6,11 +6,21 @@ import tempfile
 from datetime import datetime, timezone, timedelta
 
 import boto3
+import sentry_sdk
 from celery import shared_task
 from django.conf import settings
 from django.core.management import call_command
 
 logger = logging.getLogger(__name__)
+
+# Sentry free tier allows only 1 cron monitor, so it's reserved for the
+# highest-consequence periodic task: a silently failing backup means no
+# restore point when one is actually needed. Runs at 0h and 12h UTC — see
+# beat_schedule in config/celery.py.
+_BACKUP_MONITOR_CONFIG = {
+    "schedule": {"type": "crontab", "value": "0 0,12 * * *"},
+    "timezone": "UTC",
+}
 
 
 def _s3_client():
@@ -57,6 +67,11 @@ def backup_database(self):
         logger.info("Skipping backup: APP_ENV is not production.")
         return {"skipped": True, "reason": "not production"}
 
+    with sentry_sdk.crons.monitor(monitor_slug="db-backup", monitor_config=_BACKUP_MONITOR_CONFIG):
+        return _backup_database(self)
+
+
+def _backup_database(self):
     app_env = getattr(settings, "APP_ENV", "development")
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"db-backups/{app_env}/backup_{timestamp}.sql.gz"
