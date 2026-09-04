@@ -108,7 +108,6 @@ async function submit() {
     <PolicyBox :title="t('auth.policy.title')">
       {{ t('auth.policy.body') }}
     </PolicyBox>
-    <AuthLink to="/auth/register" :prefix="t('auth.login.noAccount')">{{ t('auth.login.registerLink') }}</AuthLink>
     </template>
 
   </div>
