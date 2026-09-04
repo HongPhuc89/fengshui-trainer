@@ -1,7 +1,7 @@
 name: huyenhoc
 description: "Huyền Học — Fengshui Learning Platform"
 publish_to: 'none'
-version: 1.0.3+8
+version: 1.0.3+10
 environment:
   sdk: ^3.10.7
 
@@ -77,6 +77,14 @@ dev_dependencies:
   build_runner: ^2.4.13
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
+
+dependency_overrides:
+  # path_provider_foundation pulls in objective_c 9.3.0 transitively, which has
+  # a build-hook bug (fixed in 9.4.1) that links the simulator arm64 slice into
+  # a device Release archive — App Store Connect rejects the resulting .ipa
+  # with "Invalid executable ... references an unsupported platform". Pin to a
+  # version past the fix (https://github.com/flutter/flutter/issues/186794).
+  objective_c: ^9.5.0
 
 flutter:
   uses-material-design: true

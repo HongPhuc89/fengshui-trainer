@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-run-uat mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-build-apk-uat mobile-clean mobile-analyze mobile-dev-ios mobile-run-uat-ios mobile-build-ios mobile-build-ios-release mobile-build-ipa-prod db-restore
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-run-uat mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-build-apk-uat mobile-clean mobile-analyze mobile-dev-ios mobile-run-uat-ios mobile-build-ios mobile-build-ios-release mobile-build-ipa-prod mobile-archive-ipa-prod mobile-export-ipa-prod db-restore
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -153,3 +153,16 @@ mobile-build-ios-release: ## Build release iOS app — requires MOBILE_ENV= (e.g
 mobile-build-ipa-prod: ## Bump version past server's, then build release IPA for production (uses src/mobile/env.prod.json)
 	cd $(MOBILE) && dart run scripts/bump_version.dart $(VERSION_NAME)
 	cd $(MOBILE) && flutter build ipa --release --dart-define-from-file=env.prod.json
+
+mobile-archive-ipa-prod: ## Archive-only step of the above, for when the export sub-step fails under `flutter build ipa` (keychain access differs between Flutter's subprocess and an interactive shell) — bump + archive, no export.
+	cd $(MOBILE) && dart run scripts/bump_version.dart $(VERSION_NAME)
+	cd $(MOBILE) && flutter build ipa --release --dart-define-from-file=env.prod.json || true
+	@echo "Archive left at $(MOBILE)/build/ios/archive/Runner.xcarchive — run 'make mobile-export-ipa-prod' next."
+
+mobile-export-ipa-prod: ## Export the .ipa from an existing archive via a direct xcodebuild call (bypasses Flutter's export sub-step).
+	@mkdir -p $(MOBILE)/build/ios/manual_export
+	xcodebuild -exportArchive \
+		-archivePath $(MOBILE)/build/ios/archive/Runner.xcarchive \
+		-exportPath $(MOBILE)/build/ios/manual_export \
+		-exportOptionsPlist $(MOBILE)/ios/ExportOptions.plist
+	@echo "IPA at $(MOBILE)/build/ios/manual_export/huyenhoc.ipa"
