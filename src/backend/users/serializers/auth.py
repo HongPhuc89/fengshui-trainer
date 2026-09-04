@@ -83,6 +83,9 @@ class CustomLoginSerializer(serializers.Serializer):
         if not user_obj.is_active:
             raise serializers.ValidationError({"detail": "Tài khoản của bạn đang chờ admin kích hoạt. Vui lòng liên hệ admin@huyenhoc.pro để được hỗ trợ."})
 
+        if user_obj.is_review_account:
+            raise serializers.ValidationError({"detail": "Tài khoản này chỉ dùng để đăng nhập trên ứng dụng di động."})
+
         user = authenticate(request=request, username=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
