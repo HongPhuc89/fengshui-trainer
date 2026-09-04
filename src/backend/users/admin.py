@@ -12,7 +12,8 @@ from django.utils import timezone
 from django.utils.html import format_html
 from .models import AdminAuditLog, MobileDevice, PasswordResetOTP, User, UserDevice
 from .services.mobile_slot import (
-    AUTO_ISSUED_REASON, SlotError, issue_slot, issued_reason_suggestions, refresh_slot,
+    AUTO_ISSUED_REASON, SlotError, ensure_review_device, issue_slot, issued_reason_suggestions,
+    refresh_slot,
 )
 from .services.tokens import blacklist_tokens_for_devices
 from .utils import get_client_ip as _get_client_ip
@@ -458,6 +459,7 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Custom Profile Flags', {'fields': ('phone_number', 'user_type', 'subscription_end_date')}),
         ('Device Security', {'fields': ('is_device_locked', 'last_device_reset', 'mobile_max_devices')}),
+        ('App Store / Play Store Review', {'fields': ('is_review_account',)}),
     )
 
     def save_model(self, request, obj, form, change):
@@ -476,6 +478,11 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
                 change_log={'before': {'is_active': old_value}, 'after': {'is_active': obj.is_active}},
                 ip_address=self._get_client_ip(request),
             )
+        # Feature-39: a review account must already have a live MobileDevice row
+        # to pass DeviceJWTAuthentication, so provision it as soon as the flag is
+        # set — idempotent, safe to call on every save.
+        if obj.is_review_account:
+            ensure_review_device(obj)
 
     def get_urls(self):
         urls = super().get_urls()

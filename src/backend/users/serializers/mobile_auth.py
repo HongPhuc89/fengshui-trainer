@@ -19,7 +19,9 @@ from ..models import AdminAuditLog
 from ..services.auth import authenticate_user, issue_tokens_for_device
 from ..services.client_id import normalize_hardware_hash
 from ..services.mobile_device import resolve_mobile_device
-from ..services.mobile_slot import claim_slot, rebind_known_handset, verify_pairing_code
+from ..services.mobile_slot import (
+    claim_slot, ensure_review_device, rebind_known_handset, verify_pairing_code,
+)
 from ..utils import get_client_ip
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,10 @@ class MobileLoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context['request']
         user = authenticate_user(attrs['email'].lower(), attrs['password'])
+
+        if user.is_review_account:
+            return self._review_session(user, request)
+
         hardware_hash = normalize_hardware_hash(attrs.get('hardware_hash'))
 
         device, outcome = resolve_mobile_device(user, attrs['device_id'], hardware_hash)
@@ -83,6 +89,28 @@ class MobileLoginSerializer(serializers.Serializer):
             self._log_claim(user, slot, device, request)
 
         return self._session(user, device, outcome, claimed=True)
+
+    def _review_session(self, user, request) -> dict:
+        """
+        Feature-39: skip pairing entirely. ensure_review_device() is the same
+        call UserAdmin.save_model() makes when the flag is set — calling it
+        again here is a defensive fallback (e.g. the flag was flipped directly
+        in the DB, bypassing admin), not the primary way the row gets created;
+        get_or_create makes both call sites idempotent.
+        """
+        device = ensure_review_device(user)
+        update_last_login(None, user)
+        logger.info(
+            'mobile_login outcome=review_account user=%s client_ip=%s',
+            user.email, get_client_ip(request),
+        )
+        return {
+            'user': user,
+            'device': device,
+            'rebound': False,
+            'claimed': False,
+            **issue_tokens_for_device(user, device, PLATFORM_MOBILE),
+        }
 
     def _session(self, user, device, outcome, claimed: bool) -> dict:
         update_last_login(None, user)

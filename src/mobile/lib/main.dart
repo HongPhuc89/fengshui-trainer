@@ -166,6 +166,10 @@ class _FengShuiAppState extends State<FengShuiApp> with WidgetsBindingObserver {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
+        // Vietnamese content app: always render Vietnamese regardless of the
+        // device's system locale, rather than falling back to English for a
+        // reviewer or tester whose device is set to a different language.
+        locale: const Locale('vi'),
         builder: (context, child) => UpdateGate(child: child ?? const SizedBox()),
       ),
     );

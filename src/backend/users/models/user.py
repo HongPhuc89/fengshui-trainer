@@ -40,6 +40,12 @@ class User(AbstractUser, BaseModel):
     # Reaching it stops staff allocating another; it never silently replaces one.
     mobile_max_devices = models.PositiveSmallIntegerField(default=1)
 
+    # Feature-39: accounts used only for Apple/Google store review or internal
+    # demo. Mobile login skips the pairing-code/slot-quota flow entirely for
+    # these — a reviewer has no admin in the loop to hand out a code. Set
+    # manually via admin; never toggled by users themselves.
+    is_review_account = models.BooleanField(default=False)
+
     # Use public_id as the primary identifier for external relations
     # but keep standard Django id (BaseModel.id) for internal performance
     

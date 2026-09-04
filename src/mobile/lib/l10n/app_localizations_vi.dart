@@ -30,7 +30,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loginPasswordLabel => 'Mật khẩu';
 
   @override
-  String get loginPasswordPlaceholder => 'Nhập mật khẩu bảo mật';
+  String get loginPasswordPlaceholder => 'Nhập mật khẩu của bạn';
 
   @override
   String get loginForgotPassword => 'Quên mật khẩu?';

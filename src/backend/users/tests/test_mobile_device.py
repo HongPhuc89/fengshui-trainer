@@ -834,3 +834,99 @@ class IssueFormSuggestionRenderTests(APITestCase):
         self.assertContains(response, 'id="issued-reason-options"')
         self.assertContains(response, 'list="issued-reason-options"')
         self.assertContains(response, ISSUED_REASON_PRESETS[0])
+
+
+@no_throttling
+class ReviewAccountLoginTests(MobileSlotTestCase):
+    """Feature-39: Apple/Google store review accounts skip pairing entirely."""
+
+    def setUp(self):
+        super().setUp()
+        self.user.is_review_account = True
+        self.user.save(update_fields=['is_review_account'])
+        self.me_url = reverse('user_profile')
+
+    def test_login_succeeds_without_a_pairing_code(self):
+        """No slot ever issued, no pairing_code sent — still 200."""
+        response = self.login('reviewer-iphone', HW_A)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['claimed'])
+        self.assertFalse(response.data['rebound'])
+
+    def test_login_creates_exactly_one_fixed_mobile_device(self):
+        self.login('reviewer-iphone', HW_A)
+
+        devices = MobileDevice.objects.filter(user=self.user)
+        self.assertEqual(devices.count(), 1)
+        device = devices.get()
+        self.assertEqual(device.status, 'ACTIVE')
+        from users.services.mobile_slot import REVIEW_DEVICE_ID
+        self.assertEqual(device.device_id, REVIEW_DEVICE_ID)
+
+    def test_random_device_id_never_triggers_pairing_required(self):
+        """A fresh handset (Apple reviewer's) must never see PAIRING_CODE_REQUIRED."""
+        response = self.login('some-random-reviewer-device', hardware_hash='c' * 64)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('code', response.data)
+
+    def test_client_device_id_is_not_written_to_the_fixed_row(self):
+        """The handset's real device_id must never overwrite the fixed row."""
+        from users.services.mobile_slot import REVIEW_DEVICE_ID
+
+        self.login('reviewer-iphone-1', HW_A)
+        self.login('reviewer-iphone-2', hardware_hash='c' * 64)
+
+        device = MobileDevice.objects.get(user=self.user)
+        self.assertEqual(device.device_id, REVIEW_DEVICE_ID)
+
+    def test_repeated_logins_reuse_the_same_row(self):
+        for i in range(3):
+            response = self.login(f'reviewer-device-{i}', hardware_hash=chr(ord('a') + i) * 64)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(MobileDevice.objects.filter(user=self.user).count(), 1)
+
+    def test_access_token_authenticates_a_later_request(self):
+        """
+        The integration case that matters: login returning 200 is not enough on
+        its own — DeviceJWTAuthentication must also accept the token it minted.
+        """
+        login_response = self.login('reviewer-iphone', HW_A)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {login_response.data["access"]}')
+        me_response = self.client.get(self.me_url)
+        self.client.credentials()
+
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+
+    def test_ensure_review_device_is_idempotent(self):
+        from users.services.mobile_slot import ensure_review_device
+
+        first = ensure_review_device(self.user)
+        second = ensure_review_device(self.user)
+
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(MobileDevice.objects.filter(user=self.user).count(), 1)
+
+    def test_ensure_review_device_client_code_fits_the_column(self):
+        from users.services.mobile_slot import ensure_review_device
+
+        device = ensure_review_device(self.user)
+
+        self.assertLessEqual(len(device.client_code), 16)
+
+    def test_regular_user_is_unaffected(self):
+        """A user without the flag still needs a pairing code as before."""
+        other = User.objects.create_user(
+            username='other@example.com', email='other@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        response = self.client.post(self.login_url, {
+            'email': other.email, 'password': PASSWORD,
+            'device_id': 'device-x', 'platform_os': 'ios',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'PAIRING_CODE_REQUIRED')

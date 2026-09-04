@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-run-uat mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-build-apk-uat mobile-clean mobile-analyze db-restore
+.PHONY: help up down build restart logs migrate makemigrations createsuperuser fake-data fake-data-clear format shell bash lock sync export-lock swagger-export frontend-install frontend-dev frontend-build frontend-deploy pre-commit-install pre-commit-run mobile-install mobile-dev mobile-run-uat mobile-build-apk mobile-build-apk-release mobile-build-apk-prod mobile-build-apk-uat mobile-clean mobile-analyze mobile-dev-ios mobile-run-uat-ios mobile-build-ios mobile-build-ios-release mobile-build-ipa-prod db-restore
 
 COMPOSE_FILE = docker/docker-compose.yml
 BACKEND = src/backend
@@ -137,3 +137,19 @@ mobile-clean: ## Clean Flutter build cache
 
 mobile-analyze: ## Run Flutter static analysis
 	cd $(MOBILE) && flutter analyze --no-fatal-infos
+
+mobile-dev-ios: ## Run Flutter app on iOS simulator/device (dev env — uses src/mobile/env.dev.json)
+	cd $(MOBILE) && flutter run --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-run-uat-ios: ## Run Flutter app on iOS in debug mode against production API (env.uat.json) — screenshots/screen recording NOT blocked (debug build)
+	cd $(MOBILE) && flutter run --dart-define-from-file=env.uat.json
+
+mobile-build-ios: ## Build debug iOS app (no codesign) using env.dev.json — for simulator
+	cd $(MOBILE) && flutter build ios --debug --no-codesign --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-build-ios-release: ## Build release iOS app — requires MOBILE_ENV= (e.g. make mobile-build-ios-release MOBILE_ENV=env.prod.json)
+	cd $(MOBILE) && flutter build ios --release --dart-define-from-file=$(MOBILE_ENV)
+
+mobile-build-ipa-prod: ## Bump version past server's, then build release IPA for production (uses src/mobile/env.prod.json)
+	cd $(MOBILE) && dart run scripts/bump_version.dart $(VERSION_NAME)
+	cd $(MOBILE) && flutter build ipa --release --dart-define-from-file=env.prod.json

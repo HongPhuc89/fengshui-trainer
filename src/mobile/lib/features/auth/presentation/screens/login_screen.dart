@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/device/device_service.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -23,18 +22,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _pairingCodeController = TextEditingController();
 
-  /// Offer the pairing-code field straight away on a handset that has never
-  /// completed a login, so the first attempt can already carry the code instead
-  /// of costing the user a round trip.
-  bool _offerPairingField = false;
-
-  @override
-  void initState() {
-    super.initState();
-    getIt<DeviceService>().hasPairedBefore().then((paired) {
-      if (mounted) setState(() => _offerPairingField = !paired);
-    });
-  }
+  // The pairing-code field only appears once the server has actually asked
+  // for a code (feature-39: review accounts, and any already-paired handset,
+  // must never see it pre-emptively).
   bool _obscurePassword = true;
 
   @override
@@ -167,22 +157,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             // Pairing block — only after the server asks for a
-                            // code, so a paired handset never sees it.
+                            // code, so a paired handset (or a review account,
+                            // feature-39) never sees it.
                             BlocBuilder<AuthBloc, AuthBlocState>(
                               builder: (context, state) {
-                                final asked = state is AuthBlocPairingRequired;
-                                if (!asked && !_offerPairingField) {
+                                if (state is! AuthBlocPairingRequired) {
                                   return const SizedBox.shrink();
                                 }
-                                // Before the server has spoken, assume a code is
-                                // expected: this handset has never been bound.
                                 return PairingCodeField(
                                   controller: _pairingCodeController,
-                                  hasUnclaimedSlot:
-                                      asked ? state.hasUnclaimedSlot : true,
+                                  hasUnclaimedSlot: state.hasUnclaimedSlot,
                                   enabled: true,
-                                  errorText: asked ? state.errorMessage : null,
-                                  supportEmail: asked ? state.supportEmail : null,
+                                  errorText: state.errorMessage,
+                                  supportEmail: state.supportEmail,
                                 );
                               },
                             ),

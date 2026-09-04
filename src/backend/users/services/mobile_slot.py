@@ -111,6 +111,41 @@ def issued_reason_suggestions(limit: int = 12) -> list[str]:
     return suggestions
 
 
+# Fixed forever: a real MobileDevice row satisfies DeviceJWTAuthentication's
+# lookup (it runs on every authenticated request, not just login) without ever
+# going through issue_slot/verify_pairing_code — no admin has to hand a
+# reviewer a pairing code. Same value for every review account is fine: the
+# lookup always filters by `user` too, so there is no cross-account collision.
+REVIEW_DEVICE_ID = 'review-fixed-device'
+REVIEW_TTL_YEARS = 10
+
+
+def ensure_review_device(user) -> MobileDevice:
+    """
+    Get or create the one standing MobileDevice for a review account (feature-39).
+
+    expires_at and pairing_code are NOT NULL on MobileDevice even though this
+    row never goes through the claim flow that normally sets them — both need a
+    real value here or the insert violates the column constraint. client_code
+    must fit max_length=16, so it cannot embed the UUID public_id; scoping by
+    `user` in get_or_create is what keeps this row unique per reviewer, not the
+    code's content.
+    """
+    device, _ = MobileDevice.objects.get_or_create(
+        user=user,
+        device_id=REVIEW_DEVICE_ID,
+        defaults={
+            'client_code': _generate_unique_pairing_code()[:16],
+            'pairing_code': _generate_unique_pairing_code(),
+            'status': 'ACTIVE',
+            'device_name': 'Apple/Google Review',
+            'issued_reason': 'Apple/Google store review account (feature-39)',
+            'expires_at': timezone.now() + timedelta(days=365 * REVIEW_TTL_YEARS),
+        },
+    )
+    return device
+
+
 def issue_slot(user, staff, reason: str = '') -> MobileDevice:
     """
     Allocate an unclaimed device slot and mint its pairing code.
