@@ -457,7 +457,7 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
 
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Custom Profile Flags', {'fields': ('phone_number', 'user_type', 'subscription_end_date')}),
-        ('Device Security', {'fields': ('is_device_locked', 'last_device_reset')}),
+        ('Device Security', {'fields': ('is_device_locked', 'last_device_reset', 'mobile_max_devices')}),
     )
 
     def save_model(self, request, obj, form, change):
