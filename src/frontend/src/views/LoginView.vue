@@ -10,7 +10,6 @@ import AppLogo from '../components/auth/AppLogo.vue'
 import FormInput from '../components/auth/FormInput.vue'
 import PrimaryButton from '../components/auth/PrimaryButton.vue'
 import PolicyBox from '../components/auth/PolicyBox.vue'
-import AuthLink from '../components/auth/AuthLink.vue'
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
