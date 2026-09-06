@@ -11,6 +11,13 @@ def avatar_upload_to(instance, filename):
     ext = os.path.splitext(filename)[1] or '.jpg'
     return f'avatars/{instance.pk}{ext}'
 
+
+# Applied in User.save() for new accounts only (feature-41 §1) — the field
+# keeps default=1 in the schema so no migration is needed; existing rows are
+# untouched.
+DEFAULT_MOBILE_MAX_DEVICES = 3
+
+
 class User(AbstractUser, BaseModel):
     """
     Custom User model: identified by email, optional phone; device locking supported.
@@ -51,6 +58,13 @@ class User(AbstractUser, BaseModel):
     
     def __str__(self):
         return self.username or self.email or self.phone_number or f"User {self.public_id}"
+
+    def save(self, *args, **kwargs):
+        # mobile_max_devices has no add-form field, so it is never assigned by
+        # an admin before the first save — safe to force unconditionally here.
+        if self._state.adding:
+            self.mobile_max_devices = DEFAULT_MOBILE_MAX_DEVICES
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "User"

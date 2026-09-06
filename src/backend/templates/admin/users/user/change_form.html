@@ -25,6 +25,39 @@
 </div>
 {% endif %}
 
+{% if issue_slot_url %}
+<div id="issue-slot-panel" style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+  <h3 style="margin-top: 0">Cấp thiết bị mobile mới</h3>
+  <form method="post" action="{{ issue_slot_url }}">
+    {% csrf_token %}
+    <label for="issue_slot_reason">Lý do cấp:</label>
+    <input type="text" name="issued_reason" id="issue_slot_reason" list="issue-slot-reason-options"
+           placeholder="Ví dụ: User đổi máy mới" autocomplete="off" style="margin: 0 8px; padding: 4px 8px; min-width:260px;">
+    <datalist id="issue-slot-reason-options">
+      {% for r in issue_slot_reason_suggestions %}<option value="{{ r }}">{% endfor %}
+    </datalist>
+    <button type="submit" class="button default">Cấp thiết bị</button>
+  </form>
+</div>
+<script>
+(function () {
+  function moveIssueSlotPanel() {
+    var panel = document.getElementById('issue-slot-panel');
+    if (!panel) return;
+    var targetGroup = document.getElementById('mobiledevice_set-group');
+    if (targetGroup && targetGroup.parentNode) {
+      targetGroup.parentNode.insertBefore(panel, targetGroup.nextSibling);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', moveIssueSlotPanel);
+  } else {
+    moveIssueSlotPanel();
+  }
+})();
+</script>
+{% endif %}
+
 {% if grant_video_url %}
 <div style="margin-top: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt khoá học cho người dùng này</h3>

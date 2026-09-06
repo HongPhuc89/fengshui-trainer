@@ -22,7 +22,21 @@ from videos.models import UserVideoPurchase
 
 
 class AdminUserCreationForm(DjangoAdminUserCreationForm):
-    """User creation form for Django admin that requires email."""
+    """
+    User creation form for Django admin.
+
+    username and usable_password (feature-41 §3, §4) are hidden, not removed
+    from self.fields — this keeps ModelForm.save() and validate_passwords()
+    on their normal Django code path, just with no visible control for staff
+    to change. issue_slot_on_create is a plain BooleanField with no model
+    column; UserAdmin.save_model() reads it to optionally provision a device
+    slot right after the user is created.
+    """
+
+    issue_slot_on_create = forms.BooleanField(
+        required=False, initial=False, label='Tạo mobile device luôn',
+        help_text='Cấp ngay 1 slot thiết bị mobile cho user này sau khi tạo (dùng lý do cấp mặc định).',
+    )
 
     class Meta(DjangoAdminUserCreationForm.Meta):
         model = User
@@ -31,10 +45,21 @@ class AdminUserCreationForm(DjangoAdminUserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = True
-        self.fields['username'].label = 'Email đăng nhập'
+        self.fields['username'].widget = forms.HiddenInput()
+        self.fields['username'].label = ''
+        # Not required at the field level: JS keeps it synced with #id_email,
+        # but a submit with it blank (JS didn't run, or a client posts directly)
+        # must still reach clean_username() below rather than fail with a
+        # "this field is required" error before that code ever runs.
+        self.fields['username'].required = False
+        self.fields['usable_password'].widget = forms.HiddenInput()
+        self.fields['usable_password'].initial = 'true'
 
     def clean_username(self):
-        return self.cleaned_data.get('username', '').lower()
+        # Reads self.data (raw POST), not self.cleaned_data['email'] — fields
+        # are cleaned in Meta.fields order ('username' before 'email'), so
+        # cleaned_data['email'] would not exist yet at this point.
+        return (self.data.get('email') or '').lower()
 
     def clean_email(self):
         return self.cleaned_data.get('email', '').lower()
@@ -445,6 +470,9 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
 
     actions = ['issue_slot']
 
+    class Media:
+        js = ('users/js/sync_username_email.js',)
+
     @staticmethod
     def _target_users(queryset):
         return queryset
@@ -452,7 +480,7 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'usable_password', 'password1', 'password2'),
+            'fields': ('username', 'email', 'usable_password', 'password1', 'password2', 'issue_slot_on_create'),
         }),
     )
 
@@ -484,6 +512,19 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
         if obj.is_review_account:
             ensure_review_device(obj)
 
+        # Feature-41 §4: best-effort — the user is already saved above, so a
+        # SlotError here (theoretically near-impossible: a brand new user has
+        # taken=0 against mobile_max_devices=3) never rolls back the account,
+        # it only skips the device grant with a warning message.
+        if not change and form.cleaned_data.get('issue_slot_on_create'):
+            try:
+                slot = issue_slot(obj, staff=request.user, reason=AUTO_ISSUED_REASON)
+            except SlotError as exc:
+                self.message_user(request, f'Không cấp được thiết bị: {exc}', level=messages.WARNING)
+            else:
+                self._log_issue(request, slot)
+                self.message_user(request, self._slot_message(slot))
+
     def get_urls(self):
         urls = super().get_urls()
         custom = [
@@ -497,8 +538,30 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
                 self.admin_site.admin_view(self.grant_video_view),
                 name='users_user_grant_video',
             ),
+            path(
+                '<int:pk>/issue-slot/',
+                self.admin_site.admin_view(self.issue_slot_view),
+                name='users_user_issue_slot',
+            ),
         ]
         return custom + urls
+
+    def issue_slot_view(self, request, pk):
+        """Issue a mobile device slot from the User detail page's Mobile Devices tab (feature-41 §2)."""
+        user = get_object_or_404(User, pk=pk)
+
+        if request.method != 'POST':
+            return redirect(reverse('admin:users_user_change', args=[pk]))
+
+        reason = request.POST.get('issued_reason') or AUTO_ISSUED_REASON
+        try:
+            slot = issue_slot(user, staff=request.user, reason=reason)
+        except SlotError as exc:
+            self.message_user(request, str(exc), level='error')
+        else:
+            self._log_issue(request, slot)
+            self.message_user(request, self._slot_message(slot))
+        return redirect(reverse('admin:users_user_change', args=[pk]) + '#mobiledevice_set-group')
 
     def grant_book_view(self, request, pk):
         from books.models import Book
@@ -647,6 +710,9 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
         extra_context['eligible_videos'] = list(
             VideoCourse.objects.exclude(id__in=owned_video_ids).order_by('title').values('id', 'title')
         )
+
+        extra_context['issue_slot_url'] = reverse('admin:users_user_issue_slot', args=[pk])
+        extra_context['issue_slot_reason_suggestions'] = issued_reason_suggestions()
         return super().change_view(request, object_id, form_url, extra_context)
 
     @staticmethod
