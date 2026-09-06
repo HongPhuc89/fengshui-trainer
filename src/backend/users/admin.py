@@ -508,45 +508,53 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
         if request.method != 'POST':
             return redirect(reverse('admin:users_user_change', args=[pk]))
 
-        book_id = request.POST.get('book_id')
-        if not book_id:
-            self.message_user(request, 'Vui lòng nhập ID sách.', level='error')
+        book_ids = request.POST.getlist('book_ids')
+        if not book_ids:
+            self.message_user(request, 'Vui lòng chọn ít nhất một cuốn sách.', level='error')
             return redirect(reverse('admin:users_user_change', args=[pk]))
 
-        try:
-            book = Book.objects.get(pk=book_id)
-        except Book.DoesNotExist:
-            self.message_user(request, 'Không tìm thấy sách.', level='error')
-            return redirect(reverse('admin:users_user_change', args=[pk]))
+        books = list(Book.objects.filter(pk__in=book_ids))
+        already_owned = set(
+            UserBookPurchase.objects.filter(user=user, book__in=books)
+            .values_list('book_id', flat=True)
+        )
 
-        if UserBookPurchase.objects.filter(user=user, book=book).exists():
-            self.message_user(request, f'Người dùng "{user}" đã sở hữu sách "{book.title}".', level='error')
-            return redirect(reverse('admin:users_user_change', args=[pk]))
-
+        granted = []
         with transaction.atomic():
-            UserBookPurchase.objects.create(user=user, book=book)
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=user,
-                action_category='CONTENT_GRANT',
-                action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
-                change_log={'book_id': str(book.public_id), 'book_title': book.title},
-                ip_address=self._get_client_ip(request),
-            )
-            try:
-                from notifications.models import Notification
-                Notification.objects.create(
-                    user=user,
-                    title='Sách đã được kích hoạt',
-                    body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
-                    notification_type='PURCHASE',
-                    related_object_type='book',
-                    related_object_id=str(book.public_id),
+            for book in books:
+                if book.pk in already_owned:
+                    continue
+                UserBookPurchase.objects.create(user=user, book=book)
+                AdminAuditLog.objects.create(
+                    staff=request.user,
+                    target_user=user,
+                    action_category='CONTENT_GRANT',
+                    action_detail=f'Admin kích hoạt sách "{book.title}" cho "{user}"',
+                    change_log={'book_id': str(book.public_id), 'book_title': book.title},
+                    ip_address=self._get_client_ip(request),
                 )
-            except Exception:
-                pass
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        user=user,
+                        title='Sách đã được kích hoạt',
+                        body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
+                        notification_type='PURCHASE',
+                        related_object_type='book',
+                        related_object_id=str(book.public_id),
+                    )
+                except Exception:
+                    pass
+                granted.append(book)
 
-        self.message_user(request, f'✅ Đã kích hoạt sách "{book.title}" cho {user}.')
+        if not granted:
+            self.message_user(request, f'Người dùng "{user}" đã sở hữu tất cả {len(books)} sách đã chọn.', level='warning')
+            return redirect(reverse('admin:users_user_change', args=[pk]))
+
+        message = f'✅ Đã kích hoạt {len(granted)} sách cho {user}.'
+        if already_owned:
+            message += f' Bỏ qua {len(already_owned)} sách đã sở hữu.'
+        self.message_user(request, message)
         return redirect(reverse('admin:users_user_change', args=[pk]))
 
     def grant_video_view(self, request, pk):
@@ -557,45 +565,53 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
         if request.method != 'POST':
             return redirect(reverse('admin:users_user_change', args=[pk]))
 
-        video_id = request.POST.get('video_id')
-        if not video_id:
-            self.message_user(request, 'Vui lòng nhập ID khoá học.', level='error')
+        video_ids = request.POST.getlist('video_ids')
+        if not video_ids:
+            self.message_user(request, 'Vui lòng chọn ít nhất một khoá học.', level='error')
             return redirect(reverse('admin:users_user_change', args=[pk]))
 
-        try:
-            video = VideoCourse.objects.get(pk=video_id)
-        except VideoCourse.DoesNotExist:
-            self.message_user(request, 'Không tìm thấy khoá học.', level='error')
-            return redirect(reverse('admin:users_user_change', args=[pk]))
+        videos = list(VideoCourse.objects.filter(pk__in=video_ids))
+        already_owned = set(
+            UserVideoPurchase.objects.filter(user=user, video__in=videos)
+            .values_list('video_id', flat=True)
+        )
 
-        if UserVideoPurchase.objects.filter(user=user, video=video).exists():
-            self.message_user(request, f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".', level='error')
-            return redirect(reverse('admin:users_user_change', args=[pk]))
-
+        granted = []
         with transaction.atomic():
-            UserVideoPurchase.objects.create(user=user, video=video)
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=user,
-                action_category='CONTENT_GRANT',
-                action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
-                change_log={'video_id': str(video.public_id), 'video_title': video.title},
-                ip_address=self._get_client_ip(request),
-            )
-            try:
-                from notifications.models import Notification
-                Notification.objects.create(
-                    user=user,
-                    title='Khoá học đã được kích hoạt',
-                    body=f'Khoá học "{video.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 🎬',
-                    notification_type='PURCHASE',
-                    related_object_type='videocourse',
-                    related_object_id=str(video.public_id),
+            for video in videos:
+                if video.pk in already_owned:
+                    continue
+                UserVideoPurchase.objects.create(user=user, video=video)
+                AdminAuditLog.objects.create(
+                    staff=request.user,
+                    target_user=user,
+                    action_category='CONTENT_GRANT',
+                    action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
+                    change_log={'video_id': str(video.public_id), 'video_title': video.title},
+                    ip_address=self._get_client_ip(request),
                 )
-            except Exception:
-                pass
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        user=user,
+                        title='Khoá học đã được kích hoạt',
+                        body=f'Khoá học "{video.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 🎬',
+                        notification_type='PURCHASE',
+                        related_object_type='videocourse',
+                        related_object_id=str(video.public_id),
+                    )
+                except Exception:
+                    pass
+                granted.append(video)
 
-        self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
+        if not granted:
+            self.message_user(request, f'Người dùng "{user}" đã sở hữu tất cả {len(videos)} khoá học đã chọn.', level='warning')
+            return redirect(reverse('admin:users_user_change', args=[pk]))
+
+        message = f'✅ Đã kích hoạt {len(granted)} khoá học cho {user}.'
+        if already_owned:
+            message += f' Bỏ qua {len(already_owned)} khoá học đã sở hữu.'
+        self.message_user(request, message)
         return redirect(reverse('admin:users_user_change', args=[pk]))
 
     def has_delete_permission(self, request, obj=None):
@@ -620,6 +636,17 @@ class UserAdmin(IssueSlotMixin, BaseUserAdmin):
         from users.admin_progress import get_user_video_summary, get_user_book_summary
         extra_context['video_progress'] = get_user_video_summary(pk)
         extra_context['book_progress'] = get_user_book_summary(pk)
+
+        from books.models import Book
+        from videos.models import VideoCourse
+        owned_book_ids = UserBookPurchase.objects.filter(user_id=pk).values_list('book_id', flat=True)
+        extra_context['eligible_books'] = list(
+            Book.objects.exclude(id__in=owned_book_ids).order_by('title').values('id', 'title')
+        )
+        owned_video_ids = UserVideoPurchase.objects.filter(user_id=pk).values_list('video_id', flat=True)
+        extra_context['eligible_videos'] = list(
+            VideoCourse.objects.exclude(id__in=owned_video_ids).order_by('title').values('id', 'title')
+        )
         return super().change_view(request, object_id, form_url, extra_context)
 
     @staticmethod

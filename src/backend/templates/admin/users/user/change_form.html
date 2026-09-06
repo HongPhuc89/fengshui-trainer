@@ -6,15 +6,21 @@
 {% if grant_book_url %}
 <div style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt sách cho người dùng này</h3>
+  <p style="color: #888; font-size: 12px; margin-top: -8px;">
+    Danh sách chỉ hiện sách người dùng này chưa sở hữu. Giữ Ctrl (hoặc Cmd trên Mac) để chọn nhiều.
+  </p>
   <form method="post" action="{{ grant_book_url }}">
     {% csrf_token %}
-    <label for="grant_book_id">ID sách:</label>
-    <input type="number" name="book_id" id="grant_book_id" placeholder="Nhập book ID" required
-           style="margin: 0 8px; padding: 4px 8px;">
-    <button type="submit" class="button default">Kích hoạt</button>
-    <span style="margin-left: 12px; color: #888; font-size: 12px;">
-      Tra cứu tại: <a href="{% url 'admin:books_book_changelist' %}" target="_blank">Danh sách sách</a>
-    </span>
+    <input type="text" class="grant-filter-input" data-target="grant_book_ids"
+           placeholder="Tìm theo tên sách..." style="display:block; margin-bottom:6px; padding:4px 8px; min-width:300px;">
+    <select multiple name="book_ids" id="grant_book_ids" style="min-width:300px; height:180px;">
+      {% for b in eligible_books %}
+        <option value="{{ b.id }}">{{ b.title }} (ID: {{ b.id }})</option>
+      {% endfor %}
+    </select>
+    <div style="margin-top:8px;">
+      <button type="submit" class="button default">Kích hoạt</button>
+    </div>
   </form>
 </div>
 {% endif %}
@@ -22,18 +28,38 @@
 {% if grant_video_url %}
 <div style="margin-top: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt khoá học cho người dùng này</h3>
+  <p style="color: #888; font-size: 12px; margin-top: -8px;">
+    Danh sách chỉ hiện khoá học người dùng này chưa sở hữu. Giữ Ctrl (hoặc Cmd trên Mac) để chọn nhiều.
+  </p>
   <form method="post" action="{{ grant_video_url }}">
     {% csrf_token %}
-    <label for="grant_video_id">ID khoá học:</label>
-    <input type="number" name="video_id" id="grant_video_id" placeholder="Nhập course ID" required
-           style="margin: 0 8px; padding: 4px 8px;">
-    <button type="submit" class="button default">Kích hoạt</button>
-    <span style="margin-left: 12px; color: #888; font-size: 12px;">
-      Tra cứu tại: <a href="{% url 'admin:videos_videocourse_changelist' %}" target="_blank">Danh sách khoá học</a>
-    </span>
+    <input type="text" class="grant-filter-input" data-target="grant_video_ids"
+           placeholder="Tìm theo tên khoá học..." style="display:block; margin-bottom:6px; padding:4px 8px; min-width:300px;">
+    <select multiple name="video_ids" id="grant_video_ids" style="min-width:300px; height:180px;">
+      {% for v in eligible_videos %}
+        <option value="{{ v.id }}">{{ v.title }} (ID: {{ v.id }})</option>
+      {% endfor %}
+    </select>
+    <div style="margin-top:8px;">
+      <button type="submit" class="button default">Kích hoạt</button>
+    </div>
   </form>
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.grant-filter-input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var term = this.value.trim().toLowerCase();
+      var options = document.getElementById(this.dataset.target).options;
+      for (var i = 0; i < options.length; i++) {
+        options[i].hidden = term.length > 0 && options[i].textContent.toLowerCase().indexOf(term) === -1;
+      }
+    });
+  });
+});
+</script>
 
 {% if video_progress %}
 <div class="module" style="margin-top: 20px;">
