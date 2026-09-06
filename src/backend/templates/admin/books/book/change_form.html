@@ -189,16 +189,21 @@
 {{ block.super }}
 {% if grant_access_url %}
 <div id="grant-access-panel" style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
-  <h3 style="margin-top: 0">Kích hoạt cho người dùng mới</h3>
-  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-    <label for="grant_user_id">ID người dùng:</label>
-    <input type="number" id="grant_user_id" placeholder="Nhập user ID"
-           style="padding: 4px 8px;">
+  <h3 style="margin-top: 0">Kích hoạt hàng loạt cho người dùng mới</h3>
+  <p style="color: #888; font-size: 12px; margin-top: -8px;">
+    Danh sách chỉ hiện người dùng chưa sở hữu sách này và không phải VIP (VIP đã mặc định xem được toàn bộ sách).
+    Giữ Ctrl (hoặc Cmd trên Mac) để chọn nhiều người dùng.
+  </p>
+  <input type="text" id="grant_user_filter" placeholder="Tìm theo tên đăng nhập..."
+         style="display:block; margin-bottom:6px; padding:4px 8px; min-width:300px;">
+  <select multiple id="grant_user_ids" style="min-width:300px; height:200px;">
+    {% for u in eligible_users %}
+      <option value="{{ u.id }}">{{ u.email|default:u.username }} (ID: {{ u.id }})</option>
+    {% endfor %}
+  </select>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
     <button type="button" class="button default" id="grant_access_btn">Kích hoạt</button>
     <span id="grant_access_msg" style="font-size:13px;"></span>
-    <span style="color: #888; font-size: 12px;">
-      Tra cứu ID tại: <a href="{% url 'admin:users_user_changelist' %}" target="_blank">Danh sách người dùng</a>
-    </span>
   </div>
 </div>
 <script>
@@ -216,30 +221,43 @@
   } else {
     moveGrantPanel();
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('grant_user_filter').addEventListener('input', function () {
+      var term = this.value.trim().toLowerCase();
+      var options = document.getElementById('grant_user_ids').options;
+      for (var i = 0; i < options.length; i++) {
+        options[i].hidden = term.length > 0 && options[i].textContent.toLowerCase().indexOf(term) === -1;
+      }
+    });
+  });
 })();
 </script>
 <script>
 document.getElementById('grant_access_btn').addEventListener('click', function () {
-  const userId = document.getElementById('grant_user_id').value.trim();
+  const select = document.getElementById('grant_user_ids');
+  const userIds = Array.prototype.slice.call(select.options)
+    .filter(function (o) { return o.selected; })
+    .map(function (o) { return o.value; });
   const msg = document.getElementById('grant_access_msg');
-  if (!userId) { msg.style.color = 'red'; msg.textContent = 'Vui lòng nhập ID người dùng.'; return; }
+  if (!userIds.length) { msg.style.color = 'red'; msg.textContent = 'Vui lòng chọn ít nhất một người dùng.'; return; }
 
   this.disabled = true;
   msg.style.color = '#888';
   msg.textContent = 'Đang xử lý…';
 
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const body = userIds.map(function (id) { return 'user_ids=' + encodeURIComponent(id); }).join('&');
   fetch('{{ grant_access_url }}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
-    body: 'user_id=' + encodeURIComponent(userId),
+    body: body,
   })
   .then(r => r.json())
   .then(data => {
     msg.style.color = data.ok ? 'green' : 'red';
     msg.textContent = data.message;
     if (data.ok) {
-      document.getElementById('grant_user_id').value = '';
       setTimeout(() => location.reload(), 1000);
     }
   })

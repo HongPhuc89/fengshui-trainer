@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.text import slugify
+from users.models import User, AdminAuditLog
 from .models import BookCategory, Book, BookChapter, UserBookPurchase, UserChapterProgress
 
 logger = logging.getLogger(__name__)
@@ -91,53 +92,65 @@ class BookAdmin(admin.ModelAdmin):
 
     def grant_access_view(self, request, pk):
         from django.http import JsonResponse
-        from users.models import User, AdminAuditLog
 
         if request.method != 'POST':
             return redirect(reverse('admin:books_book_change', args=[pk]))
 
         book = get_object_or_404(Book, pk=pk)
-        user_id = request.POST.get('user_id')
+        user_ids = request.POST.getlist('user_ids')
 
-        if not user_id:
-            return JsonResponse({'ok': False, 'message': 'Vui lòng nhập ID người dùng.'})
+        if not user_ids:
+            return JsonResponse({'ok': False, 'message': 'Vui lòng chọn ít nhất một người dùng.'})
 
-        try:
-            user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return JsonResponse({'ok': False, 'message': f'Không tìm thấy người dùng ID={user_id}.'})
+        users = list(User.objects.filter(pk__in=user_ids))
 
-        if UserBookPurchase.objects.filter(user=user, book=book).exists():
-            return JsonResponse({'ok': False, 'message': f'"{user}" đã sở hữu sách này rồi.'})
+        already_owned = set(
+            UserBookPurchase.objects.filter(book=book, user__in=users)
+            .values_list('user_id', flat=True)
+        )
 
+        granted = []
         try:
             with transaction.atomic():
-                UserBookPurchase.objects.create(user=user, book=book)
-                AdminAuditLog.objects.create(
-                    staff=request.user,
-                    target_user=user,
-                    action_category='CONTENT_GRANT',
-                    action_detail=f'Admin kich hoat sach "{book.title}" cho "{user}"',
-                    change_log={'book_id': str(book.public_id), 'book_title': book.title},
-                    ip_address=self._get_client_ip(request),
-                )
-                try:
-                    from notifications.models import Notification
-                    Notification.objects.create(
-                        user=user,
-                        title='Sách đã được kích hoạt',
-                        body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
-                        notification_type='PURCHASE',
-                        related_object_type='book',
-                        related_object_id=str(book.public_id),
+                for user in users:
+                    if user.pk in already_owned:
+                        continue
+                    UserBookPurchase.objects.create(user=user, book=book)
+                    AdminAuditLog.objects.create(
+                        staff=request.user,
+                        target_user=user,
+                        action_category='CONTENT_GRANT',
+                        action_detail=f'Admin kich hoat sach "{book.title}" cho "{user}"',
+                        change_log={'book_id': str(book.public_id), 'book_title': book.title},
+                        ip_address=self._get_client_ip(request),
                     )
-                except Exception:
-                    logger.exception('grant_access: tao notification that bai (user=%s, book=%s)', user.pk, pk)
+                    try:
+                        from notifications.models import Notification
+                        Notification.objects.create(
+                            user=user,
+                            title='Sách đã được kích hoạt',
+                            body=f'Sách "{book.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 📖',
+                            notification_type='PURCHASE',
+                            related_object_type='book',
+                            related_object_id=str(book.public_id),
+                        )
+                    except Exception:
+                        logger.exception('grant_access: tao notification that bai (user=%s, book=%s)', user.pk, pk)
+                    granted.append(user)
         except Exception:
-            logger.exception('grant_access: that bai (user=%s, book=%s)', user_id, pk)
+            logger.exception('grant_access: that bai (user_ids=%s, book=%s)', user_ids, pk)
             return JsonResponse({'ok': False, 'message': 'Lỗi server, vui lòng kiểm tra log.'})
 
-        return JsonResponse({'ok': True, 'message': f'✅ Đã kích hoạt sách "{book.title}" cho {user}.'})
+        if not granted:
+            return JsonResponse({
+                'ok': False,
+                'message': f'Tất cả {len(users)} người dùng đã chọn đều đã sở hữu sách "{book.title}".',
+            })
+
+        message = f'✅ Đã kích hoạt sách "{book.title}" cho {len(granted)} người dùng.'
+        if already_owned:
+            message += f' Bỏ qua {len(already_owned)} người đã sở hữu.'
+        return JsonResponse({'ok': True, 'message': message})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
@@ -149,6 +162,14 @@ class BookAdmin(admin.ModelAdmin):
         if next_obj:
             extra_context['next_url'] = reverse('admin:books_book_change', args=[next_obj['pk']])
         extra_context['grant_access_url'] = reverse('admin:books_book_grant_access', args=[pk])
+
+        owned_ids = UserBookPurchase.objects.filter(book_id=pk).values_list('user_id', flat=True)
+        extra_context['eligible_users'] = list(
+            User.objects.exclude(id__in=owned_ids)
+            .exclude(user_type='VIP')
+            .order_by('email')
+            .values('id', 'email', 'username')
+        )
         return super().change_view(request, object_id, form_url, extra_context)
 
     def save_model(self, request, obj, form, change):
