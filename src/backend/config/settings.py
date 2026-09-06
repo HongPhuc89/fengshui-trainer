@@ -328,9 +328,9 @@ JAZZMIN_SETTINGS = {
     "show_sidebar": True,
     "navigation_expanded": True,
     "order_with_respect_to": [
-        "users",
-        "books",
         "videos",
+        "books",
+        "users",
         "exams",
         "wallet",
     ],
@@ -341,6 +341,10 @@ JAZZMIN_SETTINGS = {
         "auth.Group",
         "notifications.EmailLog",
         "notifications.EmailQuota",
+        "videos.UserLessonProgress",
+        "videos.UserVideoPurchase",
+        "books.UserChapterProgress",
+        "books.UserBookPurchase",
     ],
     "icons": {
         "auth": "fas fa-users-cog",

@@ -11,6 +11,7 @@ from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 
 from exams.models import Exam as ExamModel, Flashcard as FlashcardModel
+from users.models import User, AdminAuditLog
 from .models import VideoCategory, VideoCourse, VideoLesson, UserVideoPurchase, UserLessonProgress
 from .storage import get_video_storage
 
@@ -68,7 +69,7 @@ class VideoCourseAdmin(admin.ModelAdmin):
     change_form_template = 'admin/videos/videocourse/change_form.html'
 
     class Media:
-        js = ('videos/js/auto_slug_course.js',)
+        js = ('videos/js/auto_slug_course.js', 'admin/js/SelectFilter2.js')
 
     @staticmethod
     def _get_client_ip(request):
@@ -116,64 +117,70 @@ class VideoCourseAdmin(admin.ModelAdmin):
         return custom + urls
 
     def grant_access_view(self, request, pk):
-        from users.models import User, AdminAuditLog
-
         video = get_object_or_404(VideoCourse, pk=pk)
 
         if request.method != 'POST':
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        user_ids = request.POST.getlist('user_ids')
 
-        user_id = request.POST.get('user_id')
-        if not user_id:
+        if not user_ids:
+            message = 'Vui lòng chọn ít nhất một người dùng.'
             if is_ajax:
-                return JsonResponse({'ok': False, 'message': 'Vui lòng nhập ID người dùng.'}, status=400)
-            self.message_user(request, 'Vui lòng nhập ID người dùng.', level='error')
+                return JsonResponse({'ok': False, 'message': message}, status=400)
+            self.message_user(request, message, level='error')
             return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
-        try:
-            user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            if is_ajax:
-                return JsonResponse({'ok': False, 'message': 'Không tìm thấy người dùng.'}, status=404)
-            self.message_user(request, 'Không tìm thấy người dùng.', level='error')
-            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+        users = list(User.objects.filter(pk__in=user_ids))
 
-        if UserVideoPurchase.objects.filter(user=user, video=video).exists():
-            if is_ajax:
-                return JsonResponse({'ok': False, 'message': f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".'}, status=400)
-            self.message_user(request, f'Người dùng "{user}" đã sở hữu khoá học "{video.title}".', level='error')
-            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+        already_owned = set(
+            UserVideoPurchase.objects.filter(video=video, user__in=users)
+            .values_list('user_id', flat=True)
+        )
 
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
+        granted = []
         with transaction.atomic():
-            UserVideoPurchase.objects.create(user=user, video=video)
-            AdminAuditLog.objects.create(
-                staff=request.user,
-                target_user=user,
-                action_category='CONTENT',
-                action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
-                change_log={'video_id': str(video.public_id), 'video_title': video.title},
-                ip_address=self._get_client_ip(request),
-            )
-            try:
-                from notifications.models import Notification
-                Notification.objects.create(
-                    user=user,
-                    title='Khoá học đã được kích hoạt',
-                    body=f'Khoá học "{video.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 🎬',
-                    notification_type='PURCHASE',
-                    related_object_type='videocourse',
-                    related_object_id=str(video.public_id),
+            for user in users:
+                if user.pk in already_owned:
+                    continue
+                UserVideoPurchase.objects.create(user=user, video=video)
+                AdminAuditLog.objects.create(
+                    staff=request.user,
+                    target_user=user,
+                    action_category='CONTENT_GRANT',
+                    action_detail=f'Admin kích hoạt khoá học "{video.title}" cho "{user}"',
+                    change_log={'video_id': str(video.public_id), 'video_title': video.title},
+                    ip_address=self._get_client_ip(request),
                 )
-            except Exception:
-                pass
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        user=user,
+                        title='Khoá học đã được kích hoạt',
+                        body=f'Khoá học "{video.title}" đã được kích hoạt trong tài khoản của bạn. Chúc bạn học tốt! 🎬',
+                        notification_type='PURCHASE',
+                        related_object_type='videocourse',
+                        related_object_id=str(video.public_id),
+                    )
+                except Exception:
+                    pass
+                granted.append(user)
+
+        if not granted:
+            message = f'Tất cả {len(users)} người dùng đã chọn đều đã sở hữu khoá học "{video.title}".'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': message}, status=400)
+            self.message_user(request, message, level='warning')
+            return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
+
+        message = f'✅ Đã kích hoạt khoá học "{video.title}" cho {len(granted)} người dùng.'
+        if already_owned:
+            message += f' Bỏ qua {len(already_owned)} người đã sở hữu.'
 
         if is_ajax:
-            return JsonResponse({'ok': True, 'message': f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.'})
-        self.message_user(request, f'✅ Đã kích hoạt khoá học "{video.title}" cho {user}.')
+            return JsonResponse({'ok': True, 'message': message})
+        self.message_user(request, message)
         return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
     def recalculate_totals_view(self, request, pk):
@@ -219,6 +226,14 @@ class VideoCourseAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         pk = int(object_id)
         extra_context['grant_access_url'] = reverse('admin:videos_videocourse_grant_access', args=[pk])
+
+        owned_ids = UserVideoPurchase.objects.filter(video_id=pk).values_list('user_id', flat=True)
+        extra_context['eligible_users'] = list(
+            User.objects.exclude(id__in=owned_ids)
+            .exclude(user_type='VIP')
+            .order_by('email')
+            .values('id', 'email')
+        )
         return super().change_view(request, object_id, form_url, extra_context)
 
 
