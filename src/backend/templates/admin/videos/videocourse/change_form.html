@@ -3,15 +3,17 @@
 {% block after_related_objects %}
 {{ block.super }}
 {% if grant_access_url %}
-<script src="{% url 'admin:jsi18n' %}"></script>
 <div id="grant-access-panel" style="margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
   <h3 style="margin-top: 0">Kích hoạt hàng loạt cho người dùng mới</h3>
   <p style="color: #888; font-size: 12px; margin-top: -8px;">
     Danh sách chỉ hiện người dùng chưa sở hữu khoá học này và không phải VIP (VIP đã mặc định xem được toàn bộ khoá học).
+    Giữ Ctrl (hoặc Cmd trên Mac) để chọn nhiều người dùng.
   </p>
-  <select multiple id="grant_user_ids" name="user_ids" style="min-width:300px; height:150px;">
+  <input type="text" id="grant_user_filter" placeholder="Tìm theo tên đăng nhập..."
+         style="display:block; margin-bottom:6px; padding:4px 8px; min-width:300px;">
+  <select multiple id="grant_user_ids" style="min-width:300px; height:200px;">
     {% for u in eligible_users %}
-      <option value="{{ u.id }}">{{ u.email }} (ID: {{ u.id }})</option>
+      <option value="{{ u.id }}">{{ u.email|default:u.username }} (ID: {{ u.id }})</option>
     {% endfor %}
   </select>
   <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
@@ -20,10 +22,6 @@
   </div>
 </div>
 <script>
-django.jQuery(function () {
-  SelectFilter.init('grant_user_ids', 'người dùng', 0);
-});
-
 (function () {
   function moveGrantPanel() {
     var panel = document.getElementById('grant-access-panel');
@@ -40,6 +38,14 @@ django.jQuery(function () {
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('grant_user_filter').addEventListener('input', function () {
+      var term = this.value.trim().toLowerCase();
+      var options = document.getElementById('grant_user_ids').options;
+      for (var i = 0; i < options.length; i++) {
+        options[i].hidden = term.length > 0 && options[i].textContent.toLowerCase().indexOf(term) === -1;
+      }
+    });
+
     document.getElementById('grant_access_btn').addEventListener('click', function () {
       var select = document.getElementById('grant_user_ids');
       var userIds = Array.prototype.slice.call(select.options)

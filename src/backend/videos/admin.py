@@ -69,7 +69,7 @@ class VideoCourseAdmin(admin.ModelAdmin):
     change_form_template = 'admin/videos/videocourse/change_form.html'
 
     class Media:
-        js = ('videos/js/auto_slug_course.js', 'admin/js/SelectFilter2.js')
+        js = ('videos/js/auto_slug_course.js',)
 
     @staticmethod
     def _get_client_ip(request):
@@ -232,7 +232,7 @@ class VideoCourseAdmin(admin.ModelAdmin):
             User.objects.exclude(id__in=owned_ids)
             .exclude(user_type='VIP')
             .order_by('email')
-            .values('id', 'email')
+            .values('id', 'email', 'username')
         )
         return super().change_view(request, object_id, form_url, extra_context)
 
