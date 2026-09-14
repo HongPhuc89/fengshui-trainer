@@ -50,7 +50,7 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
     is_new_release = serializers.SerializerMethodField()
 
     def get_total_duration_seconds(self, obj):
-        result = obj.lessons.aggregate(total=Sum('duration_seconds'))['total']
+        result = obj.lessons.ready().aggregate(total=Sum('duration_seconds'))['total']
         return result or 0
 
     def get_price_lt(self, obj):
@@ -62,7 +62,7 @@ class VideoCourseListSerializer(serializers.ModelSerializer):
     def get_cover_image(self, obj):
         if obj.cover_image:
             return obj.cover_image
-        first = obj.lessons.order_by('order').exclude(thumbnail='').filter(thumbnail__isnull=False).first()
+        first = obj.lessons.ready().order_by('order').first()
         if first and first.thumbnail:
             if first.small_thumbnail:
                 return first.small_thumbnail

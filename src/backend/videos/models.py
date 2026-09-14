@@ -94,8 +94,20 @@ class VideoCourse(BaseModel):
         self.save(update_fields=['total_duration_seconds', 'total_lessons'])
 
 
+class VideoLessonQuerySet(models.QuerySet):
+    def ready(self):
+        """Lessons whose Bunny metadata sync has completed.
+
+        Uses `thumbnail` presence as a proxy for "sync_bunny_metadata has run
+        successfully" — there is no dedicated status field yet.
+        """
+        return self.exclude(thumbnail='').filter(thumbnail__isnull=False)
+
+
 class VideoLesson(BaseModel):
     """Lesson (clip) inside a course."""
+    objects = VideoLessonQuerySet.as_manager()
+
     course = models.ForeignKey(
         VideoCourse,
         on_delete=models.CASCADE,

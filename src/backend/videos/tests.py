@@ -9,6 +9,7 @@ a lesson from the course detail screen, VIP or not.
 
 from datetime import timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -20,6 +21,12 @@ from .serializers import _is_new_release
 
 PASSWORD = 'str0ng-pass-word'
 
+# 1x1 transparent GIF — smallest valid image payload for ImageField in tests.
+TINY_GIF = (
+    b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01'
+    b'\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
+)
+
 
 def make_course(is_free=False, published=True):
     return VideoCourse.objects.create(
@@ -28,10 +35,16 @@ def make_course(is_free=False, published=True):
     )
 
 
-def make_lesson(course, order, is_free=False):
-    return VideoLesson.objects.create(
+def make_lesson(course, order, is_free=False, ready=True):
+    """`ready=True` (default) gives the lesson a thumbnail, matching a lesson
+    whose sync_bunny_metadata has already run — see VideoLessonQuerySet.ready().
+    """
+    lesson = VideoLesson.objects.create(
         course=course, title=f'Bài {order}', slug=f'bai-{order}', order=order, is_free=is_free,
     )
+    if ready:
+        lesson.thumbnail.save(f'{lesson.pk}.gif', SimpleUploadedFile(f'{lesson.pk}.gif', TINY_GIF), save=True)
+    return lesson
 
 
 class LessonAccessFlagTests(APITestCase):
@@ -114,6 +127,85 @@ class LessonAccessFlagTests(APITestCase):
         lessons = self._lessons_by_slug(response)
         self.assertFalse(lessons['bai-1']['is_completed'])
         self.assertFalse(lessons['bai-2']['is_completed'])
+
+
+class UnreadyLessonHiddenTests(APITestCase):
+    """
+    Feature 42: a lesson without a synced thumbnail (sync_bunny_metadata has
+    not run yet) must be invisible to end-user APIs, even though it still
+    exists in the DB and is fully visible in Django Admin.
+    """
+
+    def setUp(self):
+        self.course = make_course()
+        self.ready_lesson = make_lesson(self.course, 1, is_free=True, ready=True)
+        self.unready_lesson = make_lesson(self.course, 2, is_free=True, ready=False)
+
+    def test_unready_lesson_is_excluded_from_course_detail_lessons(self):
+        url = reverse('video_course_detail', args=[self.course.slug])
+        response = self.client.get(url)
+        slugs = {lesson['slug'] for lesson in response.data['lessons']}
+        self.assertIn('bai-1', slugs)
+        self.assertNotIn('bai-2', slugs)
+
+    def test_course_itself_still_shows_in_list_with_only_unready_lessons(self):
+        VideoLesson.objects.filter(pk=self.ready_lesson.pk).delete()
+        url = reverse('video_course_list')
+        response = self.client.get(url)
+        slugs = {course['slug'] for course in response.data}
+        self.assertIn(self.course.slug, slugs)
+
+    def test_direct_lesson_detail_returns_404_for_unready_lesson(self):
+        user = User.objects.create_user(
+            username='reader@example.com', email='reader@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.client.force_authenticate(user)
+        url = reverse('video_lesson_detail', args=[self.course.slug, self.unready_lesson.slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_direct_lesson_detail_succeeds_for_ready_lesson(self):
+        user = User.objects.create_user(
+            username='reader2@example.com', email='reader2@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.client.force_authenticate(user)
+        url = reverse('video_lesson_detail', args=[self.course.slug, self.ready_lesson.slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_progress_post_returns_404_for_unready_lesson(self):
+        user = User.objects.create_user(
+            username='watcher2@example.com', email='watcher2@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.client.force_authenticate(user)
+        url = reverse('video_lesson_progress', args=[self.course.slug, self.unready_lesson.slug])
+        response = self.client.post(url, {'progress_seconds': 10})
+        self.assertEqual(response.status_code, 404)
+
+    def test_last_lesson_fallback_skips_unready_lesson(self):
+        VideoLesson.objects.filter(pk=self.ready_lesson.pk).delete()
+        user = User.objects.create_user(
+            username='watcher3@example.com', email='watcher3@example.com',
+            password=PASSWORD, is_active=True,
+        )
+        self.client.force_authenticate(user)
+        url = reverse('video_course_last_lesson', args=[self.course.slug])
+        response = self.client.get(url)
+        self.assertIsNone(response.data['lesson_public_id'])
+
+    def test_total_duration_seconds_excludes_unready_lesson(self):
+        self.ready_lesson.duration_seconds = 120
+        self.ready_lesson.save(update_fields=['duration_seconds'])
+        self.unready_lesson.duration_seconds = 999
+        self.unready_lesson.save(update_fields=['duration_seconds'])
+
+        url = reverse('video_course_list')
+        response = self.client.get(url)
+        course_data = next(c for c in response.data if c['slug'] == self.course.slug)
+        self.assertEqual(course_data['total_duration_seconds'], 120)
 
 
 class NewReleaseFlagTests(APITestCase):

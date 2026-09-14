@@ -55,11 +55,7 @@ class RecentlyWatchedCoursesView(views.APIView):
             if course.cover_image:
                 cover_url = course.cover_image  # already a plain URL (CharField)
             else:
-                first = (
-                    course.lessons.order_by('order')
-                    .exclude(thumbnail='').filter(thumbnail__isnull=False)
-                    .first()
-                )
+                first = course.lessons.ready().order_by('order').first()
                 if first and first.thumbnail:
                     cover_url = first.small_thumbnail or request.build_absolute_uri(first.thumbnail.url)
                 else:
@@ -128,8 +124,15 @@ class VideoCourseDetailView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'slug'
 
     def get_queryset(self):
+        from django.db.models import Prefetch
         today = timezone.now().date()
-        return VideoCourse.objects.filter(published_date__lte=today).select_related('category').prefetch_related('lessons')
+        ready_lessons = VideoLesson.objects.ready().order_by('order')
+        return (
+            VideoCourse.objects
+            .filter(published_date__lte=today)
+            .select_related('category')
+            .prefetch_related(Prefetch('lessons', queryset=ready_lessons))
+        )
 
     def get_object(self):
         obj = super().get_object()
@@ -180,7 +183,7 @@ class VideoLessonDetailView(views.APIView):
     def get(self, request, slug, lesson_slug):
         try:
             course = VideoCourse.objects.get(slug=slug)
-            lesson = VideoLesson.objects.get(course=course, slug=lesson_slug)
+            lesson = VideoLesson.objects.ready().get(course=course, slug=lesson_slug)
         except (VideoCourse.DoesNotExist, VideoLesson.DoesNotExist):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -345,7 +348,7 @@ class LessonProgressView(views.APIView):
     def post(self, request, slug, lesson_slug):
         try:
             course = VideoCourse.objects.get(slug=slug)
-            lesson = VideoLesson.objects.get(course=course, slug=lesson_slug)
+            lesson = VideoLesson.objects.ready().get(course=course, slug=lesson_slug)
         except (VideoCourse.DoesNotExist, VideoLesson.DoesNotExist):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -391,7 +394,7 @@ class CourseLastLessonView(views.APIView):
         lesson = cp.last_lesson if cp else None
 
         if not lesson:
-            lesson = course.lessons.order_by('order').first()
+            lesson = course.lessons.ready().order_by('order').first()
         if not lesson:
             return Response({'lesson_order': 1, 'lesson_public_id': None})
         return Response({'lesson_order': lesson.order, 'lesson_public_id': str(lesson.public_id)})
