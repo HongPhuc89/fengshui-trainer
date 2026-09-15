@@ -1,9 +1,12 @@
+import logging
 import os
 
 from django.conf import settings
 from django.db import models
 
 from users.models import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 def lesson_thumbnail_upload_to(instance, filename):
@@ -167,14 +170,21 @@ class VideoLesson(BaseModel):
                 VideoLesson.objects.filter(pk=self.pk).update(small_thumbnail='')
                 self.small_thumbnail = ''
                 return
-            # Thumbnail was set or replaced — generate small version.
+            if not self.video_id:
+                # No Bunny video linked yet — thumbnail isn't from a real sync, skip.
+                return
+            # Thumbnail was set or replaced — regenerate the small version, forcing
+            # an overwrite (the source changed, so any existing Bunny object is stale)
+            # and purging the CDN edge cache since it's served with a 1-year max-age.
             try:
+                from videos.bunny_file_storage import purge_cdn_url  # noqa: PLC0415
                 from videos.utils import generate_and_upload_small_thumbnail  # noqa: PLC0415
-                small_url = generate_and_upload_small_thumbnail(self.pk, self.thumbnail)
+                small_url = generate_and_upload_small_thumbnail(self.pk, self.thumbnail, force=True)
                 VideoLesson.objects.filter(pk=self.pk).update(small_thumbnail=small_url)
                 self.small_thumbnail = small_url
+                purge_cdn_url(small_url)
             except Exception:
-                pass  # Non-fatal; management command can backfill later.
+                logger.exception("Failed to regenerate small_thumbnail for lesson %s", self.pk)
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"

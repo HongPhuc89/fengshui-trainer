@@ -18,9 +18,16 @@ class Command(BaseCommand):
             default=False,
             help='Re-upload and overwrite even if small_thumbnail already exists.',
         )
+        parser.add_argument(
+            '--course-id',
+            type=int,
+            default=None,
+            help='Only process lessons belonging to this course ID.',
+        )
 
     def handle(self, *args, **options):
         force = options['force']
+        course_id = options['course_id']
 
         qs = (
             VideoLesson.objects
@@ -30,6 +37,8 @@ class Command(BaseCommand):
         )
         if not force:
             qs = qs.filter(small_thumbnail='')
+        if course_id is not None:
+            qs = qs.filter(course_id=course_id)
 
         total = qs.count()
         self.stdout.write(f"Found {total} lesson(s) to process.")
