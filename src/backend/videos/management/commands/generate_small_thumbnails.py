@@ -1,6 +1,7 @@
 """Management command to backfill small WebP thumbnails for existing lessons (Feature 31)."""
 from django.core.management.base import BaseCommand
 
+from videos.bunny_file_storage import purge_cdn_url
 from videos.models import VideoLesson
 from videos.utils import generate_and_upload_small_thumbnail
 
@@ -24,10 +25,17 @@ class Command(BaseCommand):
             default=None,
             help='Only process lessons belonging to this course ID.',
         )
+        parser.add_argument(
+            '--lesson-id',
+            type=int,
+            default=None,
+            help='Only process this single lesson ID.',
+        )
 
     def handle(self, *args, **options):
         force = options['force']
         course_id = options['course_id']
+        lesson_id = options['lesson_id']
 
         qs = (
             VideoLesson.objects
@@ -39,6 +47,8 @@ class Command(BaseCommand):
             qs = qs.filter(small_thumbnail='')
         if course_id is not None:
             qs = qs.filter(course_id=course_id)
+        if lesson_id is not None:
+            qs = qs.filter(pk=lesson_id)
 
         total = qs.count()
         self.stdout.write(f"Found {total} lesson(s) to process.")
@@ -49,6 +59,8 @@ class Command(BaseCommand):
             try:
                 url = generate_and_upload_small_thumbnail(lesson.pk, lesson.thumbnail, force=force)
                 VideoLesson.objects.filter(pk=lesson.pk).update(small_thumbnail=url)
+                if force:
+                    purge_cdn_url(url)
                 success += 1
                 self.stdout.write(f"  [OK] Lesson {lesson.pk}: {lesson.course.title} — {lesson.title}")
             except Exception as exc:
