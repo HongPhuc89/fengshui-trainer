@@ -7,8 +7,8 @@ FRONTEND = src/frontend
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-up: ## Start the containers in the background
-	docker-compose -f $(COMPOSE_FILE) up -d
+up: ## Build (if needed) and start the containers in the background
+	docker-compose -f $(COMPOSE_FILE) up -d --build
 
 # down: ## Stop and remove the containers
 # 	docker-compose -f $(COMPOSE_FILE) down

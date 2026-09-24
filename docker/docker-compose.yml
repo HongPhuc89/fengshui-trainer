@@ -1,5 +1,6 @@
 services:
   web:
+    image: fengshui-backend:latest
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile
@@ -15,9 +16,7 @@ services:
       - redis
 
   celery_worker:
-    build:
-      context: ..
-      dockerfile: docker/backend/Dockerfile
+    image: fengshui-backend:latest
     command: celery -A config worker -l info
     volumes:
       - ../src/backend:/app/src/backend
@@ -28,9 +27,7 @@ services:
       - redis
 
   celery_beat:
-    build:
-      context: ..
-      dockerfile: docker/backend/Dockerfile
+    image: fengshui-backend:latest
     command: celery -A config beat -l info
     volumes:
       - ../src/backend:/app/src/backend
