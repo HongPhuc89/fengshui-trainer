@@ -65,7 +65,7 @@ class VideoCourseAdmin(admin.ModelAdmin):
     list_filter = ('is_free', 'is_public', 'level', 'category')
     search_fields = ('title', 'instructor')
     inlines = [VideoLessonInline, UserVideoPurchaseInline]
-    readonly_fields = ('recalculate_totals_btn',)
+    readonly_fields = ('recalculate_totals_btn', 'sync_bunny_metadata_btn')
     change_form_template = 'admin/videos/videocourse/change_form.html'
 
     class Media:
@@ -95,6 +95,21 @@ class VideoCourseAdmin(admin.ModelAdmin):
         )
     recalculate_totals_btn.short_description = 'Tính lại tổng'
 
+    def sync_bunny_metadata_btn(self, obj):
+        if not obj or not obj.pk:
+            return '—'
+        url = reverse('admin:videos_videocourse_sync_bunny_metadata', args=[obj.pk])
+        return format_html(
+            '<a href="{}" class="button" '
+            'style="padding:6px 14px;background:#417690;color:#fff;border-radius:4px;'
+            'text-decoration:none;font-size:13px;display:inline-block">'
+            '⟳ Đồng bộ metadata từ Bunny</a>'
+            '<span style="margin-left:10px;color:#888;font-size:12px">'
+            'Lấy duration &amp; thumbnail còn thiếu cho các video của khoá học này.</span>',
+            url,
+        )
+    sync_bunny_metadata_btn.short_description = 'Đồng bộ Bunny'
+
     def learner_progress_link(self, obj):
         url = reverse('admin:videos_userlessonprogress_changelist') + f'?lesson__course__id__exact={obj.pk}'
         return format_html('<a href="{}">Xem tiến độ</a>', url)
@@ -113,8 +128,24 @@ class VideoCourseAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.grant_access_view),
                 name='videos_videocourse_grant_access',
             ),
+            path(
+                '<int:pk>/sync-bunny-metadata/',
+                self.admin_site.admin_view(self.sync_bunny_metadata_view),
+                name='videos_videocourse_sync_bunny_metadata',
+            ),
         ]
         return custom + urls
+
+    def sync_bunny_metadata_view(self, request, pk):
+        from io import StringIO
+        from django.core.management import call_command
+
+        course = get_object_or_404(VideoCourse, pk=pk)
+        out = StringIO()
+        call_command('sync_bunny_metadata', course_id=course.pk, stdout=out, stderr=out)
+        summary_line = out.getvalue().strip().splitlines()[-1] if out.getvalue().strip() else 'Không có kết quả.'
+        self.message_user(request, f'Đồng bộ Bunny cho "{course.title}": {summary_line}')
+        return redirect(reverse('admin:videos_videocourse_change', args=[pk]))
 
     def grant_access_view(self, request, pk):
         video = get_object_or_404(VideoCourse, pk=pk)
