@@ -143,13 +143,14 @@ class Command(BaseCommand):
 
         deleted = errors = 0
         for v in orphans:
+            label = f'{v["guid"]}  "{v.get("title", "")}"'
             try:
                 storage.delete(v['guid'])
                 deleted += 1
-                self.stdout.write(self.style.SUCCESS(f'  ✓ deleted {v["guid"]}'))
+                self.stdout.write(self.style.SUCCESS(f'  ✓ deleted {label}'))
             except Exception as exc:
                 errors += 1
-                self.stdout.write(self.style.ERROR(f'  x {v["guid"]}: {exc}'))
+                self.stdout.write(self.style.ERROR(f'  x {label}: {exc}'))
             time.sleep(_THROTTLE_SECONDS)
 
         summary = f'Done.  deleted={deleted}  errors={errors}'
