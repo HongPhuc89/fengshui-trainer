@@ -297,6 +297,25 @@ class BunnyVideoStorage(VideoStorageBackend):
         resp.raise_for_status()
         return resp.json()
 
+    def list_videos(self, items_per_page: int = 100) -> list[dict]:
+        """Return every video object in the library, following pagination."""
+        videos: list[dict] = []
+        page = 1
+        while True:
+            resp = http.get(
+                f'{self._API_BASE}/{self._library_id}/videos',
+                params={'page': page, 'itemsPerPage': items_per_page, 'orderBy': 'date'},
+                headers={'AccessKey': self._api_key, 'Accept': 'application/json'},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get('items') or []
+            videos += items
+            if not items or len(videos) >= (data.get('totalItems') or 0):
+                return videos
+            page += 1
+
     def set_video_title(self, guid: str, title: str) -> str:
         """
         Rename a video on Bunny and return the title read back afterwards.
