@@ -45,7 +45,7 @@ def _run_checks():
     }
 
 
-@api_view(["GET"])
+@api_view(["GET", "HEAD"])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def health_check(request):
