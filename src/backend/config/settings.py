@@ -341,9 +341,7 @@ JAZZMIN_SETTINGS = {
         "auth.Group",
         "notifications.EmailLog",
         "notifications.EmailQuota",
-        "videos.UserLessonProgress",
         "videos.UserVideoPurchase",
-        "books.UserChapterProgress",
         "books.UserBookPurchase",
     ],
     "icons": {
