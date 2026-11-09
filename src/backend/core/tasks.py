@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 # Sentry free tier allows only 1 cron monitor, so it's reserved for the
 # highest-consequence periodic task: a silently failing backup means no
-# restore point when one is actually needed. Runs at 0h and 12h UTC — see
-# beat_schedule in config/celery.py.
+# restore point when one is actually needed. Runs at 0h and 12h ICT (Celery
+# beat uses CELERY_TIMEZONE) — see beat_schedule in config/celery.py.
 _BACKUP_MONITOR_CONFIG = {
     "schedule": {"type": "crontab", "value": "0 0,12 * * *"},
-    "timezone": "UTC",
+    "timezone": "Asia/Ho_Chi_Minh",
 }
 
 
